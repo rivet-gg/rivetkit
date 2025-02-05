@@ -12,6 +12,7 @@
     "start": "npx turbo dev",
     "dev": "npx turbo dev",
     "build": "npx turbo build",
+    "check-types": "npx turbo check-types",
     "fmt": "yarn biome check --write ."
   },
   "devDependencies": {

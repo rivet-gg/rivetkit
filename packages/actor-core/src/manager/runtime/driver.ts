@@ -1,8 +1,9 @@
-import type {
-	ActorsRequest,
-	ActorsResponse,
-} from "@/manager/protocol/mod";
+import type { ActorsRequest, ActorsResponse } from "@/manager/protocol/mod";
+import { HonoRequest } from "hono";
 
 export interface ManagerDriver {
-	queryActor(request: ActorsRequest): Promise<ActorsResponse>;
+	queryActor(opts: {
+		body: ActorsRequest;
+		request: HonoRequest;
+	}): Promise<ActorsResponse>;
 }

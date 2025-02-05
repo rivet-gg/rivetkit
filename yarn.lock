@@ -32,6 +32,19 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@actor-core/vercel@workspace:packages/platforms/vercel":
+  version: 0.0.0-use.local
+  resolution: "@actor-core/vercel@workspace:packages/platforms/vercel"
+  dependencies:
+    "@cloudflare/workers-types": "npm:^4.20250129.0"
+    tsup: "npm:^8.3.6"
+    typescript: "npm:^5.5.2"
+    wrangler: "npm:^3.101.0"
+  peerDependencies:
+    actor-core: "workspace:*"
+  languageName: unknown
+  linkType: soft
+
 "@actor-core/workspace@workspace:.":
   version: 0.0.0-use.local
   resolution: "@actor-core/workspace@workspace:."

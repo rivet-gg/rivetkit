@@ -11,6 +11,10 @@ const KEYS = {
 	},
 };
 
+export interface ActorHandlerInterface extends DurableObject {
+	initialize(req: ActorInitRequest): Promise<void>;
+}
+
 export interface ActorInitRequest {
 	tags: ActorTags;
 }
@@ -32,7 +36,7 @@ export function createActorDurableObject(
 	 * 2. Load actor
 	 * 3. Start service requests
 	 */
-	return class ActorHandler extends DurableObject {
+	return class ActorHandler extends DurableObject implements ActorHandlerInterface {
 		#initialized?: InitializedData;
 		#initializedPromise?: PromiseWithResolvers<void>;
 

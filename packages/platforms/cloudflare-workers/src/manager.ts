@@ -1,7 +1,6 @@
+import type { ActorTags } from "actor-core";
 import {
 	assertUnreachable,
-	ActorTags,
-	ActorsRequest,
 	ActorsResponse,
 	CreateRequest,
 	ManagerDriver,
@@ -18,10 +17,13 @@ function buildActorEndpoint(origin: string, actorId: string) {
 	return `${origin}/actors/${actorId}`;
 }
 
-export function buildManager(env: Env, origin: string): ManagerDriver {
+export function buildManager(env: Env): ManagerDriver {
 	return {
-		async queryActor({ query }: ActorsRequest): Promise<ActorsResponse> {
-			logger().debug("query", { query });
+		async queryActor({ body: { query }, request }) {
+			const url = new URL(request.url);
+			const origin = url.origin;
+
+			logger().debug("query", { query, origin });
 			if ("getForId" in query) {
 				// TODO: Error handling
 

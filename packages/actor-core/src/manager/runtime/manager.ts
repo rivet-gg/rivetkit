@@ -59,7 +59,7 @@ export class Manager {
 
 		managerApp.post("/actors", async (c: HonoContext) => {
 			const body = ActorsRequestSchema.parse(await c.req.json());
-			const response = await this.#driver.queryActor(body);
+			const response = await this.#driver.queryActor({ body, request: c.req });
 			return c.json(response);
 		});
 

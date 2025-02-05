@@ -51,7 +51,7 @@ function buildActorEndpoint(actor: RivetActor): string {
 
 export function buildManager(clientConfig: RivetClientConfig): ManagerDriver {
 	return {
-		async queryActor({ query }: ActorsRequest): Promise<ActorsResponse> {
+		async queryActor({ body: { query } }): Promise<ActorsResponse> {
 			logger().debug("query", { query });
 			if ("getForId" in query) {
 				// Get actor

@@ -12,6 +12,7 @@
     "dev": {
       "cache": false,
       "persistent": true
-    }
+    },
+    "check-types": {}
   }
 }
