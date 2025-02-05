@@ -22,11 +22,6 @@ export function createHandler(config: Config): Handler {
 			const app = manager.router;
 
 			app.get("/actors/:actorId/:path{.+}", (c) => {
-				// Reject requests that don't require upgrade
-				if (c.req.header("upgrade") !== "websocket") {
-					return c.text("Expected Upgrade: websocket", 426);
-				}
-
 				const actorId = c.req.param("actorId");
 				const subpath = `/${c.req.param("path")}`;
 				logger().debug("forwarding request", { actorId, subpath });
