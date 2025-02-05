@@ -15,7 +15,7 @@ yarn workspaces foreach -A -t version $VERSION
 # Step 2: Commit the version changes
 git add .
 git commit -m "chore: release version $VERSION"
-git tag -f "v$VERSION"
+git commit --allow-empty -m "chore: release $VERSION" -m "Release-As: $VERSION"
 git push
 git push --tags -f
 
@@ -24,4 +24,5 @@ echo "Publishing packages..."
 yarn workspaces foreach -A -t --include actor-core --include @actor-core/cloudflare-workers --include @actor-core/rivet npm publish --access public --tolerate-republish
 
 echo "✅ Published specified packages at version $VERSION"
+echo "⚠️Make sure to merge Release Please"
 
