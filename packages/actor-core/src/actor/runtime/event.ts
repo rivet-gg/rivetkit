@@ -8,7 +8,7 @@ import { Rpc } from "./rpc";
 import { assertUnreachable } from "./utils";
 
 interface MessageEventConfig {
-	protocol: { maxIncomingMessageSize: number };
+	connections: { maxIncomingMessageSize: number };
 }
 
 export async function validateMessageEvent<A extends AnyActor>(
@@ -30,7 +30,7 @@ export async function validateMessageEvent<A extends AnyActor>(
 	} else {
 		assertUnreachable(value);
 	}
-	if (length > config.protocol.maxIncomingMessageSize) {
+	if (length > config.connections.maxIncomingMessageSize) {
 		throw new errors.MessageTooLong();
 	}
 

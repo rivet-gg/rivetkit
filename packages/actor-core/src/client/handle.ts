@@ -1,8 +1,8 @@
-import type { ProtocolFormat, TransportKind } from "@/actor/protocol/ws/mod";
+import type { Encoding, Transport } from "@/actor/protocol/ws/mod";
 import type * as wsToClient from "@/actor/protocol/ws/to_client";
 import type * as wsToServer from "@/actor/protocol/ws/to_server";
-import { MAX_CONN_PARAMS_SIZE } from "@/common//network";
-import { assertUnreachable } from "@/common//utils";
+import { MAX_CONN_PARAMS_SIZE } from "@/common/network";
+import { assertUnreachable } from "@/common/utils";
 import * as cbor from "cbor-x";
 import * as errors from "./errors";
 import { logger } from "./log";
@@ -68,16 +68,14 @@ export class ActorHandleRaw {
 	 * Creates an instance of ActorHandleRaw.
 	 *
 	 * @param {string} endpoint - The endpoint to connect to.
-	 * @param {unknown} parameters - The parameters to pass to the connection.
-	 * @param {ProtocolFormat} protocolFormat - The format used for protocol communication.
 	 *
 	 * @protected
 	 */
 	public constructor(
 		private readonly endpoint: string,
 		private readonly parameters: unknown,
-		private readonly protocolFormat: ProtocolFormat,
-		private readonly transportKind: TransportKind,
+		private readonly encodingKind: Encoding,
+		private readonly transportKind: Transport,
 		private readonly dynamicImports: DynamicImports,
 	) {}
 
@@ -147,8 +145,8 @@ export class ActorHandleRaw {
 
 	/**
 	 * Do not call this directly.
-	 *
-	 * Establishes a connection to the server using the specified endpoint & protocol & driver.
+enc
+	 * Establishes a connection to the server using the specified endpoint & encoding & driver.
 	 *
 	 * @protected
 	 */
@@ -170,7 +168,13 @@ export class ActorHandleRaw {
 		const url = this.#buildConnectionUrl();
 
 		const ws = new WebSocket(url);
-		ws.binaryType = this.protocolFormat === "cbor" ? "arraybuffer" : "blob";
+		if (this.encodingKind === "cbor") {
+			ws.binaryType = "arraybuffer";
+		} else if (this.encodingKind == "json") {
+			ws.binaryType = "blob";
+		} else {
+			assertUnreachable(this.encodingKind);
+		}
 		this.#transport = { websocket: ws };
 		ws.onopen = () => {
 			this.#handleOnOpen();
@@ -307,7 +311,7 @@ export class ActorHandleRaw {
 	}
 
 	#buildConnectionUrl(): string {
-		let url = `${this.endpoint}/connect/${this.transportKind}?protocol=${this.protocolFormat}`;
+		let url = `${this.endpoint}/connect/${this.transportKind}?encoding=${this.encodingKind}`;
 
 		if (this.parameters !== undefined) {
 			const paramsStr = JSON.stringify(this.parameters);
@@ -468,8 +472,7 @@ export class ActorHandleRaw {
 			if (!this.#connectionId || !this.#connectionToken)
 				throw new errors.InternalError("Missing connection ID or token.");
 
-			let url = `${this.endpoint}/connections/${this.#connectionId}/message?protocol=${this.protocolFormat}&connectionToken=${encodeURIComponent(this.#connectionToken)}`;
-			console.log("url", url);
+			let url = `${this.endpoint}/connections/${this.#connectionId}/message?encoding=${this.encodingKind}&connectionToken=${encodeURIComponent(this.#connectionToken)}`;
 
 			// TODO: Implement ordered messages, this is not guaranteed order. Needs to use an index in order to ensure we can pipeline requests efficiently.
 			// TODO: Validate that we're using HTTP/3 whenever possible for pipelining requests
@@ -504,12 +507,12 @@ export class ActorHandleRaw {
 	}
 
 	async #parse(data: ConnectionMessage): Promise<unknown> {
-		if (this.protocolFormat === "json") {
+		if (this.encodingKind === "json") {
 			if (typeof data !== "string") {
 				throw new Error("received non-string for json parse");
 			}
 			return JSON.parse(data);
-		} else if (this.protocolFormat === "cbor") {
+		} else if (this.encodingKind === "cbor") {
 			if (this.transportKind === "sse") {
 				// Decode base64 since SSE sends raw strings
 				if (typeof data === "string") {
@@ -541,18 +544,18 @@ export class ActorHandleRaw {
 				);
 			}
 		} else {
-			assertUnreachable(this.protocolFormat);
+			assertUnreachable(this.encodingKind);
 		}
 	}
 
 	#serialize(value: unknown): ConnectionMessage {
-		if (this.protocolFormat === "json") {
+		if (this.encodingKind === "json") {
 			return JSON.stringify(value);
-		}
-		if (this.protocolFormat === "cbor") {
+		} else if (this.encodingKind === "cbor") {
 			return cbor.encode(value);
+		} else {
+			assertUnreachable(this.encodingKind);
 		}
-		assertUnreachable(this.protocolFormat);
 	}
 
 	// TODO: Add destructor

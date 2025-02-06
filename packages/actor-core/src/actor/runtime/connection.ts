@@ -1,4 +1,4 @@
-import type { ProtocolFormat } from "@/actor/protocol/ws/mod";
+import type { Encoding } from "@/actor/protocol/ws/mod";
 import type * as wsToClient from "@/actor/protocol/ws/to_client";
 import * as cbor from "cbor-x";
 import type { WSContext } from "hono/ws";
@@ -75,11 +75,11 @@ export class Connection<A extends AnyActor> {
 	#transport: ConnectionTransport;
 
 	/**
-	 * Protocol format used for message serialization and deserialization.
+	 * Encoding used for message serialization and deserialization.
 	 *
 	 * @protected
 	 */
-	public _protocolFormat: ProtocolFormat;
+	public _encoding: Encoding;
 
 	/**
 	 * Gets the current state of the connection.
@@ -107,23 +107,18 @@ export class Connection<A extends AnyActor> {
 	 *
 	 * This should only be constructed by {@link Actor}.
 	 *
-	 * @param id - Unique identifier for the connection.
-	 * @param transport - Transport used for running the connection.
-	 * @param protocolFormat - Protocol format for message serialization and deserialization.
-	 * @param state - Initial state of the connection.
-	 * @param stateEnabled - Indicates if the state is enabled.
 	 * @protected
 	 */
 	public constructor(
 		id: ConnectionId,
 		transport: ConnectionTransport,
-		protocolFormat: ProtocolFormat,
+		encoding: Encoding,
 		state: ExtractActorConnState<A> | undefined,
 		stateEnabled: boolean,
 	) {
 		this.id = id;
 		this.#transport = transport;
-		this._protocolFormat = protocolFormat;
+		this._encoding = encoding;
 		this.#state = state;
 		this.#stateEnabled = stateEnabled;
 
@@ -137,7 +132,7 @@ export class Connection<A extends AnyActor> {
 	}
 
 	/**
-	 * Parses incoming WebSocket messages based on the protocol format.
+	 * Parses incoming WebSocket messages based on the encoding.
 	 *
 	 * @param data - The incoming WebSocket message.
 	 * @returns The parsed message.
@@ -146,14 +141,14 @@ export class Connection<A extends AnyActor> {
 	 * @protected
 	 */
 	public async _parse(data: IncomingMessage): Promise<unknown> {
-		if (this._protocolFormat === "json") {
+		if (this._encoding === "json") {
 			if (typeof data !== "string") {
 				logger().warn("received non-string for json parse");
 				throw new errors.MalformedMessage();
 			}
 			return JSON.parse(data);
 		}
-		if (this._protocolFormat === "cbor") {
+		if (this._encoding === "cbor") {
 			if (data instanceof Blob) {
 				const arrayBuffer = await data.arrayBuffer();
 				return cbor.decode(new Uint8Array(arrayBuffer));
@@ -164,11 +159,11 @@ export class Connection<A extends AnyActor> {
 			logger().warn("received non-binary type for cbor parse");
 			throw new errors.MalformedMessage();
 		}
-		assertUnreachable(this._protocolFormat);
+		assertUnreachable(this._encoding);
 	}
 
 	/**
-	 * Serializes a value into a WebSocket message based on the protocol format.
+	 * Serializes a value into a WebSocket message based on the encoding.
 	 *
 	 * @param value - The value to serialize.
 	 * @returns The serialized message.
@@ -176,14 +171,14 @@ export class Connection<A extends AnyActor> {
 	 * @protected
 	 */
 	public _serialize(value: wsToClient.ToClient): OutgoingMessage {
-		if (this._protocolFormat === "json") {
+		if (this._encoding === "json") {
 			return JSON.stringify(value);
-		} else if (this._protocolFormat === "cbor") {
+		} else if (this._encoding === "cbor") {
 			// TODO: Remove this hack, but cbor-x can't handle anything extra in data structures
 			const cleanValue = JSON.parse(JSON.stringify(value));
 			return cbor.encode(cleanValue);
 		} else {
-			assertUnreachable(this._protocolFormat);
+			assertUnreachable(this._encoding);
 		}
 	}
 

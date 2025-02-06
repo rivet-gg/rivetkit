@@ -1,4 +1,4 @@
-import type { ProtocolFormat, TransportKind } from "@/actor/protocol/ws/mod";
+import type { Encoding, Transport } from "@/actor/protocol/ws/mod";
 import type { ActorTags } from "@/common//utils";
 import type {
 	ActorsRequest,
@@ -15,11 +15,10 @@ import { importEventSource } from "@/common/eventsource";
 /**
  * Options for configuring the client.
  * @typedef {Object} ClientOptions
- * @property {ProtocolFormat} [protocolFormat] - The format used for protocol communication.
  */
 export interface ClientOptions {
-	protocolFormat?: ProtocolFormat;
-	transportKind?: TransportKind;
+	encoding?: Encoding;
+	transport?: Transport;
 }
 
 /**
@@ -134,8 +133,8 @@ export interface DynamicImports {
 export class Client {
 	#managerEndpointPromise: Promise<string>;
 	//#regionPromise: Promise<Region | undefined>;
-	#protocolFormat: ProtocolFormat;
-	#transportKind: TransportKind;
+	#encodingKind: Encoding;
+	#transportKind: Transport;
 
 	// External imports
 	#dynamicImportsPromise: Promise<DynamicImports>;
@@ -163,8 +162,8 @@ export class Client {
 
 		//this.#regionPromise = this.#fetchRegion();
 
-		this.#protocolFormat = opts?.protocolFormat ?? "cbor";
-		this.#transportKind = opts?.transportKind ?? "websocket";
+		this.#encodingKind = opts?.encoding ?? "cbor";
+		this.#transportKind = opts?.transport ?? "websocket";
 
 		// Import dynamic dependencies
 		this.#dynamicImportsPromise = (async () => {
@@ -323,7 +322,7 @@ export class Client {
 		const handle = new ActorHandleRaw(
 			endpoint,
 			parameters,
-			this.#protocolFormat,
+			this.#encodingKind,
 			this.#transportKind,
 			imports,
 		);

@@ -1,7 +1,7 @@
 import * as protoHttpRpc from "@/actor/protocol/http/rpc";
 import {
-	type ProtocolFormat,
-	ProtocolFormatSchema,
+	type Encoding,
+	EncodingSchema,
 } from "@/actor/protocol/ws/mod";
 import type { IncomingMessage } from "./connection";
 import type * as wsToClient from "@/actor/protocol/ws/to_client";
@@ -403,24 +403,24 @@ export abstract class Actor<
 			// Wait for init to finish
 			if (this.#initializedPromise) await this.#initializedPromise;
 
-			// Parse connection parameters and validate protocol
-			const { protocolFormat, connState } =
+			// Parse connection parameters and validate encoding
+			const { encoding, connState } =
 				await this.#prepareConnectionFromRequest(c, {
 					defaultFormat: "json",
 				});
 
 			// Create connection with validated parameters
-			conn = await this.#createConnection(protocolFormat, connState, {
+			conn = await this.#createConnection(encoding, connState, {
 				http: {},
 			});
 
 			// Parse request body if present
 			const contentLength = Number(c.req.header("content-length") || "0");
-			if (contentLength > this.#config.protocol.maxIncomingMessageSize) {
+			if (contentLength > this.#config.connections.maxIncomingMessageSize) {
 				throw new errors.MessageTooLong();
 			}
 
-			// Parse request body according to protocol format
+			// Parse request body according to encoding
 			const body = await c.req.json();
 			const { data: message, success } =
 				protoHttpRpc.RequestSchema.safeParse(body);
@@ -433,7 +433,7 @@ export abstract class Actor<
 			const ctx = new Rpc<this>(conn);
 			const output = await this.#executeRpc(ctx, rpcName, args);
 
-			// Format response according to protocol
+			// Format response according to encoding
 			return c.json({
 				o: output,
 			} satisfies protoHttpRpc.ResponseOk);
@@ -487,7 +487,7 @@ export abstract class Actor<
 		if (this.#initializedPromise) await this.#initializedPromise;
 
 		try {
-			const protocolFormat = this.#getRequestProtocolFormat(c.req);
+			const encoding = this.#getRequestEncoding(c.req);
 
 			const connectionId = c.req.param("conn");
 			const connectionToken = c.req.query("connectionToken");
@@ -506,18 +506,18 @@ export abstract class Actor<
 
 			// Parse request body if present
 			const contentLength = Number(c.req.header("content-length") || "0");
-			if (contentLength > this.#config.protocol.maxIncomingMessageSize) {
+			if (contentLength > this.#config.connections.maxIncomingMessageSize) {
 				throw new errors.MessageTooLong();
 			}
 
 			let value: IncomingMessage;
-			if (protocolFormat === "json") {
+			if (encoding === "json") {
 				// Handle decoding JSON in handleMessageEvent
 				value = await c.req.text();
-			} else if (protocolFormat === "cbor") {
+			} else if (encoding === "cbor") {
 				value = await c.req.arrayBuffer();
 			} else {
-				assertUnreachable(protocolFormat);
+				assertUnreachable(encoding);
 			}
 
 			// Handle message
@@ -582,10 +582,10 @@ export abstract class Actor<
 		c: HonoContext,
 		opts?: { defaultFormat?: string },
 	): Promise<{
-		protocolFormat: ProtocolFormat;
+		encoding: Encoding;
 		connState: ConnState | undefined;
 	}> {
-		const protocolFormat = this.#getRequestProtocolFormat(
+		const encoding = this.#getRequestEncoding(
 			c.req,
 			opts?.defaultFormat,
 		);
@@ -594,7 +594,7 @@ export abstract class Actor<
 		const paramsStr = c.req.query("params");
 		if (
 			paramsStr &&
-			paramsStr.length > this.#config.protocol.maxConnectionParametersSize
+			paramsStr.length > this.#config.connections.maxConnectionParametersSize
 		) {
 			logger().warn("connection parameters too long");
 			throw new errors.ConnectionParametersTooLong();
@@ -627,31 +627,31 @@ export abstract class Actor<
 			}
 		}
 
-		return { protocolFormat, connState };
+		return { encoding, connState };
 	}
 
-	#getRequestProtocolFormat(
+	#getRequestEncoding(
 		c: HonoRequest,
 		defaultFormat?: string,
-	): ProtocolFormat {
-		const protocolFormatRaw = c.query("protocol") ?? defaultFormat;
-		const { data: protocolFormat, success } =
-			ProtocolFormatSchema.safeParse(protocolFormatRaw);
+	): Encoding {
+		const encodingRaw = c.query("encoding") ?? defaultFormat;
+		const { data: encoding, success } =
+			EncodingSchema.safeParse(encodingRaw);
 		if (!success) {
-			logger().warn("invalid protocol format", {
-				protocolFormat: protocolFormatRaw,
+			logger().warn("invalid encoding", {
+				encoding: encodingRaw,
 			});
-			throw new errors.InvalidProtocolFormat(protocolFormatRaw);
+			throw new errors.InvalidEncoding(encodingRaw);
 		}
 
-		return protocolFormat;
+		return encoding;
 	}
 
 	/**
 	 * Called after establishing a connection handshake.
 	 */
 	async #createConnection(
-		protocolFormat: ProtocolFormat,
+		encoding: Encoding,
 		state: ConnState | undefined,
 		driver: ConnectionTransport,
 	): Promise<Connection<this>> {
@@ -661,7 +661,7 @@ export abstract class Actor<
 		const conn = new Connection<Actor<State, ConnParams, ConnState>>(
 			connectionId,
 			driver,
-			protocolFormat,
+			encoding,
 			state,
 			this.#connectionStateEnabled,
 		);
@@ -739,8 +739,8 @@ export abstract class Actor<
 		// Wait for init to finish
 		if (this.#initializedPromise) await this.#initializedPromise;
 
-		// Parse connection parameters and validate protocol
-		const { protocolFormat, connState } =
+		// Parse connection parameters and validate encoding
+		const { encoding, connState } =
 			await this.#prepareConnectionFromRequest(c);
 
 		let conn: Connection<this> | undefined;
@@ -753,7 +753,7 @@ export abstract class Actor<
 				logger().debug("socket open");
 
 				// Create connection with validated parameters
-				conn = await this.#createConnection(protocolFormat, connState, {
+				conn = await this.#createConnection(encoding, connState, {
 					websocket: ws,
 				});
 			}
@@ -807,8 +807,8 @@ export abstract class Actor<
 		// Wait for init to finish
 		if (this.#initializedPromise) await this.#initializedPromise;
 
-		// Parse connection parameters and validate protocol
-		const { protocolFormat, connState } =
+		// Parse connection parameters and validate encoding
+		const { encoding, connState } =
 			await this.#prepareConnectionFromRequest(c);
 
 		return streamSSE(
@@ -816,7 +816,7 @@ export abstract class Actor<
 			async (stream) => {
 				// Create connection with validated parameters
 				logger().debug("socket open");
-				const conn = await this.#createConnection(protocolFormat, connState, {
+				const conn = await this.#createConnection(encoding, connState, {
 					sse: stream,
 				});
 
@@ -1100,12 +1100,12 @@ export abstract class Actor<
 		const serialized: Record<string, OutgoingMessage> = {};
 		for (const connection of subscriptions) {
 			// Lazily serialize the appropriate format
-			if (!(connection._protocolFormat in serialized)) {
-				serialized[connection._protocolFormat] =
+			if (!(connection._encoding in serialized)) {
+				serialized[connection._encoding] =
 					connection._serialize(toClient);
 			}
 
-			connection._sendMessage(serialized[connection._protocolFormat]);
+			connection._sendMessage(serialized[connection._encoding]);
 		}
 	}
 

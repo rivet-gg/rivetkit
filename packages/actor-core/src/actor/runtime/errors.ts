@@ -69,9 +69,9 @@ export class RpcNotFound extends ActorError {
 	}
 }
 
-export class InvalidProtocolFormat extends ActorError {
+export class InvalidEncoding extends ActorError {
 	constructor(format?: string) {
-		super("invalid_protocol_format", `Invalid protocol format \`${format}\`.`, {
+		super("invalid_encoding", `Invalid encoding \`${format}\`.`, {
 			public: true,
 		});
 	}
