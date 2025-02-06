@@ -77,6 +77,22 @@ export class InvalidProtocolFormat extends ActorError {
 	}
 }
 
+export class ConnectionNotFound extends ActorError {
+	constructor(id?: string) {
+		super("connection_not_found", `Connection not found for ID \`${id}\`.`, {
+			public: true,
+		});
+	}
+}
+
+export class IncorrectConnectionToken extends ActorError {
+	constructor() {
+		super("incorrect_connection_token", "Incorrect connection token.", {
+			public: true,
+		});
+	}
+}
+
 export class ConnectionParametersTooLong extends ActorError {
 	constructor() {
 		super("connection_parameters_too_long", "Connection parameters too long.", {
@@ -88,7 +104,7 @@ export class ConnectionParametersTooLong extends ActorError {
 export class MalformedConnectionParameters extends ActorError {
 	constructor(cause: unknown) {
 		super(
-			"malformed_connnection_parameters",
+			"malformed_connection_parameters",
 			`Malformed connection parameters: ${cause}`,
 			{ public: true, cause },
 		);

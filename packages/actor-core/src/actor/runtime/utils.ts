@@ -84,3 +84,10 @@ export type RecursivePartial<T> = {
 			? RecursivePartial<T[P]>
 			: T[P];
 };
+
+export function generateSecureToken() {
+	const length = 32;
+	const array = new Uint8Array(length);
+	crypto.getRandomValues(array);
+	return btoa(String.fromCharCode(...array));
+}

@@ -17,7 +17,8 @@ const SubscriptionRequestSchema = z.object({
 });
 
 export const ToServerSchema = z.object({
-	body: z.union([
+	// Body
+	b: z.union([
 		z.object({ rr: RpcRequestSchema }),
 		z.object({ sr: SubscriptionRequestSchema }),
 	]),

@@ -67,7 +67,20 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@types/node": "^22.13.1",
     "tsup": "^8.3.6",
     "typescript": "^5.7.3"
+  },
+  "peerDependencies": {
+    "eventsource": "^3.0.5",
+    "ws": "^8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "eventsource": {
+      "optional": true
+    },
+    "ws": {
+      "optional": true
+    }
   }
 }

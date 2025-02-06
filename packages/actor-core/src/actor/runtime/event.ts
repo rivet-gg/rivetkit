@@ -1,8 +1,7 @@
 import type * as wsToClient from "@/actor/protocol/ws/to_client";
 import * as wsToServer from "@/actor/protocol/ws/to_server";
-import type { WSMessageReceive } from "hono/ws";
 import type { AnyActor } from "./actor";
-import type { Connection, IncomingWebSocketMessage } from "./connection";
+import type { Connection, IncomingMessage } from "./connection";
 import * as errors from "./errors";
 import { logger } from "./log";
 import { Rpc } from "./rpc";
@@ -13,12 +12,10 @@ interface MessageEventConfig {
 }
 
 export async function validateMessageEvent<A extends AnyActor>(
-	evt: MessageEvent<WSMessageReceive>,
+	value: IncomingMessage,
 	connection: Connection<A>,
 	config: MessageEventConfig,
 ) {
-	const value = evt.data.valueOf() as IncomingWebSocketMessage;
-
 	// Validate value length
 	let length: number;
 	if (typeof value === "string") {
@@ -62,25 +59,24 @@ export interface HandleMessageEventDelegate<A extends AnyActor> {
 }
 
 export async function handleMessageEvent<A extends AnyActor>(
-	event: MessageEvent<WSMessageReceive>,
-	//actorMetadata: Metadata,
+	value: IncomingMessage,
 	conn: Connection<A>,
 	config: MessageEventConfig,
 	handlers: HandleMessageEventDelegate<A>,
 ) {
 	let rpcId: number | undefined;
 	let rpcName: string | undefined;
-	const message = await validateMessageEvent(event, conn, config);
+	const message = await validateMessageEvent(value, conn, config);
 
 	try {
-		if ("rr" in message.body) {
+		if ("rr" in message.b) {
 			// RPC request
 
 			if (handlers.onExecuteRpc === undefined) {
 				throw new errors.Unsupported("RPC");
 			}
 
-			const { i: id, n: name, a: args = [] } = message.body.rr;
+			const { i: id, n: name, a: args = [] } = message.b.rr;
 
 			rpcId = id;
 			rpcName = name;
@@ -88,9 +84,9 @@ export async function handleMessageEvent<A extends AnyActor>(
 			const ctx = new Rpc<A>(conn);
 			const output = await handlers.onExecuteRpc(ctx, name, args);
 
-			conn._sendWebSocketMessage(
+			await conn._sendMessage(
 				conn._serialize({
-					body: {
+					b: {
 						ro: {
 							i: id,
 							o: output,
@@ -98,7 +94,7 @@ export async function handleMessageEvent<A extends AnyActor>(
 					},
 				} satisfies wsToClient.ToClient),
 			);
-		} else if ("sr" in message.body) {
+		} else if ("sr" in message.b) {
 			// Subscription request
 
 			if (
@@ -108,7 +104,7 @@ export async function handleMessageEvent<A extends AnyActor>(
 				throw new errors.Unsupported("Subscriptions");
 			}
 
-			const { e: eventName, s: subscribe } = message.body.sr;
+			const { e: eventName, s: subscribe } = message.b.sr;
 
 			if (subscribe) {
 				await handlers.onSubscribe(eventName, conn);
@@ -116,12 +112,12 @@ export async function handleMessageEvent<A extends AnyActor>(
 				await handlers.onUnsubscribe(eventName, conn);
 			}
 		} else {
-			assertUnreachable(message.body);
+			assertUnreachable(message.b);
 		}
 	} catch (error) {
 		// Build response error information. Only return errors if flagged as public in order to prevent leaking internal behavior.
 		//
-		// We log the error here instead of after generating the code & message becuase we need to log the original error, not the masked internal error.
+		// We log the error here instead of after generating the code & message because we need to log the original error, not the masked internal error.
 		let code: string;
 		let message: string;
 		let metadata: unknown = undefined;
@@ -154,9 +150,9 @@ export async function handleMessageEvent<A extends AnyActor>(
 
 		// Build response
 		if (rpcId !== undefined) {
-			conn._sendWebSocketMessage(
+			await conn._sendMessage(
 				conn._serialize({
-					body: {
+					b: {
 						re: {
 							i: rpcId,
 							c: code,
@@ -167,9 +163,9 @@ export async function handleMessageEvent<A extends AnyActor>(
 				} satisfies wsToClient.ToClient),
 			);
 		} else {
-			conn._sendWebSocketMessage(
+			await conn._sendMessage(
 				conn._serialize({
-					body: {
+					b: {
 						er: {
 							c: code,
 							m: message,

@@ -17,6 +17,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
+    "@types/ws": "^8.5.14",
     "dedent": "^1.5.3",
     "lefthook": "^1.6.12",
     "turbo": "^2.0.1"

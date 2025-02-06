@@ -21,7 +21,8 @@ export function createHandler(config: Config): Handler {
 
 			const app = manager.router;
 
-			app.get("/actors/:actorId/:path{.+}", (c) => {
+			// Forward requests to actor
+			app.all("/actors/:actorId/:path{.+}", (c) => {
 				const actorId = c.req.param("actorId");
 				const subpath = `/${c.req.param("path")}`;
 				logger().debug("forwarding request", { actorId, subpath });

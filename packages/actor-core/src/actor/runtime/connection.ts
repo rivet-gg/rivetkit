@@ -2,15 +2,21 @@ import type { ProtocolFormat } from "@/actor/protocol/ws/mod";
 import type * as wsToClient from "@/actor/protocol/ws/to_client";
 import * as cbor from "cbor-x";
 import type { WSContext } from "hono/ws";
+import type { SSEStreamingApi } from "hono/streaming";
 import type { AnyActor, ExtractActorConnState } from "./actor";
 import * as errors from "./errors";
 import { logger } from "./log";
-import { assertUnreachable } from "./utils";
+import { assertUnreachable, generateSecureToken } from "./utils";
 
-export type IncomingWebSocketMessage = string | Blob | ArrayBufferLike;
-export type OutgoingWebSocketMessage = string | ArrayBuffer | Uint8Array;
+export type IncomingMessage = string | Blob | ArrayBufferLike;
+export type OutgoingMessage = string | ArrayBuffer | Uint8Array;
 
 export type ConnectionId = number;
+
+export type ConnectionTransport =
+	| { websocket: WSContext<WebSocket> }
+	| { sse: SSEStreamingApi }
+	| { http: {} };
 
 /**
  * Represents a client connection to an actor.
@@ -26,12 +32,29 @@ export class Connection<A extends AnyActor> {
 	#stateEnabled: boolean;
 
 	/**
-	 * If this connection has a socket attached so it can send messages to the client.
-	 *
-	 * @protected
+	 * If the actor can send messages to the client.
 	 */
-	public get _isBidirectional() {
-		return this._websocket !== undefined;
+	public get _supportsStreamingResponse() {
+		if ("websocket" in this.#transport || "sse" in this.#transport) {
+			return true;
+		} else if ("http" in this.#transport) {
+			return false;
+		} else {
+			assertUnreachable(this.#transport);
+		}
+	}
+
+	/**
+	 * If the client can send messages to the server.
+	 */
+	public get _supportsStreamingRequest() {
+		if ("websocket" in this.#transport) {
+			return true;
+		} else if ("sse" in this.#transport || "http" in this.#transport) {
+			return false;
+		} else {
+			assertUnreachable(this.#transport);
+		}
 	}
 
 	/**
@@ -40,11 +63,16 @@ export class Connection<A extends AnyActor> {
 	public readonly id: ConnectionId;
 
 	/**
-	 * WebSocket context for managing the connection.
+	 * Token used to authenticate this request.
+	 */
+	public readonly _token: string;
+
+	/**
+	 * Transport used to manage realtime connection communication.
 	 *
 	 * @protected
 	 */
-	public _websocket: WSContext<WebSocket> | undefined;
+	#transport: ConnectionTransport;
 
 	/**
 	 * Protocol format used for message serialization and deserialization.
@@ -80,7 +108,7 @@ export class Connection<A extends AnyActor> {
 	 * This should only be constructed by {@link Actor}.
 	 *
 	 * @param id - Unique identifier for the connection.
-	 * @param websocket - WebSocket context for managing the connection.
+	 * @param transport - Transport used for running the connection.
 	 * @param protocolFormat - Protocol format for message serialization and deserialization.
 	 * @param state - Initial state of the connection.
 	 * @param stateEnabled - Indicates if the state is enabled.
@@ -88,16 +116,18 @@ export class Connection<A extends AnyActor> {
 	 */
 	public constructor(
 		id: ConnectionId,
-		websocket: WSContext<WebSocket> | undefined,
+		transport: ConnectionTransport,
 		protocolFormat: ProtocolFormat,
 		state: ExtractActorConnState<A> | undefined,
 		stateEnabled: boolean,
 	) {
 		this.id = id;
-		this._websocket = websocket;
+		this.#transport = transport;
 		this._protocolFormat = protocolFormat;
 		this.#state = state;
 		this.#stateEnabled = stateEnabled;
+
+		this._token = generateSecureToken();
 	}
 
 	#validateStateEnabled() {
@@ -115,7 +145,7 @@ export class Connection<A extends AnyActor> {
 	 *
 	 * @protected
 	 */
-	public async _parse(data: IncomingWebSocketMessage): Promise<unknown> {
+	public async _parse(data: IncomingMessage): Promise<unknown> {
 		if (this._protocolFormat === "json") {
 			if (typeof data !== "string") {
 				logger().warn("received non-string for json parse");
@@ -145,16 +175,28 @@ export class Connection<A extends AnyActor> {
 	 *
 	 * @protected
 	 */
-	public _serialize(value: unknown): OutgoingWebSocketMessage {
+	public _serialize(value: wsToClient.ToClient): OutgoingMessage {
 		if (this._protocolFormat === "json") {
 			return JSON.stringify(value);
-		}
-		if (this._protocolFormat === "cbor") {
+		} else if (this._protocolFormat === "cbor") {
 			// TODO: Remove this hack, but cbor-x can't handle anything extra in data structures
 			const cleanValue = JSON.parse(JSON.stringify(value));
 			return cbor.encode(cleanValue);
+		} else {
+			assertUnreachable(this._protocolFormat);
 		}
-		assertUnreachable(this._protocolFormat);
+	}
+
+	private _encodeMessageToString(message: OutgoingMessage): string {
+		if (typeof message === "string") {
+			return message;
+		} else if (message instanceof ArrayBuffer) {
+			return base64EncodeArrayBuffer(message);
+		} else if (message instanceof Uint8Array) {
+			return base64EncodeUint8Array(message);
+		} else {
+			assertUnreachable(message);
+		}
 	}
 
 	/**
@@ -164,16 +206,22 @@ export class Connection<A extends AnyActor> {
 	 *
 	 * @protected
 	 */
-	public _sendWebSocketMessage(message: OutgoingWebSocketMessage) {
-		if (!this._websocket) {
+	public _sendMessage(message: OutgoingMessage) {
+		if ("websocket" in this.#transport) {
+			this.#transport.websocket.send(message);
+		} else if ("sse" in this.#transport) {
+			// TODO: Validate this is ordered somehow
+			// Sends in background
+			this.#transport.sse.writeSSE({
+				data: this._encodeMessageToString(message),
+			});
+		} else if ("http" in this.#transport) {
 			logger().warn(
 				"attempting to send websocket message to connection without websocket",
 			);
-			return;
+		} else {
+			assertUnreachable(this.#transport);
 		}
-
-		// TODO: Check WS state
-		this._websocket.send(message);
 	}
 
 	/**
@@ -184,9 +232,9 @@ export class Connection<A extends AnyActor> {
 	 * @see {@link https://rivet.gg/docs/events|Events Documentation}
 	 */
 	send(eventName: string, ...args: unknown[]) {
-		this._sendWebSocketMessage(
+		this._sendMessage(
 			this._serialize({
-				body: {
+				b: {
 					ev: {
 						n: eventName,
 						a: args,
@@ -202,6 +250,54 @@ export class Connection<A extends AnyActor> {
 	 * @param reason - The reason for disconnection.
 	 */
 	disconnect(reason?: string) {
-		this._websocket?.close(1000, reason);
+		if ("websocket" in this.#transport) {
+			this.#transport.websocket.close(1000, reason);
+		} else if ("sse" in this.#transport) {
+			this.#transport.sse.abort();
+		} else if ("http" in this.#transport) {
+			// Do nothing
+		} else {
+			assertUnreachable(this.#transport);
+		}
 	}
+
+	async shutdown() {
+		let gracefulClosePromise: Promise<void> | undefined;
+		if ("websocket" in this.#transport) {
+			const raw = this.#transport.websocket.raw;
+			if (!raw) return;
+
+			// Create deferred promise
+			const { promise, resolve } = Promise.withResolvers<void>();
+			gracefulClosePromise = promise;
+
+			// Resolve promise when websocket closes
+			raw.addEventListener("close", () => resolve());
+		} else if ("sse" in this.#transport || "http" in this.#transport) {
+			// Do nothing
+		} else {
+			assertUnreachable(this.#transport);
+		}
+
+		// Close connection
+		this.disconnect();
+
+		// Wait for socket to close. This allows for the requests to get a graceful exit before completely exiting.
+		if (gracefulClosePromise) await gracefulClosePromise;
+	}
+}
+
+// TODO: Encode base 128
+function base64EncodeUint8Array(uint8Array: Uint8Array): string {
+	let binary = "";
+	const len = uint8Array.byteLength;
+	for (let i = 0; i < len; i++) {
+		binary += String.fromCharCode(uint8Array[i]);
+	}
+	return btoa(binary);
+}
+
+function base64EncodeArrayBuffer(arrayBuffer: ArrayBuffer): string {
+	const uint8Array = new Uint8Array(arrayBuffer);
+	return base64EncodeUint8Array(uint8Array);
 }

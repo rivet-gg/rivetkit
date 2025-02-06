@@ -1,4 +1,4 @@
-import type { ProtocolFormat } from "@/actor/protocol/ws/mod";
+import type { ProtocolFormat, TransportKind } from "@/actor/protocol/ws/mod";
 import type { ActorTags } from "@/common//utils";
 import type {
 	ActorsRequest,
@@ -9,6 +9,8 @@ import type { CreateRequest } from "@/manager/protocol/query";
 import * as errors from "./errors";
 import { ActorHandleRaw } from "./handle";
 import { logger } from "./log";
+import { importWebSocket } from "@/common/websocket";
+import { importEventSource } from "@/common/eventsource";
 
 /**
  * Options for configuring the client.
@@ -17,6 +19,7 @@ import { logger } from "./log";
  */
 export interface ClientOptions {
 	protocolFormat?: ProtocolFormat;
+	transportKind?: TransportKind;
 }
 
 /**
@@ -119,6 +122,11 @@ export interface Region {
 	name: string;
 }
 
+export interface DynamicImports {
+	WebSocket: typeof WebSocket;
+	EventSource: typeof EventSource;
+}
+
 /**
  * Client for managing & connecting to actors.
  * @see {@link https://rivet.gg/docs/manage|Create & Manage Actors}
@@ -127,6 +135,10 @@ export class Client {
 	#managerEndpointPromise: Promise<string>;
 	//#regionPromise: Promise<Region | undefined>;
 	#protocolFormat: ProtocolFormat;
+	#transportKind: TransportKind;
+
+	// External imports
+	#dynamicImportsPromise: Promise<DynamicImports>;
 
 	/**
 	 * Creates an instance of Client.
@@ -152,6 +164,14 @@ export class Client {
 		//this.#regionPromise = this.#fetchRegion();
 
 		this.#protocolFormat = opts?.protocolFormat ?? "cbor";
+		this.#transportKind = opts?.transportKind ?? "websocket";
+
+		// Import dynamic dependencies
+		this.#dynamicImportsPromise = (async () => {
+			const WebSocket = await importWebSocket();
+			const EventSource = await importEventSource();
+			return { WebSocket, EventSource };
+		})();
 	}
 
 	/**
@@ -181,7 +201,7 @@ export class Client {
 			},
 		});
 
-		const handle = this.#createHandle(resJson.endpoint, opts?.parameters);
+		const handle = await this.#createHandle(resJson.endpoint, opts?.parameters);
 		return this.#createProxy(handle) as ActorHandle<A>;
 	}
 
@@ -242,7 +262,7 @@ export class Client {
 			},
 		});
 
-		const handle = this.#createHandle(resJson.endpoint, opts?.parameters);
+		const handle = await this.#createHandle(resJson.endpoint, opts?.parameters);
 		return this.#createProxy(handle) as ActorHandle<A>;
 	}
 
@@ -290,15 +310,22 @@ export class Client {
 			},
 		});
 
-		const handle = this.#createHandle(resJson.endpoint, opts?.parameters);
+		const handle = await this.#createHandle(resJson.endpoint, opts?.parameters);
 		return this.#createProxy(handle) as ActorHandle<A>;
 	}
 
-	#createHandle(endpoint: string, parameters: unknown): ActorHandleRaw {
+	async #createHandle(
+		endpoint: string,
+		parameters: unknown,
+	): Promise<ActorHandleRaw> {
+		const imports = await this.#dynamicImportsPromise;
+
 		const handle = new ActorHandleRaw(
 			endpoint,
 			parameters,
 			this.#protocolFormat,
+			this.#transportKind,
+			imports,
 		);
 		handle.connect();
 		return handle;

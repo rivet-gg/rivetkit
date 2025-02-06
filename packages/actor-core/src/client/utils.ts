@@ -1,4 +1,4 @@
-import { assertUnreachable } from "@/common//utils";
+import { assertUnreachable } from "@/common/utils";
 
 export type WebSocketMessage = string | Blob | ArrayBuffer | Uint8Array;
 
