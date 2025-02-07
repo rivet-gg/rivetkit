@@ -30,6 +30,9 @@
     "enabled": true,
     "rules": {
       "recommended": true,
+      "style": {
+        "noUselessElse": "off"
+      },
       "correctness": {
         "noUnusedImports": "warn"
       }

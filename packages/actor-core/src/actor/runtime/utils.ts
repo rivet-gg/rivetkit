@@ -1,4 +1,4 @@
-import * as errors from "./errors";
+import * as errors from "../errors";
 
 export function assertUnreachable(x: never): never {
 	throw new errors.Unreachable(x);
@@ -85,8 +85,7 @@ export type RecursivePartial<T> = {
 			: T[P];
 };
 
-export function generateSecureToken() {
-	const length = 32;
+export function generateSecureToken(length = 32) {
 	const array = new Uint8Array(length);
 	crypto.getRandomValues(array);
 	return btoa(String.fromCharCode(...array));

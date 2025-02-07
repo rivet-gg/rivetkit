@@ -3,6 +3,7 @@ import { Actor, type Rpc } from "actor-core";
 // state managed by the actor
 export interface State {
 	messages: { username: string; message: string }[];
+	topic?: string;
 }
 
 export default class ChatRoom extends Actor<State> {
@@ -12,7 +13,13 @@ export default class ChatRoom extends Actor<State> {
 	}
 
 	// receive an remote procedure call from the client
-	sendMessage(rpc: Rpc<ChatRoom>, username: string, message: string) {
+	sendMessage(_rpc: Rpc<ChatRoom>, username: string, message: string) {
+		//if (message === "/topic") {
+		//	const newTopic = message.slice(5);
+		//	this._state.topic = newTopic;
+		//	this._broadcast("newMessage", `Topic: ${newTopic}`);
+		//}
+
 		// save message to persistent storage
 		this._state.messages.push({ username, message });
 
@@ -20,7 +27,7 @@ export default class ChatRoom extends Actor<State> {
 		this._broadcast("newMessage", username, message);
 	}
 
-	getMessages(rpc: Rpc<ChatRoom>) {
+	getHistory(_rpc: Rpc<ChatRoom>) {
 		return this._state.messages;
 	}
 }

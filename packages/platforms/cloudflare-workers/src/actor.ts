@@ -1,8 +1,16 @@
 import { DurableObject } from "cloudflare:workers";
 import type { Actor, ActorTags } from "actor-core";
-import type { Config, ActorDriver } from "actor-core/platform";
-import { upgradeWebSocket } from "hono/cloudflare-workers";
+import { ActorDriver } from "actor-core/platform";
 import { logger } from "./log";
+import { Hono } from "hono";
+import {
+	createGenericActorRouter,
+	createGenericConnectionDrivers,
+	createGenericDriverGlobalState,
+	GenericDriverGlobalState,
+} from "actor-core/actor/generic";
+import { upgradeWebSocket } from "@/websocket";
+import { Config } from "./config";
 
 const KEYS = {
 	STATE: {
@@ -27,6 +35,11 @@ export type DurableObjectConstructor = new (
 	...args: ConstructorParameters<typeof DurableObject>
 ) => DurableObject;
 
+interface LoadedActor {
+	actor: Actor;
+	router: Hono;
+}
+
 export function createActorDurableObject(
 	config: Config,
 ): DurableObjectConstructor {
@@ -36,13 +49,18 @@ export function createActorDurableObject(
 	 * 2. Load actor
 	 * 3. Start service requests
 	 */
-	return class ActorHandler extends DurableObject implements ActorHandlerInterface {
+	return class ActorHandler
+		extends DurableObject
+		implements ActorHandlerInterface
+	{
 		#initialized?: InitializedData;
 		#initializedPromise?: PromiseWithResolvers<void>;
 
-		#actor?: Actor;
+		#actor?: LoadedActor;
 
-		async #loadActor(): Promise<Actor> {
+		#driverGlobal: GenericDriverGlobalState = createGenericDriverGlobalState();
+
+		async #loadActor(): Promise<LoadedActor> {
 			// Wait for init
 			if (!this.#initialized) {
 				// Wait for init
@@ -80,10 +98,31 @@ export function createActorDurableObject(
 			// TODO: Handle error here gracefully by calling destroy
 			if (!prototype) throw new Error(`no actor for name ${prototype}`);
 
-			// Create & start actor
-			const driver = buildActorDriver(this.ctx);
-			this.#actor = new (prototype as any)() as Actor;
-			await this.#actor.__start(driver, this.#initialized.tags, "unknown");
+			// Create actor
+			const actor = new (prototype as any)() as Actor;
+
+			// Create driver
+			const driver = createActorDriver(this.ctx, this.#driverGlobal);
+
+			// Create router
+			const router = createGenericActorRouter({
+				config,
+				driverGlobal: this.#driverGlobal,
+				actor,
+				upgradeWebSocket,
+			});
+
+			// Save actor
+			this.#actor = { actor, router };
+
+			// Start actor
+			await actor.__start(
+				driver,
+				this.ctx.id.toString(),
+				this.#initialized.tags,
+				"unknown",
+			);
+
 			return this.#actor;
 		}
 
@@ -103,12 +142,12 @@ export function createActorDurableObject(
 		}
 
 		async fetch(request: Request): Promise<Response> {
-			const actor = await this.#loadActor();
-			return await actor.__router.fetch(request);
+			const { router } = await this.#loadActor();
+			return await router.fetch(request);
 		}
 
 		async alarm(): Promise<void> {
-			const actor = await this.#loadActor();
+			const { actor } = await this.#loadActor();
 			await actor.__onAlarm();
 		}
 	};
@@ -122,10 +161,13 @@ function serializeKey(key: any): string {
 //	return JSON.parse(key);
 //}
 
-function buildActorDriver(ctx: DurableObjectState): ActorDriver {
+function createActorDriver(
+	ctx: DurableObjectState,
+	driverGlobal: GenericDriverGlobalState,
+): ActorDriver {
 	// TODO: Use a better key serialization format
 	return {
-		upgradeWebSocket,
+		connectionDrivers: createGenericConnectionDrivers(driverGlobal),
 
 		async kvGet(key: any): Promise<any> {
 			return await ctx.storage.get(serializeKey(key));

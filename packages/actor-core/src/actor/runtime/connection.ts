@@ -1,22 +1,47 @@
-import type { Encoding } from "@/actor/protocol/ws/mod";
-import type * as wsToClient from "@/actor/protocol/ws/to_client";
-import * as cbor from "cbor-x";
-import type { WSContext } from "hono/ws";
-import type { SSEStreamingApi } from "hono/streaming";
-import type { AnyActor, ExtractActorConnState } from "./actor";
-import * as errors from "./errors";
+import type {
+	AnyActor,
+	ExtractActorConnParams,
+	ExtractActorConnState,
+} from "./actor";
+import * as errors from "../errors";
+import { generateSecureToken } from "./utils";
+import { CachedSerializer, Encoding } from "../protocol/serde";
 import { logger } from "./log";
-import { assertUnreachable, generateSecureToken } from "./utils";
+import { ConnectionDriver } from "./driver";
+import * as messageToClient from "@/actor/protocol/message/to_client";
 
-export type IncomingMessage = string | Blob | ArrayBufferLike;
-export type OutgoingMessage = string | ArrayBuffer | Uint8Array;
+export function generateConnectionId(): string {
+	return crypto.randomUUID();
+}
 
-export type ConnectionId = number;
+export function generateConnectionToken(): string {
+	return generateSecureToken(32);
+}
 
-export type ConnectionTransport =
-	| { websocket: WSContext<WebSocket> }
-	| { sse: SSEStreamingApi }
-	| { http: {} };
+export type ConnectionId = string;
+
+/** Object representing connection that gets persisted to storage. */
+export interface PersistedConn<A extends AnyActor> {
+	// ID
+	i: string;
+	// Token
+	t: string;
+	// Connection driver
+	d: string;
+	// Connection driver state
+	ds: unknown;
+	// Parameters
+	p: ExtractActorConnParams<A>;
+	// State
+	s: ExtractActorConnState<A>;
+	// Subscriptions
+	su: PersistedSub[];
+}
+
+export interface PersistedSub {
+	// Event name
+	n: string;
+}
 
 /**
  * Represents a client connection to an actor.
@@ -28,58 +53,28 @@ export type ConnectionTransport =
 export class Connection<A extends AnyActor> {
 	subscriptions: Set<string> = new Set<string>();
 
-	#state: ExtractActorConnState<A> | undefined;
 	#stateEnabled: boolean;
 
-	/**
-	 * If the actor can send messages to the client.
-	 */
-	public get _supportsStreamingResponse() {
-		if ("websocket" in this.#transport || "sse" in this.#transport) {
-			return true;
-		} else if ("http" in this.#transport) {
-			return false;
-		} else {
-			assertUnreachable(this.#transport);
-		}
-	}
+	// TODO: Remove this cyclical reference
+	#actor: A;
 
 	/**
-	 * If the client can send messages to the server.
+	 * The proxied state that notifies of changes automatically.
+	 *
+	 * Any data that should be stored indefinitely should be held within this object.
 	 */
-	public get _supportsStreamingRequest() {
-		if ("websocket" in this.#transport) {
-			return true;
-		} else if ("sse" in this.#transport || "http" in this.#transport) {
-			return false;
-		} else {
-			assertUnreachable(this.#transport);
-		}
-	}
+	__persist: PersistedConn<A>;
 
 	/**
-	 * Unique identifier for the connection.
-	 */
-	public readonly id: ConnectionId;
-
-	/**
-	 * Token used to authenticate this request.
-	 */
-	public readonly _token: string;
-
-	/**
-	 * Transport used to manage realtime connection communication.
+	 * Driver used to manage realtime connection communication.
 	 *
 	 * @protected
 	 */
-	#transport: ConnectionTransport;
+	#driver: ConnectionDriver;
 
-	/**
-	 * Encoding used for message serialization and deserialization.
-	 *
-	 * @protected
-	 */
-	public _encoding: Encoding;
+	public get parameters(): ExtractActorConnParams<A> {
+		return this.__persist.p;
+	}
 
 	/**
 	 * Gets the current state of the connection.
@@ -88,8 +83,8 @@ export class Connection<A extends AnyActor> {
 	 */
 	public get state(): ExtractActorConnState<A> {
 		this.#validateStateEnabled();
-		if (!this.#state) throw new Error("state should exists");
-		return this.#state;
+		if (!this.__persist.s) throw new Error("state should exists");
+		return this.__persist.s;
 	}
 
 	/**
@@ -99,7 +94,21 @@ export class Connection<A extends AnyActor> {
 	 */
 	public set state(value: ExtractActorConnState<A>) {
 		this.#validateStateEnabled();
-		this.#state = value;
+		this.__persist.s = value;
+	}
+
+	/**
+	 * Unique identifier for the connection.
+	 */
+	public get id(): ConnectionId {
+		return this.__persist.i;
+	}
+
+	/**
+	 * Token used to authenticate this request.
+	 */
+	public get _token(): string {
+		return this.__persist.t;
 	}
 
 	/**
@@ -110,87 +119,20 @@ export class Connection<A extends AnyActor> {
 	 * @protected
 	 */
 	public constructor(
-		id: ConnectionId,
-		transport: ConnectionTransport,
-		encoding: Encoding,
-		state: ExtractActorConnState<A> | undefined,
+		actor: A,
+		persist: PersistedConn<A>,
+		driver: ConnectionDriver,
 		stateEnabled: boolean,
 	) {
-		this.id = id;
-		this.#transport = transport;
-		this._encoding = encoding;
-		this.#state = state;
+		this.#actor = actor;
+		this.__persist = persist;
+		this.#driver = driver;
 		this.#stateEnabled = stateEnabled;
-
-		this._token = generateSecureToken();
 	}
 
 	#validateStateEnabled() {
 		if (!this.#stateEnabled) {
 			throw new errors.ConnectionStateNotEnabled();
-		}
-	}
-
-	/**
-	 * Parses incoming WebSocket messages based on the encoding.
-	 *
-	 * @param data - The incoming WebSocket message.
-	 * @returns The parsed message.
-	 * @throws MalformedMessage if the message format is incorrect.
-	 *
-	 * @protected
-	 */
-	public async _parse(data: IncomingMessage): Promise<unknown> {
-		if (this._encoding === "json") {
-			if (typeof data !== "string") {
-				logger().warn("received non-string for json parse");
-				throw new errors.MalformedMessage();
-			}
-			return JSON.parse(data);
-		}
-		if (this._encoding === "cbor") {
-			if (data instanceof Blob) {
-				const arrayBuffer = await data.arrayBuffer();
-				return cbor.decode(new Uint8Array(arrayBuffer));
-			}
-			if (data instanceof ArrayBuffer) {
-				return cbor.decode(new Uint8Array(data));
-			}
-			logger().warn("received non-binary type for cbor parse");
-			throw new errors.MalformedMessage();
-		}
-		assertUnreachable(this._encoding);
-	}
-
-	/**
-	 * Serializes a value into a WebSocket message based on the encoding.
-	 *
-	 * @param value - The value to serialize.
-	 * @returns The serialized message.
-	 *
-	 * @protected
-	 */
-	public _serialize(value: wsToClient.ToClient): OutgoingMessage {
-		if (this._encoding === "json") {
-			return JSON.stringify(value);
-		} else if (this._encoding === "cbor") {
-			// TODO: Remove this hack, but cbor-x can't handle anything extra in data structures
-			const cleanValue = JSON.parse(JSON.stringify(value));
-			return cbor.encode(cleanValue);
-		} else {
-			assertUnreachable(this._encoding);
-		}
-	}
-
-	private _encodeMessageToString(message: OutgoingMessage): string {
-		if (typeof message === "string") {
-			return message;
-		} else if (message instanceof ArrayBuffer) {
-			return base64EncodeArrayBuffer(message);
-		} else if (message instanceof Uint8Array) {
-			return base64EncodeUint8Array(message);
-		} else {
-			assertUnreachable(message);
 		}
 	}
 
@@ -201,22 +143,8 @@ export class Connection<A extends AnyActor> {
 	 *
 	 * @protected
 	 */
-	public _sendMessage(message: OutgoingMessage) {
-		if ("websocket" in this.#transport) {
-			this.#transport.websocket.send(message);
-		} else if ("sse" in this.#transport) {
-			// TODO: Validate this is ordered somehow
-			// Sends in background
-			this.#transport.sse.writeSSE({
-				data: this._encodeMessageToString(message),
-			});
-		} else if ("http" in this.#transport) {
-			logger().warn(
-				"attempting to send websocket message to connection without websocket",
-			);
-		} else {
-			assertUnreachable(this.#transport);
-		}
+	public _sendMessage(message: CachedSerializer<messageToClient.ToClient>) {
+		this.#driver.sendMessage(this.#actor, this, this.__persist.ds, message);
 	}
 
 	/**
@@ -226,16 +154,16 @@ export class Connection<A extends AnyActor> {
 	 * @param args - The arguments for the event.
 	 * @see {@link https://rivet.gg/docs/events|Events Documentation}
 	 */
-	send(eventName: string, ...args: unknown[]) {
+	public send(eventName: string, ...args: unknown[]) {
 		this._sendMessage(
-			this._serialize({
+			new CachedSerializer({
 				b: {
 					ev: {
 						n: eventName,
 						a: args,
 					},
 				},
-			} satisfies wsToClient.ToClient),
+			}),
 		);
 	}
 
@@ -244,55 +172,7 @@ export class Connection<A extends AnyActor> {
 	 *
 	 * @param reason - The reason for disconnection.
 	 */
-	disconnect(reason?: string) {
-		if ("websocket" in this.#transport) {
-			this.#transport.websocket.close(1000, reason);
-		} else if ("sse" in this.#transport) {
-			this.#transport.sse.abort();
-		} else if ("http" in this.#transport) {
-			// Do nothing
-		} else {
-			assertUnreachable(this.#transport);
-		}
+	public async disconnect(reason?: string) {
+		await this.#driver.disconnect(this.#actor, this, this.__persist.ds, reason);
 	}
-
-	async shutdown() {
-		let gracefulClosePromise: Promise<void> | undefined;
-		if ("websocket" in this.#transport) {
-			const raw = this.#transport.websocket.raw;
-			if (!raw) return;
-
-			// Create deferred promise
-			const { promise, resolve } = Promise.withResolvers<void>();
-			gracefulClosePromise = promise;
-
-			// Resolve promise when websocket closes
-			raw.addEventListener("close", () => resolve());
-		} else if ("sse" in this.#transport || "http" in this.#transport) {
-			// Do nothing
-		} else {
-			assertUnreachable(this.#transport);
-		}
-
-		// Close connection
-		this.disconnect();
-
-		// Wait for socket to close. This allows for the requests to get a graceful exit before completely exiting.
-		if (gracefulClosePromise) await gracefulClosePromise;
-	}
-}
-
-// TODO: Encode base 128
-function base64EncodeUint8Array(uint8Array: Uint8Array): string {
-	let binary = "";
-	const len = uint8Array.byteLength;
-	for (let i = 0; i < len; i++) {
-		binary += String.fromCharCode(uint8Array[i]);
-	}
-	return btoa(binary);
-}
-
-function base64EncodeArrayBuffer(arrayBuffer: ArrayBuffer): string {
-	const uint8Array = new Uint8Array(arrayBuffer);
-	return base64EncodeUint8Array(uint8Array);
 }

@@ -4,7 +4,7 @@ _The Stateful Serverless Framework_
 
 Build AI agents, realtime apps, game servers, and more.
 
-Supports Cloudflare Workers and Rivet.
+Supports Rivet, Cloudflare Workers, Bun, and Node.js.
 
 ## Resources
 
@@ -16,7 +16,7 @@ Supports Cloudflare Workers and Rivet.
 
 ### Step 1: Installation
 
-```bash npm
+```bash
 # npm
 npm add actor-core
 

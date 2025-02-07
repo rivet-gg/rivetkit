@@ -1,0 +1,118 @@
+---
+title: Bun
+---
+
+import SetupActor from '/snippets/setup-actor.mdx';
+import SetupNextSteps from '/snippets/setup-next-steps.mdx';
+import MvpWarning from '/snippets/mvp-warning.mdx';
+
+<MvpWarning />
+
+<Steps>
+	<Step title="Install Bun">
+		Install Bun [here](https://bun.sh/).
+	</Step>
+	<Step title="Install & Configure Redis">
+		Install Redis [here](https://redis.io/docs/latest/operate/oss_and_stack/install/install-redis/).
+
+		By default, ActorCore will connect to `redis://127.0.0.1:6379`. See [instructions on configuring Redis](#configuring-redis).
+	</Step>
+	<Step title="Create New Bun Project">
+        ```sh
+        # Create project
+        mkdir my-project
+        cd my-project
+        bun init --yes
+
+        # Install ActorCore
+        bun add actor-core @actor-core/bun
+        ```
+
+    	<Tip>ActorCore can also be used with existing Bun projects.</Tip>
+    </Step>
+    <Step title="Create Actor">
+    	Create a new file for your actor at `src/counter.ts`:
+
+		<SetupActor />
+    </Step>
+    <Step title="Create Entrypoint">
+    	Create `src/index.ts` to start your ActorCore server with:
+
+    	```typescript src/index.ts
+		import { createHandler } from "@actor-core/bun"
+		import counter from "./counter.ts";
+
+		export default createHandler({
+			actors: { counter }
+		});
+    	```
+    </Step>
+    <Step title="Create Client">
+		Create a client to connect to your actor in `src/client.ts`:
+
+		```typescript src/client.ts
+		import { Client } from "actor-core/client";
+		import type Counter from "./counter.ts";
+
+		async function main() {
+			const client = new Client("http://localhost:8787");
+
+			const counter = await client.get<Counter>({ name: "counter" });
+
+			counter.on("newCount", (count: number) => console.log("Event:", count));
+
+			const out = await counter.increment(5);
+			console.log("RPC:", out);
+
+			await counter.disconnect();
+		}
+
+		main();
+		```
+	</Step>
+    <Step title="Test">
+		Start your development server with:
+
+		```sh
+		bun src/index.ts
+		```
+
+		Then run the client in another terminal with:
+
+		```sh
+		bun src/client.ts
+		# Outputs:
+		# Event: 43
+		# RPC: 43
+		```
+    </Step>
+    <Step title="Deploy">
+		_Request a guide for deploying Bun to your preferred cloud provider on [GitHub Discussions](https://github.com/rivet-gg/actor-core/discussions)._
+    </Step>
+</Steps>
+
+## Available Regions
+
+Bun can only run in one region at the moment. See [Rivet](/platforms/rivet) and [Cloudflare Workers](/platforms/cloudflare-workers) for supporting multiple regions.
+
+## Configuring Redis
+
+Configure your Redis connection like this:
+
+```typescript
+export default createHandler({
+	redis: {
+		port: 6379,
+		host: "127.0.0.1",
+		password: "my-top-secret"
+	},
+	// ...
+});
+```
+
+See all available options [here](https://redis.github.io/ioredis/index.html#RedisOptions).
+
+## Next Steps
+
+<SetupNextSteps />
+

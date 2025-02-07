@@ -11,7 +11,7 @@ const PackageJsonSchema = z.object({
 		actors: z.record(z.string()),
 	}),
 	devDependencies: z.record(z.string()),
-	scripts: z.record(z.string()).optional(),
+	scripts: z.record(z.string()).optional().default({}),
 });
 
 type PackageJson = z.infer<typeof PackageJsonSchema>;
@@ -30,9 +30,10 @@ type PlatformConfigFn = (build: PlatformInput) => PlatformOutput;
 const PLATFORMS: Record<string, PlatformConfigFn> = {
 	rivet: (input) => {
 		input.packageJson.name += "-rivet";
-		Object.assign(input.packageJson.devDependencies, {
+		input.packageJson.devDependencies = {
 			"@actor-core/rivet": "workspace:*",
-		});
+			...input.packageJson.devDependencies,
+		};
 
 		const files = {
 			"package.json": stringifyJson(input.packageJson),
@@ -60,7 +61,7 @@ const PLATFORMS: Record<string, PlatformConfigFn> = {
 		)) {
 			files[`src/${name}.ts`] = dedent`
 			import { createHandler } from "@actor-core/rivet"
-			import Actor from "../../../src/counter";
+			import Actor from "../../../${script}";
 			export default createHandler(Actor);
 			`;
 			rivetJson.builds[name] = { script, access: "public" };
@@ -74,21 +75,21 @@ const PLATFORMS: Record<string, PlatformConfigFn> = {
 	},
 	"cloudflare-workers": (input) => {
 		input.packageJson.name += "-cloudflare-workers";
-		Object.assign(input.packageJson.devDependencies, {
+		input.packageJson.devDependencies = {
 			"@actor-core/cloudflare-workers": "workspace:*",
 			wrangler: "^3.101.0",
 			"@cloudflare/workers-types": "^4.20250129.0",
-		});
-		if (!input.packageJson.scripts) input.packageJson.scripts = {};
-		Object.assign(input.packageJson.scripts, {
+			...input.packageJson.devDependencies,
+		};
+		input.packageJson.scripts = {
 			deploy: "wrangler deploy",
 			dev: "wrangler dev",
 			start: "wrangler dev",
 			"cf-typegen": "wrangler types",
-		});
+			...input.packageJson.scripts,
+		};
 
-		const actorImports = Object.entries(input.packageJson.example.actors).map(([k, v]) => `import ${k.replace("-", "_")} from "../../../${v}";`).join("\n");
-		const actorList = Object.entries(input.packageJson.example.actors).map(([k, v]) => `"${k}": ${k.replace("-", "_")}`)
+		const { actorImports, actorList } = buildActorImports(input);
 
 		return {
 			files: {
@@ -134,7 +135,81 @@ const PLATFORMS: Record<string, PlatformConfigFn> = {
 			},
 		};
 	},
+	bun: (input) => {
+		input.packageJson.name += "-bun";
+		input.packageJson.devDependencies = {
+			"@actor-core/bun": "workspace:*",
+			...input.packageJson.devDependencies,
+		};
+		input.packageJson.scripts = {
+			dev: "bun run --hot src/index.ts",
+			start: "bun run src/index.ts",
+			...input.packageJson.scripts,
+		};
+
+		const { actorImports, actorList } = buildActorImports(input);
+
+		const files = {
+			"package.json": stringifyJson(input.packageJson),
+			"src/index.ts": dedent`
+			import { createHandler } from "@actor-core/bun"
+			${actorImports}
+
+			export default createHandler({
+				actors: { ${actorList} }
+			});
+			`,
+		};
+
+		return {
+			files,
+		};
+	},
+	nodejs: (input) => {
+		input.packageJson.name += "-nodejs";
+		input.packageJson.devDependencies = {
+			"@actor-core/nodejs": "workspace:*",
+			"tsx": "^4.19.2",
+			...input.packageJson.devDependencies,
+		};
+		input.packageJson.scripts = {
+			start: "npx tsx src/index.ts",
+			dev: "npx tsx watch src/index.ts",
+			...input.packageJson.scripts,
+		};
+
+		const { actorImports, actorList } = buildActorImports(input);
+
+		const files = {
+			"package.json": stringifyJson(input.packageJson),
+			"src/index.ts": dedent`
+			import { serve } from "@actor-core/nodejs"
+			${actorImports}
+
+			serve({
+				actors: { ${actorList} }
+			});
+			`,
+		};
+
+		return {
+			files,
+		};
+	},
 };
+
+function buildActorImports(input: PlatformInput): {
+	actorImports: string;
+	actorList: string;
+} {
+	const actorImports = Object.entries(input.packageJson.example.actors)
+		.map(([k, v]) => `import ${k.replace("-", "_")} from "../../../${v}";`)
+		.join("\n");
+	const actorList = Object.entries(input.packageJson.example.actors)
+		.map(([k, _v]) => `"${k}": ${k.replace("-", "_")}`)
+		.join("\n");
+	return { actorImports, actorList };
+}
 
 async function main() {
 	const examplesDir = path.join(__dirname, "..", "examples");

@@ -1,0 +1,43 @@
+{
+  "name": "@actor-core/redis",
+  "version": "0.2.0",
+  "files": [
+    "src",
+    "dist",
+    "package.json"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/mod.d.ts",
+        "default": "./dist/mod.js"
+      },
+      "require": {
+        "types": "./dist/mod.d.cts",
+        "default": "./dist/mod.cjs"
+      }
+    }
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup src/mod.ts",
+    "dev": "yarn build --watch",
+    "check-types": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "actor-core": "workspace:*"
+  },
+  "devDependencies": {
+    "actor-core": "workspace:*",
+    "tsup": "^8.3.6",
+    "typescript": "^5.5.2"
+  },
+  "dependencies": {
+    "@types/node": "^22.13.1",
+    "dedent": "^1.5.3",
+    "hono": "^4.7.0",
+    "ioredis": "^5.4.2",
+    "p-retry": "^6.2.1"
+  }
+}

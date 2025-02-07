@@ -1,4 +1,4 @@
-import { Manager, type Config } from "actor-core/platform";
+import { Manager } from "actor-core/platform";
 import {
 	type DurableObjectConstructor,
 	createActorDurableObject,
@@ -6,6 +6,7 @@ import {
 import type { Env } from "./env";
 import { logger } from "./log";
 import { buildManager } from "./manager";
+import { Config } from "./config";
 
 export interface Handler {
 	handler: ExportedHandler<Env>;
@@ -39,7 +40,7 @@ export function createHandler(config: Config): Handler {
 			});
 
 			app.all("*", (c) => {
-				return c.text("Not Found (manager)", 404);
+				return c.text("Not Found (ActorCore)", 404);
 			});
 
 			return await app.fetch(request, env, ctx);

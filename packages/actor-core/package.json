@@ -6,12 +6,12 @@
     "dist",
     "src",
     "deno.json",
+    "bun.json",
     "package.json"
   ],
   "type": "module",
   "exports": {
     ".": {
-      "deno": "./src/mod.ts",
       "import": {
         "types": "./dist/mod.d.ts",
         "default": "./dist/mod.js"
@@ -22,7 +22,6 @@
       }
     },
     "./client": {
-      "deno": "./src/client/mod.ts",
       "import": {
         "types": "./dist/client/mod.d.ts",
         "default": "./dist/client/mod.js"
@@ -32,8 +31,17 @@
         "default": "./dist/client/mod.cjs"
       }
     },
+    "./log": {
+      "import": {
+        "types": "./dist/common/log.d.ts",
+        "default": "./dist/common/log.js"
+      },
+      "require": {
+        "types": "./dist/common/log.d.cts",
+        "default": "./dist/common/log.cjs"
+      }
+    },
     "./platform": {
-      "deno": "./src/platform.ts",
       "import": {
         "types": "./dist/platform.d.ts",
         "default": "./dist/platform.js"
@@ -43,26 +51,86 @@
         "default": "./dist/platform.cjs"
       }
     },
-    "./log": {
-      "deno": "./src/common/log.ts",
+    "./actor/generic": {
       "import": {
-        "types": "./dist/common/log.d.ts",
-        "default": "./dist/common/log.js"
+        "types": "./dist/actor/generic/mod.d.ts",
+        "default": "./dist/actor/generic/mod.js"
       },
       "require": {
-        "types": "./dist/common/log.d.cts",
-        "default": "./dist/common/log.cjs"
+        "types": "./dist/actor/generic/mod.d.cts",
+        "default": "./dist/actor/generic/mod.cjs"
+      }
+    },
+    "./actor/protocol/serde": {
+      "import": {
+        "types": "./dist/actor/protocol/serde.d.ts",
+        "default": "./dist/actor/protocol/serde.js"
+      },
+      "require": {
+        "types": "./dist/actor/protocol/serde.d.cts",
+        "default": "./dist/actor/protocol/serde.cjs"
+      }
+    },
+    "./actor/protocol/message": {
+      "import": {
+        "types": "./dist/actor/protocol/message/mod.d.ts",
+        "default": "./dist/actor/protocol/message/mod.js"
+      },
+      "require": {
+        "types": "./dist/actor/protocol/message/mod.d.cts",
+        "default": "./dist/actor/protocol/message/mod.cjs"
+      }
+    },
+    "./actor/protocol/message/to_server": {
+      "import": {
+        "types": "./dist/actor/protocol/message/to_server.d.ts",
+        "default": "./dist/actor/protocol/message/to_server.js"
+      },
+      "require": {
+        "types": "./dist/actor/protocol/message/to_server.d.cts",
+        "default": "./dist/actor/protocol/message/to_server.cjs"
+      }
+    },
+    "./actor/protocol/message/to_client": {
+      "import": {
+        "types": "./dist/actor/protocol/message/to_client.d.ts",
+        "default": "./dist/actor/protocol/message/to_client.js"
+      },
+      "require": {
+        "types": "./dist/actor/protocol/message/to_client.d.cts",
+        "default": "./dist/actor/protocol/message/to_client.cjs"
+      }
+    },
+    "./actor/errors": {
+      "import": {
+        "types": "./dist/actor/errors.d.ts",
+        "default": "./dist/actor/errors.js"
+      },
+      "require": {
+        "types": "./dist/actor/errors.d.cts",
+        "default": "./dist/actor/errors.cjs"
+      }
+    },
+    "./manager/protocol": {
+      "import": {
+        "types": "./dist/manager/protocol/mod.d.ts",
+        "default": "./dist/manager/protocol/mod.js"
+      },
+      "require": {
+        "types": "./dist/manager/protocol/mod.d.cts",
+        "default": "./dist/manager/protocol/mod.cjs"
       }
     }
   },
   "sideEffects": false,
   "scripts": {
-    "build": "tsup src/mod.ts src/client/mod.ts src/platform.ts src/common/log.ts",
+    "build": "tsup src/mod.ts src/client/mod.ts src/common/log.ts src/platform.ts src/actor/generic/mod.ts src/actor/protocol/serde.ts src/actor/protocol/message/mod.ts src/actor/protocol/message/to_server.ts src/actor/protocol/message/to_client.ts src/actor/errors.ts src/manager/protocol/mod.ts",
     "dev": "yarn build --watch",
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
     "cbor-x": "^1.6.0",
+    "hono": "^4.7.0",
     "on-change": "^5.0.1",
     "zod": "^3.24.1"
   },

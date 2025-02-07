@@ -1,6 +1,7 @@
-import type { Encoding, Transport } from "@/actor/protocol/ws/mod";
-import type * as wsToClient from "@/actor/protocol/ws/to_client";
-import type * as wsToServer from "@/actor/protocol/ws/to_server";
+import type { Transport } from "@/actor/protocol/message/mod";
+import type { Encoding } from "@/actor/protocol/serde";
+import type * as wsToClient from "@/actor/protocol/message/to_client";
+import type * as wsToServer from "@/actor/protocol/message/to_server";
 import { MAX_CONN_PARAMS_SIZE } from "@/common/network";
 import { assertUnreachable } from "@/common/utils";
 import * as cbor from "cbor-x";
@@ -170,14 +171,18 @@ enc
 		const ws = new WebSocket(url);
 		if (this.encodingKind === "cbor") {
 			ws.binaryType = "arraybuffer";
-		} else if (this.encodingKind == "json") {
-			ws.binaryType = "blob";
+		} else if (this.encodingKind === "json") {
+			// HACK: Bun bug prevents changing binary type, so we ignore the error https://github.com/oven-sh/bun/issues/17005
+			try {
+				ws.binaryType = "blob";
+			} catch (error) {}
 		} else {
 			assertUnreachable(this.encodingKind);
 		}
 		this.#transport = { websocket: ws };
 		ws.onopen = () => {
-			this.#handleOnOpen();
+			logger().debug("websocket open");
+			// #handleOnOpen is called on "i" event
 		};
 		ws.onmessage = async (ev) => {
 			this.#handleOnMessage(ev);
@@ -215,7 +220,9 @@ enc
 
 	/** Called by the onopen event from drivers. */
 	#handleOnOpen() {
-		logger().debug("socket open");
+		logger().debug("socket open", {
+			messageQueueLength: this.#messageQueue.length,
+		});
 
 		// Resubscribe to all active events
 		for (const eventName of this.#eventSubscriptions.keys()) {
@@ -280,19 +287,20 @@ enc
 	}
 
 	/** Called by the onclose event from drivers. */
-	#handleOnClose(event: Event) {
+	#handleOnClose(event: Event | CloseEvent) {
 		// TODO: Handle queue
 		// TODO: Reconnect with backoff
 
-		if (event instanceof CloseEvent) {
-			logger().debug("socket closed", {
-				code: event.code,
-				reason: event.reason,
-				wasClean: event.wasClean,
-			});
-		} else {
-			logger().debug("socket closed");
-		}
+		// We can't use `event instanceof CloseEvent` because it's not defined in NodeJS
+		//
+		// These properties will be undefined
+		const closeEvent = event as CloseEvent;
+		logger().debug("socket closed", {
+			code: closeEvent.code,
+			reason: closeEvent.reason,
+			wasClean: closeEvent.wasClean,
+		});
+
 		this.#transport = undefined;
 
 		// Automatically reconnect
@@ -433,6 +441,7 @@ enc
 					const messageSerialized = this.#serialize(message);
 					this.#transport.websocket.send(messageSerialized);
 					logger().debug("sent websocket message", {
+						message: message,
 						len: messageLength(messageSerialized),
 					});
 				} catch (error) {
@@ -441,9 +450,7 @@ enc
 					});
 
 					// Assuming the socket is disconnected and will be reconnected soon
-					//
-					// Will attempt to resend soon
-					this.#messageQueue.unshift(message);
+					queueMessage = true;
 				}
 			} else {
 				queueMessage = true;

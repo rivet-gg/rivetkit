@@ -1,33 +1,32 @@
 import * as protoHttpRpc from "@/actor/protocol/http/rpc";
-import {
-	type Encoding,
-	EncodingSchema,
-} from "@/actor/protocol/ws/mod";
-import type { IncomingMessage } from "./connection";
-import type * as wsToClient from "@/actor/protocol/ws/to_client";
+import type { PersistedConn } from "./connection";
+import type * as wsToClient from "@/actor/protocol/message/to_client";
 import type { Logger } from "@/common//log";
 import { listObjectMethods } from "@/common//reflect";
 import { ActorTags, isJsonSerializable } from "@/common//utils";
-import { Hono, HonoRequest, type Context as HonoContext } from "hono";
+import { HonoRequest, type Context as HonoContext } from "hono";
 import { streamSSE } from "hono/streaming";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { WSContext, WSEvents } from "hono/ws";
 import onChange from "on-change";
 import { type ActorConfig, mergeActorConfig } from "./actor_config";
-import {
-	Connection,
-	ConnectionTransport,
-	type ConnectionId,
-	type OutgoingMessage,
-} from "./connection";
-import type { ActorDriver } from "./driver";
-import * as errors from "./errors";
-import { handleMessageEvent } from "./event";
+import { Connection, type ConnectionId } from "./connection";
+import type { ActorDriver, ConnectionDriver } from "./driver";
+import * as errors from "../errors";
+import { parseMessage, processMessage } from "../protocol/message/mod";
 import { instanceLogger, logger } from "./log";
 import { Rpc } from "./rpc";
 import { Lock, assertUnreachable, deadline } from "./utils";
 import { Schedule } from "./schedule";
 import { KEYS } from "./keys";
+import * as wsToServer from "@/actor/protocol/message/to_server";
+import {
+	Encoding,
+	EncodingSchema,
+	InputData,
+	CachedSerializer,
+	encodeDataToString,
+} from "../protocol/serde";
 
 /**
  * Options for the `_onBeforeConnect` method.
@@ -40,7 +39,7 @@ export interface OnBeforeConnectOptions<A extends AnyActor> {
 	 *
 	 * @experimental
 	 */
-	request: Request;
+	request?: Request;
 
 	/**
 	 * The parameters passed when a client connects to the actor.
@@ -64,6 +63,22 @@ export interface SaveStateOptions {
 // biome-ignore lint/suspicious/noExplicitAny: Needs to be used in `extends`
 export type AnyActor = Actor<any, any, any>;
 
+export type AnyActorConstructor = new (
+	// biome-ignore lint/suspicious/noExplicitAny: Needs to be used in `extends`
+	...args: ConstructorParameters<typeof Actor<any, any, any>>
+	// biome-ignore lint/suspicious/noExplicitAny: Needs to be used in `extends`
+) => Actor<any, any, any>;
+
+export type ExtractActorState<A extends AnyActor> = A extends Actor<
+	infer State,
+	// biome-ignore lint/suspicious/noExplicitAny: Must be used for `extends`
+	any,
+	// biome-ignore lint/suspicious/noExplicitAny: Must be used for `extends`
+	any
+>
+	? State
+	: never;
+
 export type ExtractActorConnParams<A extends AnyActor> = A extends Actor<
 	// biome-ignore lint/suspicious/noExplicitAny: Must be used for `extends`
 	any,
@@ -84,7 +99,13 @@ export type ExtractActorConnState<A extends AnyActor> = A extends Actor<
 	? ConnState
 	: never;
 
-export type ExtractActorState<A> = A extends Actor<infer State> ? State : never;
+/** State object that gets automatically persisted to storage. */
+interface PersistedActor<A extends AnyActor> {
+	// State
+	s: ExtractActorState<A>;
+	// Connections
+	c: PersistedConn<A>[];
+}
 
 /**
  * Abstract class representing a Rivet Actor. Extend this class to implement logic for your actor.
@@ -109,38 +130,49 @@ export abstract class Actor<
 	ConnState = undefined,
 > {
 	// Store the init promise so network requests can await initialization
-	#initializedPromise?: Promise<void>;
+	__initializedPromise?: Promise<void>;
 
-	#stateChanged = false;
+	__isStopping = false;
+
+	#persistChanged = false;
 
 	/**
 	 * The proxied state that notifies of changes automatically.
 	 *
-	 * If the object can't be proxied then this value will not be a proxy.
+	 * Any data that should be stored indefinitely should be held within this object.
 	 */
-	#stateProxy!: State;
+	#persist!: PersistedActor<Actor<State, ConnParams, ConnState>>;
 
 	/** Raw state without the proxy wrapper */
-	#stateRaw!: State;
+	#persistRaw!: PersistedActor<Actor<State, ConnParams, ConnState>>;
 
-	//#server?: Deno.HttpServer<Deno.NetAddr>;
+	#writePersistLock = new Lock<void>(void 0);
+
+	#lastSaveTime = 0;
+	#pendingSaveTimeout?: NodeJS.Timeout;
+
 	#backgroundPromises: Promise<void>[] = [];
 	#config: ActorConfig;
 	#driver!: ActorDriver;
+	#actorId!: string;
 	#tags!: ActorTags;
 	#region!: string;
 	#ready = false;
 
-	#connectionIdCounter = 0;
-	#connections = new Map<ConnectionId, Connection<this>>();
-	#eventSubscriptions = new Map<string, Set<Connection<this>>>();
+	#connections = new Map<
+		ConnectionId,
+		Connection<Actor<State, ConnParams, ConnState>>
+	>();
+	#subscriptionIndex = new Map<
+		string,
+		Set<Connection<Actor<State, ConnParams, ConnState>>>
+	>();
 
 	#schedule!: Schedule;
 
-	#lastSaveTime = 0;
-	#pendingSaveTimeout?: number | NodeJS.Timeout;
-
-	public __router!: Hono;
+	get id() {
+		return this.#actorId;
+	}
 
 	/**
 	 * This constructor should never be used directly.
@@ -153,26 +185,30 @@ export abstract class Actor<
 		this.#config = mergeActorConfig(config);
 	}
 
-	async __start(driver: ActorDriver, tags: ActorTags, region: string) {
+	async __start(
+		driver: ActorDriver,
+		actorId: string,
+		tags: ActorTags,
+		region: string,
+	) {
 		this.#driver = driver;
+		this.#actorId = actorId;
 		this.#tags = tags;
 		this.#region = region;
 		this.#schedule = new Schedule(this, driver);
 
-		this.__router = this.#buildRouter();
-
 		// Initialize server
 		//
 		// Store the promise so network requests can await initialization
-		this.#initializedPromise = this.#initializeState();
-		await this.#initializedPromise;
-		this.#initializedPromise = undefined;
+		this.__initializedPromise = this.#initialize();
+		await this.__initializedPromise;
+		this.__initializedPromise = undefined;
 
 		// TODO: Exit process if this errors
-		logger().info("starting");
+		logger().info("actor starting");
 		await this._onStart?.();
 
-		logger().info("ready");
+		logger().info("actor ready");
 		this.#ready = true;
 	}
 
@@ -194,13 +230,11 @@ export abstract class Actor<
 		return typeof this._onBeforeConnect === "function";
 	}
 
-	#saveStateLock = new Lock<void>(void 0);
-
 	/** Promise used to wait for a save to complete. This is required since you cannot await `#saveStateThrottled`. */
-	#onStateSavedPromise?: PromiseWithResolvers<void>;
+	#onPersistSavedPromise?: PromiseWithResolvers<void>;
 
 	/** Throttled save state method. Used to write to KV at a reasonable cadence. */
-	#saveStateThrottled() {
+	#savePersistThrottled() {
 		const now = Date.now();
 		const timeSinceLastSave = now - this.#lastSaveTime;
 		const saveInterval = this.#config.state.saveInterval;
@@ -210,82 +244,83 @@ export abstract class Actor<
 			if (this.#pendingSaveTimeout === undefined) {
 				this.#pendingSaveTimeout = setTimeout(() => {
 					this.#pendingSaveTimeout = undefined;
-					this.#saveStateInner();
+					this.#savePersistInner();
 				}, saveInterval - timeSinceLastSave);
 			}
 		} else {
 			// If we're outside the throttle window, save immediately
-			this.#saveStateInner();
+			this.#savePersistInner();
 		}
 	}
 
 	/** Saves the state to KV. You probably want to use #saveStateThrottled instead except for a few edge cases. */
-	async #saveStateInner() {
+	async #savePersistInner() {
 		try {
 			this.#lastSaveTime = Date.now();
 
-			if (this.#stateChanged) {
+			if (this.#persistChanged) {
 				// Use a lock in order to avoid race conditions with multiple
 				// parallel promises writing to KV. This should almost never happen
 				// unless there are abnormally high latency in KV writes.
-				await this.#saveStateLock.lock(async () => {
-					logger().debug("saving state");
+				await this.#writePersistLock.lock(async () => {
+					logger().debug("saving persist");
 
 					// There might be more changes while we're writing, so we set this
 					// before writing to KV in order to avoid a race condition.
-					this.#stateChanged = false;
+					this.#persistChanged = false;
 
 					// Write to KV
-					await this.#driver.kvPut(KEYS.STATE.DATA, this.#stateRaw);
+					await this.#driver.kvPut(KEYS.STATE.DATA, this.#persistRaw);
 
-					logger().debug("state saved");
+					logger().debug("persist saved");
 				});
 			}
 
-			this.#onStateSavedPromise?.resolve();
+			this.#onPersistSavedPromise?.resolve();
 		} catch (error) {
-			this.#onStateSavedPromise?.reject(error);
+			this.#onPersistSavedPromise?.reject(error);
 			throw error;
 		}
 	}
 
-	/** Updates the state and creates a new proxy. */
-	#setStateWithoutChange(value: State) {
-		if (!isJsonSerializable(value)) {
-			throw new errors.InvalidStateType();
-		}
-		this.#stateProxy = this.#createStateProxy(value);
-		this.#stateRaw = value;
-	}
+	/**
+	 * Creates proxy for `#persist` that handles automatically flagging when state needs to be updated.
+	 */
+	#setPersist(target: PersistedActor<Actor<State, ConnParams, ConnState>>) {
+		// Set raw perist object
+		this.#persistRaw = target;
 
-	#createStateProxy(target: State): State {
+		// TODO: Only validate this for conn state
+		// TODO: Allow disabling in production
 		// If this can't be proxied, return raw value
 		if (target === null || typeof target !== "object") {
 			if (!isJsonSerializable(target)) {
+				console.log("invalid value", target);
 				throw new errors.InvalidStateType();
 			}
 			return target;
 		}
 
 		// Unsubscribe from old state
-		if (this.#stateProxy) {
-			onChange.unsubscribe(this.#stateProxy);
+		if (this.#persist) {
+			onChange.unsubscribe(this.#persist);
 		}
 
 		// Listen for changes to the object in order to automatically write state
-		return onChange(
+		this.#persist = onChange(
 			target,
 			// biome-ignore lint/suspicious/noExplicitAny: Don't know types in proxy
 			(path: any, value: any, _previousValue: any, _applyData: any) => {
 				if (!isJsonSerializable(value)) {
+					console.log("invalid value", target);
 					throw new errors.InvalidStateType({ path });
 				}
-				this.#stateChanged = true;
+				this.#persistChanged = true;
 
 				// Call onStateChange if it exists
 				if (this._onStateChange && this.#ready) {
 					try {
-						this._onStateChange(this.#stateRaw);
+						this._onStateChange(this.#persistRaw.s);
 					} catch (error) {
 						logger().error("error in `_onStateChange`", {
 							error: `${error}`,
@@ -301,324 +336,130 @@ export abstract class Actor<
 		);
 	}
 
-	async #initializeState() {
-		if (!this.#stateEnabled) {
-			logger().debug("state not enabled");
-			return;
-		}
-		if (!this._onInitialize) throw new Error("missing _onInitialize");
-
+	async #initialize() {
 		// Read initial state
-		const [[_i, initialized], [_s, stateData]] = (await this.#driver.kvGetBatch(
-			[KEYS.STATE.INITIALIZED, KEYS.STATE.DATA],
-		)) as [[any, boolean], [any, State]];
+		const [[_i, initialized], [_s, persistData]] =
+			(await this.#driver.kvGetBatch([
+				KEYS.STATE.INITIALIZED,
+				KEYS.STATE.DATA,
+			])) as [
+				[any, boolean],
+				[any, PersistedActor<Actor<State, ConnParams, ConnState>>],
+			];
 
-		if (!initialized) {
-			// Initialize
-			logger().info("initializing");
-			const stateOrPromise = await this._onInitialize();
+		if (initialized) {
+			logger().info("actor restoring", {
+				connections: persistData.c.length,
+			});
 
-			let stateData: State;
-			if (stateOrPromise instanceof Promise) {
-				stateData = await stateOrPromise;
-			} else {
-				stateData = stateOrPromise;
+			// Set initial state
+			this.#setPersist(persistData);
+
+			// Load connections
+			for (const connPersist of this.#persist.c) {
+				// Create connections
+				const driver = this.__getConnectionDriver(connPersist.d);
+				const conn = new Connection<Actor<State, ConnParams, ConnState>>(
+					this,
+					connPersist,
+					driver,
+					this.#connectionStateEnabled,
+				);
+				this.#connections.set(conn.id, conn);
+
+				// Register event subscriptions
+				for (const sub of connPersist.su) {
+					this.#addSubscription(sub.n, conn, true);
+				}
 			}
+		} else {
+			logger().info("actor creating");
+
+			// Initialize actor state
+			let stateData: unknown = undefined;
+			if (this.#stateEnabled) {
+				if (!this._onInitialize) throw new Error("missing _onInitialize");
+
+				logger().info("actor state initializing");
+
+				const stateOrPromise = await this._onInitialize();
+
+				if (stateOrPromise instanceof Promise) {
+					stateData = await stateOrPromise;
+				} else {
+					stateData = stateOrPromise;
+				}
+			} else {
+				logger().debug("state not enabled");
+			}
+
+			const persist: PersistedActor<Actor<State, ConnParams, ConnState>> = {
+				s: stateData as State,
+				c: [],
+			};
 
 			// Update state
 			logger().debug("writing state");
 			await this.#driver.kvPutBatch([
 				[KEYS.STATE.INITIALIZED, true],
-				[KEYS.STATE.DATA, stateData],
+				[KEYS.STATE.DATA, persist],
 			]);
-			this.#setStateWithoutChange(stateData);
-		} else {
-			// Save state
-			logger().debug("already initialized");
-			this.#setStateWithoutChange(stateData);
+
+			this.#setPersist(persist);
 		}
 	}
 
-	#buildRouter() {
-		const app = new Hono();
-
-		app.get("/", (c) => {
-			// TODO: Give the metadata about this actor (ie tags)
-			return c.text("This is a Rivet Actor\n\nLearn more at https://rivet.gg");
-		});
-
-		if (this.#driver.upgradeWebSocket) {
-			app.get(
-				"/connect/websocket",
-				this.#driver.upgradeWebSocket(this.#handleWebSocket.bind(this)),
-			);
-		} else {
-			app.get("/connect/websocket", (c) => {
-				return c.text(
-					"WebSockets are not enabled for this driver. Use SSE instead.",
-					400,
-				);
-			});
-		}
-
-		app.get("/connect/sse", this.#handleSse.bind(this));
-
-		app.post("/rpc/:rpc", this.#handleHttpRpc.bind(this));
-
-		app.post(
-			"/connections/:conn/message",
-			this.#handleHttpConnectionMessage.bind(this),
-		);
-
-		app.all("*", (c) => {
-			return c.text(`Not Found (actor) (${c.req.path})`, 404);
-		});
-
-		return app;
+	__getConnectionForId(
+		id: string,
+	): Connection<Actor<State, ConnParams, ConnState>> | undefined {
+		return this.#connections.get(id);
 	}
 
 	/**
 	 * Removes a connection and cleans up its resources.
 	 */
-	#removeConnection(conn: Connection<this> | undefined) {
+	__removeConnection(
+		conn: Connection<Actor<State, ConnParams, ConnState>> | undefined,
+	) {
 		if (!conn) {
 			logger().warn("`conn` does not exist");
 			return;
 		}
 
+		// Remove from persist & save immediately
+		const connIdx = this.#persist.c.findIndex((c) => c.i === conn.id);
+		if (connIdx !== -1) {
+			this.#persist.c.splice(connIdx, 1);
+			this._saveState({ immediate: true });
+		} else {
+			logger().warn("could not find persisted connection to remove", {
+				connId: conn.id,
+			});
+		}
+
+		// Remove from state
 		this.#connections.delete(conn.id);
 
 		// Remove subscriptions
 		for (const eventName of [...conn.subscriptions.values()]) {
-			this.#removeSubscription(eventName, conn);
+			this.#removeSubscription(eventName, conn, true);
 		}
 
 		this._onDisconnect?.(conn);
 	}
 
-	async #handleHttpRpc(c: HonoContext) {
-		const rpcName = c.req.param("rpc");
-		let conn: Connection<this> | undefined;
-		try {
-			// Wait for init to finish
-			if (this.#initializedPromise) await this.#initializedPromise;
-
-			// Parse connection parameters and validate encoding
-			const { encoding, connState } =
-				await this.#prepareConnectionFromRequest(c, {
-					defaultFormat: "json",
-				});
-
-			// Create connection with validated parameters
-			conn = await this.#createConnection(encoding, connState, {
-				http: {},
-			});
-
-			// Parse request body if present
-			const contentLength = Number(c.req.header("content-length") || "0");
-			if (contentLength > this.#config.connections.maxIncomingMessageSize) {
-				throw new errors.MessageTooLong();
-			}
-
-			// Parse request body according to encoding
-			const body = await c.req.json();
-			const { data: message, success } =
-				protoHttpRpc.RequestSchema.safeParse(body);
-			if (!success) {
-				throw new errors.MalformedMessage("Invalid request format");
-			}
-			const args = message.a;
-
-			// Create RPC context with the temporary connection
-			const ctx = new Rpc<this>(conn);
-			const output = await this.#executeRpc(ctx, rpcName, args);
-
-			// Format response according to encoding
-			return c.json({
-				o: output,
-			} satisfies protoHttpRpc.ResponseOk);
-		} catch (error) {
-			// Build response error information similar to WebSocket handling
-			let status: ContentfulStatusCode;
-			let code: string;
-			let message: string;
-			let metadata: unknown = undefined;
-
-			if (error instanceof errors.ActorError && error.public) {
-				logger().info("http rpc public error", {
-					rpc: rpcName,
-					error,
-				});
-
-				status = 400;
-				code = error.code;
-				message = String(error);
-				metadata = error.metadata;
-			} else {
-				logger().warn("http rpc internal error", {
-					rpc: rpcName,
-					error,
-				});
-
-				status = 500;
-				code = errors.INTERNAL_ERROR_CODE;
-				message = errors.INTERNAL_ERROR_DESCRIPTION;
-				metadata = {
-					//url: `https://hub.rivet.gg/projects/${this.#driver.metadata.project.slug}/environments/${this.#driver.metadata.environment.slug}/actors?actorId=${this.#driver.metadata.actor.id}`,
-				} satisfies errors.InternalErrorMetadata;
-			}
-
-			return c.json(
-				{
-					c: code,
-					m: message,
-					md: metadata,
-				} satisfies protoHttpRpc.ResponseErr,
-				{ status },
-			);
-		} finally {
-			this.#removeConnection(conn);
-		}
-	}
-
-	/** Handles a message sent to a connection over HTTP. */
-	async #handleHttpConnectionMessage(c: HonoContext) {
-		// Wait for init to finish
-		if (this.#initializedPromise) await this.#initializedPromise;
-
-		try {
-			const encoding = this.#getRequestEncoding(c.req);
-
-			const connectionId = c.req.param("conn");
-			const connectionToken = c.req.query("connectionToken");
-			if (!connectionToken) throw new errors.IncorrectConnectionToken();
-
-			// Find connection
-			const conn = this._connections.get(parseInt(connectionId));
-			if (!conn) {
-				throw new errors.ConnectionNotFound(connectionId);
-			}
-
-			// Authenticate connection
-			if (conn._token !== connectionToken) {
-				throw new errors.IncorrectConnectionToken();
-			}
-
-			// Parse request body if present
-			const contentLength = Number(c.req.header("content-length") || "0");
-			if (contentLength > this.#config.connections.maxIncomingMessageSize) {
-				throw new errors.MessageTooLong();
-			}
-
-			let value: IncomingMessage;
-			if (encoding === "json") {
-				// Handle decoding JSON in handleMessageEvent
-				value = await c.req.text();
-			} else if (encoding === "cbor") {
-				value = await c.req.arrayBuffer();
-			} else {
-				assertUnreachable(encoding);
-			}
-
-			// Handle message
-			await handleMessageEvent(value, conn, this.#config, {
-				onExecuteRpc: async (ctx, name, args) => {
-					return await this.#executeRpc(ctx, name, args);
-				},
-				onSubscribe: async (eventName, conn) => {
-					this.#addSubscription(eventName, conn);
-				},
-				onUnsubscribe: async (eventName, conn) => {
-					this.#removeSubscription(eventName, conn);
-				},
-			});
-
-			// Not data to return
-			return c.json({});
-		} catch (error) {
-			// Build response error information similar to WebSocket handling
-			let status: ContentfulStatusCode;
-			let code: string;
-			let message: string;
-			let metadata: unknown = undefined;
-
-			if (error instanceof errors.ActorError && error.public) {
-				logger().info("http rpc public error", {
-					error,
-				});
-
-				status = 400;
-				code = error.code;
-				message = String(error);
-				metadata = error.metadata;
-			} else {
-				logger().warn("http rpc internal error", {
-					error,
-				});
-
-				status = 500;
-				code = errors.INTERNAL_ERROR_CODE;
-				message = errors.INTERNAL_ERROR_DESCRIPTION;
-				metadata = {
-					//url: `https://hub.rivet.gg/projects/${this.#driver.metadata.project.slug}/environments/${this.#driver.metadata.environment.slug}/actors?actorId=${this.#driver.metadata.actor.id}`,
-				} satisfies errors.InternalErrorMetadata;
-			}
-
-			return c.json(
-				{
-					c: code,
-					m: message,
-					md: metadata,
-				} satisfies protoHttpRpc.ResponseErr,
-				{ status },
-			);
-		}
-	}
-
-	/**
-	 * Called before accepting the socket. Any errors thrown here will cancel the request.
-	 */
-	async #prepareConnectionFromRequest(
-		c: HonoContext,
-		opts?: { defaultFormat?: string },
-	): Promise<{
-		encoding: Encoding;
-		connState: ConnState | undefined;
-	}> {
-		const encoding = this.#getRequestEncoding(
-			c.req,
-			opts?.defaultFormat,
-		);
-
-		// Validate params size
-		const paramsStr = c.req.query("params");
-		if (
-			paramsStr &&
-			paramsStr.length > this.#config.connections.maxConnectionParametersSize
-		) {
-			logger().warn("connection parameters too long");
-			throw new errors.ConnectionParametersTooLong();
-		}
-
-		// Parse and validate params
-		let params: ExtractActorConnParams<this>;
-		try {
-			params =
-				typeof paramsStr === "string" ? JSON.parse(paramsStr) : undefined;
-		} catch (error) {
-			logger().warn("malformed connection parameters", {
-				error: `${error}`,
-			});
-			throw new errors.MalformedConnectionParameters(error);
-		}
-
+	async __prepareConnection(
+		// biome-ignore lint/suspicious/noExplicitAny: TypeScript bug with ExtractActorConnParams<this>,
+		parameters: any,
+		request?: Request,
+	): Promise<ConnState> {
 		// Authenticate connection
 		let connState: ConnState | undefined = undefined;
 		const PREPARE_CONNECT_TIMEOUT = 5000; // 5 seconds
 		if (this._onBeforeConnect) {
 			const dataOrPromise = this._onBeforeConnect({
-				request: c.req.raw,
-				parameters: params,
+				request,
+				parameters,
 			});
 			if (dataOrPromise instanceof Promise) {
 				connState = await deadline(dataOrPromise, PREPARE_CONNECT_TIMEOUT);
@@ -627,45 +468,53 @@ export abstract class Actor<
 			}
 		}
 
-		return { encoding, connState };
+		return connState as ConnState;
 	}
 
-	#getRequestEncoding(
-		c: HonoRequest,
-		defaultFormat?: string,
-	): Encoding {
-		const encodingRaw = c.query("encoding") ?? defaultFormat;
-		const { data: encoding, success } =
-			EncodingSchema.safeParse(encodingRaw);
-		if (!success) {
-			logger().warn("invalid encoding", {
-				encoding: encodingRaw,
-			});
-			throw new errors.InvalidEncoding(encodingRaw);
-		}
-
-		return encoding;
+	__getConnectionDriver(driverId: string): ConnectionDriver {
+		// Get driver
+		const driver = this.#driver.connectionDrivers[driverId];
+		if (!driver) throw new Error(`No connection driver: ${driverId}`);
+		return driver;
 	}
 
 	/**
 	 * Called after establishing a connection handshake.
 	 */
-	async #createConnection(
-		encoding: Encoding,
-		state: ConnState | undefined,
-		driver: ConnectionTransport,
-	): Promise<Connection<this>> {
+	async __createConnection(
+		connectionId: string,
+		connectionToken: string,
+		parameters: ConnParams,
+		state: ConnState,
+		driverId: string,
+		driverState: unknown,
+	): Promise<Connection<Actor<State, ConnParams, ConnState>>> {
+		if (this.#connections.has(connectionId)) {
+			throw new Error(`Connection already exists: ${connectionId}`);
+		}
+
 		// Create connection
-		const connectionId = this.#connectionIdCounter;
-		this.#connectionIdCounter += 1;
+		const driver = this.__getConnectionDriver(driverId);
+		const persist: PersistedConn<Actor<State, ConnParams, ConnState>> = {
+			i: connectionId,
+			t: connectionToken,
+			d: driverId,
+			ds: driverState,
+			p: parameters,
+			s: state,
+			su: [],
+		};
 		const conn = new Connection<Actor<State, ConnParams, ConnState>>(
-			connectionId,
+			this,
+			persist,
 			driver,
-			encoding,
-			state,
 			this.#connectionStateEnabled,
 		);
 		this.#connections.set(conn.id, conn);
+
+		// Add to persistence & save immediately
+		this.#persist.c.push(persist);
+		this._saveState({ immediate: true });
 
 		// Handle connection
 		const CONNECT_TIMEOUT = 5000; // 5 seconds
@@ -681,21 +530,38 @@ export abstract class Actor<
 			}
 		}
 
+		// Send init message
+		conn._sendMessage(
+			new CachedSerializer({
+				b: {
+					i: {
+						ci: `${conn.id}`,
+						ct: conn._token,
+					},
+				},
+			}),
+		);
+
 		return conn;
 	}
 
-	//#getServerPort(): number {
-	//	const portStr = Deno.env.get("PORT_HTTP");
-	//	if (!portStr) {
-	//		throw "Missing port";
-	//	}
-	//	const port = Number.parseInt(portStr);
-	//	if (!Number.isFinite(port)) {
-	//		throw "Invalid port";
-	//	}
-	//
-	//	return port;
-	//}
+	// MARK: Messages
+	async __processMessage(
+		message: wsToServer.ToServer,
+		conn: Connection<Actor<State, ConnParams, ConnState>>,
+	) {
+		await processMessage(message, conn, {
+			onExecuteRpc: async (ctx, name, args) => {
+				return await this.__executeRpc(ctx, name, args);
+			},
+			onSubscribe: async (eventName, conn) => {
+				this.#addSubscription(eventName, conn, false);
+			},
+			onUnsubscribe: async (eventName, conn) => {
+				this.#removeSubscription(eventName, conn, false);
+			},
+		});
+	}
 
 	// MARK: RPC
 	#isValidRpc(rpcName: string): boolean {
@@ -715,147 +581,80 @@ export abstract class Actor<
 	}
 
 	// MARK: Events
-	#addSubscription(eventName: string, connection: Connection<this>) {
+	#addSubscription(
+		eventName: string,
+		connection: Connection<Actor<State, ConnParams, ConnState>>,
+		fromPersist: boolean,
+	) {
+		if (connection.subscriptions.has(eventName)) {
+			logger().info("connection already has subscription", { eventName });
+			return;
+		}
+
+		// Persist subscriptions & save immediately
+		//
+		// Don't update persistence if already restoring from persistence
+		if (!fromPersist) {
+			connection.__persist.su.push({ n: eventName });
+			this._saveState({ immediate: true });
+		}
+
+		// Update subscriptions
 		connection.subscriptions.add(eventName);
-		let subscribers = this.#eventSubscriptions.get(eventName);
+
+		// Update subscription index
+		let subscribers = this.#subscriptionIndex.get(eventName);
 		if (!subscribers) {
 			subscribers = new Set();
-			this.#eventSubscriptions.set(eventName, subscribers);
+			this.#subscriptionIndex.set(eventName, subscribers);
 		}
 		subscribers.add(connection);
 	}
 
-	#removeSubscription(eventName: string, connection: Connection<this>) {
-		connection.subscriptions.delete(eventName);
-		const subscribers = this.#eventSubscriptions.get(eventName);
+	#removeSubscription(
+		eventName: string,
+		connection: Connection<Actor<State, ConnParams, ConnState>>,
+		fromRemoveConn: boolean,
+	) {
+		if (!connection.subscriptions.has(eventName)) {
+			logger().warn("connection does not have subscription", { eventName });
+			return;
+		}
+
+		// Persist subscriptions & save immediately
+		//
+		// Don't update the connection itself if the connection is already being removed
+		if (!fromRemoveConn) {
+			connection.subscriptions.delete(eventName);
+
+			const subIdx = connection.__persist.su.findIndex(
+				(s) => s.n === eventName,
+			);
+			if (subIdx !== -1) {
+				connection.__persist.su.splice(subIdx, 1);
+			} else {
+				logger().warn("subscription does not exist with name", { eventName });
+			}
+
+			this._saveState({ immediate: true });
+		}
+
+		// Update scriptions index
+		const subscribers = this.#subscriptionIndex.get(eventName);
 		if (subscribers) {
 			subscribers.delete(connection);
 			if (subscribers.size === 0) {
-				this.#eventSubscriptions.delete(eventName);
+				this.#subscriptionIndex.delete(eventName);
 			}
 		}
-	}
-	async #handleWebSocket(c: HonoContext): Promise<WSEvents<WebSocket>> {
-		// Wait for init to finish
-		if (this.#initializedPromise) await this.#initializedPromise;
-
-		// Parse connection parameters and validate encoding
-		const { encoding, connState } =
-			await this.#prepareConnectionFromRequest(c);
-
-		let conn: Connection<this> | undefined;
-
-		// Create connection once we have the WebSocket objects. This isn't available on all drivers (e.g. Cloudflare Workers).
-		//
-		// See https://hono.dev/docs/helpers/websocket#upgradewebsocket
-		const lazyOnOpen = async (ws: WSContext<WebSocket>) => {
-			if (!conn) {
-				logger().debug("socket open");
-
-				// Create connection with validated parameters
-				conn = await this.#createConnection(encoding, connState, {
-					websocket: ws,
-				});
-			}
-		};
-
-		return {
-			onOpen: async (_evt, ws) => {
-				// onOpen doesn't get triggered on all drivers (e.g. Cloudflare Workers)
-
-				await lazyOnOpen(ws);
-			},
-			onMessage: async (evt, ws) => {
-				await lazyOnOpen(ws);
-
-				logger().debug("received message");
-
-				if (!conn) {
-					logger().warn("`conn` does not exist");
-					return;
-				}
-
-				const value = evt.data.valueOf() as IncomingMessage;
-				await handleMessageEvent(value, conn, this.#config, {
-					onExecuteRpc: async (ctx, name, args) => {
-						return await this.#executeRpc(ctx, name, args);
-					},
-					onSubscribe: async (eventName, conn) => {
-						this.#addSubscription(eventName, conn);
-					},
-					onUnsubscribe: async (eventName, conn) => {
-						this.#removeSubscription(eventName, conn);
-					},
-				});
-			},
-			onClose: async (_evt, ws) => {
-				await lazyOnOpen(ws);
-
-				this.#removeConnection(conn);
-			},
-			onError: async (error, ws) => {
-				await lazyOnOpen(ws);
-
-				// Actors don't need to know about this, since it's abstracted
-				// away
-				logger().warn("websocket error", { error: `${error}` });
-			},
-		};
-	}
-
-	async #handleSse(c: HonoContext) {
-		// Wait for init to finish
-		if (this.#initializedPromise) await this.#initializedPromise;
-
-		// Parse connection parameters and validate encoding
-		const { encoding, connState } =
-			await this.#prepareConnectionFromRequest(c);
-
-		return streamSSE(
-			c,
-			async (stream) => {
-				// Create connection with validated parameters
-				logger().debug("socket open");
-				const conn = await this.#createConnection(encoding, connState, {
-					sse: stream,
-				});
-
-				const { promise, resolve } = Promise.withResolvers();
-
-				stream.onAbort(() => {
-					// Close connection
-					this.#removeConnection(conn);
-
-					resolve(undefined);
-				});
-
-				conn._sendMessage(
-					conn._serialize({
-						b: {
-							i: {
-								ci: `${conn.id}`,
-								ct: conn._token,
-							},
-						},
-					}),
-				);
-
-				await promise;
-			},
-			async (error) => {
-				// Actors don't need to know about this, since it's abstracted
-				// away
-				logger().warn("sse error", { error: `${error}` });
-			},
-		);
 	}
 
 	#assertReady() {
 		if (!this.#ready) throw new errors.InternalError("Actor not ready");
 	}
 
-	async #executeRpc(
-		ctx: Rpc<this>,
+	async __executeRpc(
+		ctx: Rpc<Actor<State, ConnParams, ConnState>>,
 		rpcName: string,
 		args: unknown[],
 	): Promise<unknown> {
@@ -892,16 +691,16 @@ export abstract class Actor<
 			}
 			throw error;
 		} finally {
-			this.#saveStateThrottled();
+			this.#savePersistThrottled();
 		}
 	}
 
-	get #rpcNames(): string[] {
-		return listObjectMethods(this).filter(
-			(name): name is string =>
-				typeof name === "string" && this.#isValidRpc(name),
-		);
-	}
+	//get #rpcNames(): string[] {
+	//	return listObjectMethods(this).filter(
+	//		(name): name is string =>
+	//			typeof name === "string" && this.#isValidRpc(name),
+	//	);
+	//}
 
 	// MARK: Lifecycle hooks
 	/**
@@ -975,7 +774,9 @@ export abstract class Actor<
 	 * @param connection - The connection object.
 	 * @see {@link https://rivet.gg/docs/lifecycle|Lifecycle Documentation}
 	 */
-	protected _onConnect?(connection: Connection<this>): void | Promise<void> {}
+	protected _onConnect?(
+		connection: Connection<Actor<State, ConnParams, ConnState>>,
+	): void | Promise<void> {}
 
 	/**
 	 * Called when a client disconnects from the actor. Use this to clean up any connection-specific resources.
@@ -984,28 +785,10 @@ export abstract class Actor<
 	 * @see {@link https://rivet.gg/docs/lifecycle|Lifecycle Documentation}
 	 */
 	protected _onDisconnect?(
-		connection: Connection<this>,
+		connection: Connection<Actor<State, ConnParams, ConnState>>,
 	): void | Promise<void> {}
 
 	// MARK: Exposed methods
-	/**
-	 * Gets metadata associated with this actor.
-	 *
-	 * @see {@link https://rivet.gg/docs/metadata|Metadata Documentation}
-	 */
-	//protected get _metadata(): Metadata {
-	//	return this.#driver.metadata;
-	//}
-
-	/**
-	 * Gets the KV state API. This KV storage is local to this actor.
-	 *
-	 * @see {@link https://rivet.gg/docs/state|State Documentation}
-	 */
-	//protected get _kv(): Kv {
-	//	return this.#driver.kv;
-	//}
-
 	/**
 	 * Gets the logger instance.
 	 *
@@ -1041,7 +824,10 @@ export abstract class Actor<
 	 *
 	 * @see {@link https://rivet.gg/docs/connections|Connections Documentation}
 	 */
-	protected get _connections(): Map<ConnectionId, Connection<this>> {
+	get _connections(): Map<
+		ConnectionId,
+		Connection<Actor<State, ConnParams, ConnState>>
+	> {
 		return this.#connections;
 	}
 
@@ -1055,7 +841,7 @@ export abstract class Actor<
 	 */
 	protected get _state(): State {
 		this.#validateStateEnabled();
-		return this.#stateProxy;
+		return this.#persist.s;
 	}
 
 	/**
@@ -1067,8 +853,7 @@ export abstract class Actor<
 	 */
 	protected set _state(value: State) {
 		this.#validateStateEnabled();
-		this.#setStateWithoutChange(value);
-		this.#stateChanged = true;
+		this.#persist.s = value;
 	}
 
 	/**
@@ -1084,28 +869,21 @@ export abstract class Actor<
 		this.#assertReady();
 
 		// Send to all connected clients
-		const subscriptions = this.#eventSubscriptions.get(name);
+		const subscriptions = this.#subscriptionIndex.get(name);
 		if (!subscriptions) return;
 
-		const toClient: wsToClient.ToClient = {
+		const toClientSerializer = new CachedSerializer({
 			b: {
 				ev: {
 					n: name,
 					a: args,
 				},
 			},
-		};
+		});
 
 		// Send message to clients
-		const serialized: Record<string, OutgoingMessage> = {};
 		for (const connection of subscriptions) {
-			// Lazily serialize the appropriate format
-			if (!(connection._encoding in serialized)) {
-				serialized[connection._encoding] =
-					connection._serialize(toClient);
-			}
-
-			connection._sendMessage(serialized[connection._encoding]);
+			connection._sendMessage(toClientSerializer);
 		}
 	}
 
@@ -1146,38 +924,39 @@ export abstract class Actor<
 	protected async _saveState(opts: SaveStateOptions) {
 		this.#assertReady();
 
-		if (this.#stateChanged) {
+		if (this.#persistChanged) {
 			if (opts.immediate) {
 				// Save immediately
-				await this.#saveStateInner();
+				await this.#savePersistInner();
 			} else {
 				// Create callback
-				if (!this.#onStateSavedPromise) {
-					this.#onStateSavedPromise = Promise.withResolvers();
+				if (!this.#onPersistSavedPromise) {
+					this.#onPersistSavedPromise = Promise.withResolvers();
 				}
 
 				// Save state throttled
-				this.#saveStateThrottled();
+				this.#savePersistThrottled();
 
 				// Wait for save
-				await this.#onStateSavedPromise.promise;
+				await this.#onPersistSavedPromise.promise;
 			}
 		}
 	}
 
-	/**
-	 * Shuts down the actor, closing all connections and stopping the server.
-	 *
-	 * @see {@link https://rivet.gg/docs/lifecycle|Lifecycle Documentation}
-	 */
-	protected async _shutdown() {
-		//// Stop accepting new connections
-		//if (this.#server) await this.#server.shutdown();
+	async __stop() {
+		if (this.__isStopping) {
+			logger().warn("already stopping actor");
+			return;
+		}
+		this.__isStopping = true;
+
+		// Write state
+		await this._saveState({ immediate: true });
 
 		// Disconnect existing connections
 		const promises: Promise<unknown>[] = [];
 		for (const connection of this.#connections.values()) {
-			promises.push(connection.shutdown());
+			promises.push(connection.disconnect());
 
 			// TODO: Figure out how to abort HTTP requests on shutdown
 		}
@@ -1199,4 +978,13 @@ export abstract class Actor<
 		// TODO:
 		//Deno.exit(0);
 	}
+
+	// MARK: Router handlers
+
+	//async __routeRpc(c: HonoContext): Promise<Response> {
+	//}
+
+	/** Handles a message sent to a connection over HTTP. */
+	//async __routeConnectionsMessage(c: HonoContext) {
+	//}
 }

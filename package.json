@@ -9,11 +9,14 @@
     "examples/*/platforms/*"
   ],
   "scripts": {
-    "start": "npx turbo dev",
-    "dev": "npx turbo dev",
+    "start": "npx turbo watch build",
+    "dev": "npx turbo watch build",
+    "dev-types": "npx turbo watch check-types",
     "build": "npx turbo build",
     "check-types": "npx turbo check-types",
-    "fmt": "yarn biome check --write ."
+    "fmt": "yarn biome check --write .",
+    "docs": "cd docs && yarn dlx mintlify@latest dev",
+    "docs-broken-links": "cd docs && yarn dlx mintlify@latest broken-links"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
@@ -24,6 +27,7 @@
   },
   "resolutions": {
     "react": "^19",
-    "react-dom": "^19"
+    "react-dom": "^19",
+    "hono": "^4.7.0"
   }
 }

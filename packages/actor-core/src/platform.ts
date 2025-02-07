@@ -1,10 +1,12 @@
-export type { Config } from "@/actor/runtime/config";
-export type { ActorDriver } from "@/actor/runtime/driver";
+export type { BaseConfig } from "@/actor/runtime/config";
+export type { AnyActor, AnyActorConstructor } from "@/actor/runtime/actor";
+export type { ActorDriver, ConnectionDriver } from "@/actor/runtime/driver";
 export { Manager } from "@/manager/runtime/manager";
 export { assertUnreachable } from "@/common/utils";
-export type {
-	ActorsRequest,
-	ActorsResponse,
-} from "@/manager/protocol/mod";
-export type { CreateRequest } from "@/manager/protocol/query";
 export type { ManagerDriver } from "@/manager/runtime/mod";
+export * from "./actor/runtime/actor_router";
+export { processMessage as handleMessageEvent } from "@/actor/protocol/message/mod";
+export {
+	generateConnectionId,
+	generateConnectionToken,
+} from "@/actor/runtime/connection";

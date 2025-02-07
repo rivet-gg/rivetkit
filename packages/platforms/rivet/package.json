@@ -9,7 +9,6 @@
   "type": "module",
   "exports": {
     ".": {
-      "deno": "./src/mod.ts",
       "import": {
         "types": "./dist/mod.d.ts",
         "default": "./dist/mod.js"
@@ -32,10 +31,11 @@
   "devDependencies": {
     "@rivet-gg/actor-core": "^25.1.0",
     "@types/deno": "^2.0.0",
+    "actor-core": "workspace:*",
     "tsup": "^8.3.6",
     "typescript": "^5.5.2"
   },
   "dependencies": {
-    "hono": "^4.6.20"
+    "hono": "^4.7.0"
   }
 }

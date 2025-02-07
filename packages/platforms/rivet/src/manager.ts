@@ -1,13 +1,9 @@
 import { assertUnreachable } from "actor-core/platform";
 import type { ActorTags, BuildTags } from "actor-core";
-import type {
-	ActorsRequest,
-	ActorsResponse,
-	CreateRequest,
-	ManagerDriver,
-} from "actor-core/platform";
+import type { ManagerDriver } from "actor-core/platform";
 import { logger } from "./log";
 import { type RivetClientConfig, rivetRequest } from "./rivet_client";
+import type { ActorsResponse, CreateRequest } from "actor-core/manager/protocol";
 
 // biome-ignore lint/suspicious/noExplicitAny: will add api types later
 type RivetActor = any;

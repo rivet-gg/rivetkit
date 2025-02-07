@@ -37,7 +37,7 @@ export function createManagerHandler(): RivetHandler {
 			const app = manager.router;
 
 			app.all("*", (c) => {
-				return c.text("Not Found (manager)", 404);
+				return c.text("Not Found (ActorCore)", 404);
 			});
 
 			logger().info("server running", { port });

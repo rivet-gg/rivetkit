@@ -10,7 +10,7 @@
 <h3 align="center">The Stateful Serverless Framework</h3>
 <h4 align="center">
   Build AI agents, realtime apps, game servers, and more.<br/>
-  Supports Cloudflare Workers and Rivet.
+  Supports Rivet, Cloudflare Workers, Bun, and Node.js.
 </h4>
 <p align="center">
   <!-- <a href="https://github.com/rivet-gg/rivet/graphs/commit-activity"><img alt="GitHub commit activity" src="https://img.shields.io/github/commit-activity/m/rivet-gg/rivet?style=flat-square"/></a> -->
@@ -34,8 +34,10 @@
 
 ### Supported Platforms
 
-- [**Cloudflare Workers**](https://actorcore.org/platforms/cloudflare-workers) - Using Durable Objects
-- [**Rivet**](https://actorcore.org/platforms/rivet) - Managed ActorCore platform
+- [**Rivet**](https://actorcore.org/platforms/rivet)
+- [**Cloudflare Workers**](https://actorcore.org/platforms/cloudflare-workers)
+- [**Bun**](https://actorcore.org/platforms/bun)
+- [**Node.js**](https://actorcore.org/platforms/nodejs)
 <!--- [**Supabase Edge Functions**](https://actorcore.org/platforms/supabase) - Serverless platform-->
 <!--- [**Vercel**](https://actorcore.org/platforms/vercel) - Serverless platform-->
 
@@ -122,8 +124,10 @@ await chatRoom.sendMessage("william", "All the world's a stage.");
 
 Deploy to your platform of choice:
 
-- [Cloudflare Workers](https://actorcore.org/platforms/cloudflare-workers)
-- [Rivet](https://actorcore.org/platforms/rivet)
+- [**Rivet**](https://actorcore.org/platforms/rivet)
+- [**Cloudflare Workers**](https://actorcore.org/platforms/cloudflare-workers)
+- [**Bun**](https://actorcore.org/platforms/bun)
+- [**Node.js**](https://actorcore.org/platforms/nodejs)
 
 ## Community & Support
 

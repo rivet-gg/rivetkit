@@ -1,4 +1,7 @@
-import type { UpgradeWebSocket } from "hono/ws";
+import { CachedSerializer } from "../protocol/serde";
+import type * as messageToClient from "@/actor/protocol/message/to_client";
+import { AnyActor } from "./actor";
+import { Connection } from "./connection";
 
 export interface LoadOutput {
 	actor: {
@@ -10,7 +13,8 @@ export interface LoadOutput {
 }
 
 export interface ActorDriver {
-	upgradeWebSocket: UpgradeWebSocket<WebSocket>;
+	connectionDrivers: Record<string, ConnectionDriver>;
+
 	//load(): Promise<LoadOutput>;
 
 	// HACK: Clean these up
@@ -27,4 +31,23 @@ export interface ActorDriver {
 	// TODO:
 	//destroy(): Promise<void>;
 	//readState(): void;
+}
+
+export interface ConnectionDriver<ConnDriverState = unknown> {
+	sendMessage(
+		actor: AnyActor,
+		conn: Connection<AnyActor>,
+		state: ConnDriverState,
+		message: CachedSerializer<messageToClient.ToClient>,
+	): void;
+
+	/**
+	 * This returns a promise since we commonly disconnect at the end of a program, and not waiting will cause the socket to not close cleanly.
+	 */
+	disconnect(
+		actor: AnyActor,
+		conn: Connection<AnyActor>,
+		state: ConnDriverState,
+		reason?: string,
+	): Promise<void>;
 }

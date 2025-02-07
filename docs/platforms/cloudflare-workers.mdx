@@ -4,6 +4,7 @@ title: Cloudflare Workers
 
 import SetupActor from '/snippets/setup-actor.mdx';
 import SetupNextSteps from '/snippets/setup-next-steps.mdx';
+import MvpWarning from '/snippets/mvp-warning.mdx';
 
 <Note>
 	ActorCore relies on features only available in the Workers Paid plan ([more info](https://developers.cloudflare.com/durable-objects/platform/pricing/)).
@@ -11,9 +12,7 @@ import SetupNextSteps from '/snippets/setup-next-steps.mdx';
 	To deploy hobby projects with ActorCore for free, try deploying to [Rivet](/platforms/rivet).
 </Note>
 
-<Info>
-	ActorCore is still pre-v1.0. Please help us by report bugs on [GitHub Issues](https://github.com/rivet-gg/actor-core/issues)!
-</Info>
+<MvpWarning />
 
 <Steps>
 	<Step title="Create New Cloudflare Workers Project">
@@ -127,7 +126,7 @@ import SetupNextSteps from '/snippets/setup-next-steps.mdx';
 
 		```typescript client.ts
 		import { Client } from "actor-core/client";
-		import type Counter from "../src/counter.ts";
+		import type Counter from "./src/counter.ts";
 
 		async function main() {
 			const client = new Client("http://localhost:8787");
@@ -145,7 +144,7 @@ import SetupNextSteps from '/snippets/setup-next-steps.mdx';
 		main();
 		```
 
-		Run the file with:
+		Run the file in a second terminal with:
 
 		```sh
 		npx tsx client.ts

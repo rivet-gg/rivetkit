@@ -1,4 +1,5 @@
-import type { Encoding, Transport } from "@/actor/protocol/ws/mod";
+import type { Transport } from "@/actor/protocol/message/mod";
+import type { Encoding } from "@/actor/protocol/serde";
 import type { ActorTags } from "@/common//utils";
 import type {
 	ActorsRequest,

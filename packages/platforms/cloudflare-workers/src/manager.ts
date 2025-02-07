@@ -1,12 +1,8 @@
 import type { ActorTags } from "actor-core";
-import {
-	assertUnreachable,
-	ActorsResponse,
-	CreateRequest,
-	ManagerDriver,
-} from "actor-core/platform";
+import { assertUnreachable, ManagerDriver } from "actor-core/platform";
 import type { Env } from "./env";
 import { logger } from "./log";
+import { ActorsResponse, CreateRequest } from "actor-core/manager/protocol";
 
 export interface ActorState {
 	tags: ActorTags;

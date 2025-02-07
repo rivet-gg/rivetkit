@@ -1,46 +1,65 @@
-import type * as wsToClient from "@/actor/protocol/ws/to_client";
-import * as wsToServer from "@/actor/protocol/ws/to_server";
-import type { AnyActor } from "./actor";
-import type { Connection, IncomingMessage } from "./connection";
-import * as errors from "./errors";
-import { logger } from "./log";
-import { Rpc } from "./rpc";
-import { assertUnreachable } from "./utils";
+import * as wsToClient from "@/actor/protocol/message/to_client";
+import * as wsToServer from "@/actor/protocol/message/to_server";
+import type { AnyActor } from "../../runtime/actor";
+import type { Connection } from "../../runtime/connection";
+import * as errors from "../../errors";
+import { logger } from "../../runtime/log";
+import { Rpc } from "../../runtime/rpc";
+import { assertUnreachable } from "../../runtime/utils";
+import { z } from "zod";
+import {
+	deserialize,
+	Encoding,
+	InputData,
+	CachedSerializer,
+} from "@/actor/protocol/serde";
 
-interface MessageEventConfig {
-	connections: { maxIncomingMessageSize: number };
+export const TransportSchema = z.enum(["websocket", "sse"]);
+
+/**
+ * Transport mechanism used to communicate between client & actor.
+ */
+export type Transport = z.infer<typeof TransportSchema>;
+
+interface MessageEventOpts {
+	encoding: Encoding;
+	maxIncomingMessageSize: number;
 }
 
-export async function validateMessageEvent<A extends AnyActor>(
-	value: IncomingMessage,
-	connection: Connection<A>,
-	config: MessageEventConfig,
-) {
-	// Validate value length
-	let length: number;
+function getValueLength(value: InputData): number {
 	if (typeof value === "string") {
-		length = value.length;
+		return value.length;
 	} else if (value instanceof Blob) {
-		length = value.size;
+		return value.size;
 	} else if (
 		value instanceof ArrayBuffer ||
 		value instanceof SharedArrayBuffer
 	) {
-		length = value.byteLength;
+		return value.byteLength;
+	} else if (Buffer.isBuffer(value)) {
+		return value.length;
 	} else {
 		assertUnreachable(value);
 	}
-	if (length > config.connections.maxIncomingMessageSize) {
+}
+
+export async function parseMessage(
+	value: InputData,
+	opts: MessageEventOpts,
+): Promise<wsToServer.ToServer> {
+	// Validate value length
+	const length = getValueLength(value);
+	if (length > opts.maxIncomingMessageSize) {
 		throw new errors.MessageTooLong();
 	}
 
 	// Parse & validate message
+	const deserializedValue = await deserialize(value, opts.encoding);
 	const {
 		data: message,
 		success,
 		error,
-	} = wsToServer.ToServerSchema.safeParse(await connection._parse(value));
-
+	} = wsToServer.ToServerSchema.safeParse(deserializedValue);
 	if (!success) {
 		throw new errors.MalformedMessage(error);
 	}
@@ -48,7 +67,7 @@ export async function validateMessageEvent<A extends AnyActor>(
 	return message;
 }
 
-export interface HandleMessageEventDelegate<A extends AnyActor> {
+export interface ProcessMessageHandler<A extends AnyActor> {
 	onExecuteRpc?: (
 		ctx: Rpc<A>,
 		name: string,
@@ -58,21 +77,19 @@ export interface HandleMessageEventDelegate<A extends AnyActor> {
 	onUnsubscribe?: (eventName: string, conn: Connection<A>) => Promise<void>;
 }
 
-export async function handleMessageEvent<A extends AnyActor>(
-	value: IncomingMessage,
+export async function processMessage<A extends AnyActor>(
+	message: wsToServer.ToServer,
 	conn: Connection<A>,
-	config: MessageEventConfig,
-	handlers: HandleMessageEventDelegate<A>,
+	handler: ProcessMessageHandler<A>,
 ) {
 	let rpcId: number | undefined;
 	let rpcName: string | undefined;
-	const message = await validateMessageEvent(value, conn, config);
 
 	try {
 		if ("rr" in message.b) {
 			// RPC request
 
-			if (handlers.onExecuteRpc === undefined) {
+			if (handler.onExecuteRpc === undefined) {
 				throw new errors.Unsupported("RPC");
 			}
 
@@ -82,24 +99,24 @@ export async function handleMessageEvent<A extends AnyActor>(
 			rpcName = name;
 
 			const ctx = new Rpc<A>(conn);
-			const output = await handlers.onExecuteRpc(ctx, name, args);
+			const output = await handler.onExecuteRpc(ctx, name, args);
 
-			await conn._sendMessage(
-				conn._serialize({
+			conn._sendMessage(
+				new CachedSerializer<wsToClient.ToClient>({
 					b: {
 						ro: {
 							i: id,
 							o: output,
 						},
 					},
-				} satisfies wsToClient.ToClient),
+				}),
 			);
 		} else if ("sr" in message.b) {
 			// Subscription request
 
 			if (
-				handlers.onSubscribe === undefined ||
-				handlers.onUnsubscribe === undefined
+				handler.onSubscribe === undefined ||
+				handler.onUnsubscribe === undefined
 			) {
 				throw new errors.Unsupported("Subscriptions");
 			}
@@ -107,9 +124,9 @@ export async function handleMessageEvent<A extends AnyActor>(
 			const { e: eventName, s: subscribe } = message.b.sr;
 
 			if (subscribe) {
-				await handlers.onSubscribe(eventName, conn);
+				await handler.onSubscribe(eventName, conn);
 			} else {
-				await handlers.onUnsubscribe(eventName, conn);
+				await handler.onUnsubscribe(eventName, conn);
 			}
 		} else {
 			assertUnreachable(message.b);
@@ -150,8 +167,8 @@ export async function handleMessageEvent<A extends AnyActor>(
 
 		// Build response
 		if (rpcId !== undefined) {
-			await conn._sendMessage(
-				conn._serialize({
+			conn._sendMessage(
+				new CachedSerializer({
 					b: {
 						re: {
 							i: rpcId,
@@ -160,11 +177,11 @@ export async function handleMessageEvent<A extends AnyActor>(
 							md: metadata,
 						},
 					},
-				} satisfies wsToClient.ToClient),
+				}),
 			);
 		} else {
-			await conn._sendMessage(
-				conn._serialize({
+			conn._sendMessage(
+				new CachedSerializer({
 					b: {
 						er: {
 							c: code,
@@ -172,7 +189,7 @@ export async function handleMessageEvent<A extends AnyActor>(
 							md: metadata,
 						},
 					},
-				} satisfies wsToClient.ToClient),
+				}),
 			);
 		}
 	}
