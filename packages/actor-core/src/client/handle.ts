@@ -61,6 +61,13 @@ export class ActorHandleRaw {
 
 	#rpcIdCounter = 0;
 
+	/**
+	 * Interval that keeps the NodeJS process alive if this is the only thing running.
+	 *
+	 * See ttps://github.com/nodejs/node/issues/22088
+	 */
+	#keepNodeAliveInterval: NodeJS.Timeout;
+
 	// TODO: ws message queue
 
 	/**
@@ -78,7 +85,9 @@ export class ActorHandleRaw {
 		private readonly encodingKind: Encoding,
 		private readonly transportKind: Transport,
 		private readonly dynamicImports: DynamicImports,
-	) {}
+	) {
+		this.#keepNodeAliveInterval = setInterval(() => 60_000);
+	}
 
 	/**
 	 * Call a raw RPC handle. See {@link ActorHandle} for type-safe RPC calls.
@@ -604,6 +613,9 @@ enc
 	 */
 	async dispose(): Promise<void> {
 		logger().debug("disposing");
+
+		// Clear interval so NodeJS process can exit
+		clearInterval(this.#keepNodeAliveInterval);
 
 		// TODO: this will error if not usable
 		await this.disconnect();
