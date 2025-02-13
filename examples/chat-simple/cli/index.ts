@@ -22,54 +22,35 @@ async function main() {
 	);
 
 	// listen for new messages
-	chatRoom.on("newMessage", (username: string, message: string) =>
-		console.log(`[${username}] ${message}`),
-	);
+	//
+	// `needsNewLine` is a hack to work aroudn console.log clobbering prompts
+	let needsNewLine = false;
+	chatRoom.on("newMessage", (username: string, message: string) => {
+		if (needsNewLine) {
+			needsNewLine = false;
+			console.log();
+		}
+		console.log(`[${username}] ${message}`);
+	});
 
 	// loop to send messages
 	while (true) {
+		needsNewLine = true;
 		const message = await textPrompt("Message");
 		if (!message) break;
+		needsNewLine = false;
 		await chatRoom.sendMessage(username, message);
 	}
 
 	await chatRoom.disconnect();
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// ===
-
-async function initPrompt(): Promise<{ encoding: Encoding; transport: Transport, room: string, username: string }> {
+async function initPrompt(): Promise<{
+	encoding: Encoding;
+	transport: Transport;
+	room: string;
+	username: string;
+}> {
 	return await prompts([
 		{
 			type: "select",
