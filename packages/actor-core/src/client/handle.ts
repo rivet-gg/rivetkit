@@ -12,6 +12,7 @@ import {
 	messageLength,
 } from "./utils";
 import { DynamicImports } from "./client";
+import pRetry from "p-retry";
 
 interface RpcInFlight {
 	name: string;
@@ -45,7 +46,13 @@ export type ConnectionTransport =
  * @see {@link ActorHandle}
  */
 export class ActorHandleRaw {
-	#disconnected = false;
+	#disposed = false;
+
+	/* Will be aborted on dispose. */
+	#abortController = new AbortController();
+
+	/** If attempting to connect. Helpful for knowing if in a retry loop when reconnecting. */
+	#connecting: boolean = false;
 
 	// These will only be set on SSE driver
 	#connectionId?: string;
@@ -67,6 +74,9 @@ export class ActorHandleRaw {
 	 * See ttps://github.com/nodejs/node/issues/22088
 	 */
 	#keepNodeAliveInterval: NodeJS.Timeout;
+
+	/** Promise used to indicate the socket has connected successfully. This will be rejected if the connection fails. */
+	#onOpenPromise?: PromiseWithResolvers<undefined>;
 
 	// TODO: ws message queue
 
@@ -160,15 +170,53 @@ enc
 	 *
 	 * @protected
 	 */
-	public connect() {
-		this.#disconnected = false;
+	public __connect() {
+		this.#connectWithRetry();
+	}
 
-		if (this.transportKind === "websocket") {
-			this.#connectWebSocket();
-		} else if (this.transportKind === "sse") {
-			this.#connectSse();
-		} else {
-			assertUnreachable(this.transportKind);
+	async #connectWithRetry() {
+		this.#connecting = true;
+
+		// Attempt to reconnect indefinitely
+		await pRetry(this.#connectAndWait.bind(this), {
+			forever: true,
+			minTimeout: 250,
+			maxTimeout: 30_000,
+
+			onFailedAttempt: (error) => {
+				logger().warn("failed to reconnect", {
+					attempt: error.attemptNumber,
+					error: `${error.cause}`,
+				});
+			},
+
+			// Cancel retry if aborted
+			signal: this.#abortController.signal,
+		});
+
+		this.#connecting = false;
+	}
+
+	async #connectAndWait() {
+		try {
+			// Create promise for open
+			if (this.#onOpenPromise)
+				throw new Error("#onOpenPromise already defined");
+			this.#onOpenPromise = Promise.withResolvers();
+
+			// Connect transport
+			if (this.transportKind === "websocket") {
+				this.#connectWebSocket();
+			} else if (this.transportKind === "sse") {
+				this.#connectSse();
+			} else {
+				assertUnreachable(this.transportKind);
+			}
+
+			// Wait for result
+			await this.#onOpenPromise.promise;
+		} finally {
+			this.#onOpenPromise = undefined;
 		}
 	}
 
@@ -220,8 +268,10 @@ enc
 		};
 		eventSource.onerror = (ev) => {
 			if (eventSource.readyState === EventSource.CLOSED) {
+				// This error indicates a close event
 				this.#handleOnClose(ev);
 			} else {
+				// Log error since event source is still open
 				this.#handleOnError(ev);
 			}
 		};
@@ -232,6 +282,13 @@ enc
 		logger().debug("socket open", {
 			messageQueueLength: this.#messageQueue.length,
 		});
+
+		// Resolve open promise
+		if (this.#onOpenPromise) {
+			this.#onOpenPromise.resolve(undefined);
+		} else {
+			logger().warn("#onOpenPromise is undefined");
+		}
 
 		// Resubscribe to all active events
 		for (const eventName of this.#eventSubscriptions.keys()) {
@@ -300,6 +357,11 @@ enc
 		// TODO: Handle queue
 		// TODO: Reconnect with backoff
 
+		// Reject open promise
+		if (this.#onOpenPromise) {
+			this.#onOpenPromise.reject(new Error("Closed"));
+		}
+
 		// We can't use `event instanceof CloseEvent` because it's not defined in NodeJS
 		//
 		// These properties will be undefined
@@ -312,18 +374,20 @@ enc
 
 		this.#transport = undefined;
 
-		// Automatically reconnect
-		if (!this.#disconnected) {
+		// Automatically reconnect. Skip if already attempting to connect.
+		if (!this.#disposed && !this.#connecting) {
 			// TODO: Fetch actor to check if it's destroyed
 			// TODO: Add backoff for reconnect
 			// TODO: Add a way of preserving connection ID for connection state
-			// this.connect(...args);
+
+			// Attempt to connect again
+			this.#connectWithRetry();
 		}
 	}
 
 	/** Called by the onerror event from drivers. */
 	#handleOnError(event: Event) {
-		if (this.#disconnected) return;
+		if (this.#disposed) return;
 		logger().warn("socket error", { event });
 	}
 
@@ -577,48 +641,43 @@ enc
 	// TODO: Add destructor
 
 	/**
-	 * Disconnects the WebSocket connection.
+	 * Disconnects from the actor.
 	 *
-	 * @returns {Promise<void>} A promise that resolves when the WebSocket connection is closed.
+	 * @returns {Promise<void>} A promise that resolves when the socket is gracefully closed.
 	 */
-	disconnect(): Promise<void> {
-		return new Promise((resolve) => {
-			if (!this.#transport) {
-				logger().debug("already disconnected");
-				return;
-			}
+	async disconnect(): Promise<void> {
+		// Internally, this "disposes" the handle
 
-			this.#disconnected = true;
+		if (this.#disposed) {
+			logger().warn("handle already disconnected");
+			return;
+		}
+		this.#disposed = true;
 
-			logger().debug("disconnecting");
-
-			// TODO: What do we do with the queue?
-
-			if ("websocket" in this.#transport) {
-				this.#transport.websocket.addEventListener("close", () => resolve());
-				this.#transport.websocket.close();
-			} else if ("sse" in this.#transport) {
-				this.#transport.sse.close();
-			} else {
-				assertUnreachable(this.#transport);
-			}
-			this.#transport = undefined;
-		});
-	}
-
-	/**
-	 * Disposes of the ActorHandleRaw instance by disconnecting the WebSocket connection.
-	 *
-	 * @returns {Promise<void>} A promise that resolves when the WebSocket connection is closed.
-	 */
-	async dispose(): Promise<void> {
-		logger().debug("disposing");
+		logger().debug("disconnecting");
 
 		// Clear interval so NodeJS process can exit
 		clearInterval(this.#keepNodeAliveInterval);
 
-		// TODO: this will error if not usable
-		await this.disconnect();
+		// Abort
+		this.#abortController.abort();
+
+		// Disconnect transport cleanly
+		if (!this.#transport) {
+			// Nothing to do
+		} else if ("websocket" in this.#transport) {
+			const { promise, resolve } = Promise.withResolvers();
+			this.#transport.websocket.addEventListener("close", () =>
+				resolve(undefined),
+			);
+			this.#transport.websocket.close();
+			await promise;
+		} else if ("sse" in this.#transport) {
+			this.#transport.sse.close();
+		} else {
+			assertUnreachable(this.#transport);
+		}
+		this.#transport = undefined;
 	}
 
 	#sendSubscription(eventName: string, subscribe: boolean) {

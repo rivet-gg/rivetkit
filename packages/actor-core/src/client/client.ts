@@ -327,7 +327,7 @@ export class Client {
 			this.#transportKind,
 			imports,
 		);
-		handle.connect();
+		handle.__connect();
 		return handle;
 	}
 

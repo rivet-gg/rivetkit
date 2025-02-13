@@ -1182,6 +1182,7 @@ __metadata:
     cbor-x: "npm:^1.6.0"
     hono: "npm:^4.7.0"
     on-change: "npm:^5.0.1"
+    p-retry: "npm:^6.2.1"
     tsup: "npm:^8.3.6"
     typescript: "npm:^5.7.3"
     zod: "npm:^3.24.1"
