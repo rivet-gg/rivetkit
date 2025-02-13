@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.4.0](https://github.com/rivet-gg/actor-core/compare/v0.2.0...v0.4.0) (2025-02-13)
+
+
+### Features
+
+* add connection retry with backoff ([#625](https://github.com/rivet-gg/actor-core/issues/625)) ([a0a59a6](https://github.com/rivet-gg/actor-core/commit/a0a59a6387e56f010d7f4df4c3385a76880c6222))
+* **bun:** bun support ([#623](https://github.com/rivet-gg/actor-core/issues/623)) ([003a8a7](https://github.com/rivet-gg/actor-core/commit/003a8a761638e036d6edc431f5c7374923828964))
+* **nodejs:** add nodejs support ([003a8a7](https://github.com/rivet-gg/actor-core/commit/003a8a761638e036d6edc431f5c7374923828964))
+
+
+### Bug Fixes
+
+* keep NodeJS process alive with interval ([#624](https://github.com/rivet-gg/actor-core/issues/624)) ([9aa2ace](https://github.com/rivet-gg/actor-core/commit/9aa2ace064c8f9b0581e7f469c10d7d915d651a3))
+
+
+### Chores
+
+* add bun and nodejs packages to publish script ([#628](https://github.com/rivet-gg/actor-core/issues/628)) ([b0367e6](https://github.com/rivet-gg/actor-core/commit/b0367e66d3d5fb1894b85262eac8c2e0f678e2b4))
+* release 0.3.0-rc.1 ([16e25e8](https://github.com/rivet-gg/actor-core/commit/16e25e8158489da127d269f354be651ccbad4ce5))
+* release 0.4.0 ([4ca17cd](https://github.com/rivet-gg/actor-core/commit/4ca17cd39fdc2c07bfce56a4326454e16ecadd40))
+* release 0.4.0-rc.1 ([82ae37e](https://github.com/rivet-gg/actor-core/commit/82ae37e38e08dba806536811d7bea7678e6380db))
+* release version 0.3.0-rc.1 ([5343b64](https://github.com/rivet-gg/actor-core/commit/5343b648466b11fc048a20d1379e38538a442add))
+* release version 0.4.0 ([1f21931](https://github.com/rivet-gg/actor-core/commit/1f2193113398f9a51aadcea84e4807ab7d2ed194))
+* release version 0.4.0-rc.1 ([9d6bf68](https://github.com/rivet-gg/actor-core/commit/9d6bf68df08045c6e720b3132eb46c5324d0aa92))
+* update chat demo with topic ([#626](https://github.com/rivet-gg/actor-core/issues/626)) ([7be4cfb](https://github.com/rivet-gg/actor-core/commit/7be4cfb216f182c43d1e4b8500616d6a661f8006))
+
 ## [0.2.0](https://github.com/rivet-gg/actor-core/compare/v24.6.2...v0.2.0) (2025-02-06)
 
 
