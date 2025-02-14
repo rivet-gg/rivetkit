@@ -52,7 +52,7 @@ import Bun from "/images/platforms/bun.svg";
   </div>
 </CardGroup>
 
-<div style={{ height: "24px" }} />
+<div style={{ height: "16px" }} />
 
 <CardGroup cols={4}>
   <Card title="Durable, In-Memory State" icon="floppy-disk">
@@ -73,11 +73,11 @@ import Bun from "/images/platforms/bun.svg";
   </Card>
 </CardGroup>
 
-<div class="text-center">
-  <h2>Features</h2>
-</div>
+<div style={{ height: "16px" }} />
 
-{" "}
+<div class="text-center text-white text-xl font-semibold not-prose mt-8 mb-4">
+  Features
+</div>
 
 <CardGroup cols={3}>
   <Card
@@ -113,7 +113,7 @@ import Bun from "/images/platforms/bun.svg";
   />
 </CardGroup>
 
-<div style={{ height: "24px" }} />
+<div style={{ height: "128px" }} />
 
 <div class="text-center">
 	<h2>What makes ActorCore different?</h2>
@@ -193,128 +193,129 @@ import Bun from "/images/platforms/bun.svg";
   <p class="text-center">† = on supported platforms</p>
 </div>
 
+<div style={{ height: "96px" }} />
 
 ## Quickstart
 
-  <Steps>
-    <Step title="Install">
+<Steps>
+  <Step title="Install">
+    <CodeGroup>
+      ```sh npm
+      npm add actor-core
+      ```
+
+        ```sh pnpm
+        pnpm add actor-core
+        ```
+
+        ```sh yarn
+        yarn add actor-core
+        ```
+
+        ```sh bun
+        bun add actor-core
+        ```
+      </CodeGroup>
+    </Step>
+    <Step title="Create Actor">
       <CodeGroup>
-        ```sh npm
-        npm add actor-core
-        ```
 
-          ```sh pnpm
-          pnpm add actor-core
-          ```
+      ```typescript Actor (TypeScript)
+      import { Actor, type Rpc } from "actor-core";
 
-          ```sh yarn
-          yarn add actor-core
-          ```
+      export interface State {
+        messages: { username: string; message: string }[];
+      }
 
-          ```sh bun
-          bun add actor-core
-          ```
-        </CodeGroup>
-      </Step>
-      <Step title="Create Actor">
-        <CodeGroup>
-
-        ```typescript Actor (TypeScript)
-        import { Actor, type Rpc } from "actor-core";
-
-        export interface State {
-          messages: { username: string; message: string }[];
+      export default class ChatRoom extends Actor<State> {
+        // initialize this._state
+        _onInitialize() {
+          return { messages: [] };
         }
 
-        export default class ChatRoom extends Actor<State> {
-          // initialize this._state
-          _onInitialize() {
-            return { messages: [] };
-          }
+        // receive an remote procedure call from the client
+        sendMessage(rpc: Rpc<ChatRoom>, username: string, message: string) {
+          // save message to persistent storage
+          this._state.messages.push({ username, message });
 
-          // receive an remote procedure call from the client
-          sendMessage(rpc: Rpc<ChatRoom>, username: string, message: string) {
-            // save message to persistent storage
-            this._state.messages.push({ username, message });
-
-            // broadcast message to all clients
-            this._broadcast("newMessage", username, message);
-          }
+          // broadcast message to all clients
+          this._broadcast("newMessage", username, message);
         }
-        ```
+      }
+      ```
 
-        ```javascript Actor (JavaScript)
-        import { Actor } from "actor-core";
+      ```javascript Actor (JavaScript)
+      import { Actor } from "actor-core";
 
-        export default class ChatRoom extends Actor {
-          // initialize this._state
-          _onInitialize() {
-            return { messages: [] };
-          }
-
-          // receive an remote procedure call from the client
-          sendMessage(rpc, username, message) {
-            // save message to persistent storage
-            this._state.messages.push({ username, message });
-
-            // broadcast message to all clients
-            this._broadcast("newMessage", username, message);
-          }
+      export default class ChatRoom extends Actor {
+        // initialize this._state
+        _onInitialize() {
+          return { messages: [] };
         }
-        ```
 
-        </CodeGroup>
-      </Step>
-      <Step title="Connect to Actor">
-        <CodeGroup>
+        // receive an remote procedure call from the client
+        sendMessage(rpc, username, message) {
+          // save message to persistent storage
+          this._state.messages.push({ username, message });
 
-        ```typescript Browser (TypeScript)
-        import { Client } from "actor-core/client";
-        import type ChatRoom from "../src/chat-room.ts";
+          // broadcast message to all clients
+          this._broadcast("newMessage", username, message);
+        }
+      }
+      ```
 
-        const client = new Client(/* manager endpoint */);
+      </CodeGroup>
+    </Step>
+    <Step title="Connect to Actor">
+      <CodeGroup>
 
-        // connect to chat room
-        const chatRoom = await client.get<ChatRoom>({ name: "chat" });
+      ```typescript Browser (TypeScript)
+      import { Client } from "actor-core/client";
+      import type ChatRoom from "../src/chat-room.ts";
 
-        // listen for new messages
-        chatRoom.on("newMessage", (username: string, message: string) =>
-          console.log(`Message from ${username}: ${message}`),
-        );
+      const client = new Client(/* manager endpoint */);
 
-        // send message to room
-        await chatRoom.sendMessage("william", "All the world's a stage.");
-        ```
+      // connect to chat room
+      const chatRoom = await client.get<ChatRoom>({ name: "chat" });
 
-        ```javascript Browser (JavaScript)
-        import { Client } from "actor-core/client";
+      // listen for new messages
+      chatRoom.on("newMessage", (username: string, message: string) =>
+        console.log(`Message from ${username}: ${message}`),
+      );
 
-        const client = new Client(/* manager endpoint */);
+      // send message to room
+      await chatRoom.sendMessage("william", "All the world's a stage.");
+      ```
 
-        // connect to chat room
-        const chatRoom = await client.get({ name: "chat" });
+      ```javascript Browser (JavaScript)
+      import { Client } from "actor-core/client";
 
-        // listen for new messages
-        chatRoom.on("newMessage", (username, message) =>
-          console.log(`Message from ${username}: ${message}`),
-        );
+      const client = new Client(/* manager endpoint */);
 
-        // send message to room
-        await chatRoom.sendMessage("william", "All the world's a stage.");
-        ```
+      // connect to chat room
+      const chatRoom = await client.get({ name: "chat" });
 
-        </CodeGroup>
-      </Step>
-      <Step title="Deploy">
-        Deploy to your platform of choice:
+      // listen for new messages
+      chatRoom.on("newMessage", (username, message) =>
+        console.log(`Message from ${username}: ${message}`),
+      );
 
-        - [Rivet](/platforms/rivet)
-        - [Cloudflare Workers](/platforms/cloudflare-workers)
-        - [Bun](/platforms/bun)
-        - [Node.js](/platforms/nodejs)
-      </Step>
+      // send message to room
+      await chatRoom.sendMessage("william", "All the world's a stage.");
+      ```
 
-  </Steps>
+      </CodeGroup>
+    </Step>
+    <Step title="Deploy">
+      Deploy to your platform of choice:
+
+      - [Rivet](/platforms/rivet)
+      - [Cloudflare Workers](/platforms/cloudflare-workers)
+      - [Bun](/platforms/bun)
+      - [Node.js](/platforms/nodejs)
+    </Step>
+
+</Steps>
 
 ## Community & Support
 

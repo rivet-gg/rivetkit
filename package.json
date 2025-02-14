@@ -16,8 +16,9 @@
     "build": "npx turbo build",
     "check-types": "npx turbo check-types",
     "fmt": "yarn biome check --write .",
-    "docs": "cd docs && yarn dlx mintlify@latest dev",
-    "docs-proxy": "cd packages/misc/docs-proxy && yarn dev",
+    "dev-docs": "cd docs && yarn dlx mintlify@latest dev",
+    "dev-docs-middleware": "cd packages/misc/docs-middleware && yarn dev",
+    "deploy-docs-middleware": "cd packages/misc/docs-middleware && yarn deploy",
     "docs-broken-links": "cd docs && yarn dlx mintlify@latest broken-links"
   },
   "devDependencies": {

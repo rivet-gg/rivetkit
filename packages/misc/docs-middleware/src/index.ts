@@ -1,10 +1,10 @@
-//const PROTO = "https:"
-// const HOST = "rivet-c4d395ab-02-13-docs_new_landing_page.mintlify.app";
-// const PORT = "443"
+const PROTO = "https:"
+const HOST = "rivet-c4d395ab.mintlify.app";
+const PORT = "443"
 
-const PROTO = "http:";
-const HOST = "localhost";
-const PORT = "3000";
+// const PROTO = "http:";
+// const HOST = "localhost";
+// const PORT = "3000";
 
 const STYLES = `
 .inline-icon {
@@ -26,12 +26,45 @@ const STYLES = `
 	border-radius: 9999px;
 	margin-right: 0.75rem;
 }
-`;
 
-const INTRO_STYLES = `
-#header {
+[data-page="/"] #header, [data-page="/introduction"] #header {
     display: none;
 }
+`;
+
+const SCRIPT = `
+<script>
+	// Inject script to set page attribute so we can style pages according to the current page
+	//
+	// See also HTMLRewriter
+	document.addEventListener('DOMContentLoaded', function() {
+		// Add attribute on change
+		function onPathChange() {
+			console.log("Path changed to:", window.location.pathname);
+			document.documentElement.setAttribute('data-page', window.location.pathname);
+		}
+		onPathChange();
+
+		// Swizzle state changes
+		const originalPushState = history.pushState;
+		const originalReplaceState = history.replaceState;
+
+		history.pushState = function (...args) {
+			originalPushState.apply(this, args);
+			onPathChange();
+		};
+
+		history.replaceState = function (...args) {
+			originalReplaceState.apply(this, args);
+			onPathChange();
+		};
+
+		// Add events
+		window.addEventListener('popstate', updateDataPage);
+		window.addEventListener('pushstate', updateDataPage);
+		window.addEventListener('replacestate', updateDataPage);
+	});
+</script>
 `;
 
 export default {
@@ -69,20 +102,21 @@ export default {
 			}
 		}
 
-		// Inject styles
+		// Inject styles & scripts
 		const rewriter = new HTMLRewriter();
 		rewriter.on("head", {
 			element(element) {
 				element.append(`<style>${STYLES}</style>`, { html: true });
+				element.append(SCRIPT, { html: true });
 			},
 		});
-		if (url.pathname === "/" || url.pathname === "/introduction") {
-			rewriter.on("head", {
-				element(element) {
-					element.append(`<style>${INTRO_STYLES}</style>`, { html: true });
-				},
-			});
-		}
+
+		// Expose data attribute
+		rewriter.on("html", {
+			element(element) {
+				element.setAttribute("data-page", url.pathname);
+			},
+		});
 
 		return rewriter.transform(response);
 	},
