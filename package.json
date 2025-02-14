@@ -5,6 +5,7 @@
   "workspaces": [
     "packages/*",
     "packages/platforms/*",
+    "packages/misc/*",
     "examples/*",
     "examples/*/platforms/*"
   ],
@@ -16,6 +17,7 @@
     "check-types": "npx turbo check-types",
     "fmt": "yarn biome check --write .",
     "docs": "cd docs && yarn dlx mintlify@latest dev",
+    "docs-proxy": "cd packages/misc/docs-proxy && yarn dev",
     "docs-broken-links": "cd docs && yarn dlx mintlify@latest broken-links"
   },
   "devDependencies": {

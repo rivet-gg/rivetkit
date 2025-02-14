@@ -1,7 +1,7 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "name": "ActorCore",
-  "description": "The stateful serverless framework for AI agents, realtime apps, game servers, and more. Supports Rivet, Cloudflare Workers, Bun, and Node.js.",
+  "description": "Stateful, scalable, realtime backend framework. The modern way to build multiplayer, realtime, or AI agent backends. Supports Rivet, Cloudflare Workers, Bun, and Node.js.",
   "theme": "palm",
   "logo": {
     "dark": "/logo/dark.svg",

@@ -7,10 +7,8 @@
   </a>
 </p>
 
-<h3 align="center">The Stateful Serverless Framework</h3>
+<h3 align="center">Stateful, Scalable, Realtime Backend Framework</h3>
 <h4 align="center">
-  Build AI agents, realtime apps, game servers, and more.<br/>
-  Supports Rivet, Cloudflare Workers, Bun, and Node.js.
 </h4>
 <p align="center">
   <!-- <a href="https://github.com/rivet-gg/rivet/graphs/commit-activity"><img alt="GitHub commit activity" src="https://img.shields.io/github/commit-activity/m/rivet-gg/rivet?style=flat-square"/></a> -->
@@ -21,40 +19,43 @@
   <a href="/LICENSE"><img alt="License Apache-2.0" src="https://img.shields.io/github/license/rivet-gg/rivet?logo=open-source-initiative&logoColor=white"></a>
 </p>
 
-![Code snippets](./.github/media/code.png)
-
 ## Intro
+
+The modern way to build multiplayer, realtime, or AI agent backends.
+
+Supports [Rivet](https://actorcore.org/platforms/rivet), [Cloudflare Workers](https://actorcore.org/platforms/cloudflare-workers), [Bun](https://actorcore.org/platforms/bun), and [Node.js](https://actorcore.org/platforms/nodejs).
+
+### Architecture
+
+- 💾 **Durable, In-Memory State**: Fast in-memory access with built-in durability — no external databases or caches needed.
+- ⚡ **Ultra-Fast State Updates**: Real-time state updates with ultra-low latency, powered by co-locating compute and data.
+- 🔋 **Batteries Included**: Integrated support for state, RPC, events, scheduling, and multiplayer — no extra boilerplate code needed.
+- 🖥️ **Serverless & Scalable**: Effortless scaling, scale-to-zero, and easy deployments on any serverless runtime.
 
 ### Features
 
-- 🔋 **Batteries Included**: State, RPC, events, & scheduling included out of the box.
-- 💾 **Persistent & In-Memory**: Supports storing actor state in-memory that's automatically persisted for high-performance workloads.
-- ⚡ **Multiplayer & Realtime**: Build realtime or multiplayer applications on top of actors. :floppy_disk:
-- ⚙️ **Serverless & Scalable**: Built on your serverless runtime of choice to make deploying, scaling, and cost management easy. :microchip:
+- 💾 [**State**](https://actorcore.org/concepts/state): Fast in-memory access with built-in durability.
+- 💻 [**RPC**](https://actorcore.org/concepts/rpc): Remote procedure calls for seamless client-server communication.
+- 📡 [**Events**](https://actorcore.org/concepts/events): Real-time event handling and broadcasting.
+- ⏰ [**Scheduling**](https://actorcore.org/concepts/schedule): Timed tasks and operations management.
+- 🌐 [**Connections & Multiplayer**](https://actorcore.org/concepts/connections): Manage connections and multiplayer interactions.
+- 🏷️ [**Metadata**](https://actorcore.org/concepts/metadata): Store and manage additional data attributes.
 
-### Supported Platforms
+### What makes ActorCore different?
 
-- [**Rivet**](https://actorcore.org/platforms/rivet)
-- [**Cloudflare Workers**](https://actorcore.org/platforms/cloudflare-workers)
-- [**Bun**](https://actorcore.org/platforms/bun)
-- [**Node.js**](https://actorcore.org/platforms/nodejs)
-<!--- [**Supabase Edge Functions**](https://actorcore.org/platforms/supabase) - Serverless platform-->
-<!--- [**Vercel**](https://actorcore.org/platforms/vercel) - Serverless platform-->
+ActorCore is the modern way to build realtime, stateful backends.
 
-### Use Cases
+| Feature         | ActorCore | Durable Objects | AWS Lambda | Redis | Socket.io |
+| --------------- | --------- | --------------- | ---------- | ----- | --------- |
+| In-Memory State | ✓         | ✓               |            | ✓     | ✓         |
+| Durable State   | ✓         | ✓               |            |       |           |
+| RPC             | ✓         | ✓               | ✓          |       | ✓         |
+| Events          | ✓         |                 |            |       | ✓         |
+| Scheduling      | ✓         |                 |            |       |           |
+| Edge Computing  | ✓ †       | ✓               | ✓          |       |           |
+| No Vendor Lock  | ✓         |                 |            | ✓     | ✓         |
 
-ActorCore is ideal for applications that need coordinated state across multiple clients. Some common use cases include:
-
-- AI agents
-- Game Servers
-- Collaborative applications
-- Local-first apps
-- Discord Activities
-- Chat Apps
-- Yjs Sync & Storage
-- Sandboxed Code Execution
-
-By handling the complexities of state management and coordination, ActorCore lets you focus on building your application logic rather than wrestling with distributed systems primitives.
+† = on supported platforms
 
 ## Getting Started
 
@@ -80,23 +81,23 @@ bun add actor-core
 import { Actor, type Rpc } from "actor-core";
 
 export interface State {
-    messages: { username: string; message: string }[];
+  messages: { username: string; message: string }[];
 }
 
 export default class ChatRoom extends Actor<State> {
-    // initialize this._state
-    _onInitialize() {
-        return { messages: [] };
-    }
+  // initialize this._state
+  _onInitialize() {
+    return { messages: [] };
+  }
 
-    // receive an remote procedure call from the client
-    sendMessage(rpc: Rpc<ChatRoom>, username: string, message: string) {
-        // save message to persistent storage
-        this._state.messages.push({ username, message });
+  // receive an remote procedure call from the client
+  sendMessage(rpc: Rpc<ChatRoom>, username: string, message: string) {
+    // save message to persistent storage
+    this._state.messages.push({ username, message });
 
-        // broadcast message to all clients
-        this._broadcast("newMessage", username, message);
-    }
+    // broadcast message to all clients
+    this._broadcast("newMessage", username, message);
+  }
 }
 ```
 
@@ -113,7 +114,7 @@ const chatRoom = await client.get<ChatRoom>({ name: "chat" });
 
 // listen for new messages
 chatRoom.on("newMessage", (username: string, message: string) =>
-    console.log(`Message from ${username}: ${message}`),
+  console.log(`Message from ${username}: ${message}`)
 );
 
 // send message to room
@@ -131,9 +132,9 @@ Deploy to your platform of choice:
 
 ## Community & Support
 
--   Join our [**Discord**](https://rivet.gg/discord)
--   Follow us on [**X**](https://x.com/rivet_gg)
--   Follow us on [**Bluesky**](https://bsky.app/profile/rivet-gg.bsky.social)
+- Join our [**Discord**](https://rivet.gg/discord)
+- Follow us on [**X**](https://x.com/rivet_gg)
+- Follow us on [**Bluesky**](https://bsky.app/profile/rivet-gg.bsky.social)
 - File bug reports in [**GitHub Issues**](https://github.com/rivet-gg/ActorCore/issues)
 - Post questions & ideas in [**GitHub Discussions**](https://github.com/orgs/rivet-gg/discussions)
 
