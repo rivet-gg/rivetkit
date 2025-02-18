@@ -93,7 +93,8 @@ export class ActorHandleRaw {
 		private readonly endpoint: string,
 		private readonly parameters: unknown,
 		private readonly encodingKind: Encoding,
-		private readonly transportKind: Transport,
+		private readonly supportedTransports: Transport[],
+		private readonly serverTransports: Transport[],
 		private readonly dynamicImports: DynamicImports,
 	) {
 		this.#keepNodeAliveInterval = setInterval(() => 60_000);
@@ -205,12 +206,13 @@ enc
 			this.#onOpenPromise = Promise.withResolvers();
 
 			// Connect transport
-			if (this.transportKind === "websocket") {
+			const transport = this.#pickTransport();
+			if (transport === "websocket") {
 				this.#connectWebSocket();
-			} else if (this.transportKind === "sse") {
+			} else if (transport === "sse") {
 				this.#connectSse();
 			} else {
-				assertUnreachable(this.transportKind);
+				assertUnreachable(transport);
 			}
 
 			// Wait for result
@@ -220,10 +222,23 @@ enc
 		}
 	}
 
+	#pickTransport(): Transport {
+		// Choose first supported transport from server's list that client also supports
+		const transport = this.serverTransports.find(t => 
+			this.supportedTransports.includes(t)
+		);
+		
+		if (!transport) {
+			throw new errors.NoSupportedTransport();
+		}
+
+		return transport;
+	}
+
 	#connectWebSocket() {
 		const { WebSocket } = this.dynamicImports;
 
-		const url = this.#buildConnectionUrl();
+		const url = this.#buildConnectionUrl("websocket");
 
 		const ws = new WebSocket(url);
 		if (this.encodingKind === "cbor") {
@@ -255,7 +270,7 @@ enc
 	#connectSse() {
 		const { EventSource } = this.dynamicImports;
 
-		const url = this.#buildConnectionUrl();
+		const url = this.#buildConnectionUrl("sse");
 
 		const eventSource = new EventSource(url);
 		this.#transport = { sse: eventSource };
@@ -391,8 +406,8 @@ enc
 		logger().warn("socket error", { event });
 	}
 
-	#buildConnectionUrl(): string {
-		let url = `${this.endpoint}/connect/${this.transportKind}?encoding=${this.encodingKind}`;
+	#buildConnectionUrl(transport: Transport): string {
+		let url = `${this.endpoint}/connect/${transport}?encoding=${this.encodingKind}`;
 
 		if (this.parameters !== undefined) {
 			const paramsStr = JSON.stringify(this.parameters);
@@ -593,7 +608,10 @@ enc
 			}
 			return JSON.parse(data);
 		} else if (this.encodingKind === "cbor") {
-			if (this.transportKind === "sse") {
+			if (!this.#transport) {
+				// Do thing
+				throw new Error("Cannot parse message when no transport defined");
+			} else if ("sse" in this.#transport) {
 				// Decode base64 since SSE sends raw strings
 				if (typeof data === "string") {
 					const binaryString = atob(data);
@@ -605,10 +623,10 @@ enc
 						`Expected data to be a string for SSE, got ${data}.`,
 					);
 				}
-			} else if (this.transportKind === "websocket") {
+			} else if ("websocket" in this.#transport) {
 				// Do nothing
 			} else {
-				assertUnreachable(this.transportKind);
+				assertUnreachable(this.#transport);
 			}
 
 			// Decode data

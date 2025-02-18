@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ActorQuerySchema } from "./query";
+import { TransportSchema } from "@/actor/protocol/message/mod";
 export * from "./query";
 
 export const ActorsRequestSchema = z.object({
@@ -8,6 +9,7 @@ export const ActorsRequestSchema = z.object({
 
 export const ActorsResponseSchema = z.object({
 	endpoint: z.string(),
+	supportedTransports: z.array(TransportSchema),
 });
 
 //export const RivetConfigResponseSchema = z.object({

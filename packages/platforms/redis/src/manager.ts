@@ -37,7 +37,10 @@ export function buildManager(redis: Redis): ManagerDriver {
 				//
 				//return res.actor;
 
-				return { endpoint: buildActorEndpoint(origin, query.getForId.actorId) };
+				return { 
+					endpoint: buildActorEndpoint(origin, query.getForId.actorId),
+					supportedTransports: ["websocket", "sse"]
+				};
 			}
 			if ("getOrCreateForTags" in query) {
 				const tags = query.getOrCreateForTags.tags;
@@ -81,7 +84,10 @@ async function getWithTags(
 
 	const actorId = await redis.get(`actor_tags:${JSON.stringify(tags)}:id`);
 	if (actorId) {
-		return { endpoint: buildActorEndpoint(origin, actorId) };
+		return { 
+			endpoint: buildActorEndpoint(origin, actorId),
+			supportedTransports: ["websocket", "sse"]
+		};
 	}
 	return undefined;
 
@@ -126,5 +132,8 @@ async function createActor(
 		[`actor_tags:${JSON.stringify(createRequest.tags)}:id`]: actorId,
 	});
 
-	return { endpoint: buildActorEndpoint(origin, actorId.toString()) };
+	return { 
+		endpoint: buildActorEndpoint(origin, actorId.toString()),
+		supportedTransports: ["websocket", "sse"]
+	};
 }

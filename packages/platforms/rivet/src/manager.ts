@@ -68,7 +68,10 @@ export function buildManager(clientConfig: RivetClientConfig): ManagerDriver {
 					);
 				}
 
-				return { endpoint: buildActorEndpoint(res.actor) };
+				return { 
+					endpoint: buildActorEndpoint(res.actor),
+					supportedTransports: ["websocket", "sse"]
+				};
 			}
 			if ("getOrCreateForTags" in query) {
 				const tags = query.getOrCreateForTags.tags;
@@ -137,7 +140,10 @@ async function getWithTags(
 		actors.sort((a: RivetActor, b: RivetActor) => a.id.localeCompare(b.id));
 	}
 
-	return { endpoint: buildActorEndpoint(actors[0]) };
+	return { 
+		endpoint: buildActorEndpoint(actors[0]),
+		supportedTransports: ["websocket", "sse"]
+	};
 }
 
 async function createActor(
@@ -177,7 +183,10 @@ async function createActor(
 		req,
 	);
 
-	return { endpoint: buildActorEndpoint(actor) };
+	return { 
+		endpoint: buildActorEndpoint(actor),
+		supportedTransports: ["websocket", "sse"]
+	};
 }
 
 async function getBuildWithTags(

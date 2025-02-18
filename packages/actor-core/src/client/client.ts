@@ -19,7 +19,7 @@ import { importEventSource } from "@/common/eventsource";
  */
 export interface ClientOptions {
 	encoding?: Encoding;
-	transport?: Transport;
+	supportedTransports?: Transport[];
 }
 
 /**
@@ -135,7 +135,7 @@ export class Client {
 	#managerEndpointPromise: Promise<string>;
 	//#regionPromise: Promise<Region | undefined>;
 	#encodingKind: Encoding;
-	#transportKind: Transport;
+	#supportedTransports: Transport[];
 
 	// External imports
 	#dynamicImportsPromise: Promise<DynamicImports>;
@@ -164,7 +164,7 @@ export class Client {
 		//this.#regionPromise = this.#fetchRegion();
 
 		this.#encodingKind = opts?.encoding ?? "cbor";
-		this.#transportKind = opts?.transport ?? "websocket";
+		this.#supportedTransports = opts?.supportedTransports ?? ["websocket", "sse"];
 
 		// Import dynamic dependencies
 		this.#dynamicImportsPromise = (async () => {
@@ -198,10 +198,14 @@ export class Client {
 				getForId: {
 					actorId,
 				},
-			},
+			}
 		});
 
-		const handle = await this.#createHandle(resJson.endpoint, opts?.parameters);
+		const handle = await this.#createHandle(
+			resJson.endpoint,
+			opts?.parameters,
+			resJson.supportedTransports
+		);
 		return this.#createProxy(handle) as ActorHandle<A>;
 	}
 
@@ -259,10 +263,14 @@ export class Client {
 					tags,
 					create,
 				},
-			},
+			}
 		});
 
-		const handle = await this.#createHandle(resJson.endpoint, opts?.parameters);
+		const handle = await this.#createHandle(
+			resJson.endpoint,
+			opts?.parameters,
+			resJson.supportedTransports
+		);
 		return this.#createProxy(handle) as ActorHandle<A>;
 	}
 
@@ -307,16 +315,21 @@ export class Client {
 		>("POST", "/manager/actors", {
 			query: {
 				create,
-			},
+			}
 		});
 
-		const handle = await this.#createHandle(resJson.endpoint, opts?.parameters);
+		const handle = await this.#createHandle(
+			resJson.endpoint,
+			opts?.parameters,
+			resJson.supportedTransports
+		);
 		return this.#createProxy(handle) as ActorHandle<A>;
 	}
 
 	async #createHandle(
 		endpoint: string,
 		parameters: unknown,
+		serverTransports: Transport[],
 	): Promise<ActorHandleRaw> {
 		const imports = await this.#dynamicImportsPromise;
 
@@ -324,7 +337,8 @@ export class Client {
 			endpoint,
 			parameters,
 			this.#encodingKind,
-			this.#transportKind,
+			this.#supportedTransports,
+			serverTransports,
 			imports,
 		);
 		handle.__connect();
