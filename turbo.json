@@ -6,13 +6,16 @@
     },
     "build": {
       "dependsOn": ["^build"],
+      "inputs": ["src/**", "tsconfig.json", "tsup.config.ts", "package.json"],
       "outputs": ["dist/**"]
     },
-    "lint": {},
-    "dev": {
-      "cache": false,
-      "persistent": true
+    "check-types": {
+      "inputs": ["src/**", "tsconfig.json", "tsup.config.ts", "package.json"],
+      "dependsOn": ["^build"]
     },
-    "check-types": {}
+    "dev": {
+      // Both builds & checks types for this repo and all dependencies
+      "dependsOn": ["build", "^check-types", "check-types"]
+    }
   }
 }

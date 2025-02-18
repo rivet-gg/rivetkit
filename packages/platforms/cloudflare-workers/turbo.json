@@ -1,10 +1,4 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "extends": ["//"],
-  "tasks": {
-    "build": {
-      "inputs": ["src/**", "./tsup.config.ts"],
-      "dependsOn": ["actor-core#build"]
-    }
-  }
+  "extends": ["//"]
 }

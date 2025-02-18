@@ -1,0 +1,162 @@
+---
+title: Redis
+---
+
+import DriverNote from '/snippets/driver-note.mdx';
+
+The Redis Driver is a production-ready implementation that uses Redis for actor state persistence, coordination, and communication. It supports distributed actor systems and enables horizontal scaling across multiple instances.
+
+<DriverNote />
+
+<Warning>
+  ActorCore requires AOF (Append Only File) persistence to be enabled on your Redis server. See the [Redis Persistence Documentation](https://redis.io/docs/latest/operate/oss_and_stack/management/persistence/#append-only-file) for setup instructions.
+</Warning>
+
+## Compatibility
+
+| Platforms | Topologies |
+| --------- | ---------- |
+| <Icon icon="check" iconType="solid" /> Node.js | <Icon icon="check" iconType="solid" /> Standalone |
+| <Icon icon="check" iconType="solid" /> Bun     | <Icon icon="check" iconType="solid" /> Coordinate |
+| <Icon icon="xmark" iconType="solid" color="gray" /> Cloudflare Workers | <Icon icon="xmark" iconType="solid" color="gray" /> Partition |
+| <Icon icon="xmark" iconType="solid" color="gray" /> Rivet   |            |
+
+## Installation
+
+<Steps>
+  <Step>
+    Install the required packages:
+
+    <Tabs>
+      <Tab title="npm">
+        ```bash
+        npm install @actor-core/redis @actor-core/nodejs ioredis
+        ```
+      </Tab>
+      <Tab title="yarn">
+        ```bash
+        yarn add @actor-core/redis @actor-core/nodejs ioredis
+        ```
+      </Tab>
+      <Tab title="pnpm">
+        ```bash
+        pnpm add @actor-core/redis @actor-core/nodejs ioredis
+        ```
+      </Tab>
+      <Tab title="bun">
+        ```bash
+        bun add @actor-core/redis @actor-core/nodejs ioredis
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step>
+    Create a Redis connection and set up your server:
+
+    ```typescript src/index.ts
+    import { serve } from "@actor-core/nodejs"
+    import { RedisManagerDriver } from "@actor-core/redis/manager";
+    import { RedisActorDriver } from "@actor-core/redis/actor";
+    import { RedisCoordinateDriver } from "@actor-core/redis/coordinate";
+    import Redis from "ioredis";
+    import Counter from "./counter";
+
+    // Create a Redis connection
+    const redis = new Redis();
+
+    serve({
+      actors: { "counter": Counter },
+      topology: "coordinate", // Can be "standalone" or "coordinate"
+      drivers: {
+        manager: new RedisManagerDriver(redis),
+        actor: new RedisActorDriver(redis),
+        coordinate: new RedisCoordinateDriver(redis),
+      },
+    });
+    ```
+  </Step>
+
+  <Step>
+    Start your server:
+
+    <Tabs>
+      <Tab title="npm">
+        ```bash
+        npm run dev
+        ```
+      </Tab>
+      <Tab title="yarn">
+        ```bash
+        yarn dev
+        ```
+      </Tab>
+      <Tab title="pnpm">
+        ```bash
+        pnpm dev
+        ```
+      </Tab>
+      <Tab title="bun">
+        ```bash
+        bun dev
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+</Steps>
+
+## Redis Configuration
+
+The Redis driver requires an [ioredis](https://github.com/redis/ioredis) connection instance when creating the drivers. Custom configuration parameters can be passed like:
+
+```typescript
+import Redis from "ioredis";
+import { RedisManagerDriver } from "@actor-core/redis/manager";
+import { RedisActorDriver } from "@actor-core/redis/actor";
+import { RedisCoordinateDriver } from "@actor-core/redis/coordinate";
+
+// Create a Redis connection
+const redis = new Redis({
+  host: "localhost",
+  port: 6379,
+  password: "foobar",
+});
+
+// Create the Redis drivers
+const managerDriver = new RedisManagerDriver(redis);
+const actorDriver = new RedisActorDriver(redis);
+const coordinateDriver = new RedisCoordinateDriver(redis);
+```
+
+<Info>
+  See the [ioredis documentation](https://github.com/redis/ioredis#connect-to-redis) for more connection configuration options.
+</Info>
+
+## Hosted Redis Providers
+
+For production deployments, consider using these managed Redis providers:
+
+- [Amazon ElastiCache](https://aws.amazon.com/elasticache/) - AWS managed Redis service
+- [Azure Cache for Redis](https://azure.microsoft.com/en-us/products/cache) - Microsoft Azure managed Redis service
+- [Google Cloud Memorystore](https://cloud.google.com/memorystore) - Google Cloud managed Redis service
+- [Upstash](https://upstash.com/) - Serverless Redis with pay-per-use pricing
+- [Redis Cloud](https://redis.com/redis-enterprise-cloud/overview/) - Official Redis offering with enterprise features
+- [Dragonfly](https://www.dragonflydb.io/) - Redis-compatible database with higher performance
+
+<Callout>
+  For local development where persistence isn't required, the [Memory Driver](/drivers/memory) offers a simpler setup with no external dependencies.
+</Callout>
+
+## Limitations
+
+The Redis driver has several limitations to be aware of:
+
+- **Very Limited Storage**: Storage is limited to the available memory of your Redis server
+- **Single Region Support**: Only supports deployment within a single region, not globally distributed
+- **Performance Bottleneck**: All operations go through Redis, which can become a bottleneck under high load
+- **Single Point of Failure**: Redis becomes a single point of failure if not configured with proper failover mechanisms
+
+<Tip>
+  For multi-region support, built-in redundancy, and unlimited storage capacity, consider using [Rivet](/platforms/rivet) or [Cloudflare Workers](/platforms/cloudflare-workers) instead.
+</Tip>
+

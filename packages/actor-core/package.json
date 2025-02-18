@@ -41,66 +41,6 @@
         "default": "./dist/common/log.cjs"
       }
     },
-    "./platform": {
-      "import": {
-        "types": "./dist/platform.d.ts",
-        "default": "./dist/platform.js"
-      },
-      "require": {
-        "types": "./dist/platform.d.cts",
-        "default": "./dist/platform.cjs"
-      }
-    },
-    "./actor/generic": {
-      "import": {
-        "types": "./dist/actor/generic/mod.d.ts",
-        "default": "./dist/actor/generic/mod.js"
-      },
-      "require": {
-        "types": "./dist/actor/generic/mod.d.cts",
-        "default": "./dist/actor/generic/mod.cjs"
-      }
-    },
-    "./actor/protocol/serde": {
-      "import": {
-        "types": "./dist/actor/protocol/serde.d.ts",
-        "default": "./dist/actor/protocol/serde.js"
-      },
-      "require": {
-        "types": "./dist/actor/protocol/serde.d.cts",
-        "default": "./dist/actor/protocol/serde.cjs"
-      }
-    },
-    "./actor/protocol/message": {
-      "import": {
-        "types": "./dist/actor/protocol/message/mod.d.ts",
-        "default": "./dist/actor/protocol/message/mod.js"
-      },
-      "require": {
-        "types": "./dist/actor/protocol/message/mod.d.cts",
-        "default": "./dist/actor/protocol/message/mod.cjs"
-      }
-    },
-    "./actor/protocol/message/to_server": {
-      "import": {
-        "types": "./dist/actor/protocol/message/to_server.d.ts",
-        "default": "./dist/actor/protocol/message/to_server.js"
-      },
-      "require": {
-        "types": "./dist/actor/protocol/message/to_server.d.cts",
-        "default": "./dist/actor/protocol/message/to_server.cjs"
-      }
-    },
-    "./actor/protocol/message/to_client": {
-      "import": {
-        "types": "./dist/actor/protocol/message/to_client.d.ts",
-        "default": "./dist/actor/protocol/message/to_client.js"
-      },
-      "require": {
-        "types": "./dist/actor/protocol/message/to_client.d.cts",
-        "default": "./dist/actor/protocol/message/to_client.cjs"
-      }
-    },
     "./actor/errors": {
       "import": {
         "types": "./dist/actor/errors.d.ts",
@@ -111,21 +51,50 @@
         "default": "./dist/actor/errors.cjs"
       }
     },
-    "./manager/protocol": {
+    "./utils": {
       "import": {
-        "types": "./dist/manager/protocol/mod.d.ts",
-        "default": "./dist/manager/protocol/mod.js"
+        "types": "./dist/utils.d.ts",
+        "default": "./dist/utils.js"
       },
       "require": {
-        "types": "./dist/manager/protocol/mod.d.cts",
-        "default": "./dist/manager/protocol/mod.cjs"
+        "types": "./dist/utils.d.cts",
+        "default": "./dist/utils.cjs"
+      }
+    },
+    "./driver-helpers": {
+      "import": {
+        "types": "./dist/driver-helpers.d.ts",
+        "default": "./dist/driver-helpers.js"
+      },
+      "require": {
+        "types": "./dist/driver-helpers.d.cts",
+        "default": "./dist/driver-helpers.cjs"
+      }
+    },
+    "./topologies/coordinate": {
+      "import": {
+        "types": "./dist/topologies/coordinate/mod.d.ts",
+        "default": "./dist/topologies/coordinate/mod.js"
+      },
+      "require": {
+        "types": "./dist/topologies/coordinate/mod.d.cts",
+        "default": "./dist/topologies/coordinate/mod.cjs"
+      }
+    },
+    "./topologies/partition": {
+      "import": {
+        "types": "./dist/topologies/partition/mod.d.ts",
+        "default": "./dist/topologies/partition/mod.js"
+      },
+      "require": {
+        "types": "./dist/topologies/partition/mod.d.cts",
+        "default": "./dist/topologies/partition/mod.cjs"
       }
     }
   },
   "sideEffects": false,
   "scripts": {
-    "build": "tsup src/mod.ts src/client/mod.ts src/common/log.ts src/platform.ts src/actor/generic/mod.ts src/actor/protocol/serde.ts src/actor/protocol/message/mod.ts src/actor/protocol/message/to_server.ts src/actor/protocol/message/to_client.ts src/actor/errors.ts src/manager/protocol/mod.ts",
-    "dev": "yarn build --watch",
+    "build": "tsup src/mod.ts src/client/mod.ts src/common/log.ts src/actor/errors.ts src/topologies/coordinate/mod.ts src/topologies/partition/mod.ts src/utils.ts src/driver-helpers.ts",
     "check-types": "tsc --noEmit"
   },
   "dependencies": {

@@ -28,6 +28,96 @@ interface PlatformOutput {
 type PlatformConfigFn = (build: PlatformInput) => PlatformOutput;
 
 const PLATFORMS: Record<string, PlatformConfigFn> = {
+	nodejs_custom_path: (input) => {
+		input.packageJson.name += "-nodejs-custom-path";
+		input.packageJson.devDependencies = {
+			"@actor-core/nodejs": "workspace:*",
+			"@actor-core/memory": "workspace:*",
+			"hono": "^4.0.0",
+			"@hono/node-server": "^1.0.0",
+			tsx: "^4.19.2",
+			...input.packageJson.devDependencies,
+		};
+		input.packageJson.scripts = {
+			start: "npx tsx src/index.ts",
+			dev: "npx tsx watch src/index.ts",
+			...input.packageJson.scripts,
+		};
+
+		const { actorImports, actorList } = buildActorImports(input);
+
+		const files = {
+			"package.json": stringifyJson(input.packageJson),
+			"src/index.ts": dedent`
+			import { serve } from "@hono/node-server";
+			import { Hono } from "hono";
+			import { createRouter } from "@actor-core/nodejs";
+			import { MemoryManagerDriver } from "@actor-core/memory/manager";
+			import { MemoryActorDriver } from "@actor-core/memory/actor";
+			${actorImports}
+
+			// Create your Hono app
+			const app = new Hono();
+
+			// Add your custom routes
+			app.get("/", (c) => c.text("Welcome to my app!"));
+			app.get("/hello", (c) => c.text("Hello, world!"));
+
+			// Create the ActorCore router and get the injectWebSocket function
+			const { router: actorRouter, injectWebSocket } = createRouter({
+				actors: { ${actorList} },
+				topology: "standalone",
+				drivers: {
+					manager: new MemoryManagerDriver(),
+					actor: new MemoryActorDriver(),
+				},
+				router: {
+					// Custom base path for ActorCore
+					basePath: "/api/actors"
+				}
+			});
+
+			// Mount the ActorCore router at /api/actors
+			app.route("/api/actors", actorRouter);
+
+			// Create server with the combined app
+			const server = serve({
+				fetch: app.fetch,
+				port: 8787,
+			});
+
+			// IMPORTANT: Inject the websocket handler into the server
+			injectWebSocket(server);
+
+			console.log("Server running at http://localhost:8787");
+			console.log("ActorCore mounted at http://localhost:8787/api/actors");
+			`,
+			"tests/client.ts": dedent`
+			import { Client } from "actor-core/client";
+			${actorImports.replace(/from "\.\.\/\.\.\/\.\.\//g, 'from "../../')}
+
+			async function main() {
+				// Note the custom path that matches the router.basePath
+				const client = new Client("http://localhost:8787/api/actors");
+
+				const counter = await client.get({ name: "counter" });
+
+				counter.on("newCount", (count) => console.log("Event:", count));
+
+				const out = await counter.increment(5);
+				console.log("RPC:", out);
+
+				await counter.disconnect();
+			}
+
+			main().catch(console.error);
+			`,
+		};
+
+		return {
+			files,
+		};
+	},
 	rivet: (input) => {
 		input.packageJson.name += "-rivet";
 		input.packageJson.devDependencies = {
@@ -39,7 +129,7 @@ const PLATFORMS: Record<string, PlatformConfigFn> = {
 			"package.json": stringifyJson(input.packageJson),
 			"src/_manager.ts": dedent`
 				import { createManagerHandler } from "@actor-core/rivet";
-				export default createManagerHandler();
+				export default createManagerHandler({ actors: {} });
 				`,
 		};
 		const rivetJson = {
@@ -60,9 +150,13 @@ const PLATFORMS: Record<string, PlatformConfigFn> = {
 			input.packageJson.example.actors,
 		)) {
 			files[`src/${name}.ts`] = dedent`
-			import { createHandler } from "@actor-core/rivet"
-			import Actor from "../../../${script}";
-			export default createHandler(Actor);
+			import { createActorHandler } from "@actor-core/rivet"
+			import Actor from "../../../${script.replace(/\.ts$/, "")}";
+			export default createActorHandler({
+				actors: {
+					${JSON.stringify(name)}: Actor
+				}
+			});
 			`;
 			rivetJson.builds[name] = { script, access: "public" };
 		}
@@ -165,11 +259,55 @@ const PLATFORMS: Record<string, PlatformConfigFn> = {
 			files,
 		};
 	},
+	nodejs_redis: (input) => {
+		input.packageJson.name += "-nodejs-redis";
+		input.packageJson.devDependencies = {
+			"@actor-core/nodejs": "workspace:*",
+			"@actor-core/redis": "workspace:*",
+			tsx: "^4.19.2",
+			...input.packageJson.devDependencies,
+		};
+		input.packageJson.scripts = {
+			start: "npx tsx src/index.ts",
+			dev: "npx tsx watch src/index.ts",
+			...input.packageJson.scripts,
+		};
+
+		const { actorImports, actorList } = buildActorImports(input);
+
+		const files = {
+			"package.json": stringifyJson(input.packageJson),
+			"src/index.ts": dedent`
+			import { serve } from "@actor-core/nodejs"
+			import { RedisManagerDriver } from "@actor-core/redis/manager";
+			import { RedisActorDriver } from "@actor-core/redis/actor";
+			import { RedisCoordinateDriver } from "@actor-core/redis/coordinate";
+			import Redis from "ioredis";
+			${actorImports}
+
+			const redis = new Redis();
+
+			serve({
+				actors: { ${actorList} },
+				topology: "coordinate",
+				drivers: {
+					manager: new RedisManagerDriver(redis),
+					actor: new RedisActorDriver(redis),
+					coordinate: new RedisCoordinateDriver(redis),
+				},
+			});
+			`,
+		};
+
+		return {
+			files,
+		};
+	},
 	nodejs: (input) => {
 		input.packageJson.name += "-nodejs";
 		input.packageJson.devDependencies = {
 			"@actor-core/nodejs": "workspace:*",
-			"tsx": "^4.19.2",
+			tsx: "^4.19.2",
 			...input.packageJson.devDependencies,
 		};
 		input.packageJson.scripts = {
@@ -187,7 +325,7 @@ const PLATFORMS: Record<string, PlatformConfigFn> = {
 			${actorImports}
 
 			serve({
-				actors: { ${actorList} }
+				actors: { ${actorList} },
 			});
 			`,
 		};
@@ -203,7 +341,10 @@ function buildActorImports(input: PlatformInput): {
 	actorList: string;
 } {
 	const actorImports = Object.entries(input.packageJson.example.actors)
-		.map(([k, v]) => `import ${k.replace("-", "_")} from "../../../${v}";`)
+		.map(
+			([k, v]) =>
+				`import ${k.replace("-", "_")} from "../../../${v.replace(/\.ts$/, "")}";`,
+		)
 		.join("\n");
 	const actorList = Object.entries(input.packageJson.example.actors)
 		.map(([k, _v]) => `"${k}": ${k.replace("-", "_")}`)

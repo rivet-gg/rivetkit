@@ -62,7 +62,35 @@
               "concepts/authentication",
               "concepts/logging",
               "concepts/scaling",
-              "concepts/external-sql"
+              "concepts/external-sql",
+              {
+                "group": "Advanced",
+                "pages": [
+                  "concepts/topology"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "group": "Configurations",
+        "pages": [
+          {
+            "group": "Integrations",
+            "pages": [
+              "integrations/hono"
+            ]
+          },
+          {
+            "group": "Drivers",
+            "pages": [
+              "drivers/overview",
+              "drivers/memory",
+              "drivers/redis",
+              "drivers/rivet",
+              "drivers/cloudflare-workers",
+              "drivers/build"
             ]
           }
         ]
@@ -71,6 +99,7 @@
   },
   "footer": {
     "socials": {
+      "bluesky": "https://bsky.app/profile/rivet.gg",
       "x": "https://x.com/rivet_gg",
       "github": "https://github.com/rivet-gg/actor-core",
       "discord": "https://rivet.gg/discord"

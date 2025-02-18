@@ -77,13 +77,17 @@ export interface ActorRouterHandler {
 export function createActorRouter(
 	config: BaseConfig,
 	handler: ActorRouterHandler,
-) {
+): Hono {
 	const app = new Hono();
 
 	app.get("/", (c) => {
 		return c.text(
 			"This is a ActorCore server.\n\nLearn more at https://actorcore.org",
 		);
+	});
+
+	app.get("/health", (c) => {
+		return c.text("ok");
 	});
 
 	if (handler.upgradeWebSocket && handler.onConnectWebSocket) {
@@ -132,7 +136,7 @@ export function createActorRouter(
 					onClose: async (_evt) => {
 						await onOpenPromise;
 
-						logger().warn("websocket closed");
+						logger().debug("websocket closed");
 
 						await wsHandler.onClose();
 					},

@@ -1,4 +1,3 @@
-// @ts-types="../../common/dist/log.d.ts"
 import { getLogger } from "@/common//log";
 
 export const LOGGER_NAME = "actor-manager";

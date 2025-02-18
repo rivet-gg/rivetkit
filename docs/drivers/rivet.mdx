@@ -1,0 +1,38 @@
+---
+title: Rivet
+---
+
+import DriverNote from '/snippets/driver-note.mdx';
+
+The Rivet Driver is a production-ready implementation that uses Rivet's managed infrastructure for actor state persistence, coordination, and communication. It provides a fully managed environment for ActorCore with built-in scaling, monitoring, and global distribution.
+
+<DriverNote />
+
+## Compatibility
+
+| Platforms | Topologies |
+| --------- | ---------- |
+| <Icon icon="xmark" iconType="solid" color="gray" /> Node.js | <Icon icon="xmark" iconType="solid" color="gray" /> Standalone |
+| <Icon icon="xmark" iconType="solid" color="gray" /> Bun     | <Icon icon="xmark" iconType="solid" color="gray" /> Coordinate  |
+| <Icon icon="xmark" iconType="solid" color="gray" /> Cloudflare Workers | <Icon icon="check" iconType="solid" /> Partition |
+| <Icon icon="check" iconType="solid" /> Rivet   |            |
+
+## Usage
+
+There's no need to explicitly configure drivers when using ActorCore with Rivet. The platform package automatically sets up the appropriate drivers based on your project configuration.
+
+See the [Rivet Platform](/platforms/rivet) documentation for complete setup instructions.
+
+## Benefits
+
+The Rivet driver offers several advantages:
+
+- **Fully Managed**: No infrastructure to provision or maintain
+- **Global Distribution**: Deploy actors globally with automatic region selection
+- **Monitoring**: Built-in observability and performance metrics
+- **Cost Efficiency**: Pay only for what you use with no upfront costs
+- **Partition Topology Support**: Optimized for the Partition topology for efficient scaling
+
+<Tip>
+  Rivet is a great choice for production deployments, offering enterprise-grade reliability without the operational overhead.
+</Tip>

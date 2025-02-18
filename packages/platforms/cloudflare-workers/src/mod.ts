@@ -1,2 +1,1 @@
-export type { Env } from "./env";
-export { createHandler } from "./handler";
+export { type Env, createHandler, createRouter } from "./handler";

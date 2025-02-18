@@ -5,14 +5,14 @@
   "workspaces": [
     "packages/*",
     "packages/platforms/*",
+    "packages/drivers/*",
     "packages/misc/*",
     "examples/*",
     "examples/*/platforms/*"
   ],
   "scripts": {
     "start": "npx turbo watch build",
-    "dev": "npx turbo watch build",
-    "dev-types": "npx turbo watch check-types",
+    "dev": "npx turbo watch dev",
     "build": "npx turbo build",
     "check-types": "npx turbo check-types",
     "fmt": "yarn biome check --write .",

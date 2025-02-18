@@ -1,32 +1,57 @@
-import { CachedSerializer } from "../protocol/serde";
+import type { ActorTags, Connection } from "./mod";
 import type * as messageToClient from "@/actor/protocol/message/to_client";
-import { AnyActor } from "./actor";
-import { Connection } from "./connection";
+import type { CachedSerializer } from "@/actor/protocol/serde";
+import type { AnyActor } from "./actor";
 
-export interface LoadOutput {
-	actor: {
-		id: string;
-		tags: Record<string, string>;
-		createdAt: Date;
-	};
-	region: string;
+export type ConnectionDrivers = Record<string, ConnectionDriver>;
+
+export interface GetForIdInput {
+	origin: string;
+	actorId: string;
 }
 
-export interface ActorDriver {
-	connectionDrivers: Record<string, ConnectionDriver>;
+export interface GetWithTagsInput {
+	origin: string;
+	tags: ActorTags;
+}
 
+export interface GetActorOutput {
+	endpoint: string;
+	tags: ActorTags;
+}
+
+export interface CreateActorInput {
+	origin: string;
+	region?: string;
+	tags: ActorTags;
+}
+
+export interface CreateActorOutput {
+	endpoint: string;
+}
+
+export interface ManagerDriver {
+	getForId(input: GetForIdInput): Promise<GetActorOutput | undefined>;
+	getWithTags(input: GetWithTagsInput): Promise<GetActorOutput | undefined>;
+	createActor(input: CreateActorInput): Promise<CreateActorOutput>;
+}
+
+export type KvKey = unknown[];
+export type KvValue = unknown;
+
+export interface ActorDriver {
 	//load(): Promise<LoadOutput>;
 
 	// HACK: Clean these up
-	kvGet(key: any): Promise<any>;
-	kvGetBatch(key: any[]): Promise<[any, any][]>;
-	kvPut(key: any, value: any): Promise<void>;
-	kvPutBatch(key: [any, any][]): Promise<void>;
-	kvDelete(key: any): Promise<void>;
-	kvDeleteBatch(key: any[]): Promise<void>;
+	kvGet(actorId: string, key: KvKey): Promise<KvValue | undefined>;
+	kvGetBatch(actorId: string, key: KvKey[]): Promise<(KvValue | undefined)[]>;
+	kvPut(actorId: string, key: KvKey, value: KvValue): Promise<void>;
+	kvPutBatch(actorId: string, key: [KvKey, KvValue][]): Promise<void>;
+	kvDelete(actorId: string, key: KvKey): Promise<void>;
+	kvDeleteBatch(actorId: string, key: KvKey[]): Promise<void>;
 
 	// Schedule
-	setAlarm(timestamp: number): Promise<void>;
+	setAlarm(actorId: string, timestamp: number): Promise<void>;
 
 	// TODO:
 	//destroy(): Promise<void>;

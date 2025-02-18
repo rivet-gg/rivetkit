@@ -1,12 +1,13 @@
 import { setupLogging } from "actor-core/log";
-import { Manager } from "actor-core/platform";
 import type { ActorContext } from "@rivet-gg/actor-core";
 import { logger } from "./log";
-import { buildManager } from "./manager";
+import { RivetManagerDriver } from "./manager_driver";
 import type { RivetClientConfig } from "./rivet_client";
 import type { RivetHandler } from "./util";
+import { PartitionTopologyManager } from "actor-core/topologies/partition";
+import { Config } from "./config";
 
-export function createManagerHandler(): RivetHandler {
+export function createManagerHandler(config: Config): RivetHandler {
 	const handler = {
 		async start(ctx: ActorContext): Promise<void> {
 			setupLogging();
@@ -32,9 +33,17 @@ export function createManagerHandler(): RivetHandler {
 				environment: ctx.metadata.environment.slug,
 			};
 
-			const manager = new Manager(buildManager(clientConfig));
+			// Setup manager driver
+			if (!config.drivers) config.drivers = {};
+			if (!config.drivers.manager) {
+				config.drivers.manager = new RivetManagerDriver(clientConfig);
+			}
 
-			const app = manager.router;
+			// Create manager topology
+			config.topology = config.topology ?? "partition";
+			const managerTopology = new PartitionTopologyManager(config);
+
+			const app = managerTopology.router;
 
 			app.all("*", (c) => {
 				return c.text("Not Found (ActorCore)", 404);

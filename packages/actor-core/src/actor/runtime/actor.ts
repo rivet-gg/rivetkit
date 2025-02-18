@@ -11,7 +11,8 @@ import type { WSContext, WSEvents } from "hono/ws";
 import onChange from "on-change";
 import { type ActorConfig, mergeActorConfig } from "./actor_config";
 import { Connection, type ConnectionId } from "./connection";
-import type { ActorDriver, ConnectionDriver } from "./driver";
+import type { ActorDriver, ConnectionDrivers } from "./driver";
+import type { ConnectionDriver } from "./driver";
 import * as errors from "../errors";
 import { parseMessage, processMessage } from "../protocol/message/mod";
 import { instanceLogger, logger } from "./log";
@@ -129,9 +130,6 @@ export abstract class Actor<
 	ConnParams = undefined,
 	ConnState = undefined,
 > {
-	// Store the init promise so network requests can await initialization
-	__initializedPromise?: Promise<void>;
-
 	__isStopping = false;
 
 	#persistChanged = false;
@@ -153,7 +151,8 @@ export abstract class Actor<
 
 	#backgroundPromises: Promise<void>[] = [];
 	#config: ActorConfig;
-	#driver!: ActorDriver;
+	#connectionDrivers!: ConnectionDrivers;
+	#actorDriver!: ActorDriver;
 	#actorId!: string;
 	#tags!: ActorTags;
 	#region!: string;
@@ -186,23 +185,23 @@ export abstract class Actor<
 	}
 
 	async __start(
-		driver: ActorDriver,
+		connectionDrivers: ConnectionDrivers,
+		actorDriver: ActorDriver,
 		actorId: string,
 		tags: ActorTags,
 		region: string,
 	) {
-		this.#driver = driver;
+		this.#connectionDrivers = connectionDrivers;
+		this.#actorDriver = actorDriver;
 		this.#actorId = actorId;
 		this.#tags = tags;
 		this.#region = region;
-		this.#schedule = new Schedule(this, driver);
+		this.#schedule = new Schedule(this, actorDriver);
 
 		// Initialize server
 		//
 		// Store the promise so network requests can await initialization
-		this.__initializedPromise = this.#initialize();
-		await this.__initializedPromise;
-		this.__initializedPromise = undefined;
+		await this.#initialize();
 
 		// TODO: Exit process if this errors
 		logger().info("actor starting");
@@ -270,7 +269,11 @@ export abstract class Actor<
 					this.#persistChanged = false;
 
 					// Write to KV
-					await this.#driver.kvPut(KEYS.STATE.DATA, this.#persistRaw);
+					await this.#actorDriver.kvPut(
+						this.#actorId,
+						KEYS.STATE.DATA,
+						this.#persistRaw,
+					);
 
 					logger().debug("persist saved");
 				});
@@ -338,14 +341,10 @@ export abstract class Actor<
 
 	async #initialize() {
 		// Read initial state
-		const [[_i, initialized], [_s, persistData]] =
-			(await this.#driver.kvGetBatch([
-				KEYS.STATE.INITIALIZED,
-				KEYS.STATE.DATA,
-			])) as [
-				[any, boolean],
-				[any, PersistedActor<Actor<State, ConnParams, ConnState>>],
-			];
+		const [initialized, persistData] = (await this.#actorDriver.kvGetBatch(
+			this.#actorId,
+			[KEYS.STATE.INITIALIZED, KEYS.STATE.DATA],
+		)) as [boolean, PersistedActor<Actor<State, ConnParams, ConnState>>];
 
 		if (initialized) {
 			logger().info("actor restoring", {
@@ -400,7 +399,7 @@ export abstract class Actor<
 
 			// Update state
 			logger().debug("writing state");
-			await this.#driver.kvPutBatch([
+			await this.#actorDriver.kvPutBatch(this.#actorId, [
 				[KEYS.STATE.INITIALIZED, true],
 				[KEYS.STATE.DATA, persist],
 			]);
@@ -473,7 +472,7 @@ export abstract class Actor<
 
 	__getConnectionDriver(driverId: string): ConnectionDriver {
 		// Get driver
-		const driver = this.#driver.connectionDrivers[driverId];
+		const driver = this.#connectionDrivers[driverId];
 		if (!driver) throw new Error(`No connection driver: ${driverId}`);
 		return driver;
 	}

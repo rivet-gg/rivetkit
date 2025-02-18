@@ -1,2 +1,2 @@
-export { ManagerDriver } from "./driver";
+export { ManagerDriver } from "@/actor/runtime/driver";
 export { Manager } from "./manager";

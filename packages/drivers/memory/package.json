@@ -1,0 +1,49 @@
+{
+  "name": "@actor-core/memory",
+  "version": "0.3.0",
+  "files": [
+    "src",
+    "dist",
+    "package.json"
+  ],
+  "type": "module",
+  "exports": {
+    "./actor": {
+      "import": {
+        "types": "./dist/actor.d.ts",
+        "default": "./dist/actor.js"
+      },
+      "require": {
+        "types": "./dist/actor.d.cts",
+        "default": "./dist/actor.cjs"
+      }
+    },
+    "./manager": {
+      "import": {
+        "types": "./dist/manager.d.ts",
+        "default": "./dist/manager.js"
+      },
+      "require": {
+        "types": "./dist/manager.d.cts",
+        "default": "./dist/manager.cjs"
+      }
+    }
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup src/actor.ts src/manager.ts",
+    "check-types": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "actor-core": "workspace:*"
+  },
+  "devDependencies": {
+    "actor-core": "workspace:*",
+    "tsup": "^8.3.6",
+    "typescript": "^5.5.2"
+  },
+  "dependencies": {
+    "@types/node": "^22.13.1",
+    "hono": "^4.7.0"
+  }
+}

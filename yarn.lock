@@ -9,12 +9,10 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@actor-core/bun@workspace:packages/platforms/bun"
   dependencies:
-    "@actor-core/redis": "workspace:*"
     "@types/bun": "npm:^1.2.2"
+    actor-core: "workspace:*"
     dedent: "npm:^1.5.3"
     hono: "npm:^4.7.0"
-    ioredis: "npm:^5.4.2"
-    p-retry: "npm:^6.2.1"
     tsup: "npm:^8.3.6"
     typescript: "npm:^5.5.2"
   peerDependencies:
@@ -28,10 +26,24 @@ __metadata:
   dependencies:
     "@cloudflare/workers-types": "npm:^4.20250129.0"
     actor-core: "workspace:*"
-    hono: "npm:^4.7.0"
+    hono: "npm:^4.7.2"
     tsup: "npm:^8.3.6"
     typescript: "npm:^5.5.2"
     wrangler: "npm:^3.101.0"
+  peerDependencies:
+    actor-core: "workspace:*"
+  languageName: unknown
+  linkType: soft
+
+"@actor-core/memory@workspace:*, @actor-core/memory@workspace:packages/drivers/memory":
+  version: 0.0.0-use.local
+  resolution: "@actor-core/memory@workspace:packages/drivers/memory"
+  dependencies:
+    "@types/node": "npm:^22.13.1"
+    actor-core: "workspace:*"
+    hono: "npm:^4.7.0"
+    tsup: "npm:^8.3.6"
+    typescript: "npm:^5.5.2"
   peerDependencies:
     actor-core: "workspace:*"
   languageName: unknown
@@ -41,13 +53,11 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@actor-core/nodejs@workspace:packages/platforms/nodejs"
   dependencies:
-    "@actor-core/redis": "workspace:*"
+    "@actor-core/memory": "workspace:*"
     "@hono/node-server": "npm:^1.13.8"
     "@hono/node-ws": "npm:^1.0.8"
-    dedent: "npm:^1.5.3"
+    actor-core: "workspace:*"
     hono: "npm:^4.7.0"
-    ioredis: "npm:^5.4.2"
-    p-retry: "npm:^6.2.1"
     tsup: "npm:^8.3.6"
     typescript: "npm:^5.5.2"
   peerDependencies:
@@ -55,9 +65,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@actor-core/redis@workspace:*, @actor-core/redis@workspace:packages/platforms/redis":
+"@actor-core/redis@workspace:*, @actor-core/redis@workspace:packages/drivers/redis":
   version: 0.0.0-use.local
-  resolution: "@actor-core/redis@workspace:packages/platforms/redis"
+  resolution: "@actor-core/redis@workspace:packages/drivers/redis"
   dependencies:
     "@types/node": "npm:^22.13.1"
     actor-core: "workspace:*"
@@ -1042,7 +1052,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@hono/node-server@npm:^1.13.8":
+"@hono/node-server@npm:^1.0.0, @hono/node-server@npm:^1.13.8":
   version: 1.13.8
   resolution: "@hono/node-server@npm:1.13.8"
   peerDependencies:
@@ -2017,7 +2027,9 @@ __metadata:
   resolution: "chat-room-bun@workspace:examples/chat-simple/platforms/bun"
   dependencies:
     "@actor-core/bun": "workspace:*"
+    "@types/prompts": "npm:^2"
     actor-core: "workspace:*"
+    prompts: "npm:^2.4.2"
     typescript: "npm:^5.5.2"
   languageName: unknown
   linkType: soft
@@ -2028,9 +2040,41 @@ __metadata:
   dependencies:
     "@actor-core/cloudflare-workers": "workspace:*"
     "@cloudflare/workers-types": "npm:^4.20250129.0"
+    "@types/prompts": "npm:^2"
     actor-core: "workspace:*"
+    prompts: "npm:^2.4.2"
     typescript: "npm:^5.5.2"
     wrangler: "npm:^3.101.0"
+  languageName: unknown
+  linkType: soft
+
+"chat-room-nodejs-custom-path@workspace:examples/chat-simple/platforms/nodejs_custom_path":
+  version: 0.0.0-use.local
+  resolution: "chat-room-nodejs-custom-path@workspace:examples/chat-simple/platforms/nodejs_custom_path"
+  dependencies:
+    "@actor-core/memory": "workspace:*"
+    "@actor-core/nodejs": "workspace:*"
+    "@hono/node-server": "npm:^1.0.0"
+    "@types/prompts": "npm:^2"
+    actor-core: "workspace:*"
+    hono: "npm:^4.0.0"
+    prompts: "npm:^2.4.2"
+    tsx: "npm:^4.19.2"
+    typescript: "npm:^5.5.2"
+  languageName: unknown
+  linkType: soft
+
+"chat-room-nodejs-redis@workspace:examples/chat-simple/platforms/nodejs_redis":
+  version: 0.0.0-use.local
+  resolution: "chat-room-nodejs-redis@workspace:examples/chat-simple/platforms/nodejs_redis"
+  dependencies:
+    "@actor-core/nodejs": "workspace:*"
+    "@actor-core/redis": "workspace:*"
+    "@types/prompts": "npm:^2"
+    actor-core: "workspace:*"
+    prompts: "npm:^2.4.2"
+    tsx: "npm:^4.19.2"
+    typescript: "npm:^5.5.2"
   languageName: unknown
   linkType: soft
 
@@ -2039,7 +2083,9 @@ __metadata:
   resolution: "chat-room-nodejs@workspace:examples/chat-simple/platforms/nodejs"
   dependencies:
     "@actor-core/nodejs": "workspace:*"
+    "@types/prompts": "npm:^2"
     actor-core: "workspace:*"
+    prompts: "npm:^2.4.2"
     tsx: "npm:^4.19.2"
     typescript: "npm:^5.5.2"
   languageName: unknown
@@ -2050,7 +2096,9 @@ __metadata:
   resolution: "chat-room-rivet@workspace:examples/chat-simple/platforms/rivet"
   dependencies:
     "@actor-core/rivet": "workspace:*"
+    "@types/prompts": "npm:^2"
     actor-core: "workspace:*"
+    prompts: "npm:^2.4.2"
     typescript: "npm:^5.5.2"
   languageName: unknown
   linkType: soft
@@ -2181,6 +2229,7 @@ __metadata:
     "@actor-core/bun": "workspace:*"
     actor-core: "workspace:*"
     eventsource: "npm:^3.0.5"
+    mitata: "npm:^1.0.34"
     typescript: "npm:^5.5.2"
   languageName: unknown
   linkType: soft
@@ -2193,8 +2242,39 @@ __metadata:
     "@cloudflare/workers-types": "npm:^4.20250129.0"
     actor-core: "workspace:*"
     eventsource: "npm:^3.0.5"
+    mitata: "npm:^1.0.34"
     typescript: "npm:^5.5.2"
     wrangler: "npm:^3.101.0"
+  languageName: unknown
+  linkType: soft
+
+"counter-nodejs-custom-path@workspace:examples/counter/platforms/nodejs_custom_path":
+  version: 0.0.0-use.local
+  resolution: "counter-nodejs-custom-path@workspace:examples/counter/platforms/nodejs_custom_path"
+  dependencies:
+    "@actor-core/memory": "workspace:*"
+    "@actor-core/nodejs": "workspace:*"
+    "@hono/node-server": "npm:^1.0.0"
+    actor-core: "workspace:*"
+    eventsource: "npm:^3.0.5"
+    hono: "npm:^4.0.0"
+    mitata: "npm:^1.0.34"
+    tsx: "npm:^4.19.2"
+    typescript: "npm:^5.5.2"
+  languageName: unknown
+  linkType: soft
+
+"counter-nodejs-redis@workspace:examples/counter/platforms/nodejs_redis":
+  version: 0.0.0-use.local
+  resolution: "counter-nodejs-redis@workspace:examples/counter/platforms/nodejs_redis"
+  dependencies:
+    "@actor-core/nodejs": "workspace:*"
+    "@actor-core/redis": "workspace:*"
+    actor-core: "workspace:*"
+    eventsource: "npm:^3.0.5"
+    mitata: "npm:^1.0.34"
+    tsx: "npm:^4.19.2"
+    typescript: "npm:^5.5.2"
   languageName: unknown
   linkType: soft
 
@@ -2205,6 +2285,7 @@ __metadata:
     "@actor-core/nodejs": "workspace:*"
     actor-core: "workspace:*"
     eventsource: "npm:^3.0.5"
+    mitata: "npm:^1.0.34"
     tsx: "npm:^4.19.2"
     typescript: "npm:^5.5.2"
   languageName: unknown
@@ -2217,6 +2298,7 @@ __metadata:
     "@actor-core/rivet": "workspace:*"
     actor-core: "workspace:*"
     eventsource: "npm:^3.0.5"
+    mitata: "npm:^1.0.34"
     typescript: "npm:^5.5.2"
   languageName: unknown
   linkType: soft

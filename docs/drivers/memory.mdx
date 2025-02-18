@@ -1,0 +1,114 @@
+---
+title: Memory
+---
+
+import DriverNote from '/snippets/driver-note.mdx';
+
+The Memory Driver is a simple in-memory implementation designed for development and testing environments. It stores all actor state in memory, which means data is not persisted between application restarts.
+
+<DriverNote />
+
+<Warning>
+  The Memory Driver is not recommended for production environments as it doesn't provide persistence or distributed capabilities.
+</Warning>
+
+## Compatibility
+
+| Platforms | Topologies |
+| --------- | ---------- |
+| <Icon icon="check" iconType="solid" /> Node.js | <Icon icon="check" iconType="solid" /> Standalone |
+| <Icon icon="check" iconType="solid" /> Bun     | <Icon icon="xmark" iconType="solid" color="gray" /> Partition  |
+| <Icon icon="xmark" iconType="solid" color="gray" /> Cloudflare Workers | <Icon icon="xmark" iconType="solid" color="gray" /> Coordinate |
+| <Icon icon="xmark" iconType="solid" color="gray" /> Rivet   |            |
+
+## Installation
+
+<Steps>
+  <Step>
+    Install the required packages:
+
+    <Tabs>
+      <Tab title="npm">
+        ```bash
+        npm install @actor-core/memory @actor-core/nodejs
+        ```
+      </Tab>
+      <Tab title="yarn">
+        ```bash
+        yarn add @actor-core/memory @actor-core/nodejs
+        ```
+      </Tab>
+      <Tab title="pnpm">
+        ```bash
+        pnpm add @actor-core/memory @actor-core/nodejs
+        ```
+      </Tab>
+      <Tab title="bun">
+        ```bash
+        bun add @actor-core/memory @actor-core/nodejs
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step>
+    Create a simple server using the Memory driver:
+
+    ```typescript src/index.ts
+    import { serve } from "@actor-core/nodejs"
+    import { MemoryManagerDriver } from "@actor-core/memory/manager";
+    import { MemoryActorDriver } from "@actor-core/memory/actor";
+    import Counter from "./counter";
+
+    serve({
+      actors: { "counter": Counter },
+      topology: "standalone",
+      drivers: {
+        manager: new MemoryManagerDriver(),
+        actor: new MemoryActorDriver(),
+      },
+    });
+    ```
+  </Step>
+
+  <Step>
+    Start your server:
+
+    <Tabs>
+      <Tab title="npm">
+        ```bash
+        npm run dev
+        ```
+      </Tab>
+      <Tab title="yarn">
+        ```bash
+        yarn dev
+        ```
+      </Tab>
+      <Tab title="pnpm">
+        ```bash
+        pnpm dev
+        ```
+      </Tab>
+      <Tab title="bun">
+        ```bash
+        bun dev
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+</Steps>
+
+## Limitations
+
+The Memory driver has several limitations to be aware of:
+
+- **No Persistence**: All data is stored in memory and lost when the application restarts
+- **Single Process**: Only works within a single process - not suitable for distributed environments 
+- **Scalability**: Cannot scale beyond a single instance
+- **Coordination**: Limited support for coordinated topology, as actors can only communicate within the same process
+
+<Tip>
+  For production environments or applications requiring persistence and distributed capabilities, consider using the [Rivet](/platforms/rivet) or [Cloudflare Workers](/platforms/cloudflare-workers) instead.
+</Tip>
+

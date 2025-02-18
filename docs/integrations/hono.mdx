@@ -1,0 +1,172 @@
+---
+title: Hono
+---
+
+[Hono](https://hono.dev/) is a lightweight web framework that works well with ActorCore across multiple deployment platforms. This guide explains how to integrate ActorCore with Hono on different platforms.
+
+## Important Configuration
+
+When mounting the ActorCore router at a custom path, you **must** specify the same path in the router configuration using `basePath`:
+
+```typescript
+// Example configuration with basePath
+const { router: actorRouter } = createRouter({
+  actors: { "counter": Counter },
+  router: {
+    // IMPORTANT: Must specify the same basePath where your router is mounted
+    basePath: "/api"
+  }
+});
+
+// Mount at the same path specified in basePath
+app.route("/api", actorRouter);
+```
+
+This ensures that WebSocket connections and other functionality work correctly when accessing your actors through the custom path.
+
+## Platforms
+
+Each platform has specific requirements for integrating Hono with ActorCore.
+
+### Cloudflare Workers
+
+```typescript
+import { Hono } from "hono";
+import { createRouter } from "@actor-core/cloudflare-workers";
+import Counter from "./counter";
+
+// Export the ActorHandler for Durable Objects
+export { ActorHandler } from "@actor-core/cloudflare-workers";
+
+// Create a fetch handler that combines your app with ActorCore
+export default {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext) {
+    // Create your Hono app inside the fetch handler
+    const app = new Hono();
+    
+    // Add your custom routes
+    app.get("/", (c) => c.text("Welcome to my app!"));
+    app.get("/hello", (c) => c.text("Hello, world!"));
+    
+    // Create the ActorCore router with access to env
+    const actorRouter = createRouter(
+      {
+        actors: {
+          "counter": Counter
+        },
+        router: {
+          // IMPORTANT: Must specify the same basePath where your router is mounted
+          basePath: "/api"
+        }
+      },
+      env.ACTOR_KV,
+      env.ACTOR_DO
+    );
+    
+    // Mount the ActorCore router at /api
+    app.route("/api", actorRouter);
+    
+    // Handle the request with the combined Hono app
+    return app.fetch(request, env, ctx);
+  }
+};
+```
+
+Make sure to update your client connection URL to include the custom path:
+
+```typescript
+// If you mounted ActorCore at /api
+import { Client } from "actor-core/client";
+const client = new Client("https://your-worker.workers.dev/api");
+```
+
+### Node.js
+
+```typescript
+import { serve } from "@hono/node-server";
+import { Hono } from "hono";
+import { createRouter } from "@actor-core/nodejs";
+import Counter from "./counter";
+
+// Create your Hono app
+const app = new Hono();
+
+// Add your custom routes
+app.get("/", (c) => c.text("Welcome to my app!"));
+app.get("/hello", (c) => c.text("Hello, world!"));
+
+// Create the ActorCore router and get the injectWebSocket function
+const { router: actorRouter, injectWebSocket } = createRouter({
+  actors: { "counter": Counter },
+  router: {
+    // IMPORTANT: Must specify the same basePath where your router is mounted
+    basePath: "/api"
+  }
+});
+
+// Mount the ActorCore router at /api
+app.route("/api", actorRouter);
+
+// Create server with the combined app
+const server = serve({
+  fetch: app.fetch,
+  port: 8787,
+});
+
+// IMPORTANT: Inject the websocket handler into the server
+injectWebSocket(server);
+
+console.log("Server running at http://localhost:8787");
+```
+
+Make sure to update your client connection URL to include the custom path:
+
+```typescript
+// If you mounted ActorCore at /api
+import { Client } from "actor-core/client";
+const client = new Client("http://localhost:8787/api");
+```
+
+### Bun
+
+```typescript
+import { Hono } from "hono";
+import { createRouter } from "@actor-core/bun";
+import Counter from "./counter";
+
+// Create your Hono app
+const app = new Hono();
+
+// Add your custom routes
+app.get("/", (c) => c.text("Welcome to my app!"));
+app.get("/hello", (c) => c.text("Hello, world!"));
+
+// Create the ActorCore router and get the websocket handler
+const { router: actorRouter, webSocketHandler } = createRouter({
+  actors: { "counter": Counter },
+  router: {
+    // IMPORTANT: Must specify the same basePath where your router is mounted
+    basePath: "/api"
+  }
+});
+
+// Mount the ActorCore router at /api
+app.route("/api", actorRouter);
+
+// Create and start the server
+export default {
+  port: 8787,
+  fetch: app.fetch,
+  // IMPORTANT: Pass the webSocketHandler to Bun
+  websocket: webSocketHandler,
+};
+```
+
+Make sure to update your client connection URL to include the custom path:
+
+```typescript
+// If you mounted ActorCore at /api
+import { Client } from "actor-core/client";
+const client = new Client("http://localhost:8787/api");
+```
+
