@@ -167,3 +167,4 @@ dist
 .yarn/
 **/.wrangler
 **/.DS_Store
+.aider*
