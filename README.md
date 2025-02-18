@@ -23,7 +23,7 @@
 
 The modern way to build multiplayer, realtime, or AI agent backends.
 
-Supports [Rivet](https://actorcore.org/platforms/rivet), [Cloudflare Workers](https://actorcore.org/platforms/cloudflare-workers), [Bun](https://actorcore.org/platforms/bun), and [Node.js](https://actorcore.org/platforms/nodejs).
+Supports [Rivet](https://rivet.gg/docs/setup), [Cloudflare Workers](https://actorcore.org/platforms/cloudflare-workers), [Bun](https://actorcore.org/platforms/bun), and [Node.js](https://actorcore.org/platforms/nodejs).
 
 ### Architecture
 
@@ -125,7 +125,7 @@ await chatRoom.sendMessage("william", "All the world's a stage.");
 
 Deploy to your platform of choice:
 
-- [**Rivet**](https://actorcore.org/platforms/rivet)
+- [**Rivet**](https://rivet.gg/docs/setup)
 - [**Cloudflare Workers**](https://actorcore.org/platforms/cloudflare-workers)
 - [**Bun**](https://actorcore.org/platforms/bun)
 - [**Node.js**](https://actorcore.org/platforms/nodejs)
