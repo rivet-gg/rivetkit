@@ -81,5 +81,11 @@
       "apiHost": "https://ph.rivet.gg/",
       "apiKey": "phc_6kfTNEAVw7rn1LA51cO3D69FefbKupSWFaM7OUgEpEo"
     }
-  }
+  },
+  "redirects": [
+    {
+      "source": "/platforms/rivet",
+      "destination": "https://rivet.gg/docs/setup"
+    }
+  ]
 }
