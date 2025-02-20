@@ -55,7 +55,7 @@ import Bun from "/images/platforms/bun.svg";
 <div style={{ height: "16px" }} />
 
 <CardGroup cols={4}>
-  <Card title="Durable, In-Memory State" icon="floppy-disk">
+  <Card title="Persistent, In-Memory State" icon="floppy-disk">
     Fast in-memory access with built-in durability — no external databases or
     caches needed.
   </Card>
@@ -116,8 +116,8 @@ import Bun from "/images/platforms/bun.svg";
 <div style={{ height: "128px" }} />
 
 <div class="text-center">
-	<h2>What makes ActorCore different?</h2>
-	<p>ActorCore is the modern way to build realtime, stateful backends.</p>
+	<h2>Everything you need to build realtime, stateful backends</h2>
+	<p>ActorCore provides a solid foundation with the features you'd expect for modern apps.</p>
 
   <table style={{ marginLeft: "auto", marginRight: "auto", width: "max-content" }}>
     <thead>
@@ -125,9 +125,9 @@ import Bun from "/images/platforms/bun.svg";
         <th>Feature</th>
         <th>ActorCore</th>
         <th>Durable Objects</th>
-        <th>AWS Lambda</th>
-        <th>Redis</th>
         <th>Socket.io</th>
+        <th>Redis</th>
+        <th>AWS Lambda</th>
       </tr>
     </thead>
     <tbody>
@@ -135,12 +135,12 @@ import Bun from "/images/platforms/bun.svg";
         <td>In-Memory State</td>
         <td><Icon icon="check" iconType="solid" /></td>
         <td><Icon icon="check" iconType="solid" /></td>
+        <td><Icon icon="check" iconType="solid" /></td>
+        <td><Icon icon="check" iconType="solid" /></td>
         <td></td>
-        <td><Icon icon="check" iconType="solid" /></td>
-        <td><Icon icon="check" iconType="solid" /></td>
       </tr>
       <tr>
-        <td>Durable State</td>
+        <td>Persisted State</td>
         <td><Icon icon="check" iconType="solid" /></td>
         <td><Icon icon="check" iconType="solid" /></td>
         <td></td>
@@ -156,41 +156,42 @@ import Bun from "/images/platforms/bun.svg";
         <td><Icon icon="check" iconType="solid" /></td>
       </tr>
       <tr>
-        <td>Events</td>
+        <td>Events (Pub/Sub)</td>
+        <td><Icon icon="check" iconType="solid" /></td>
+        <td><Icon icon="minus" color="gray" iconType="solid" /></td>
+        <td><Icon icon="check" iconType="solid" /></td>
         <td><Icon icon="check" iconType="solid" /></td>
         <td></td>
-        <td></td>
-        <td></td>
-        <td><Icon icon="check" iconType="solid" /></td>
       </tr>
       <tr>
         <td>Scheduling</td>
         <td><Icon icon="check" iconType="solid" /></td>
+        <td><Icon icon="minus" color="gray" iconType="solid" /></td>
         <td></td>
         <td></td>
-        <td></td>
-        <td></td>
+        <td><Icon icon="minus" color="gray" iconType="solid" /></td>
       </tr>
       <tr>
         <td>Edge Computing</td>
-        <td><Icon icon="check" iconType="solid" />†</td>
-        <td><Icon icon="check" iconType="solid" /></td>
+        <td><Icon icon="check" iconType="solid" />¹</td>
         <td><Icon icon="check" iconType="solid" /></td>
         <td></td>
         <td></td>
+        <td><Icon icon="check" iconType="solid" /></td>
       </tr>
       <tr>
         <td>No Vendor Lock</td>
         <td><Icon icon="check" iconType="solid" /></td>
         <td></td>
+        <td><Icon icon="check" iconType="solid" /></td>
+        <td><Icon icon="check" iconType="solid" /></td>
         <td></td>
-        <td><Icon icon="check" iconType="solid" /></td>
-        <td><Icon icon="check" iconType="solid" /></td>
       </tr>
     </tbody>
   </table>
 
-  <p class="text-center">† = on supported platforms</p>
+  <p class="text-center"><Icon icon="minus" color="gray" iconType="solid" /> = requires significant boilerplate code or external service</p>
+  <p class="text-center">¹ = on supported platforms</p>
 </div>
 
 <div style={{ height: "96px" }} />

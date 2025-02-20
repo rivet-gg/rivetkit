@@ -27,7 +27,7 @@ Supports [Rivet](https://rivet.gg/docs/setup), [Cloudflare Workers](https://acto
 
 ### Architecture
 
-- 💾 **Durable, In-Memory State**: Fast in-memory access with built-in durability — no external databases or caches needed.
+- 💾 **Persistent, In-Memory State**: Fast in-memory access with built-in durability — no external databases or caches needed.
 - ⚡ **Ultra-Fast State Updates**: Real-time state updates with ultra-low latency, powered by co-locating compute and data.
 - 🔋 **Batteries Included**: Integrated support for state, RPC, events, scheduling, and multiplayer — no extra boilerplate code needed.
 - 🖥️ **Serverless & Scalable**: Effortless scaling, scale-to-zero, and easy deployments on any serverless runtime.
@@ -41,21 +41,23 @@ Supports [Rivet](https://rivet.gg/docs/setup), [Cloudflare Workers](https://acto
 - 🌐 [**Connections & Multiplayer**](https://actorcore.org/concepts/connections): Manage connections and multiplayer interactions.
 - 🏷️ [**Metadata**](https://actorcore.org/concepts/metadata): Store and manage additional data attributes.
 
-### What makes ActorCore different?
+### Everything you need to build realtime, stateful backends
 
-ActorCore is the modern way to build realtime, stateful backends.
+ActorCore provides a solid foundation with the features you'd expect for modern apps.
 
-| Feature         | ActorCore | Durable Objects | AWS Lambda | Redis | Socket.io |
-| --------------- | --------- | --------------- | ---------- | ----- | --------- |
-| In-Memory State | ✓         | ✓               |            | ✓     | ✓         |
-| Durable State   | ✓         | ✓               |            |       |           |
-| RPC             | ✓         | ✓               | ✓          |       | ✓         |
-| Events          | ✓         |                 |            |       | ✓         |
-| Scheduling      | ✓         |                 |            |       |           |
-| Edge Computing  | ✓ †       | ✓               | ✓          |       |           |
-| No Vendor Lock  | ✓         |                 |            | ✓     | ✓         |
+| Feature         | ActorCore | Durable Objects | Socket.io | Redis | AWS Lambda |
+| --------------- | --------- | --------------- | --------- | ----- | ---------- |
+| In-Memory State | ✓         | ✓               | ✓         | ✓     |            |
+| Persisted State | ✓         | ✓               |           |       |            |
+| RPC             | ✓         | ✓               | ✓         |       | ✓          |
+| Events          | ✓         | -               | ✓         | ✓     |            |
+| Scheduling      | ✓         | -               |           |       | -          |
+| Edge Computing  | ✓ †       | ✓               |           |       | ✓          |
+| No Vendor Lock  | ✓         |                 | ✓         | ✓     |            |
 
-† = on supported platforms
+_\- = requires significant boilerplate code or external service_
+
+_† = on supported platforms_
 
 ## Getting Started
 
