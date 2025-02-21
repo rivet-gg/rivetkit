@@ -3,6 +3,7 @@ import path from "node:path";
 import micromatch from "micromatch";
 import pkgJson from "../package.json" with { type: "json" };
 import { PLATFORM_SLUGS } from "./platforms";
+import { execSync } from "node:child_process";
 
 const EXAMPLES_PATH = path.join(__dirname, "../../../examples");
 
@@ -23,10 +24,12 @@ export async function getExamples(): Promise<ExamplesRegistry> {
 	const dirs = await readdir(EXAMPLES_PATH, { encoding: "utf-8" });
 
 	for (const dir of dirs) {
-		const files = await readdir(path.join(EXAMPLES_PATH, dir), {
+		const output = execSync(`git ls-files ${dir}`, {
+			cwd: EXAMPLES_PATH,
 			encoding: "utf-8",
-			recursive: true,
 		});
+
+		const files = output.split("\n").filter(Boolean);
 
 		const packageJson = await readFile(
 			path.join(EXAMPLES_PATH, dir, "package.json"),
@@ -49,13 +52,13 @@ export async function getExamples(): Promise<ExamplesRegistry> {
 				continue;
 			}
 
-			const info = await stat(path.join(EXAMPLES_PATH, dir, file));
+			const info = await stat(path.join(EXAMPLES_PATH, file));
 			if (info.isDirectory()) {
 				continue;
 			}
 
-			registry[dir].files[file] = await readFile(
-				path.join(EXAMPLES_PATH, dir, file),
+			registry[dir].files[path.relative(dir, file)] = await readFile(
+				path.join(EXAMPLES_PATH, file),
 				{ encoding: "utf-8" },
 			);
 		}

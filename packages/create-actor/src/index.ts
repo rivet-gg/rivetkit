@@ -1,3 +1,4 @@
+import "./instrument";
 import assert from "node:assert";
 import fs from "node:fs";
 import path from "node:path";
@@ -42,7 +43,7 @@ const { values, positionals } = parseArgs({
 console.log(`🎭 ${k.red().bold("Create Actor")} ${k.gray(`v${VERSION}`)}`);
 console.log();
 
-if(values.help) {
+if (values.help) {
 	console.log(`${k.bold("create-actor")} [folder] [options]
 
 ${k.underline("Positionals:")}
@@ -127,7 +128,9 @@ if (!platform) {
 assert(platform !== undefined, "Platform must be defined");
 
 // MARK: Copy template files
-console.log(`🔨 Creating new actor in ${k.underline(targetDir)}...`);
+console.log(
+	`🔨 Creating new actor in ${k.underline(path.relative(process.cwd(), targetDir))}...`,
+);
 if (overwrite) {
 	await rimraf(targetDir);
 } else if (!fs.existsSync(targetDir)) {
@@ -156,9 +159,13 @@ const runDevCmd = pkgManager === "yarn" ? "yarn dev" : `${pkgManager} run dev`;
 console.log(`
 ✨ Done. To get started:
 
-   cd ${folderName}
+   cd ${path.relative(process.cwd(), folderName)}
    ${pkgManager} install
    ${runDevCmd}
-    
+   
+Read more: https://actorcore.org/platforms/${platform}
 Happy hacking! 🚀
 `);
+
+// for happy sentry
+export default {};

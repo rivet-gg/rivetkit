@@ -1,6 +1,6 @@
 import fs from "node:fs";
 
-export function stringifyJson(input: any): string {
+export function stringifyJson(input: unknown): string {
 	return JSON.stringify(input, null, 2);
 }
 
