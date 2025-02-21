@@ -17,4 +17,4 @@ jobs:
         
       - run: yarn build
       # TODO: Add --compact once we publish them to npm
-      - run: yarn dlx pkg-pr-new publish --yarn './packages/**'
+      - run: yarn dlx pkg-pr-new publish --yarn './packages/create-actor'
