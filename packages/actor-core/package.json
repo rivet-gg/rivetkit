@@ -10,6 +10,7 @@
     "package.json"
   ],
   "type": "module",
+  "bin": "./dist/cli/mod.cjs",
   "exports": {
     ".": {
       "import": {
@@ -90,11 +91,21 @@
         "types": "./dist/topologies/partition/mod.d.cts",
         "default": "./dist/topologies/partition/mod.cjs"
       }
+    },
+    "./cli": {
+      "import": {
+        "types": "./dist/cli/mod.d.ts",
+        "default": "./dist/cli/mod.js"
+      },
+      "require": {
+        "types": "./dist/cli/mod.d.cts",
+        "default": "./dist/cli/mod.cjs"
+      }
     }
   },
   "sideEffects": false,
   "scripts": {
-    "build": "tsup src/mod.ts src/client/mod.ts src/common/log.ts src/actor/errors.ts src/topologies/coordinate/mod.ts src/topologies/partition/mod.ts src/utils.ts src/driver-helpers.ts",
+    "build": "tsup src/mod.ts src/client/mod.ts src/common/log.ts src/actor/errors.ts src/topologies/coordinate/mod.ts src/topologies/partition/mod.ts src/utils.ts src/driver-helpers.ts src/cli/mod.ts",
     "check-types": "tsc --noEmit"
   },
   "dependencies": {

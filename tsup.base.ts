@@ -11,4 +11,5 @@ export default {
 	// IMPORTANT: Splitting is required to fix a bug with ESM (https://github.com/egoist/tsup/issues/992#issuecomment-1763540165)
 	splitting: true,
 	skipNodeModulesBundle: true,
+	publicDir: true,
 } satisfies Options;

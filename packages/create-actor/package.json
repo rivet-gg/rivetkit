@@ -1,5 +1,6 @@
 {
   "name": "create-actor",
+  "description": "Easily create your new Actor with Actor Core",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/rivet-gg/actor-core.git",
@@ -8,9 +9,14 @@
   "type": "module",
   "version": "0.3.0",
   "bin": {
-    "ca": "index.js",
-    "create-actor": "index.js",
-    "create-actor-core": "index.js"
+    "ca": "dist/cli.js",
+    "cac": "dist/cli.js",
+    "create-actor": "dist/cli.js",
+    "create-actor-core": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "yarn build --watch"
   },
   "license": "Apache-2.0",
   "files": [
@@ -19,26 +25,11 @@
   ],
   "preferGlobal": true,
   "preferUnplugged": true,
-  "scripts": {
-    "preinstall": "tsup",
-    "prepack": "jq 'del(.scripts.preinstall)' package.json > temp.json && mv temp.json package.json",
-    "build": "tsup"
+  "dependencies": {
+    "@actor-core/cli": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^22.13.4",
-    "@types/prompts": "^2",
-    "micromatch": "^4.0.8",
-    "tsup": "^8.3.6",
-    "unplugin-macros": "^0.16.0"
-  },
-  "dependencies": {
-    "@sentry/esbuild-plugin": "^3.2.0",
-    "@sentry/node": "^9.1.0",
-    "@sentry/profiling-node": "^9.1.0",
-    "dedent": "^1.5.3",
-    "kleur": "^4.1.5",
-    "pkg-types": "^1.3.1",
-    "prompts": "^2.4.2",
-    "rimraf": "^6.0.1"
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.2"
   }
 }

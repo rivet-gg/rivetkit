@@ -17,7 +17,8 @@
         "types": "./dist/mod.d.cts",
         "default": "./dist/mod.cjs"
       }
-    }
+    },
+    "./tsconfig": "./dist/tsconfig.json"
   },
   "sideEffects": false,
   "scripts": {

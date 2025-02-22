@@ -12,8 +12,9 @@ jobs:
       - uses: actions/setup-node@v4
       - run: yarn install
       - run: yarn build
+      - run: yarn install # re-install to detect CLIs
       # create examples
-      - run: npx create-actor --platform nodejs --template chat-simple templates/chat-simple
-      - run: npx create-actor --platform nodejs --template counter templates/counter
+      - run: ./node_modules/.bin/create-actor --platform nodejs --template chat-simple templates/chat-simple
+      - run: ./node_modules/.bin/create-actor --platform nodejs --template counter templates/counter
       # TODO: Add --compact once we publish them to npm
       - run: yarn dlx pkg-pr-new publish 'packages/**/platforms/*' 'packages/*' --template './templates/*'

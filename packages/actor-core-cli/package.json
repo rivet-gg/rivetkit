@@ -1,0 +1,64 @@
+{
+  "name": "@actor-core/cli",
+  "description": "All purpose CLI for Actor Core",
+  "version": "0.3.0",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rivet-gg/actor-core.git",
+    "directory": "packages/actor-core-cli"
+  },
+  "files": [
+    "dist",
+    "package.json"
+  ],
+  "exports": {
+    ".": "./dist/mod.js"
+  },
+  "type": "module",
+  "bin": {
+    "ac": "./dist/cli.js",
+    "actor-core": "./dist/cli.js"
+  },
+  "sideEffects": true,
+  "preferGlobal": true,
+  "preferUnplugged": true,
+  "scripts": {
+    "build": "tsup",
+    "dev": "yarn build --watch",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@sentry/profiling-node": "^9.3.0",
+    "bundle-require": "^5.1.0",
+    "cfonts": "^3.3.0",
+    "yoga-wasm-web": "0.3.3"
+  },
+  "devDependencies": {
+    "@inkjs/ui": "^2.0.0",
+    "@rivet-gg/api": "^24.6.2",
+    "@sentry/esbuild-plugin": "^3.2.0",
+    "@sentry/node": "^9.3.0",
+    "@types/micromatch": "^4",
+    "@types/react": "^18.3",
+    "@types/semver": "^7.5.8",
+    "@types/which": "^3.0.4",
+    "commander": "^13.1.0",
+    "execa": "^9.5.2",
+    "ink": "^5.1.0",
+    "ink-gradient": "^3.0.0",
+    "ink-link": "^4.1.0",
+    "ink-spinner": "^5.0.0",
+    "joycon": "^3.1.1",
+    "micromatch": "^4.0.8",
+    "pkg-types": "^2.0.0",
+    "react": "^18.3",
+    "semver": "^7.7.1",
+    "strip-ansi": "^7.1.0",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.2",
+    "unplugin-macros": "^0.16.0",
+    "which": "^5.0.0",
+    "zod": "^3.24.2"
+  }
+}
