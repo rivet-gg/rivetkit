@@ -53,7 +53,7 @@ export default class ScheduledCounter extends Actor<State> {
 
   async delayedIncrement(rpc: Rpc<ScheduledCounter>, x: number): Promise<void> {
     // Increment the counter after 5 seconds
-    this.after(5000, "increment", x);
+    this.after(5000, "_increment", x);
   }
 }
 ```
