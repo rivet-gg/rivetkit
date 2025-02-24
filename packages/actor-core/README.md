@@ -87,7 +87,7 @@ Deploy to your platform of choice:
 
 - Join our [Discord](https://rivet.gg/discord)
 - Follow us on [X](https://x.com/rivet_gg)
-- Follow us on [Bluesky](https://bsky.app/profile/rivet-gg.bsky.social)
+- Follow us on [Bluesky](https://bsky.app/profile/rivet.gg)
 - File bug reports in [GitHub Issues](https://github.com/rivet-gg/actor-core/issues)
 - Post questions & ideas in [GitHub Discussions](https://github.com/rivet-gg/actor-core/discussions)
 
