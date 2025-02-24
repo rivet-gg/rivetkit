@@ -1,16 +1,16 @@
 export async function importWebSocket(): Promise<typeof WebSocket> {
 	let _WebSocket: typeof WebSocket;
-	
-	if (typeof WebSocket !== "undefined") {
-		// Browser environment
-		_WebSocket = WebSocket;
-	} else {
-		try {
-			// Node.js environment
-			const ws = await import("ws");
-			console.log('toimiiko tää selaimes', ws)
-			_WebSocket = ws.WebSocket as unknown as typeof WebSocket;
-		} catch {
+
+	// Node.js environment
+	try {
+		const ws = await import("ws");
+		if (!ws.WebSocket) throw "Unsupported";
+		_WebSocket = ws.WebSocket as unknown as typeof WebSocket;
+	} catch {
+		if (typeof WebSocket !== "undefined") {
+			// Browser environment
+			_WebSocket = WebSocket;
+		} else {
 			// WS not available
 			_WebSocket = class MockWebSocket {
 				constructor() {
@@ -18,7 +18,7 @@ export async function importWebSocket(): Promise<typeof WebSocket> {
 						'WebSocket support requires installing the "ws" package',
 					);
 				}
-			} as unknown as typeof WebSocket; 
+			} as unknown as typeof WebSocket;
 		}
 	}
 
