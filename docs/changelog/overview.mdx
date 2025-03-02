@@ -1,0 +1,38 @@
+---
+title: "Releases"
+description: "New updates and improvements"
+mode: "center"
+---
+
+<Update label="0.5.0" description="March 2nd, 2025">
+  ## Features
+
+  - **Hono integration**: Manually mount ActorCore on to any Hono router ([Documentation](/integrations/hono))
+  - **CORS configuration**: Configure security rules for your server ([Documentation](/concepts/cors))
+  - **Config validation**: Throws error if attempting to pass invalid config
+  - **Standalone topology**: Run ActorCore as a single process, without external dependency on Redis ([Documentation](/concepts/toplogy))
+
+  ## Documentation
+
+  - [**Drivers**](/drivers/overview): Document all available drivers
+  - [**Building Drivers**](/drivers/build): Instructions on how to build a driver
+  - [**Topologies**](/concepts/topology): Document the types of topologies & when to use them
+
+  ## Technicals
+
+  - **Split drivers & platforms**: Split platforms away from drivers so they can be independently mixed & matched
+  - **Separate topologies**: Split logic for all 3 topologies
+</Update>
+
+<Update label="0.4.0" description="February 13th, 2025">
+  ## Features
+
+  - **Bun Support**
+  - **Node.js Support**
+  - **Connection retry with backoff**
+
+  ## Fixes
+
+  - **Keep client process alive**: Keep process alive until disconnected
+</Update>
+

@@ -34,64 +34,81 @@
     }
   },
   "navigation": {
-    "groups": [
+    "tabs": [
       {
-        "group": "Get Started",
+        "tab": "Documentation",
         "pages": [
-          "introduction",
-          "platforms/rivet",
-          "platforms/cloudflare-workers",
-          "platforms/bun",
-          "platforms/nodejs"
-        ]
-      },
-      {
-        "group": "Concepts",
-        "pages": [
-          "concepts/manage",
-          "concepts/rpc",
-          "concepts/state",
-          "concepts/events",
-          "concepts/lifecycle",
-          "concepts/schedule",
-          "concepts/connections",
           {
-            "group": "More",
+            "group": "Get Started",
             "pages": [
-              "concepts/cors",
-              "concepts/metadata",
-              "concepts/authentication",
-              "concepts/logging",
-              "concepts/scaling",
-              "concepts/external-sql",
+              "introduction",
+              "platforms/rivet",
+              "platforms/cloudflare-workers",
+              "platforms/bun",
+              "platforms/nodejs"
+            ]
+          },
+          {
+            "group": "Concepts",
+            "pages": [
+              "concepts/manage",
+              "concepts/rpc",
+              "concepts/state",
+              "concepts/events",
+              "concepts/lifecycle",
+              "concepts/schedule",
+              "concepts/connections",
               {
-                "group": "Advanced",
+                "group": "More",
                 "pages": [
-                  "concepts/topology"
+                  "concepts/cors",
+                  "concepts/metadata",
+                  "concepts/authentication",
+                  "concepts/logging",
+                  "concepts/scaling",
+                  "concepts/external-sql",
+                  {
+                    "group": "Advanced",
+                    "pages": [
+                      "concepts/topology"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Configurations",
+            "pages": [
+              {
+                "group": "Integrations",
+                "pages": [
+                  "integrations/hono"
+                ]
+              },
+              {
+                "group": "Drivers",
+                "pages": [
+                  "drivers/overview",
+                  "drivers/memory",
+                  "drivers/redis",
+                  "drivers/rivet",
+                  "drivers/cloudflare-workers",
+                  "drivers/build"
                 ]
               }
             ]
           }
+
         ]
       },
       {
-        "group": "Configurations",
+        "tab": "Changelog",
         "pages": [
           {
-            "group": "Integrations",
+            "group": "Changelog",
             "pages": [
-              "integrations/hono"
-            ]
-          },
-          {
-            "group": "Drivers",
-            "pages": [
-              "drivers/overview",
-              "drivers/memory",
-              "drivers/redis",
-              "drivers/rivet",
-              "drivers/cloudflare-workers",
-              "drivers/build"
+              "changelog/overview"
             ]
           }
         ]
