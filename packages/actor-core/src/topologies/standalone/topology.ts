@@ -72,7 +72,7 @@ export class StandaloneTopology {
 		// Load actor meta
 		const actorMetadata = await this.#config.drivers.manager.getForId({
 			// HACK: The endpoint doesn't matter here, so we're passing a bogon IP
-			origin: "http://192.0.2.0",
+			baseUrl: "http://192.0.2.0",
 			actorId,
 		});
 		if (!actorMetadata) throw new Error(`No actor found for ID ${actorId}`);

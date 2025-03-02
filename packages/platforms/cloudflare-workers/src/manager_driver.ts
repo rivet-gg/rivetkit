@@ -5,21 +5,18 @@ import type {
 	CreateActorInput,
 	GetActorOutput,
 } from "actor-core/driver-helpers";
-import { ActorHandlerInterface } from "./actor_handler_do";
+import { Bindings } from "./mod";
 
 export class CloudflareWorkersManagerDriver implements ManagerDriver {
-	#actorKvNs: KVNamespace;
-	#actorDoNs: DurableObjectNamespace<ActorHandlerInterface>;
+	async getForId({
+		c,
+		baseUrl,
+		actorId,
+	}: GetForIdInput<{ Bindings: Bindings }>): Promise<
+		GetActorOutput | undefined
+	> {
+		if (!c) throw new Error("Missing Hono context");
 
-	constructor(
-		actorKvNs: KVNamespace,
-		actorDoNs: DurableObjectNamespace<ActorHandlerInterface>,
-	) {
-		this.#actorKvNs = actorKvNs;
-		this.#actorDoNs = actorDoNs;
-	}
-
-	async getForId({ origin, actorId }: GetForIdInput): Promise<GetActorOutput | undefined> {
 		// TODO: Error handling
 
 		//// Validate actor
@@ -36,37 +33,42 @@ export class CloudflareWorkersManagerDriver implements ManagerDriver {
 		//return res.actor;
 
 		// Get tags from KV
-		const tagsStr = await this.#actorKvNs.get(`actor:${actorId}:tags`);
-		
+		const tagsStr = await c.env.ACTOR_KV.get(`actor:${actorId}:tags`);
+
 		// If the actor doesn't exist, return undefined
 		if (!tagsStr) {
 			return undefined;
 		}
-		
+
 		const tags = JSON.parse(tagsStr);
 
 		return {
-			endpoint: buildActorEndpoint(origin, actorId),
+			endpoint: buildActorEndpoint(baseUrl, actorId),
 			tags,
 		};
 	}
 
 	async getWithTags({
-		origin,
+		c,
+		baseUrl,
 		tags,
-	}: GetWithTagsInput): Promise<GetActorOutput | undefined> {
+	}: GetWithTagsInput<{ Bindings: Bindings }>): Promise<
+		GetActorOutput | undefined
+	> {
+		if (!c) throw new Error("Missing Hono context");
+
 		// TODO: use an inverse tree for correct tag looups
 
-		const actorId = await this.#actorKvNs.get(
+		const actorId = await c.env.ACTOR_KV.get(
 			`actor:tags:${JSON.stringify(tags)}:id`,
 		);
 		if (actorId) {
 			// Get the complete tags for the actor
-			const tagsStr = await this.#actorKvNs.get(`actor:${actorId}:tags`);
+			const tagsStr = await c.env.ACTOR_KV.get(`actor:${actorId}:tags`);
 			const actorTags = tagsStr ? JSON.parse(tagsStr) : tags;
-			
+
 			return {
-				endpoint: buildActorEndpoint(origin, actorId),
+				endpoint: buildActorEndpoint(baseUrl, actorId),
 				tags: actorTags,
 			};
 		}
@@ -74,39 +76,39 @@ export class CloudflareWorkersManagerDriver implements ManagerDriver {
 	}
 
 	async createActor({
-		origin,
+		c,
+		baseUrl,
 		region,
 		tags,
-	}: CreateActorInput): Promise<GetActorOutput> {
-		const actorId = this.#actorDoNs.newUniqueId({
+	}: CreateActorInput<{ Bindings: Bindings }>): Promise<GetActorOutput> {
+		if (!c) throw new Error("Missing Hono context");
+
+		const actorId = c.env.ACTOR_DO.newUniqueId({
 			jurisdiction: region as DurableObjectJurisdiction | undefined,
 		});
 
 		// Init actor
-		const actor = this.#actorDoNs.get(actorId);
+		const actor = c.env.ACTOR_DO.get(actorId);
 		await actor.initialize({
 			tags,
 		});
 
 		// Save tags (after init so the actor is ready)
-		await this.#actorKvNs.put(
+		await c.env.ACTOR_KV.put(
 			`actor:tags:${JSON.stringify(tags)}:id`,
 			actorId.toString(),
 		);
-		
+
 		// Also store the tags indexed by actor ID
-		await this.#actorKvNs.put(
-			`actor:${actorId}:tags`,
-			JSON.stringify(tags),
-		);
+		await c.env.ACTOR_KV.put(`actor:${actorId}:tags`, JSON.stringify(tags));
 
 		return {
-			endpoint: buildActorEndpoint(origin, actorId.toString()),
+			endpoint: buildActorEndpoint(baseUrl, actorId.toString()),
 			tags,
 		};
 	}
 }
 
-function buildActorEndpoint(origin: string, actorId: string) {
-	return `${origin}/actors/${actorId}`;
+function buildActorEndpoint(baseUrl: string, actorId: string) {
+	return `${baseUrl}/actors/${actorId}`;
 }

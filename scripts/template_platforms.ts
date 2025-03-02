@@ -139,6 +139,103 @@ const PLATFORMS: Record<string, PlatformConfigFn> = {
 			},
 		};
 	},
+	"cloudflare-workers-custom-path": (input) => {
+		input.packageJson.name += "-cloudflare-workers-custom-path";
+		input.packageJson.devDependencies = {
+			hono: "^4.7.0",
+			"@actor-core/cloudflare-workers": "workspace:*",
+			wrangler: "^3.101.0",
+			"@cloudflare/workers-types": "^4.20250129.0",
+			...input.packageJson.devDependencies,
+		};
+		input.packageJson.scripts = {
+			deploy: "wrangler deploy",
+			dev: "wrangler dev",
+			start: "wrangler dev",
+			"cf-typegen": "wrangler types",
+			...input.packageJson.scripts,
+		};
+
+		const { actorImports, actorList } = buildActorImports(input);
+
+		return {
+			files: {
+				"package.json": stringifyJson(input.packageJson),
+				"wrangler.json": stringifyJson({
+					name: "counter",
+					main: "src/index.ts",
+					compatibility_date: "2025-01-29",
+					migrations: [
+						{
+							new_classes: ["ActorHandler"],
+							tag: "v1",
+						},
+					],
+					durable_objects: {
+						bindings: [
+							{
+								class_name: "ActorHandler",
+								name: "ACTOR_DO",
+							},
+						],
+					},
+					kv_namespaces: [
+						{
+							binding: "ACTOR_KV",
+							id: "TODO",
+						},
+					],
+					observability: {
+						enabled: true,
+					},
+				}),
+				"src/index.ts": dedent`
+				import { createRouter } from "@actor-core/cloudflare-workers";
+				import { Hono } from "hono";
+				${actorImports}
+
+				// Create your Hono app inside the fetch handler
+				const app = new Hono();
+
+				// Add your custom routes
+				app.get("/", (c) => c.text("Welcome to my app!"));
+				app.get("/hello", (c) => c.text("Hello, world!"));
+
+				const { router: actorRouter, ActorHandler } = createRouter({
+					actors: { ${actorList} },
+					// IMPORTANT: Must specify the same basePath where your router is mounted
+					basePath: "/my-path"
+				});
+
+				// Mount the ActorCore router at /my-path
+				app.route("/my-path", actorRouter);
+				
+				export { app as default, ActorHandler };
+                `,
+				// TODO: Make this only generate on the counter example
+				"tests/client.ts": dedent`
+				import { Client } from "actor-core/client";
+				import Counter from "../../../src/counter";
+
+				async function main() {
+					// Note the custom path that matches the router.basePath
+					const client = new Client("http://localhost:8787/my-path");
+
+					const counter = await client.get<Counter>({ name: "counter" });
+
+					counter.on("newCount", (count) => console.log("Event:", count));
+
+					const out = await counter.increment(5);
+					console.log("RPC:", out);
+
+					await counter.disconnect();
+				}
+
+				main().catch(console.error);
+				`,
+			},
+		};
+	},
 	bun: (input) => {
 		input.packageJson.name += "-bun";
 		input.packageJson.devDependencies = {
@@ -249,7 +346,7 @@ const PLATFORMS: Record<string, PlatformConfigFn> = {
 		input.packageJson.devDependencies = {
 			"@actor-core/nodejs": "workspace:*",
 			"@actor-core/memory": "workspace:*",
-			"hono": "^4.0.0",
+			hono: "^4.0.0",
 			"@hono/node-server": "^1.0.0",
 			tsx: "^4.19.2",
 			...input.packageJson.devDependencies,
@@ -288,11 +385,11 @@ const PLATFORMS: Record<string, PlatformConfigFn> = {
 					actor: new MemoryActorDriver(),
 				},
 				// Custom base path for ActorCore
-				basePath: "/api/actors"
+				basePath: "/my-path"
 			});
 
-			// Mount the ActorCore router at /api/actors
-			app.route("/api/actors", actorRouter);
+			// Mount the ActorCore router at /my-path
+			app.route("/my-path", actorRouter);
 
 			// Create server with the combined app
 			const server = serve({
@@ -304,7 +401,7 @@ const PLATFORMS: Record<string, PlatformConfigFn> = {
 			injectWebSocket(server);
 
 			console.log("Server running at http://localhost:8787");
-			console.log("ActorCore mounted at http://localhost:8787/api/actors");
+			console.log("ActorCore mounted at http://localhost:8787/my-path");
 			`,
 			// TODO: Make this only generate on the counter example
 			"tests/client.ts": dedent`
@@ -313,7 +410,7 @@ const PLATFORMS: Record<string, PlatformConfigFn> = {
 
 			async function main() {
 				// Note the custom path that matches the router.basePath
-				const client = new Client("http://localhost:8787/api/actors");
+				const client = new Client("http://localhost:8787/my-path");
 
 				const counter = await client.get<Counter>({ name: "counter" });
 

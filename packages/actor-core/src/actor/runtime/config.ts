@@ -56,7 +56,7 @@ export type GetUpgradeWebSocket = (
 /** Base config used for the actor config across all platforms. */
 export const BaseConfigSchema = z.object({
 	actors: z.record(z.string(), z.custom<AnyActorConstructor>()),
-	topology: TopologySchema.optional().default("standalone"),
+	topology: TopologySchema.optional(),  // Default value depends on the platform selected
 	drivers: z
 		.object({
 			manager: z.custom<ManagerDriver>().optional(),

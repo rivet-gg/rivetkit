@@ -2040,6 +2040,20 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"chat-room-cloudflare-workers-custom-path@workspace:examples/chat-simple/platforms/cloudflare-workers-custom-path":
+  version: 0.0.0-use.local
+  resolution: "chat-room-cloudflare-workers-custom-path@workspace:examples/chat-simple/platforms/cloudflare-workers-custom-path"
+  dependencies:
+    "@actor-core/cloudflare-workers": "workspace:*"
+    "@cloudflare/workers-types": "npm:^4.20250129.0"
+    "@types/prompts": "npm:^2"
+    actor-core: "workspace:*"
+    prompts: "npm:^2.4.2"
+    typescript: "npm:^5.5.2"
+    wrangler: "npm:^3.101.0"
+  languageName: unknown
+  linkType: soft
+
 "chat-room-cloudflare-workers@workspace:examples/chat-simple/platforms/cloudflare-workers":
   version: 0.0.0-use.local
   resolution: "chat-room-cloudflare-workers@workspace:examples/chat-simple/platforms/cloudflare-workers"
@@ -2237,6 +2251,20 @@ __metadata:
     eventsource: "npm:^3.0.5"
     mitata: "npm:^1.0.34"
     typescript: "npm:^5.5.2"
+  languageName: unknown
+  linkType: soft
+
+"counter-cloudflare-workers-custom-path@workspace:examples/counter/platforms/cloudflare-workers-custom-path":
+  version: 0.0.0-use.local
+  resolution: "counter-cloudflare-workers-custom-path@workspace:examples/counter/platforms/cloudflare-workers-custom-path"
+  dependencies:
+    "@actor-core/cloudflare-workers": "workspace:*"
+    "@cloudflare/workers-types": "npm:^4.20250129.0"
+    actor-core: "workspace:*"
+    eventsource: "npm:^3.0.5"
+    mitata: "npm:^1.0.34"
+    typescript: "npm:^5.5.2"
+    wrangler: "npm:^3.101.0"
   languageName: unknown
   linkType: soft
 

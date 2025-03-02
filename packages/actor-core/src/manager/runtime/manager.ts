@@ -71,7 +71,8 @@ export class Manager {
 			let actorOutput: { endpoint: string };
 			if ("getForId" in query) {
 				const output = await this.#driver.getForId({
-					origin: baseUrl,
+					c,
+					baseUrl: baseUrl,
 					actorId: query.getForId.actorId,
 				});
 				if (!output)
@@ -84,7 +85,8 @@ export class Manager {
 				if (!tags) throw new Error("Must define tags in getOrCreateForTags");
 
 				const existingActor = await this.#driver.getWithTags({
-					origin: baseUrl,
+					c,
+					baseUrl: baseUrl,
 					tags: tags as ActorTags,
 				});
 				if (existingActor) {
@@ -94,7 +96,8 @@ export class Manager {
 					if (query.getOrCreateForTags.create) {
 						// Create if needed
 						actorOutput = await this.#driver.createActor({
-							origin: baseUrl,
+							c,
+							baseUrl: baseUrl,
 							...query.getOrCreateForTags.create,
 						});
 					} else {
@@ -104,7 +107,8 @@ export class Manager {
 				}
 			} else if ("create" in query) {
 				actorOutput = await this.#driver.createActor({
-					origin: baseUrl,
+					c,
+					baseUrl: baseUrl,
 					...query.create,
 				});
 			} else {

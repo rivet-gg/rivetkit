@@ -2,26 +2,31 @@ import type { ActorTags, Connection } from "./mod";
 import type * as messageToClient from "@/actor/protocol/message/to_client";
 import type { CachedSerializer } from "@/actor/protocol/serde";
 import type { AnyActor } from "./actor";
+import type { Env, Context as HonoContext } from "hono";
 
 export type ConnectionDrivers = Record<string, ConnectionDriver>;
 
-export interface GetForIdInput {
-	origin: string;
+export interface GetForIdInput<E extends Env = any> {
+	c?: HonoContext<E>;
+	baseUrl: string;
 	actorId: string;
 }
 
-export interface GetWithTagsInput {
-	origin: string;
+export interface GetWithTagsInput<E extends Env = any> {
+	c?: HonoContext<E>;
+	baseUrl: string;
 	tags: ActorTags;
 }
 
-export interface GetActorOutput {
+export interface GetActorOutput<E extends Env = any> {
+	c?: HonoContext<E>;
 	endpoint: string;
 	tags: ActorTags;
 }
 
-export interface CreateActorInput {
-	origin: string;
+export interface CreateActorInput<E extends Env = any> {
+	c?: HonoContext<E>;
+	baseUrl: string;
 	region?: string;
 	tags: ActorTags;
 }

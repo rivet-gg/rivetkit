@@ -11,52 +11,50 @@ import { logger } from "./log";
 import { CloudflareWorkersManagerDriver } from "./manager_driver";
 
 /** Cloudflare Workers env */
-export interface Env {
+export interface Bindings {
 	ACTOR_KV: KVNamespace;
 	ACTOR_DO: DurableObjectNamespace<ActorHandlerInterface>;
 }
 
-/** Cloudflare Workers handler */
-export interface Handler {
-	handler: ExportedHandler<Env>;
+export function createHandler(inputConfig: InputConfig): {
+	handler: ExportedHandler<Bindings>;
 	ActorHandler: DurableObjectConstructor;
-}
+} {
+	// Create router
+	const { router, ActorHandler } = createRouter(inputConfig);
 
-export function createHandler(inputConfig: InputConfig): Handler {
-	const config = ConfigSchema.parse(inputConfig);
-
-	const ActorHandler = createActorDurableObject(config);
-
+	// Create Cloudflare handler
 	const handler = {
-		async fetch(request, env: Env, ctx: ExecutionContext): Promise<Response> {
-			// TODO: Move creating router to a shared context by passing KV & DO directly to manager somehow
-			const router = createRouter(inputConfig, env.ACTOR_KV, env.ACTOR_DO);
-			return await router.fetch(request, env, ctx);
-		},
-	} satisfies ExportedHandler<Env>;
+		fetch: router.fetch,
+	} satisfies ExportedHandler<Bindings>;
 
 	return { handler, ActorHandler };
 }
 
-export function createRouter(
-	inputConfig: InputConfig,
-	actorKvNs: KVNamespace,
-	actorDoNs: DurableObjectNamespace<ActorHandlerInterface>,
-): Hono {
+export function createRouter(inputConfig: InputConfig): {
+	router: Hono<{ Bindings: Bindings }>;
+	ActorHandler: DurableObjectConstructor;
+} {
 	const config = ConfigSchema.parse(inputConfig);
 
+	// Configur drivers
+	//
+	// Actor driver will get set in `ActorHandler`
 	if (!config.drivers) config.drivers = {};
 	if (!config.drivers.manager)
-		config.drivers.manager = new CloudflareWorkersManagerDriver(
-			actorKvNs,
-			actorDoNs,
-		);
+		config.drivers.manager = new CloudflareWorkersManagerDriver();
+
+	// Create Durable Object
+	const ActorHandler = createActorDurableObject(config);
 
 	config.topology = config.topology ?? "partition";
 	if (config.topology === "partition") {
 		const managerTopology = new PartitionTopologyManager(config);
 
-		const app = managerTopology.router;
+		// Force the router to have access to the Cloudflare bindings
+		const app = managerTopology.router as unknown as Hono<{
+			Bindings: Bindings;
+		}>;
 
 		// Forward requests to actor
 		app.all("/actors/:actorId/:path{.+}", (c) => {
@@ -64,8 +62,8 @@ export function createRouter(
 			const subpath = `/${c.req.param("path")}`;
 			logger().debug("forwarding request", { actorId, subpath });
 
-			const id = actorDoNs.idFromString(actorId);
-			const stub = actorDoNs.get(id);
+			const id = c.env.ACTOR_DO.idFromString(actorId);
+			const stub = c.env.ACTOR_DO.get(id);
 
 			// Modify the path to remove the prefix
 			const url = new URL(c.req.url);
@@ -79,7 +77,7 @@ export function createRouter(
 			return c.text("Not Found (ActorCore)", 404);
 		});
 
-		return app;
+		return { router: app, ActorHandler };
 	} else if (
 		config.topology === "standalone" ||
 		config.topology === "coordinate"

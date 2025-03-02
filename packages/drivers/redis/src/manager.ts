@@ -15,7 +15,7 @@ export class RedisManagerDriver implements ManagerDriver {
 		this.#redis = redis;
 	}
 
-	async getForId({ origin, actorId }: GetForIdInput): Promise<GetActorOutput | undefined> {
+	async getForId({ baseUrl, actorId }: GetForIdInput): Promise<GetActorOutput | undefined> {
 		// TODO: Error handling
 
 		//// Validate actor
@@ -42,13 +42,13 @@ export class RedisManagerDriver implements ManagerDriver {
 		const tags = JSON.parse(tagsStr);
 
 		return {
-			endpoint: buildActorEndpoint(origin, actorId),
+			endpoint: buildActorEndpoint(baseUrl, actorId),
 			tags,
 		};
 	}
 
 	async getWithTags({
-		origin,
+		baseUrl,
 		tags,
 	}: GetWithTagsInput): Promise<GetActorOutput | undefined> {
 		// TODO: use an inverse tree for correct tag looups
@@ -62,7 +62,7 @@ export class RedisManagerDriver implements ManagerDriver {
 			const actorTags = tagsStr ? JSON.parse(tagsStr) : tags;
 			
 			return {
-				endpoint: buildActorEndpoint(origin, actorId),
+				endpoint: buildActorEndpoint(baseUrl, actorId),
 				tags: actorTags,
 			};
 		}
@@ -95,7 +95,7 @@ export class RedisManagerDriver implements ManagerDriver {
 	}
 
 	async createActor({
-		origin,
+		baseUrl,
 		region: _,
 		tags,
 	}: CreateActorInput): Promise<GetActorOutput> {
@@ -108,12 +108,12 @@ export class RedisManagerDriver implements ManagerDriver {
 		});
 
 		return {
-			endpoint: buildActorEndpoint(origin, actorId.toString()),
+			endpoint: buildActorEndpoint(baseUrl, actorId.toString()),
 			tags,
 		};
 	}
 }
 
-function buildActorEndpoint(origin: string, actorId: string) {
-	return `${origin}/actors/${actorId}`;
+function buildActorEndpoint(baseUrl: string, actorId: string) {
+	return `${baseUrl}/actors/${actorId}`;
 }

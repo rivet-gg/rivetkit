@@ -13,71 +13,83 @@ When mounting the ActorCore router at a custom path, you **must** specify the sa
 const { router: actorRouter } = createRouter({
   actors: { "counter": Counter },
   // IMPORTANT: Must specify the same basePath where your router is mounted
-  basePath: "/api"
+  basePath: "/my-path"
 });
 
 // Mount at the same path specified in basePath
-app.route("/api", actorRouter);
+app.route("/my-path", actorRouter);
 ```
 
 This ensures that WebSocket connections and other functionality work correctly when accessing your actors through the custom path.
 
-## Platform-Spceific Examples
+## Platform-Specific Examples
 
 Each platform has specific requirements for integrating Hono with ActorCore.
 
 ### Cloudflare Workers
 
-_Coming soon_
-
-{/*
 ```typescript
-import { Hono } from "hono";
 import { createRouter } from "@actor-core/cloudflare-workers";
+import { Hono } from "hono";
 import Counter from "./counter";
 
-// Export the ActorHandler for Durable Objects
-export { ActorHandler } from "@actor-core/cloudflare-workers";
+// Create your Hono app inside the fetch handler
+const app = new Hono();
 
-// Create a fetch handler that combines your app with ActorCore
-export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext) {
-    // Create your Hono app inside the fetch handler
-    const app = new Hono();
-    
-    // Add your custom routes
-    app.get("/", (c) => c.text("Welcome to my app!"));
-    app.get("/hello", (c) => c.text("Hello, world!"));
-    
-    // Create the ActorCore router with access to env
-    const actorRouter = createRouter(
-      {
-        actors: {
-          "counter": Counter
-        },
-        // IMPORTANT: Must specify the same basePath where your router is mounted
-        basePath: "/api"
-      },
-      env.ACTOR_KV,
-      env.ACTOR_DO
-    );
-    
-    // Mount the ActorCore router at /api
-    app.route("/api", actorRouter);
-    
-    // Handle the request with the combined Hono app
-    return app.fetch(request, env, ctx);
-  }
-};
+// Add your custom routes
+app.get("/", (c) => c.text("Welcome to my app!"));
+app.get("/hello", (c) => c.text("Hello, world!"));
+
+const { router: actorRouter, ActorHandler } = createRouter({
+  actors: { "counter": Counter },
+  // IMPORTANT: Must specify the same basePath where your router is mounted
+  basePath: "/my-path"
+});
+
+// Mount the ActorCore router at /my-path
+app.route("/my-path", actorRouter);
+
+// IMPORTANT: Must export `ActorHandler` as this exact name
+export { app as default, ActorHandler };
 ```
+
 Make sure to update your client connection URL to include the custom path:
 
 ```typescript
-// If you mounted ActorCore at /api
+// If you mounted ActorCore at /my-path
 import { Client } from "actor-core/client";
-const client = new Client("https://your-worker.workers.dev/api");
+const client = new Client("https://your-worker.workers.dev/my-path");
 ```
-*/}
+
+For this to work with Cloudflare Workers, your `wrangler.json` **must** include specific Durable Object and KV namespace bindings with the exact names expected by ActorCore:
+
+```json
+{
+  "name": "counter",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-01-29",
+  "migrations": [
+    {
+      "new_classes": ["ActorHandler"],
+      "tag": "v1"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "class_name": "ActorHandler", // Must match exported class
+        "name": "ACTOR_DO"            // Must use this exact name
+      }
+    ]
+  },
+  "kv_namespaces": [
+    {
+      "binding": "ACTOR_KV",          // Must use this exact name
+      "id": "YOUR_KV_NAMESPACE_ID"    // Replace with your KV ID
+    }
+  ]
+}
+```
 
 
 ### Node.js
@@ -99,11 +111,11 @@ app.get("/hello", (c) => c.text("Hello, world!"));
 const { router: actorRouter, injectWebSocket } = createRouter({
   actors: { "counter": Counter },
   // IMPORTANT: Must specify the same basePath where your router is mounted
-  basePath: "/api"
+  basePath: "/my-path"
 });
 
-// Mount the ActorCore router at /api
-app.route("/api", actorRouter);
+// Mount the ActorCore router at /my-path
+app.route("/my-path", actorRouter);
 
 // Create server with the combined app
 const server = serve({
@@ -120,9 +132,9 @@ console.log("Server running at http://localhost:8787");
 Make sure to update your client connection URL to include the custom path:
 
 ```typescript
-// If you mounted ActorCore at /api
+// If you mounted ActorCore at /my-path
 import { Client } from "actor-core/client";
-const client = new Client("http://localhost:8787/api");
+const client = new Client("http://localhost:8787/my-path");
 ```
 
 ### Bun
@@ -143,11 +155,11 @@ app.get("/hello", (c) => c.text("Hello, world!"));
 const { router: actorRouter, webSocketHandler } = createRouter({
   actors: { "counter": Counter },
   // IMPORTANT: Must specify the same basePath where your router is mounted
-  basePath: "/api"
+  basePath: "/my-path"
 });
 
-// Mount the ActorCore router at /api
-app.route("/api", actorRouter);
+// Mount the ActorCore router at /my-path
+app.route("/my-path", actorRouter);
 
 // Create and start the server
 export default {
@@ -161,8 +173,8 @@ export default {
 Make sure to update your client connection URL to include the custom path:
 
 ```typescript
-// If you mounted ActorCore at /api
+// If you mounted ActorCore at /my-path
 import { Client } from "actor-core/client";
-const client = new Client("http://localhost:8787/api");
+const client = new Client("http://localhost:8787/my-path");
 ```
 
