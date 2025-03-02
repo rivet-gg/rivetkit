@@ -1,0 +1,104 @@
+---
+title: "Using Cursor with ActorCore"
+sidebarTitle: "Cursor"
+---
+
+This guide shows how to integrate ActorCore with Cursor to enhance your developer experience through AI-assisted coding.
+
+## Setting Up Cursor Rules for ActorCore
+
+Cursor rules allow you to customize how the AI assistant behaves when working with ActorCore code. By providing project-specific context, you'll get more accurate and relevant suggestions.
+
+### Project Rules (Recommended)
+
+Project rules are stored in the `.cursor/rules` directory and apply to specific files or folders in your project.
+
+<Steps>
+<Step title="Open project">Open your ActorCore project in Cursor</Step>
+<Step title="Create rule">
+  Press `Cmd + Shift + P` (Mac) or `Ctrl + Shift + P` (Windows/Linux).
+
+  Select `New Cursor Rule` and name it `actorcore-development-guide`.
+</Step>
+<Step title="Configure rule">
+  Set `Auto Attach` to `**/*.ts`.
+
+  Paste [prompt.txt](/docs/llm/prompt) into the rule.
+</Step>
+</Steps>
+
+### Global Rules
+
+If you frequently work with ActorCore across multiple projects, you can add ActorCore-specific rules globally:
+
+<Steps>
+<Step title="Open settings">
+  Open Cursor and go to `Cursor Settings` > `Rules` > `User Rules`
+</Step>
+<Step title="Add content">
+  Paste [prompt.txt](/docs/llm/prompt) into the textbox
+</Step>
+</Steps>
+
+Global rules will apply to all of your projects when using Cursor.
+
+## Example Queries for ActorCore
+
+Here are some useful prompts to try with Cursor when working with ActorCore:
+
+### Understand the Codebase
+
+```
+# Get an overview of ActorCore's architecture
+Explain the architecture of ActorCore and how the different topologies work
+
+# Understand how actors communicate
+Explain how actors communicate with each other in the coordinate topology
+
+# Learn about specific concepts
+Explain the lifecycle hooks for actors and when each one is called
+```
+
+### Find Relevant Code
+
+```
+# Find implementations of specific components
+Find the files that implement the Redis driver
+
+# Locate examples of specific patterns
+Show me examples of RPC methods in the codebase
+
+# Understand actor state management
+Explain how actor state is persisted between restarts
+```
+
+### Add New Features
+
+```
+# Create a new actor implementation
+Help me create a new actor for managing user sessions
+
+# Add authentication to an actor
+Show me how to add authentication to my actor's _onBeforeConnect method
+
+# Implement error handling
+Help me implement proper error handling for my actor's RPC methods
+```
+
+### Debug Issues
+
+```
+# Diagnose connection problems
+My actor connections are dropping, help me debug why
+
+# Fix state persistence issues
+My actor state isn't persisting between restarts, what could be wrong?
+
+# Address scaling problems
+My actors are using too much memory, how can I optimize them?
+```
+
+## Additional Resources
+
+- [Cursor Rules Documentation](https://docs.cursor.com/context/rules-for-ai)
+

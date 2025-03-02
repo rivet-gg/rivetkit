@@ -1,0 +1,89 @@
+---
+title: "Using Claude Code with ActorCore"
+sidebarTitle: "Claude Code"
+---
+
+[Claude Code](https://claude.ai/code) is a powerful CLI tool from Anthropic that integrates Claude directly into your development workflow. When working with ActorCore, you can enhance Claude's understanding of the codebase by providing project-specific context.
+
+## Setting Up CLAUDE.md for ActorCore
+
+The `CLAUDE.md` file serves as a memory file for Claude Code, containing important information about your project that persists between sessions.
+
+To set up an effective `CLAUDE.md` file for ActorCore:
+
+<Steps>
+  <Step title="Get the template">
+    Copy the ActorCore [prompt.txt](/llm/prompt)
+  </Step>
+  <Step title="Create file">
+    Create a `CLAUDE.md` file in your project root
+  </Step>
+  <Step title="Add content">
+    Paste the template into `CLAUDE.md`
+  </Step>
+  <Step title="Verify it works">
+    Run Claude Code and ask a simple question like `What lifecycle hook is used when an actor is first created?` to confirm it's reading your CLAUDE.md file correctly
+  </Step>
+</Steps>
+
+## Example Commands for ActorCore
+
+Here are some useful ways to leverage Claude Code with ActorCore:
+
+### Understand the Codebase
+
+```bash
+# Get an overview of ActorCore's architecture
+claude "explain the architecture of ActorCore and how the different topologies work"
+
+# Understand how actors communicate
+claude "explain how actors communicate with each other in the coordinate topology"
+
+# Learn about specific concepts
+claude "explain the lifecycle hooks for actors and when each one is called"
+```
+
+### Find Relevant Code
+
+```bash
+# Find implementations of specific components
+claude "find the files that implement the Redis driver"
+
+# Locate examples of specific patterns
+claude "show me examples of RPC methods in the codebase"
+
+# Understand actor state management
+claude "explain how actor state is persisted between restarts"
+```
+
+### Add New Features
+
+```bash
+# Create a new actor implementation
+claude "help me create a new actor for managing user sessions"
+
+# Add authentication to an actor
+claude "show me how to add authentication to my actor's _onBeforeConnect method"
+
+# Implement error handling
+claude "help me implement proper error handling for my actor's RPC methods"
+```
+
+### Debug Issues
+
+```bash
+# Diagnose connection problems
+claude "my actor connections are dropping, help me debug why"
+
+# Fix state persistence issues
+claude "my actor state isn't persisting between restarts, what could be wrong?"
+
+# Address scaling problems
+claude "my actors are using too much memory, how can I optimize them?"
+```
+
+## Additional Resources
+
+- [Claude Code Documentation](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview)
+- [Claude Code Tutorials](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/tutorials)
+

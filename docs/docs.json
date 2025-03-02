@@ -98,8 +98,25 @@
                 ]
               }
             ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              {
+                "group": "LLM Prompts",
+                "pages": [
+                  "llm/cursor",
+                  "llm/windsurf",
+                  "llm/claude",
+                  "llm/docs-as-markdown",
+                  "llm/prompt",
+                  "llm/llms",
+                  "llm/llms-full"
+                ]
+              },
+              "support/enterprise"
+            ]
           }
-
         ]
       },
       {

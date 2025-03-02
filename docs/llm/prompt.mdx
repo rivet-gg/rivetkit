@@ -1,0 +1,173 @@
+---
+title: "prompt.txt"
+---
+
+## Using `prompt.txt` for ActorCore
+
+The `prompt.txt` file provides LLMs with comprehensive information about ActorCore's conventions, terminology, and best practices. To use it:
+
+1. Copy the contents below to your clipboard
+2. Paste it into your preferred AI assistant (Claude, ChatGPT, Cursor rules, Windsurf Rules, etc.)
+3. Ask your ActorCore development questions after the prompt
+
+This structured information helps AI tools provide more accurate and contextually relevant guidance for your ActorCore development tasks.
+
+## AI Editor Guides
+
+Read the integration guide for your editor of choice:
+
+<CardGroup cols={3}>
+  <Card title="Cursor" href="/llm/cursor" horizontal={true} />
+  <Card title="Windsurf" href="/llm/windsurf" horizontal={true} />
+  <Card title="Claude Code" href="/llm/claude" horizontal={true} />
+</CardGroup>
+
+## `prompt.txt`
+
+````markdown prompt.txt
+# ActorCore Development Guide
+
+This guide contains essential information for working with the ActorCore project.
+
+## Project Naming and Terminology
+
+- Use `ActorCore` when referring to the project in documentation and plain English
+- Use `actor-core` (kebab-case) when referring to the project in code, package names, and imports
+
+### Core Concepts
+
+- **Actor**: A stateful, long-lived entity that processes messages and maintains state
+- **Manager**: Component responsible for creating, routing, and managing actor instances
+- **Remote Procedure Call (RPC)**: Method for an actor to expose callable functions to clients
+- **Event**: Asynchronous message sent from an actor to connected clients
+- **Alarm**: Scheduled callback that triggers at a specific time
+
+## Build Commands
+
+- **Type Check:** `yarn check-types` - Verify TypeScript types
+- **Check specific package:** `yarn check-types -F @rivet-gg/actor-core` - Check only specified package
+- **Build:** `yarn build` - Production build using Turbopack
+- **Build specific package:** `yarn build -F @rivet-gg/actor-core` - Build only specified package
+- **Format:** `yarn fmt` - Format code with Biome
+
+## Driver Implementations
+
+Available driver implementations:
+
+- **Memory**: In-memory implementation for development and testing
+- **Redis**: Production-ready implementation using Redis for persistence and pub/sub
+- **Cloudflare Workers**: Uses Durable Objects for actor state persistence
+- **Rivet**: Fully-managed cloud platform with built-in scaling and monitoring
+
+## Platform Support
+
+ActorCore supports multiple runtime environments:
+
+- **NodeJS**: Standard Node.js server environment
+- **Cloudflare Workers**: Edge computing environment
+- **Bun**: Fast JavaScript runtime alternative to Node.js
+- **Rivet**: Cloud platform with built-in scaling and management
+
+## Package Import Resolution
+
+When importing from workspace packages, always check the package's `package.json` file under the `exports` field to determine the correct import paths:
+
+1. Locate the package's `package.json` file
+2. Find the `exports` object which maps subpath patterns to their file locations
+3. Use these defined subpaths in your imports rather than direct file paths
+
+## Code Style Guidelines
+
+- **Formatting:** Uses Biome for consistent formatting
+- **Imports:** Organized imports enforced, unused imports warned
+- **TypeScript:** Strict mode enabled, target ESNext
+- **Naming:** 
+  - camelCase for variables, functions
+  - PascalCase for classes, interfaces, types
+  - UPPER_CASE for constants
+  - Use `#` prefix for private class members (not `private` keyword)
+- **Error Handling:** 
+  - Extend from `ActorError` base class
+  - Use `UserError` for client-safe errors
+  - Use `InternalError` for internal errors
+
+## Project Structure
+
+- Monorepo with Yarn workspaces and Turborepo
+- Core code in `packages/actor-core/`
+- Platform implementations in `packages/platforms/`
+- Driver implementations in `packages/drivers/`
+
+## State Management
+
+- Each actor owns and manages its own isolated state via `this._state`
+- State is automatically persisted between RPC calls
+- State is initialized once via `_onInitialize` method
+- Only JSON-serializable types can be stored in state
+- Use `this._onStateChange` to react to state changes
+
+## Authentication and Security
+
+- Authentication is handled through the `_onBeforeConnect` lifecycle method
+- Connection state is accessed with `rpc.connection.state`
+- Access control should be implemented for each RPC method
+- Throwing an error in `_onBeforeConnect` will abort the connection
+- Use `UserError` for safe error messages to clients
+- Use data validation libraries like zod for input validation
+
+## RPC and Events
+
+- **RPC**: Used for clients to call actor methods
+- **Events**: For actors to publish updates to clients
+- Methods starting with `_` or `#` are private and not callable by clients
+- Broadcasting is done via `this._broadcast(name, data)`
+- Specific client messaging uses `connection.send(name, data)`
+- Clients subscribe to events with `actor.on(eventName, callback)`
+
+## Lifecycle Hooks
+
+- `_onInitialize()`: Called once when actor is first created
+- `_onStart()`: Called any time actor is started (after restart/upgrade)
+- `_onStateChange(newState)`: Called when actor state changes
+- `_onBeforeConnect(opts)`: Called when new client connects
+- `_onConnect(connection)`: Executed after client connection succeeds
+- `_onDisconnect(connection)`: Called when client disconnects
+
+## Actor Management
+
+- Actors are referenced using tags (key-value pairs)
+- The `name` tag is required and specifies the actor type
+- Actors can be created with `client.get(tags, opts)`
+- Actors can be shut down with `this._shutdown()` from within the actor
+- Metadata like region and tags are available via `this._region` and `this._tags`
+
+## Scaling and Architecture Guidelines
+
+- Each actor should have a single responsibility
+- Keep state minimal and relevant to the actor's core function
+- Use separate actors for different entity types (users, rooms, documents)
+- Avoid too many cross-actor communications
+- Use appropriate topology based on your scaling needs
+
+## Scheduling
+
+- Schedule future events with `after(duration, fn, ...args)`
+- Schedule events for specific time with `at(timestamp, fn, ...args)`
+- Scheduled events persist across actor restarts
+
+## CORS Configuration
+
+- Configure CORS to allow cross-origin requests in production
+- Set allowed origins, methods, headers, and credentials
+- For development, use `cors: { origin: "http://localhost:3000" }`
+
+## Development Best Practices
+
+- Prefer classes over factory functions
+- Use zod for runtime type validation
+- Use `assertUnreachable(x: never)` for exhaustive type checking
+- Add proper JSDoc comments for public APIs
+- Run `yarn check-types` regularly during development
+- Use `tsx` CLI to execute TypeScript scripts directly
+````
+
