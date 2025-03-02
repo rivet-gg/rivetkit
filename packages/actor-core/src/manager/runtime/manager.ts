@@ -1,5 +1,6 @@
 import { ActorsRequestSchema } from "@/manager/protocol/mod";
 import { Hono, type Context as HonoContext } from "hono";
+import { cors } from "hono/cors";
 import type { ManagerDriver } from "@/actor/runtime/driver";
 import { logger } from "./log";
 import { type ActorTags, assertUnreachable } from "@/common/utils";
@@ -21,7 +22,30 @@ export class Manager {
 		this.router = this.#buildRouter();
 	}
 
-	#buildRouter(): Hono {
+	#buildRouter() {
+		const app = new Hono();
+
+		// Apply CORS middleware if configured
+		if (this.#config.cors) {
+			app.use("*", cors(this.#config.cors));
+		}
+
+		app.get("/", (c) => {
+			return c.text(
+				"This is a ActorCore server.\n\nLearn more at https://actorcore.org",
+			);
+		});
+
+		app.get("/health", (c) => {
+			return c.text("ok");
+		});
+
+		app.route("/manager", this.#buildManagerRouter());
+
+		return app;
+	}
+
+	#buildManagerRouter(): Hono {
 		const managerApp = new Hono();
 
 		managerApp.post("/actors", async (c: HonoContext) => {
@@ -34,12 +58,12 @@ export class Manager {
 			//
 			// This is used to build actor endpoints
 			let baseUrl = url.origin;
-			if (this.#config.router?.basePath) {
-				const basePath = this.#config.router.basePath;
+			if (this.#config.basePath) {
+				const basePath = this.#config.basePath;
 				if (!basePath.startsWith("/"))
-					throw new Error("config.router.basePath must start with /");
+					throw new Error("config.basePath must start with /");
 				if (basePath.endsWith("/"))
-					throw new Error("config.router.basePath must not end with /");
+					throw new Error("config.basePath must not end with /");
 				baseUrl += basePath;
 			}
 
@@ -93,6 +117,6 @@ export class Manager {
 			});
 		});
 
-		return new Hono().route("/manager", managerApp);
+		return managerApp;
 	}
 }

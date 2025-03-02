@@ -1,0 +1,125 @@
+---
+title: Cross-Origin Resource Sharing
+sidebarTitle: CORS
+icon: share-nodes
+---
+
+Cross-Origin Resource Sharing (CORS) is a security mechanism that allows a web application running at one origin to access resources from a different origin. Without CORS, browsers block cross-origin HTTP requests by default as a security measure.
+
+You'll need to configure CORS when:
+
+- **Local Development:** You're developing locally and your client runs on a different port than your actor service
+- **Different Domain:** Your frontend application is hosted on a different domain than your actor service
+
+## Platform-Specific Examples
+
+### Cloudflare Workers
+
+```ts
+import { createHandler } from "@actor-core/cloudflare-workers";
+import { Counter } from "./counter";
+
+const { handler, ActorHandler } = createHandler({
+  actors: { counter: Counter },
+  // Change this to match your frontend's origin
+  cors: { origin: "https://yourdomain.com" }
+});
+
+export { handler as default, ActorHandler };
+```
+
+
+### Node.js
+
+```ts
+import { serve } from "@actor-core/nodejs";
+import { Counter } from "./counter";
+
+serve({
+  actors: { counter: Counter },
+  // Change this to match your frontend's origin
+  cors: { origin: "https://yourdomain.com" }
+});
+```
+
+### Bun
+
+```ts
+import { createHandler } from "@actor-core/bun";
+import { Counter } from "./counter";
+
+export default createHandler({
+  actors: { counter: Counter },
+  // Change this to match your frontend's origin
+  cors: { origin: "https://yourdomain.com" }
+});
+```
+
+## Options
+
+### `origin`
+
+`string | string[] | (origin:string, c:Context) => string` (optional)
+
+Specifies which domains can access your resources. Options:
+- Single domain: `"https://example.com"`
+- Multiple domains: `["https://app.com", "https://admin.com"]`
+- Dynamic validation: `(origin) => origin.endsWith('.example.com') ? origin : null`
+- All domains (not recommended for production): `"*"` (default)
+
+### `allowMethods`
+
+`string[]` (optional)
+
+HTTP methods clients are allowed to use when accessing your resources. Default includes all standard methods: `['GET', 'HEAD', 'PUT', 'POST', 'DELETE', 'PATCH']`.
+
+### `allowHeaders`
+
+`string[]` (optional)
+
+Custom HTTP headers clients can send in requests. Empty by default `[]`. Common examples:
+- `["Content-Type", "Authorization", "X-API-Key"]`
+
+### `maxAge`
+
+`number` (optional)
+
+How long browsers should cache CORS response (in seconds). Higher values improve performance by reducing preflight requests.
+
+### `credentials`
+
+`boolean` (optional)
+
+Whether requests can include user credentials like cookies or HTTP authentication. Must specify exact origins when enabled (cannot use with `origin: "*"`).
+
+### `exposeHeaders`
+
+`string[]` (optional)
+
+Server headers that browsers are allowed to access. Empty by default `[]`. Example:
+- `["Content-Length", "X-Request-Id"]`
+
+
+## Troubleshooting
+
+### CORS errors during development
+
+When developing locally, ensure your CORS configuration includes your development server's origin:
+
+```ts
+cors: {
+  origin: "http://localhost:3000",
+  credentials: true
+}
+```
+
+### Using credentials with wildcard origin
+
+You cannot use `credentials: true` with `origin: "*"`. Instead, specify exact origins:
+
+```ts
+cors: {
+  origin: ["https://app.example.com", "https://admin.example.com"],
+  credentials: true
+}
+```

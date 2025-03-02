@@ -44,7 +44,9 @@ import IntegrationExistingProjects from '/snippets/integration-existing-projects
 		import counter from "./counter.ts";
 
 		export default createHandler({
-			actors: { counter }
+			actors: { counter },
+			// Change this to match your frontend's origin
+			cors: { origin: "http://localhost:3000" }
 		});
     	```
     </Step>
@@ -120,4 +122,3 @@ See all available options [here](https://redis.github.io/ioredis/index.html#Redi
 ## Next Steps
 
 <SetupNextSteps />
-

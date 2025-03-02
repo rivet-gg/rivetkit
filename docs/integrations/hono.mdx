@@ -4,7 +4,7 @@ title: Hono
 
 [Hono](https://hono.dev/) is a lightweight web framework that works well with ActorCore across multiple deployment platforms. This guide explains how to integrate ActorCore with Hono on different platforms.
 
-## Important Configuration
+## Mounting The ActorCore Router
 
 When mounting the ActorCore router at a custom path, you **must** specify the same path in the router configuration using `basePath`:
 
@@ -24,7 +24,7 @@ app.route("/api", actorRouter);
 
 This ensures that WebSocket connections and other functionality work correctly when accessing your actors through the custom path.
 
-## Platforms
+## Platform-Spceific Examples
 
 Each platform has specific requirements for integrating Hono with ActorCore.
 

@@ -58,6 +58,7 @@
           {
             "group": "More",
             "pages": [
+              "concepts/cors",
               "concepts/metadata",
               "concepts/authentication",
               "concepts/logging",

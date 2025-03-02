@@ -69,7 +69,9 @@ import IntegrationExistingProjects from '/snippets/integration-existing-projects
 		import counter from "./counter.ts";
 
 		serve({
-			actors: { counter }
+			actors: { counter },
+			// Change this to match your frontend's origin
+			cors: { origin: "http://localhost:3000" }
 		});
 		```
 	</Step>

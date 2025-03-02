@@ -64,7 +64,7 @@ export class PartitionTopologyActor {
 		actorRouter.route(
 			"/",
 			createActorRouter(config, {
-				upgradeWebSocket: config.router?.getUpgradeWebSocket?.(actorRouter),
+				upgradeWebSocket: config.getUpgradeWebSocket?.(actorRouter),
 				onConnectWebSocket: async ({
 					req,
 					encoding,

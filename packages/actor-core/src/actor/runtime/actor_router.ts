@@ -14,6 +14,7 @@ import * as protoHttpRpc from "@/actor/protocol/http/rpc";
 import * as messageToServer from "@/actor/protocol/message/to_server";
 import type { InputData } from "@/actor/protocol/serde";
 import { SSEStreamingApi, streamSSE } from "hono/streaming";
+import { cors } from "hono/cors";
 import { assertUnreachable } from "./utils";
 
 export interface ConnectWebSocketOpts {
@@ -80,6 +81,11 @@ export function createActorRouter(
 ): Hono {
 	const app = new Hono();
 
+	// Apply CORS middleware if configured
+	if (config.cors) {
+		app.use("*", cors(config.cors));
+	}
+
 	app.get("/", (c) => {
 		return c.text(
 			"This is a ActorCore server.\n\nLearn more at https://actorcore.org",
@@ -127,7 +133,7 @@ export function createActorRouter(
 						const message = await parseMessage(value, {
 							encoding: encoding,
 							maxIncomingMessageSize:
-								config.router?.maxIncomingMessageSize ??
+								config.maxIncomingMessageSize ??
 								DEFAULT_ROUTER_MAX_INCOMING_MESSAGE_SIZE,
 						});
 
@@ -206,7 +212,7 @@ export function createActorRouter(
 			const contentLength = Number(c.req.header("content-length") || "0");
 			if (
 				contentLength >
-				(config.router?.maxIncomingMessageSize ??
+				(config.maxIncomingMessageSize ??
 					DEFAULT_ROUTER_MAX_INCOMING_MESSAGE_SIZE)
 			) {
 				throw new errors.MessageTooLong();
@@ -291,7 +297,7 @@ export function createActorRouter(
 			const contentLength = Number(c.req.header("content-length") || "0");
 			if (
 				contentLength >
-				(config.router?.maxIncomingMessageSize ??
+				(config.maxIncomingMessageSize ??
 					DEFAULT_ROUTER_MAX_INCOMING_MESSAGE_SIZE)
 			) {
 				throw new errors.MessageTooLong();
@@ -312,7 +318,7 @@ export function createActorRouter(
 			const message = await parseMessage(value, {
 				encoding,
 				maxIncomingMessageSize:
-					config.router?.maxIncomingMessageSize ??
+					config.maxIncomingMessageSize ??
 					DEFAULT_ROUTER_MAX_INCOMING_MESSAGE_SIZE,
 			});
 
@@ -394,7 +400,7 @@ function getRequestConnectionParameters(
 	if (
 		paramsStr &&
 		paramsStr.length >
-			(config.router?.maxConnectionParametersSize ??
+			(config.maxConnectionParametersSize ??
 				DEFAULT_ROUTER_MAX_CONNECTION_PARAMETER_SIZE)
 	) {
 		logger().warn("connection parameters too long");

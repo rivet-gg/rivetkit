@@ -6,6 +6,10 @@ import type {
 	Context as HonoContext,
 	Handler as HonoHandler,
 } from "hono";
+import type { cors } from "hono/cors";
+
+// Extract CORS config
+type CORSOptions = NonNullable<Parameters<typeof cors>[0]>;
 
 export const DEFAULT_ROUTER_MAX_CONNECTION_PARAMETER_SIZE = 8_192;
 export const DEFAULT_ROUTER_MAX_INCOMING_MESSAGE_SIZE = 65_536;
@@ -27,20 +31,24 @@ export interface BaseConfig {
 		actor?: ActorDriver;
 		coordinate?: CoordinateDriver;
 	};
-	router?: {
-		// This is dynamic since NodeJS requires a reference to the app to initialize WebSockets
-		getUpgradeWebSocket?: (
-			app: Hono,
-		) => (createEvents: (c: HonoContext) => any) => HonoHandler;
 
-		/** Base path used to build URLs from. This is specifically used when returning the endpoint to connect to for actors. */
-		basePath?: string;
+	/** CORS configuration for the router. Uses Hono's CORS middleware options. */
+	cors?: CORSOptions;
 
-		/** This goes in the URL so it needs to be short. */
-		maxConnectionParametersSize?: number;
+	// This is dynamic since NodeJS requires a reference to the app to initialize WebSockets
+	getUpgradeWebSocket?: (
+		app: Hono,
+	) => (createEvents: (c: HonoContext) => any) => HonoHandler;
 
-		maxIncomingMessageSize?: number;
-	};
+	/** Base path used to build URLs from. This is specifically used when returning the endpoint to connect to for actors. */
+	basePath?: string;
+
+	/** This goes in the URL so it needs to be short. */
+	maxConnectionParametersSize?: number;
+
+	maxIncomingMessageSize?: number;
+
+	/** Peer configuration for coordinated topology. */
 	actorPeer?: {
 		/**
 		 * How long the actor leader holds a lease for.

@@ -121,7 +121,7 @@ export class StandaloneTopology {
 
 		// Build actor router
 		const actorRouter = createActorRouter(config, {
-			upgradeWebSocket: config.router?.getUpgradeWebSocket?.(app),
+			upgradeWebSocket: config.getUpgradeWebSocket?.(app),
 			onConnectWebSocket: async ({ req, encoding, parameters: connParams }) => {
 				const actorId = req.param("actorId");
 				if (!actorId) throw new errors.InternalError("Missing actor ID");

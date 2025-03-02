@@ -79,7 +79,9 @@ import IntegrationExistingProjects from '/snippets/integration-existing-projects
     	const { handler, ActorHandler } = createHandler({
     		actors: {
     			"counter": Counter
-    		}
+    		},
+			// Change this to match your frontend's origin
+    		cors: { origin: "http://localhost:3000" }
     	});
 
     	export { handler as default, ActorHandler };
@@ -211,4 +213,3 @@ Cloudflare does not guarantee your code will run in the requested region.
 ## Next Steps
 
 <SetupNextSteps />
-

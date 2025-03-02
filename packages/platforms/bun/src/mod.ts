@@ -15,8 +15,9 @@ export function createRouter(config: Config): {
 } {
 	// Setup WebSocket routing for Bun
 	const webSocket = createBunWebSocket<ServerWebSocket>();
-	if (!config.router) config.router = {};
-	config.router.getUpgradeWebSocket = () => webSocket.upgradeWebSocket;
+	if (!config.getUpgradeWebSocket) {
+		config.getUpgradeWebSocket = () => webSocket.upgradeWebSocket;
+	}
 
 	// HACK: Hono BunWebSocketHandler type is not compatible with Bun's
 	const webSocketHandler = webSocket.websocket as unknown as WebSocketHandler;

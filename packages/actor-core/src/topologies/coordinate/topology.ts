@@ -54,7 +54,7 @@ export class CoordinateTopology {
 
 		// Forward requests to actor
 		const actorRouter = createActorRouter(config, {
-			upgradeWebSocket: config.router?.getUpgradeWebSocket?.(app),
+			upgradeWebSocket: config.getUpgradeWebSocket?.(app),
 			onConnectWebSocket: async (opts) => {
 				const actorId = opts.req.param("actorId");
 				if (!actorId) throw new errors.InternalError("Missing actor ID");

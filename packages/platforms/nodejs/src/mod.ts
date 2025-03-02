@@ -24,12 +24,13 @@ export function createRouter(config: Config): {
 	//
 	// Save `injectWebSocket` for after server is created
 	let injectWebSocket: NodeWebSocket["injectWebSocket"] | undefined;
-	if (!config.router) config.router = {};
-	config.router.getUpgradeWebSocket = (app) => {
-		const webSocket = createNodeWebSocket({ app });
-		injectWebSocket = webSocket.injectWebSocket;
-		return webSocket.upgradeWebSocket;
-	};
+	if (!config.getUpgradeWebSocket) {
+		config.getUpgradeWebSocket = (app) => {
+			const webSocket = createNodeWebSocket({ app });
+			injectWebSocket = webSocket.injectWebSocket;
+			return webSocket.upgradeWebSocket;
+		};
+	}
 
 	// Setup topology
 	if (config.topology === "standalone") {

@@ -31,9 +31,8 @@ export function createActorHandler(
 			}
 			
 			// Setup WebSocket upgrader
-			if (!config.router) config.router = {};
-			if (!config.router.getUpgradeWebSocket) {
-				config.router.getUpgradeWebSocket = () => upgradeWebSocket;
+			if (!config.getUpgradeWebSocket) {
+				config.getUpgradeWebSocket = () => upgradeWebSocket;
 			}
 
 			// Create actor topology

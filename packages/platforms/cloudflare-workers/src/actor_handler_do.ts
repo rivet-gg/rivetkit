@@ -89,9 +89,8 @@ export function createActorDurableObject(
 			if (!config.drivers) config.drivers = {};
 			if (!config.drivers.actor)
 				config.drivers.actor = new CloudflareWorkersActorDriver(this.ctx);
-			if (!config.router) config.router = {};
-			if (!config.router.getUpgradeWebSocket)
-				config.router.getUpgradeWebSocket = () => upgradeWebSocket;
+			if (!config.getUpgradeWebSocket)
+				config.getUpgradeWebSocket = () => upgradeWebSocket;
 			const actorTopology = new PartitionTopologyActor(config);
 
 			// Save actor
