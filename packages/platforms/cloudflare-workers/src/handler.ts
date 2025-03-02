@@ -3,9 +3,9 @@ import {
 	type ActorHandlerInterface,
 	createActorDurableObject,
 } from "./actor_handler_do";
-import { Config } from "./config";
+import { ConfigSchema, type InputConfig } from "./config";
 import { assertUnreachable } from "actor-core/utils";
-import { Hono } from "hono";
+import type { Hono } from "hono";
 import { PartitionTopologyManager } from "actor-core/topologies/partition";
 import { logger } from "./log";
 import { CloudflareWorkersManagerDriver } from "./manager_driver";
@@ -22,13 +22,15 @@ export interface Handler {
 	ActorHandler: DurableObjectConstructor;
 }
 
-export function createHandler(config: Config): Handler {
+export function createHandler(inputConfig: InputConfig): Handler {
+	const config = ConfigSchema.parse(inputConfig);
+
 	const ActorHandler = createActorDurableObject(config);
 
 	const handler = {
 		async fetch(request, env: Env, ctx: ExecutionContext): Promise<Response> {
 			// TODO: Move creating router to a shared context by passing KV & DO directly to manager somehow
-			const router = createRouter(config, env.ACTOR_KV, env.ACTOR_DO);
+			const router = createRouter(inputConfig, env.ACTOR_KV, env.ACTOR_DO);
 			return await router.fetch(request, env, ctx);
 		},
 	} satisfies ExportedHandler<Env>;
@@ -37,10 +39,12 @@ export function createHandler(config: Config): Handler {
 }
 
 export function createRouter(
-	config: Config,
+	inputConfig: InputConfig,
 	actorKvNs: KVNamespace,
 	actorDoNs: DurableObjectNamespace<ActorHandlerInterface>,
 ): Hono {
+	const config = ConfigSchema.parse(inputConfig);
+
 	if (!config.drivers) config.drivers = {};
 	if (!config.drivers.manager)
 		config.drivers.manager = new CloudflareWorkersManagerDriver(
@@ -76,7 +80,10 @@ export function createRouter(
 		});
 
 		return app;
-	} else if (config.topology === "standalone" || config.topology === "coordinate") {
+	} else if (
+		config.topology === "standalone" ||
+		config.topology === "coordinate"
+	) {
 		throw new Error("Cloudflare only supports partition topology.");
 	} else {
 		assertUnreachable(config.topology);

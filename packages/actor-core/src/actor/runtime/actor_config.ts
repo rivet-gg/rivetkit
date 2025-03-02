@@ -1,17 +1,21 @@
 import type { RecursivePartial } from "./utils";
+import { z } from "zod";
 
-export interface ActorConfig {
-	state: StateConfig;
-	rpc: RpcConfig;
-}
+export const StateConfigSchema = z.object({
+	saveInterval: z.number().positive(),
+});
+export type StateConfig = z.infer<typeof StateConfigSchema>;
 
-export interface StateConfig {
-	saveInterval: number;
-}
+export const RpcConfigSchema = z.object({
+	timeout: z.number().positive(),
+});
+export type RpcConfig = z.infer<typeof RpcConfigSchema>;
 
-export interface RpcConfig {
-	timeout: number;
-}
+export const ActorConfigSchema = z.object({
+	state: StateConfigSchema,
+	rpc: RpcConfigSchema,
+});
+export type ActorConfig = z.infer<typeof ActorConfigSchema>;
 
 export const DEFAULT_ACTOR_CONFIG: ActorConfig = {
 	state: {
@@ -25,7 +29,7 @@ export const DEFAULT_ACTOR_CONFIG: ActorConfig = {
 export function mergeActorConfig(
 	partialConfig?: RecursivePartial<ActorConfig>,
 ): ActorConfig {
-	return {
+	const mergedConfig = {
 		state: {
 			saveInterval:
 				partialConfig?.state?.saveInterval ??
@@ -35,4 +39,7 @@ export function mergeActorConfig(
 			timeout: partialConfig?.rpc?.timeout ?? DEFAULT_ACTOR_CONFIG.rpc.timeout,
 		},
 	};
+	
+	// Validate the merged config against the schema
+	return ActorConfigSchema.parse(mergedConfig);
 }

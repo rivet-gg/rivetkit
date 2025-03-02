@@ -12,10 +12,8 @@ When mounting the ActorCore router at a custom path, you **must** specify the sa
 // Example configuration with basePath
 const { router: actorRouter } = createRouter({
   actors: { "counter": Counter },
-  router: {
-    // IMPORTANT: Must specify the same basePath where your router is mounted
-    basePath: "/api"
-  }
+  // IMPORTANT: Must specify the same basePath where your router is mounted
+  basePath: "/api"
 });
 
 // Mount at the same path specified in basePath
@@ -30,6 +28,9 @@ Each platform has specific requirements for integrating Hono with ActorCore.
 
 ### Cloudflare Workers
 
+_Coming soon_
+
+{/*
 ```typescript
 import { Hono } from "hono";
 import { createRouter } from "@actor-core/cloudflare-workers";
@@ -54,10 +55,8 @@ export default {
         actors: {
           "counter": Counter
         },
-        router: {
-          // IMPORTANT: Must specify the same basePath where your router is mounted
-          basePath: "/api"
-        }
+        // IMPORTANT: Must specify the same basePath where your router is mounted
+        basePath: "/api"
       },
       env.ACTOR_KV,
       env.ACTOR_DO
@@ -71,7 +70,6 @@ export default {
   }
 };
 ```
-
 Make sure to update your client connection URL to include the custom path:
 
 ```typescript
@@ -79,6 +77,8 @@ Make sure to update your client connection URL to include the custom path:
 import { Client } from "actor-core/client";
 const client = new Client("https://your-worker.workers.dev/api");
 ```
+*/}
+
 
 ### Node.js
 
@@ -98,10 +98,8 @@ app.get("/hello", (c) => c.text("Hello, world!"));
 // Create the ActorCore router and get the injectWebSocket function
 const { router: actorRouter, injectWebSocket } = createRouter({
   actors: { "counter": Counter },
-  router: {
-    // IMPORTANT: Must specify the same basePath where your router is mounted
-    basePath: "/api"
-  }
+  // IMPORTANT: Must specify the same basePath where your router is mounted
+  basePath: "/api"
 });
 
 // Mount the ActorCore router at /api
@@ -144,10 +142,8 @@ app.get("/hello", (c) => c.text("Hello, world!"));
 // Create the ActorCore router and get the websocket handler
 const { router: actorRouter, webSocketHandler } = createRouter({
   actors: { "counter": Counter },
-  router: {
-    // IMPORTANT: Must specify the same basePath where your router is mounted
-    basePath: "/api"
-  }
+  // IMPORTANT: Must specify the same basePath where your router is mounted
+  basePath: "/api"
 });
 
 // Mount the ActorCore router at /api

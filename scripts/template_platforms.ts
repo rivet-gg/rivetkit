@@ -287,10 +287,8 @@ const PLATFORMS: Record<string, PlatformConfigFn> = {
 					manager: new MemoryManagerDriver(),
 					actor: new MemoryActorDriver(),
 				},
-				router: {
-					// Custom base path for ActorCore
-					basePath: "/api/actors"
-				}
+				// Custom base path for ActorCore
+				basePath: "/api/actors"
 			});
 
 			// Mount the ActorCore router at /api/actors
@@ -308,15 +306,16 @@ const PLATFORMS: Record<string, PlatformConfigFn> = {
 			console.log("Server running at http://localhost:8787");
 			console.log("ActorCore mounted at http://localhost:8787/api/actors");
 			`,
+			// TODO: Make this only generate on the counter example
 			"tests/client.ts": dedent`
 			import { Client } from "actor-core/client";
-			${actorImports.replace(/from "\.\.\/\.\.\/\.\.\//g, 'from "../../')}
+			import Counter from "../../../src/counter";
 
 			async function main() {
 				// Note the custom path that matches the router.basePath
 				const client = new Client("http://localhost:8787/api/actors");
 
-				const counter = await client.get({ name: "counter" });
+				const counter = await client.get<Counter>({ name: "counter" });
 
 				counter.on("newCount", (count) => console.log("Event:", count));
 

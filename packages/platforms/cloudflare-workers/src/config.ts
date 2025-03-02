@@ -1,3 +1,6 @@
-import type { BaseConfig } from "actor-core/driver-helpers";
+import { BaseConfigSchema } from "actor-core/driver-helpers";
+import { z } from "zod";
 
-export interface Config extends BaseConfig {}
+export const ConfigSchema = BaseConfigSchema;
+export type InputConfig = z.input<typeof ConfigSchema>;
+export type Config = z.infer<typeof ConfigSchema>;

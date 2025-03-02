@@ -4,11 +4,7 @@ import type { UpgradeWebSocket, WSContext, WSEvents } from "hono/ws";
 import * as errors from "../errors";
 import { logger } from "./log";
 import { type Encoding, EncodingSchema } from "@/actor/protocol/serde";
-import {
-	DEFAULT_ROUTER_MAX_CONNECTION_PARAMETER_SIZE,
-	DEFAULT_ROUTER_MAX_INCOMING_MESSAGE_SIZE,
-	type BaseConfig,
-} from "./config";
+import { type BaseConfig } from "./config";
 import { parseMessage } from "@/actor/protocol/message/mod";
 import * as protoHttpRpc from "@/actor/protocol/http/rpc";
 import * as messageToServer from "@/actor/protocol/message/to_server";
@@ -132,9 +128,7 @@ export function createActorRouter(
 						const value = evt.data.valueOf() as InputData;
 						const message = await parseMessage(value, {
 							encoding: encoding,
-							maxIncomingMessageSize:
-								config.maxIncomingMessageSize ??
-								DEFAULT_ROUTER_MAX_INCOMING_MESSAGE_SIZE,
+							maxIncomingMessageSize: config.maxIncomingMessageSize,
 						});
 
 						await wsHandler.onMessage(message);
@@ -212,8 +206,7 @@ export function createActorRouter(
 			const contentLength = Number(c.req.header("content-length") || "0");
 			if (
 				contentLength >
-				(config.maxIncomingMessageSize ??
-					DEFAULT_ROUTER_MAX_INCOMING_MESSAGE_SIZE)
+				config.maxIncomingMessageSize
 			) {
 				throw new errors.MessageTooLong();
 			}
@@ -297,8 +290,7 @@ export function createActorRouter(
 			const contentLength = Number(c.req.header("content-length") || "0");
 			if (
 				contentLength >
-				(config.maxIncomingMessageSize ??
-					DEFAULT_ROUTER_MAX_INCOMING_MESSAGE_SIZE)
+				config.maxIncomingMessageSize
 			) {
 				throw new errors.MessageTooLong();
 			}
@@ -317,9 +309,7 @@ export function createActorRouter(
 			// Parse message
 			const message = await parseMessage(value, {
 				encoding,
-				maxIncomingMessageSize:
-					config.maxIncomingMessageSize ??
-					DEFAULT_ROUTER_MAX_INCOMING_MESSAGE_SIZE,
+				maxIncomingMessageSize: config.maxIncomingMessageSize,
 			});
 
 			await handler.onConnectionsMessage({
@@ -400,8 +390,7 @@ function getRequestConnectionParameters(
 	if (
 		paramsStr &&
 		paramsStr.length >
-			(config.maxConnectionParametersSize ??
-				DEFAULT_ROUTER_MAX_CONNECTION_PARAMETER_SIZE)
+			config.maxConnectionParametersSize
 	) {
 		logger().warn("connection parameters too long");
 		throw new errors.ConnectionParametersTooLong();

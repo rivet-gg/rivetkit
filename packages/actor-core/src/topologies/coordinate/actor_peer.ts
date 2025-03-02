@@ -1,17 +1,14 @@
-import {
-	BaseConfig,
-	DEFAULT_ACTOR_PEER_CHECK_LEASE_INTERVAL,
-	DEFAULT_ACTOR_PEER_CHECK_LEASE_JITTER,
-	DEFAULT_ACTOR_PEER_LEASE_DURATION,
-	DEFAULT_ACTOR_PEER_RENEW_LEASE_GRACE,
-} from "@/actor/runtime/config";
+import { BaseConfig } from "@/actor/runtime/config";
 import type { GlobalState } from "@/topologies/coordinate/topology";
 import { logger } from "./log";
 import type { CoordinateDriver } from "./driver";
 import type { Actor, AnyActor } from "@/actor/runtime/actor";
 import type { ActorTags } from "@/common/utils";
 import { ActorDriver } from "@/actor/runtime/driver";
-import { CONN_DRIVER_COORDINATE_RELAY, createCoordinateRelayDriver } from "./conn/driver";
+import {
+	CONN_DRIVER_COORDINATE_RELAY,
+	createCoordinateRelayDriver,
+} from "./conn/driver";
 
 export class ActorPeer {
 	#config: BaseConfig;
@@ -126,13 +123,10 @@ export class ActorPeer {
 		// TODO: Do this in 1 round trip with a Lua script
 
 		// Acquire initial information
-		const leaseDuration =
-			this.#config.actorPeer?.leaseDuration ??
-			DEFAULT_ACTOR_PEER_LEASE_DURATION;
 		const { actor } = await this.#coordinateDriver.startActorAndAcquireLease(
 			this.#actorId,
 			this.#globalState.nodeId,
-			leaseDuration,
+			this.#config.actorPeer.leaseDuration,
 		);
 		// Log
 		logger().debug("starting actor peer", {
@@ -187,18 +181,13 @@ export class ActorPeer {
 		let hbTimeout: number;
 		if (this.#isLeader) {
 			hbTimeout =
-				(this.#config.actorPeer?.leaseDuration ??
-					DEFAULT_ACTOR_PEER_LEASE_DURATION) -
-				(this.#config.actorPeer?.renewLeaseGrace ??
-					DEFAULT_ACTOR_PEER_RENEW_LEASE_GRACE);
+				this.#config.actorPeer.leaseDuration -
+				this.#config.actorPeer.renewLeaseGrace;
 		} else {
 			// TODO: Add jitter
 			hbTimeout =
-				(this.#config.actorPeer?.checkLeaseInterval ??
-					DEFAULT_ACTOR_PEER_CHECK_LEASE_INTERVAL) +
-				Math.random() *
-					(this.#config.actorPeer?.checkLeaseJitter ??
-						DEFAULT_ACTOR_PEER_CHECK_LEASE_JITTER);
+				this.#config.actorPeer.checkLeaseInterval +
+				Math.random() * this.#config.actorPeer.checkLeaseJitter;
 		}
 		if (hbTimeout < 0)
 			throw new Error("Actor peer heartbeat timeout is negative, check config");
@@ -239,13 +228,10 @@ export class ActorPeer {
 	 * If the lease has expired for any reason (e.g. connection latency or database purged), this will automatically shut down the actor.
 	 */
 	async #extendLease() {
-		const leaseDuration =
-			this.#config.actorPeer?.leaseDuration ??
-			DEFAULT_ACTOR_PEER_LEASE_DURATION;
 		const { leaseValid } = await this.#coordinateDriver.extendLease(
 			this.#actorId,
 			this.#globalState.nodeId,
-			leaseDuration,
+			this.#config.actorPeer.leaseDuration,
 		);
 		if (leaseValid) {
 			logger().debug("lease is valid", { actorId: this.#actorId });
@@ -261,14 +247,12 @@ export class ActorPeer {
 	 * Attempts to acquire a lease (aka checks if the leader's lease has expired). Called on an interval for followers.
 	 */
 	async #attemptAcquireLease() {
-		const leaseDuration =
-			this.#config.actorPeer?.leaseDuration ??
-			DEFAULT_ACTOR_PEER_LEASE_DURATION;
-		const { newLeaderNodeId } = await this.#coordinateDriver.attemptAcquireLease(
-			this.#actorId,
-			this.#globalState.nodeId,
-			leaseDuration,
-		);
+		const { newLeaderNodeId } =
+			await this.#coordinateDriver.attemptAcquireLease(
+				this.#actorId,
+				this.#globalState.nodeId,
+				this.#config.actorPeer.leaseDuration,
+			);
 
 		// Check if the lease was successfully acquired and promoted to leader
 		const isPromoted =

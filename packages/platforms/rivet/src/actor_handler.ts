@@ -5,12 +5,14 @@ import { upgradeWebSocket } from "hono/deno";
 import { logger } from "./log";
 import type { RivetHandler } from "./util";
 import { PartitionTopologyActor } from "actor-core/topologies/partition";
-import type { Config } from "./config";
+import { ConfigSchema, type Config, type InputConfig } from "./config";
 import { RivetActorDriver } from "./actor_driver";
 
 export function createActorHandler(
-	config: Config,
+	inputConfig: InputConfig,
 ): RivetHandler {
+	const config = ConfigSchema.parse(inputConfig);
+
 	const handler = {
 		async start(ctx: ActorContext): Promise<void> {
 			setupLogging();

@@ -2,10 +2,7 @@ import type { GlobalState } from "@/topologies/coordinate/topology";
 import { logger } from "../log";
 import pRetry, { AbortError } from "p-retry";
 import type { CoordinateDriver } from "../driver";
-import {
-	type BaseConfig,
-	DEFAULT_ACTOR_PEER_MESSAGE_ACK_TIMEOUT,
-} from "@/actor/runtime/config";
+import { type BaseConfig } from "@/actor/runtime/config";
 import type { NodeMessage } from "./protocol";
 
 /**
@@ -64,7 +61,7 @@ async function publishMessageToLeaderInner(
 	signal?: AbortSignal,
 ) {
 	// Find the leader node
-	const { actor }= await CoordinateDriver.getActorLeader(actorId);
+	const { actor } = await CoordinateDriver.getActorLeader(actorId);
 
 	// Validate initialized
 	if (!actor) throw new AbortError("Actor not initialized");
@@ -89,17 +86,17 @@ async function publishMessageToLeaderInner(
 	signal?.addEventListener("abort", signalListener);
 
 	// Throw error on timeout
-	const ackTimeout =
-		config.actorPeer?.messageAckTimeout ??
-		DEFAULT_ACTOR_PEER_MESSAGE_ACK_TIMEOUT;
 	const timeoutId = setTimeout(
 		() => ackReject(new Error("Ack timed out")),
-		ackTimeout,
+		config.actorPeer.messageAckTimeout,
 	);
 
 	try {
 		// Forward outgoing message
-		await CoordinateDriver.publishToNode(actor.leaderNodeId, JSON.stringify(message));
+		await CoordinateDriver.publishToNode(
+			actor.leaderNodeId,
+			JSON.stringify(message),
+		);
 
 		logger().debug("waiting for message ack", { messageId });
 

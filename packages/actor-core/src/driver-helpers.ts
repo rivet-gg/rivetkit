@@ -1,4 +1,4 @@
-export { BaseConfig } from "@/actor/runtime/config";
+export { type BaseConfig, BaseConfigSchema } from "@/actor/runtime/config";
 export {
 	AttemptAcquireLease,
 	ExtendLeaseOutput,

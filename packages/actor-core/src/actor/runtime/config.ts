@@ -1,6 +1,7 @@
-import { CoordinateDriver } from "@/driver-helpers";
+import { z } from "zod";
 import type { AnyActorConstructor } from "./actor";
-import { ActorDriver, ManagerDriver } from "./driver";
+import type { ActorDriver, ManagerDriver } from "./driver";
+import type { CoordinateDriver } from "@/driver-helpers";
 import type {
 	Hono,
 	Context as HonoContext,
@@ -8,77 +9,78 @@ import type {
 } from "hono";
 import type { cors } from "hono/cors";
 
-// Extract CORS config
-type CORSOptions = NonNullable<Parameters<typeof cors>[0]>;
+// Define CORS options schema
+type CorsOptions = NonNullable<Parameters<typeof cors>[0]>;
 
-export const DEFAULT_ROUTER_MAX_CONNECTION_PARAMETER_SIZE = 8_192;
-export const DEFAULT_ROUTER_MAX_INCOMING_MESSAGE_SIZE = 65_536;
+export const TopologySchema = z.enum(["standalone", "partition", "coordinate"]);
+export type Topology = z.infer<typeof TopologySchema>;
 
-export const DEFAULT_ACTOR_PEER_LEASE_DURATION = 3000;
-export const DEFAULT_ACTOR_PEER_RENEW_LEASE_GRACE = 1500;
-export const DEFAULT_ACTOR_PEER_CHECK_LEASE_INTERVAL = 1000;
-export const DEFAULT_ACTOR_PEER_CHECK_LEASE_JITTER = 500;
-export const DEFAULT_ACTOR_PEER_MESSAGE_ACK_TIMEOUT = 1000;
+export const ActorPeerConfigSchema = z.object({
+	/**
+	 * How long the actor leader holds a lease for.
+	 *
+	 * Milliseconds
+	 **/
+	leaseDuration: z.number().optional().default(3000),
+	/**
+	 * How long before the lease will expire to issue the renew command.
+	 *
+	 * Milliseconds
+	 */
+	renewLeaseGrace: z.number().optional().default(1500),
+	/**
+	 * How frequently the followers check if the leader is still active.
+	 *
+	 * Milliseconds
+	 */
+	checkLeaseInterval: z.number().optional().default(1000),
+	/**
+	 * Positive jitter for check lease interval
+	 *
+	 * Milliseconds
+	 */
+	checkLeaseJitter: z.number().optional().default(500),
+	/**
+	 * How long to wait for a message ack.
+	 *
+	 * Milliseconds
+	 */
+	messageAckTimeout: z.number().optional().default(1000),
+});
+export type ActorPeerConfig = z.infer<typeof ActorPeerConfigSchema>;
 
-export type Topology = "standalone" | "partition" | "coordinate";
+export type GetUpgradeWebSocket = (
+	app: Hono,
+) => (createEvents: (c: HonoContext) => any) => HonoHandler;
 
 /** Base config used for the actor config across all platforms. */
-export interface BaseConfig {
-	actors: Record<string, AnyActorConstructor>;
-	topology?: Topology;
-	drivers?: {
-		manager?: ManagerDriver;
-		actor?: ActorDriver;
-		coordinate?: CoordinateDriver;
-	};
+export const BaseConfigSchema = z.object({
+	actors: z.record(z.string(), z.custom<AnyActorConstructor>()),
+	topology: TopologySchema.optional().default("standalone"),
+	drivers: z
+		.object({
+			manager: z.custom<ManagerDriver>().optional(),
+			actor: z.custom<ActorDriver>().optional(),
+			coordinate: z.custom<CoordinateDriver>().optional(),
+		})
+		.optional()
+		.default({}),
 
 	/** CORS configuration for the router. Uses Hono's CORS middleware options. */
-	cors?: CORSOptions;
+	cors: z.custom<CorsOptions>().optional(),
 
 	// This is dynamic since NodeJS requires a reference to the app to initialize WebSockets
-	getUpgradeWebSocket?: (
-		app: Hono,
-	) => (createEvents: (c: HonoContext) => any) => HonoHandler;
+	getUpgradeWebSocket: z.custom<GetUpgradeWebSocket>().optional(),
 
 	/** Base path used to build URLs from. This is specifically used when returning the endpoint to connect to for actors. */
-	basePath?: string;
+	basePath: z.string().optional(),
 
 	/** This goes in the URL so it needs to be short. */
-	maxConnectionParametersSize?: number;
+	maxConnectionParametersSize: z.number().optional().default(8_192),
 
-	maxIncomingMessageSize?: number;
+	maxIncomingMessageSize: z.number().optional().default(65_536),
 
 	/** Peer configuration for coordinated topology. */
-	actorPeer?: {
-		/**
-		 * How long the actor leader holds a lease for.
-		 *
-		 * Milliseconds
-		 **/
-		leaseDuration?: number;
-		/**
-		 * How long before the lease will expire to issue the renew command.
-		 *
-		 * Milliseconds
-		 */
-		renewLeaseGrace?: number;
-		/**
-		 * How frequently the followers check if the leader is still active.
-		 *
-		 * Milliseconds
-		 */
-		checkLeaseInterval?: number;
-		/**
-		 * Positive jitter for check lease interval
-		 *
-		 * Milliseconds
-		 */
-		checkLeaseJitter?: number;
-		/**
-		 * How long to wait for a message ack.
-		 *
-		 * Milliseconds
-		 */
-		messageAckTimeout?: number;
-	};
-}
+	actorPeer: ActorPeerConfigSchema.optional().default({}),
+});
+export type BaseConfig = z.infer<typeof BaseConfigSchema>;

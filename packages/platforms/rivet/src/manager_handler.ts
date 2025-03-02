@@ -5,9 +5,11 @@ import { RivetManagerDriver } from "./manager_driver";
 import type { RivetClientConfig } from "./rivet_client";
 import type { RivetHandler } from "./util";
 import { PartitionTopologyManager } from "actor-core/topologies/partition";
-import { Config } from "./config";
+import { type InputConfig, ConfigSchema } from "./config";
 
-export function createManagerHandler(config: Config): RivetHandler {
+export function createManagerHandler(inputConfig: InputConfig): RivetHandler {
+	const config = ConfigSchema.parse(inputConfig);
+
 	const handler = {
 		async start(ctx: ActorContext): Promise<void> {
 			setupLogging();

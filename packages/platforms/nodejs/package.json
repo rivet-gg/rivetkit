@@ -36,6 +36,7 @@
   "dependencies": {
     "@actor-core/memory": "workspace:*",
     "@hono/node-server": "^1.13.8",
-    "@hono/node-ws": "^1.0.8"
+    "@hono/node-ws": "^1.0.8",
+    "zod": "^3.24.2"
   }
 }
