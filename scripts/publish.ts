@@ -1,12 +1,11 @@
 #!/usr/bin/env tsx
-import { $, chalk, argv, within, cd } from "zx";
-import * as path from "path";
+import { $, chalk, argv } from "zx";
 
 async function main() {
 	await runTypeCheck();
 	const version = getVersionFromArgs();
 	await bumpPackageVersions(version);
-	 await commitVersionChanges(version);
+	await commitVersionChanges(version);
 	const publicPackages = await getPublicPackages();
 	validatePackages(publicPackages);
 	await publishPackages(publicPackages, version);
@@ -88,22 +87,35 @@ async function publishPackages(publicPackages: any[], version: string) {
 	console.log(chalk.blue("Publishing packages..."));
 
 	for (const pkg of publicPackages) {
-		await publishPackage(pkg);
+		await publishPackage(pkg, version);
 	}
 
 	console.log(chalk.green(`✅ Published all packages at version ${version}`));
 	console.log(chalk.yellow("! Make sure to merge Release Please"));
 }
 
-async function publishPackage(pkg: any) {
+async function publishPackage(pkg: any, version: string) {
 	const { name } = pkg;
 
 	try {
 		console.log(chalk.cyan(`Publishing ${name}...`));
 
+		// Check if package with this version already exists
+		const { exitCode } = await $({
+			nothrow: true,
+		})`npm view ${name}@${version} version`;
+		if (exitCode === 0) {
+			console.log(
+				chalk.yellow(
+					`! Package ${name}@${version} already published, skipping`,
+				),
+			);
+			return;
+		}
+
 		await $({
 			stdio: "inherit",
-		})`yarn workspace ${name} npm publish --access public --tolerate-republish`;
+		})`yarn workspace ${name} npm publish --access public`;
 
 		console.log(chalk.green(`✅ Published ${name}`));
 	} catch (err) {
