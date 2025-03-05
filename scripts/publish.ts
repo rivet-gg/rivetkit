@@ -31,6 +31,14 @@ function getVersionFromArgs() {
 		process.exit(1);
 	}
 
+	// Validate version format (x.x.x or x.x.x-rc.x)
+	const versionRegex = /^\d+\.\d+\.\d+(-rc\.\d+)?$/;
+	if (!versionRegex.test(version)) {
+		console.error(chalk.red(`Invalid version format: ${version}`));
+		console.error(chalk.yellow("Version must be in format x.x.x or x.x.x-rc.x"));
+		process.exit(1);
+	}
+
 	return version;
 }
 
@@ -133,11 +141,15 @@ async function publishPackage(pkg: any, version: string) {
 			return;
 		}
 
+		// Add --tag flag for release candidates
+		const isReleaseCandidate = version.includes("-rc.");
+		const tag = isReleaseCandidate ? "rc" : "latest";
+		
 		await $({
 			stdio: "inherit",
-		})`yarn workspace ${name} npm publish --access public`;
+		})`yarn workspace ${name} npm publish --access public --tag ${tag}`;
 
-		console.log(chalk.green(`✅ Published ${name}`));
+		console.log(chalk.green(`✅ Published ${name} with tag '${tag}'`));
 	} catch (err) {
 		console.error(chalk.red(`Error publishing package ${name}:`), err);
 		process.exit(1);
