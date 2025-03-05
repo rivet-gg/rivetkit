@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.6.1](https://github.com/rivet-gg/actor-core/compare/v0.6.0...v0.6.1) (2025-03-05)
+
+
+### Chores
+
+* **publish:** add build step to publish script ([3c43e26](https://github.com/rivet-gg/actor-core/commit/3c43e26279e74cef941b2c98853c850951ccf2de))
+* **publish:** add build step to publish script ([#667](https://github.com/rivet-gg/actor-core/issues/667)) ([3c43e26](https://github.com/rivet-gg/actor-core/commit/3c43e26279e74cef941b2c98853c850951ccf2de))
+* release 0.6.1 ([5e817f6](https://github.com/rivet-gg/actor-core/commit/5e817f63a5397c8dba1cfb5e45ed814150f77233))
+* release 0.6.1 ([3c43e26](https://github.com/rivet-gg/actor-core/commit/3c43e26279e74cef941b2c98853c850951ccf2de))
+* release 0.6.1-rc.1 ([3c43e26](https://github.com/rivet-gg/actor-core/commit/3c43e26279e74cef941b2c98853c850951ccf2de))
+* release version 0.6.1 ([3c43e26](https://github.com/rivet-gg/actor-core/commit/3c43e26279e74cef941b2c98853c850951ccf2de))
+* release version 0.6.1-rc.1 ([3c43e26](https://github.com/rivet-gg/actor-core/commit/3c43e26279e74cef941b2c98853c850951ccf2de))
+
 ## [0.6.0](https://github.com/rivet-gg/actor-core/compare/v0.4.0...v0.6.0) (2025-03-05)
 
 
