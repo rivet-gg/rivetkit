@@ -23,7 +23,7 @@
 
 The modern way to build multiplayer, realtime, or AI agent backends.
 
-Supports [Rivet](https://rivet.gg/docs/setup), [Cloudflare Workers](https://actorcore.org/platforms/cloudflare-workers), [Bun](https://actorcore.org/platforms/bun), and [Node.js](https://actorcore.org/platforms/nodejs).
+Runs on [Rivet](https://rivet.gg/docs/setup), [Cloudflare Workers](https://actorcore.org/platforms/cloudflare-workers), [Bun](https://actorcore.org/platforms/bun), and [Node.js](https://actorcore.org/platforms/nodejs). Integrates with [Hono](https://actorcore.org/integrations/hono) and [Redis](https://actorcore.org/drivers/redis).
 
 ### Architecture
 
@@ -59,25 +59,24 @@ _\- = requires significant boilerplate code or external service_
 
 _† = on supported platforms_
 
-## Getting Started
+## Quickstart
 
-### Step 1: Installation
+Run this command:
 
-```bash npm
-# npm
-npm add actor-core
-
-# pnpm
-pnpm add actor-core
-
-# Yarn
-yarn add actor-core
-
-# Bun
-bun add actor-core
+```
+npx create-actor@latest
 ```
 
-### Step 2: Create an Actor
+## Supported Platforms
+
+- [**Rivet**](https://actorcore.org/platforms/rivet)
+- [**Cloudflare Workers**](https://actorcore.org/platforms/cloudflare-workers)
+- [**Bun**](https://actorcore.org/platforms/bun)
+- [**Node.js**](https://actorcore.org/platforms/nodejs)
+
+## Overview
+
+**Create Actor**
 
 ```typescript
 import { Actor, type Rpc } from "actor-core";
@@ -103,7 +102,7 @@ export default class ChatRoom extends Actor<State> {
 }
 ```
 
-### Step 3: Connect to Actor
+**Connect to Actor**
 
 ```typescript
 import { Client } from "actor-core/client";
@@ -122,15 +121,6 @@ chatRoom.on("newMessage", (username: string, message: string) =>
 // send message to room
 await chatRoom.sendMessage("william", "All the world's a stage.");
 ```
-
-### Step 4: Deploy
-
-Deploy to your platform of choice:
-
-- [**Rivet**](https://rivet.gg/docs/setup)
-- [**Cloudflare Workers**](https://actorcore.org/platforms/cloudflare-workers)
-- [**Bun**](https://actorcore.org/platforms/bun)
-- [**Node.js**](https://actorcore.org/platforms/nodejs)
 
 ## Community & Support
 
