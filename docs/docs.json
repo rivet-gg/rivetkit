@@ -149,10 +149,6 @@
   },
   "redirects": [
     {
-      "source": "/platforms/rivet",
-      "destination": "https://rivet.gg/docs/setup"
-    },
-    {
       "source": "/concepts/manage",
       "destination": "/concepts/interacting-with-actors"
     },

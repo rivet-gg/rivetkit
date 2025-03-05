@@ -4,7 +4,7 @@ _The Stateful Serverless Framework_
 
 ## Resources
 
-- [Rivet Quickstart](https://rivet.gg/docs/setup)
+- [Rivet Quickstart](https://actorcore.org/platforms/rivet)
 - [ActorCore Package](http://npmjs.com/actor-core)
 
 ## License

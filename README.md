@@ -23,7 +23,7 @@
 
 The modern way to build multiplayer, realtime, or AI agent backends.
 
-Runs on [Rivet](https://rivet.gg/docs/setup), [Cloudflare Workers](https://actorcore.org/platforms/cloudflare-workers), [Bun](https://actorcore.org/platforms/bun), and [Node.js](https://actorcore.org/platforms/nodejs). Integrates with [Hono](https://actorcore.org/integrations/hono) and [Redis](https://actorcore.org/drivers/redis).
+Runs on [Rivet](https://actorcore.org/platforms/rivet), [Cloudflare Workers](https://actorcore.org/platforms/cloudflare-workers), [Bun](https://actorcore.org/platforms/bun), and [Node.js](https://actorcore.org/platforms/nodejs). Integrates with [Hono](https://actorcore.org/integrations/hono) and [Redis](https://actorcore.org/drivers/redis).
 
 ### Architecture
 
