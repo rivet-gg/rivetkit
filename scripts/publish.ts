@@ -42,7 +42,7 @@ async function bumpPackageVersions(version: string) {
 async function commitVersionChanges(version: string) {
 	console.log(chalk.blue("Committing..."));
 	await $`git add .`;
-	
+
 	// Check if there are changes to commit
 	const { stdout: statusOutput } = await $`git status --porcelain`;
 	if (statusOutput.trim()) {
@@ -51,9 +51,16 @@ async function commitVersionChanges(version: string) {
 	} else {
 		console.log(chalk.yellow("No changes to commit for version bump"));
 	}
-	
+
 	await $`git commit --allow-empty -m "chore: release ${version}" -m "Release-As: ${version}"`;
-	await $`git push`;
+
+	const { exitCode: pushExitCode } = await $({ nothrow: true })`git push`;
+	if (pushExitCode !== 0) {
+		console.warn(
+			chalk.yellow("! Failed to push branch. You may need to push manually."),
+		);
+	}
+
 	await $`git push --tags -f`;
 }
 
@@ -70,7 +77,10 @@ async function getPublicPackages() {
 
 function validatePackages(publicPackages: any[]) {
 	const nonActorCorePackages = publicPackages.filter(
-		(pkg) => pkg.name !== "actor-core" && pkg.name !== "create-actor" && !pkg.name.startsWith("@actor-core/"),
+		(pkg) =>
+			pkg.name !== "actor-core" &&
+			pkg.name !== "create-actor" &&
+			!pkg.name.startsWith("@actor-core/"),
 	);
 
 	if (nonActorCorePackages.length > 0) {
