@@ -1,7 +1,7 @@
 {
   "name": "@actor-core/cli",
   "description": "All purpose CLI for Actor Core",
-  "version": "0.6.1-rc.1",
+  "version": "0.6.1",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
@@ -60,6 +60,5 @@
     "unplugin-macros": "^0.16.0",
     "which": "^5.0.0",
     "zod": "^3.24.2"
-  },
-  "stableVersion": "0.6.0"
+  }
 }

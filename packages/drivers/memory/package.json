@@ -1,6 +1,6 @@
 {
   "name": "@actor-core/memory",
-  "version": "0.6.1-rc.1",
+  "version": "0.6.1",
   "files": [
     "src",
     "dist",
@@ -45,6 +45,5 @@
   "dependencies": {
     "@types/node": "^22.13.1",
     "hono": "^4.7.0"
-  },
-  "stableVersion": "0.6.0"
+  }
 }

@@ -1,6 +1,6 @@
 {
   "name": "@actor-core/bun",
-  "version": "0.6.1-rc.1",
+  "version": "0.6.1",
   "files": [
     "src",
     "dist",
@@ -40,6 +40,5 @@
   "dependencies": {
     "dedent": "^1.5.3",
     "zod": "^3.24.2"
-  },
-  "stableVersion": "0.6.0"
+  }
 }

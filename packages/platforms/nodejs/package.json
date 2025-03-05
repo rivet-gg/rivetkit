@@ -1,6 +1,6 @@
 {
   "name": "@actor-core/nodejs",
-  "version": "0.6.1-rc.1",
+  "version": "0.6.1",
   "files": [
     "src",
     "dist",
@@ -39,6 +39,5 @@
     "@hono/node-server": "^1.13.8",
     "@hono/node-ws": "^1.0.8",
     "zod": "^3.24.2"
-  },
-  "stableVersion": "0.6.0"
+  }
 }
