@@ -40,6 +40,7 @@ async function bumpPackageVersions(version: string) {
 }
 
 async function commitVersionChanges(version: string) {
+	console.log(chalk.blue("Committing..."));
 	await $`git add .`;
 	await $`git commit -m "chore: release version ${version}"`;
 	await $`git commit --allow-empty -m "chore: release ${version}" -m "Release-As: ${version}"`;
