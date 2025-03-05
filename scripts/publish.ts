@@ -60,7 +60,7 @@ async function getPublicPackages() {
 
 function validatePackages(publicPackages: any[]) {
 	const nonActorCorePackages = publicPackages.filter(
-		(pkg) => pkg.name !== "actor-core" && !pkg.name.startsWith("@actor-core/"),
+		(pkg) => pkg.name !== "actor-core" && pkg.name !== "create-actor" && !pkg.name.startsWith("@actor-core/"),
 	);
 
 	if (nonActorCorePackages.length > 0) {
