@@ -2,10 +2,19 @@
 import { $, chalk, argv } from "zx";
 
 async function main() {
-	await runTypeCheck();
+	// Update version
 	const version = getVersionFromArgs();
 	await bumpPackageVersions(version);
+
+	// IMPORTANT: Do this after bumping the version
+	// Check & build
+	await runTypeCheck();
+	await runBuild();
+
+	// Commit
 	await commitVersionChanges(version);
+
+	// Publish
 	const publicPackages = await getPublicPackages();
 	validatePackages(publicPackages);
 	await publishPackages(publicPackages, version);
@@ -19,6 +28,18 @@ async function runTypeCheck() {
 		console.log(chalk.green("✅ Type check passed"));
 	} catch (err) {
 		console.error(chalk.red("❌ Type check failed"));
+		process.exit(1);
+	}
+}
+
+async function runBuild() {
+	console.log(chalk.blue("Running build..."));
+	try {
+		// --force to skip cache in case of Turborepo bugs
+		await $`yarn build --force`;
+		console.log(chalk.green("✅ Build finished"));
+	} catch (err) {
+		console.error(chalk.red("❌ Build failed"));
 		process.exit(1);
 	}
 }
