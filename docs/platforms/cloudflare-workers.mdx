@@ -6,7 +6,8 @@ import SetupActor from '/snippets/setup-actor.mdx';
 import SetupNextSteps from '/snippets/setup-next-steps.mdx';
 import MvpWarning from '/snippets/mvp-warning.mdx';
 import IntegrationExistingProjects from '/snippets/integration-existing-projects.mdx';
-
+import CreateActorCli from '/snippets/create-actor-cli.mdx';
+import CloudflareDeploy from "/snippets/cloudflare-deploy.mdx";
 
 <Note>
 	ActorCore relies on features only available in the Workers Paid plan ([more info](https://developers.cloudflare.com/durable-objects/platform/pricing/)).
@@ -16,110 +17,136 @@ import IntegrationExistingProjects from '/snippets/integration-existing-projects
 
 <MvpWarning />
 
+## Create New Project
+
 <Steps>
-	<Step title="Create New Cloudflare Workers Project">
+	<Step title="Create Project with CLI">
+		Run this command:
+
+		<CreateActorCli />
+
+		Follow the prompts:
+		1. **Where would you like to create your project?** - Choose your project directory
+		2. **To which platform would you like to deploy?** - Select Cloudflare Workers
+		3. **Which template would you like to use?** - Select counter, or your template of choice
+
+		The CLI will set up your project and install all dependencies automatically.
+	</Step>
+	<Step title="Start Development Server">
+		Start your development server with:
+
+		```sh
+		cd your-project
+		npm run dev
+		```
+
+		This will start your ActorCore server in development mode with Wrangler.
+	</Step>
+	<Step title="Test">
+		In a separate terminal, run the auto-generated test client:
+
+		```sh
+		npx tsx tests/client.ts
+		# Outputs:
+		# Event: 1
+		# RPC: 1
+		```
+
+		Run this again to see the state update.
+	</Step>
+	<Step title="Deploy">
+		<CloudflareDeploy />
+	</Step>
+</Steps>
+
+## Integrating With Existing Projects
+
+If you already have a Cloudflare Workers project and want to add ActorCore, you can follow these steps for manual integration. This approach gives you more control over how ActorCore fits into your existing Cloudflare Workers project.
+
+<Steps>
+	<Step title="Install Packages">
 		<CodeGroup>
 			```sh npm
-			# Create project
-			npm create cloudflare@latest -- my-project --type=hello-world --ts --deploy=false
+			# Install ActorCore
+			npm add actor-core @actor-core/cloudflare-workers
+			```
 
-    		cd my-project
+			```sh pnpm
+			# Install ActorCore
+			pnpm add actor-core @actor-core/cloudflare-workers
+			```
 
-    		# Install ActorCore
-    		npm add actor-core @actor-core/cloudflare-workers
-    		```
+			```sh yarn
+			# Install ActorCore
+			yarn add actor-core @actor-core/cloudflare-workers
+			```
 
-    		```sh pnpm
-    		# Create project
-    		pnpm create cloudflare@latest my-project --type=hello-world --ts --deploy=false
-
-    		cd my-project
-
-    		# Install ActorCore
-    		pnpm add actor-core @actor-core/cloudflare-workers
-    		```
-
-    		```sh yarn
-    		# Create project
-    		yarn create cloudflare@latest my-project --type=hello-world --ts --deploy=false
-
-    		cd my-project
-
-    		# Install ActorCore
-    		yarn add actor-core @actor-core/cloudflare-workers
-    		```
-
-    		```sh bun
-    		# Create project
-    		bun create cloudflare@latest my-project --type=hello-world --ts --deploy=false
-
-    		cd my-project
-
-    		# Install ActorCore
-    		bun add actor-core @actor-core/cloudflare-workers
-    		```
-    	</CodeGroup>
-
-    	<Tip>ActorCore can also be used with existing Cloudflare projects.</Tip>
-    </Step>
-    <Step title="Create Actor">
-    	Create a new file for your actor at `src/counter.ts`:
+			```sh bun
+			# Install ActorCore
+			bun add actor-core @actor-core/cloudflare-workers
+			```
+		</CodeGroup>
+	</Step>
+	<Step title="Create Actor">
+		Create a new file for your actor at `src/counter.ts`:
 
 		<SetupActor />
-    </Step>
-    <Step title="Configure Cloudflare">
-    	Update both `src/index.ts` and `wrangler.json` to look like this:
+	</Step>
+	<Step title="Configure Cloudflare">
+		Update both `src/index.ts` and `wrangler.json` to look like this:
 
 		<CodeGroup>
 
-    	```typescript src/index.ts
-    	import { createHandler } from "@actor-core/cloudflare-workers";
-    	import Counter from "./counter";
+		```typescript src/index.ts
+		import { createHandler } from "@actor-core/cloudflare-workers";
+		import Counter from "./counter";
 
-    	const { handler, ActorHandler } = createHandler({
-    		actors: {
-    			"counter": Counter
-    		},
+		const { handler, ActorHandler } = createHandler({
+			actors: {
+				"counter": Counter
+			},
 			// Change this to match your frontend's origin
-    		cors: { origin: "http://localhost:3000" }
-    	});
+			cors: { origin: "http://localhost:3000" }
+		});
 
-    	export { handler as default, ActorHandler };
-    	```
+		export { handler as default, ActorHandler };
+		```
 
-    	```json wrangler.json
-    	{
-    		"name": "my-project",
-    		"main": "src/index.ts",
-    		"compatibility_date": "2025-01-29",
-    		"migrations": [
-    			{
-    				"new_classes": ["ActorHandler"],
-    				"tag": "v1"
-    			}
-    		],
-    		"durable_objects": {
-    			"bindings": [
-    			{
-    				"class_name": "ActorHandler",
-    				"name": "ACTOR_DO"
-    			}
-    			]
-    		},
-    		"kv_namespaces": [
-    			{
-    				"binding": "ACTOR_KV",
-    				"id": "FILL_ME_IN_WHEN_YOU_DEPLOY"
-    			}
-    		]
-    	}
-    	```
+		```json wrangler.json
+		{
+			"name": "my-project",
+			"main": "src/index.ts",
+			"compatibility_date": "2025-01-29",
+			"migrations": [
+				{
+					"new_classes": ["ActorHandler"],
+					"tag": "v1"
+				}
+			],
+			"durable_objects": {
+				"bindings": [
+				{
+					"class_name": "ActorHandler",
+					"name": "ACTOR_DO"
+				}
+				]
+			},
+			"kv_namespaces": [
+				{
+					"binding": "ACTOR_KV",
+					"id": "FILL_ME_IN_WHEN_YOU_DEPLOY"
+				}
+			]
+		}
+		```
 
 		</CodeGroup>
 
 		In `src/index.ts`, `handler` is used to handle HTTP requests made to the worker. `ActorHandler` is a Durable Object used to provide state for your actors.
-    </Step>
-    <Step title="Create Client & Test">
+
+		<IntegrationExistingProjects />
+	</Step>
+	<Step title="Create Client & Test">
 		To start your development server, run:
 
 		```sh
@@ -153,56 +180,16 @@ import IntegrationExistingProjects from '/snippets/integration-existing-projects
 		```sh
 		npx tsx client.ts
 		# Outputs:
-		# Event: 43
-		# RPC: 43
+		# Event: 1
+		# RPC: 1
 		```
-    </Step>
-    <Step title="Deploy">
-		1. Create a new KV namespace with:
-
-			```sh
-			npx wrangler kv namespace create ACTOR_KV
-			```
 		
-		2. After creating the KV namespace, you will receive an ID. Update your `wrangler.json` file by replacing the placeholder in the `kv_namespaces` section with this ID. It should look like this:
-
-			```json
-			{
-				"kv_namespaces": [
-					{
-						"binding": "ACTOR_KV",
-						"id": "your-namespace-id-here"  // Replace with your actual ID
-					}
-				]
-				// ...etc...
-			}
-			```
-
-		3. Deploy your project to Cloudflare Workers by running:
-
-			```sh
-			npx wrangler deploy
-			```
-
-		4. Update your client to use the deployed endpoint. Replace the local endpoint in `client.ts` with your Cloudflare Workers URL:
-
-			```typescript
-			const client = new Client("https://your-worker-subdomain.workers.dev");
-			```
-
-			Ensure you replace `your-worker-subdomain` with the actual subdomain assigned to your worker.
-
-		5. Test your deployed application by running the client script again:
-
-			```sh
-			npx tsx client.ts
-			```
-    </Step>
+		Run this again to see the state update.
+	</Step>
+	<Step title="Deploy">
+		<CloudflareDeploy />
+	</Step>
 </Steps>
-
-## Integrating With Existing Projects
-
-<IntegrationExistingProjects />
 
 ## Available Regions
 

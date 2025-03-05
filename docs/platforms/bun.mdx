@@ -6,30 +6,74 @@ import SetupActor from '/snippets/setup-actor.mdx';
 import SetupNextSteps from '/snippets/setup-next-steps.mdx';
 import MvpWarning from '/snippets/mvp-warning.mdx';
 import IntegrationExistingProjects from '/snippets/integration-existing-projects.mdx';
+import CreateActorCli from '/snippets/create-actor-cli.mdx';
 
 <MvpWarning />
+
+## Create New Project
+
+<Steps>
+	<Step title="Create Project with CLI">
+		Run this command:
+
+		```sh bun
+		bun create actor@latest
+		```
+
+		Follow the prompts:
+		1. **Where would you like to create your project?** - Choose your project directory
+		2. **To which platform would you like to deploy?** - Select Bun
+		3. **Which template would you like to use?** - Select counter, or your template of choice
+
+		The CLI will set up your project and install all dependencies automatically.
+	</Step>
+	<Step title="Start Development Server">
+		Start your development server with:
+
+		```sh
+		cd your-project
+		bun dev
+		```
+
+		This will start your ActorCore server in development mode.
+	</Step>
+	<Step title="Test">
+		In a separate terminal, run the auto-generated test client:
+
+		```sh
+		bun tests/client.ts
+		# Outputs:
+		# Event: 1
+		# RPC: 1
+		```
+
+		Run this again to see the state update.
+	</Step>
+	<Step title="Deploy">
+		To build for production:
+
+		```sh
+		bun build
+		bun start
+		```
+
+		_Request a guide for deploying Bun to your preferred cloud provider on [GitHub Discussions](https://github.com/rivet-gg/actor-core/discussions)._
+	</Step>
+</Steps>
+
+## Integrating With Existing Projects
+
+If you already have a Bun project and want to add ActorCore, you can follow these steps for manual integration. This approach gives you more control over how ActorCore fits into your existing codebase.
 
 <Steps>
 	<Step title="Install Bun">
 		Install Bun [here](https://bun.sh/).
 	</Step>
-	<Step title="Install & Configure Redis">
-		Install Redis [here](https://redis.io/docs/latest/operate/oss_and_stack/install/install-redis/).
-
-		By default, ActorCore will connect to `redis://127.0.0.1:6379`. See [instructions on configuring Redis](#configuring-redis).
-	</Step>
-	<Step title="Create New Bun Project">
+	<Step title="Install Packages">
         ```sh
-        # Create project
-        mkdir my-project
-        cd my-project
-        bun init --yes
-
         # Install ActorCore
         bun add actor-core @actor-core/bun
         ```
-
-    	<Tip>ActorCore can also be used with existing Bun projects.</Tip>
     </Step>
     <Step title="Create Actor">
     	Create a new file for your actor at `src/counter.ts`:
@@ -49,6 +93,8 @@ import IntegrationExistingProjects from '/snippets/integration-existing-projects
 			cors: { origin: "http://localhost:3000" }
 		});
     	```
+
+		<IntegrationExistingProjects />
     </Step>
     <Step title="Create Client">
 		Create a client to connect to your actor in `src/client.ts`:
@@ -85,39 +131,17 @@ import IntegrationExistingProjects from '/snippets/integration-existing-projects
 		```sh
 		bun src/client.ts
 		# Outputs:
-		# Event: 43
-		# RPC: 43
+		# Event: 1
+		# RPC: 1
 		```
-    </Step>
-    <Step title="Deploy">
-		_Request a guide for deploying Bun to your preferred cloud provider on [GitHub Discussions](https://github.com/rivet-gg/actor-core/discussions)._
+
+		Run this again to see the state update.
     </Step>
 </Steps>
-
-## Integrating With Existing Projects
-
-<IntegrationExistingProjects />
 
 ## Available Regions
 
 Bun can only run in one region at the moment. See [Rivet](https://rivet.gg/docs/setup) and [Cloudflare Workers](/platforms/cloudflare-workers) for supporting multiple regions.
-
-## Configuring Redis
-
-Configure your Redis connection like this:
-
-```typescript
-export default createHandler({
-	redis: {
-		port: 6379,
-		host: "127.0.0.1",
-		password: "my-top-secret"
-	},
-	// ...
-});
-```
-
-See all available options [here](https://redis.github.io/ioredis/index.html#RedisOptions).
 
 ## Next Steps
 

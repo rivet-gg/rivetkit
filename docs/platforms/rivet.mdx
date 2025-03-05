@@ -1,162 +1,84 @@
 ---
 title: Rivet
-url: https://rivet.gg/docs/setup
 ---
 
-import SetupActor from '/snippets/setup-actor.mdx';
-import SetupNextSteps from '/snippets/setup-next-steps.mdx';
-import MvpWarning from '/snippets/mvp-warning.mdx';
+import SetupActor from "/snippets/setup-actor.mdx";
+import SetupNextSteps from "/snippets/setup-next-steps.mdx";
+import MvpWarning from "/snippets/mvp-warning.mdx";
+import CreateActorCli from '/snippets/create-actor-cli.mdx';
 
 <MvpWarning />
 
+## Create New Project
+
 <Steps>
-	<Step title="Create New Rivet Project">
-		Ensure you've installed the [Rivet CLI](https://rivet.gg/docs/setup).
+	<Step title="Create Project with CLI">
+		Run this command:
 
-		<CodeGroup>
-			```sh npm
-			# Create project
-			rivet init
+		<CreateActorCli />
 
-    		cd my-project
+		Follow the prompts:
+		1. **Where would you like to create your project?** - Choose your project directory
+		2. **To which platform would you like to deploy?** - Select Rivet
+		3. **Which template would you like to use?** - Select counter, or your template of choice
 
-    		# Install ActorCore
-    		npm add actor-core @actor-core/rivet
-    		```
-
-    		```sh pnpm
-			# Create project
-			rivet init
-
-			cd my-project
-
-    		# Install ActorCore
-    		pnpm add actor-core @actor-core/cloudflare-workers
-    		```
-
-    		```sh yarn
-			# Create project
-			rivet init
-
-			cd my-project
-
-    		# Install ActorCore
-    		yarn add actor-core @actor-core/cloudflare-workers
-    		```
-
-    		```sh bun
-			# Create project
-			rivet init
-
-			cd my-project
-
-    		# Install ActorCore
-    		bun add actor-core @actor-core/cloudflare-workers
-    		```
-    	</CodeGroup>
-
-    	<Tip>ActorCore can also be used with existing Rivet projects.</Tip>
-    </Step>
-    <Step title="Create Actor">
-    	Create a new file for your actor at `src/counter.ts`:
-
-    	<SetupActor />
-    </Step>
-    <Step title="Configure Rivet">
-    	Update both `src/manager.ts` and `rivet.json` to look like this:
-
-		<CodeGroup>
-
-    	```typescript src/manager.ts
-		import { createManagerHandler } from "@actor-core/rivet";
-		export default createManagerHandler();
-    	```
-
-    	```json rivet.json
-		{
-			"builds": {
-				"manager": {
-					"script": "src/manager.ts",
-					"access": "private"
-				},
-				"counter": {
-					"script": "src/counter.ts",
-					"access": "public"
-				}
-			},
-			"unstable": {
-				"manager": {
-					"enable": false
-				}
-			}
-		}
-    	```
-
-		</CodeGroup>
-
-		The `manager` actor is a special type of actor used for exposing a public API to create & manage actors easily.
-    </Step>
-    <Step title="Deploy">
-		1. Deploy your project with:
-
-			```sh
-			rivet deploy
-			```
-		1. Navigate to the [Rivet Dashboard](https://hub.rivet.gg) (or run `rivet view` for a shortcut). Navigate to _Your Team > Your Project > Production > Tokens_. Under _Service token_, click _Generate_.
-
-			![Service Token](/media/platforms/rivet/service-token.png)
-
-		2. Run this command to create the manager actor. Replace `your-service-token-here` with the token above.  (This command only needs to be ran once.)
-
-			```sh
-			# Only works on macOS & Linux
-			rivet actor create -r atl -t name=manager --env-var RIVET_SERVICE_TOKEN=your-service-token-here -p name=http,protocol=https,guard --durable | grep -o 'https://[^"]*'
-			```
-
-			This will output a URL that looks something like: `https://xxxx.actor.xxxx.rivet.run:443`
+		The CLI will set up your project and install all dependencies automatically.
 	</Step>
-    <Step title="Create Client & Test">
-		Now, write a file named `client.ts`. Make sure to replace `your-manager-url-here` with the URL from above.
-
-		```typescript client.ts
-		import { Client } from "actor-core/client";
-		import type Counter from "../src/counter.ts";
-
-		async function main() {
-			const client = new Client("your-manager-url-here");
-
-			const counter = await client.get<Counter>({ name: "counter" });
-
-			counter.on("newCount", (count: number) => console.log("Event:", count));
-
-			const out = await counter.increment(5);
-			console.log("RPC:", out);
-
-			await counter.disconnect();
-		}
-
-		main();
-		```
-
-		Run the file with:
+	<Step title="Deploy to Rivet">
+		Deploy your project to Rivet with:
 
 		```sh
-		npx tsx client.ts
-		# Outputs:
-		# Event: 43
-		# RPC: 43
+		cd your-project
+		npm run deploy
 		```
-    </Step>
-    <Step title="(Optional) Monitor">
-		Visit the [Rivet Dashboard](https://hub.rivet.gg) (or run `rivet view` as a shortcut) to view your project.
 
-		You'll see the actor you created here:
+		This will prompt you to:
+		1. Login to Rivet and create a project
+		2. Select an environment
+
+		After successful deployment, you'll receive important URLs:
+
+		- **Actor Manager URL**: Used for client connections to your actors
+		- **Actors Dashboard**: Manage deployed actors and view their status 
+		- **Builds Dashboard**: Monitor build history and deployment logs
+
+		Make sure to save your Actor Manager URL as you'll need it to connect from your client code.
+	</Step>
+	<Step title="Test">
+		Update `tests/client.ts` to use the deployed endpoint. Replace the local endpoint in client.ts with your Cloudflare Workers URL:
+
+		```typescript tests/client.ts
+		// Replace this URL with your Actor Manager URL from the deployment output
+		const client = new Client("https://your-actor-manager-url-from-deployment.rivet.run:443");
+		```
+
+		Then run the client:
+
+		```sh
+		npx tsx tests/client.ts
+		# Outputs:
+		# Event: 1
+		# RPC: 1
+		```
+
+		Run this again to see the state update as the actor maintains its state between calls.
+	</Step>
+	<Step title="Monitor">
+		Monitor your actors, builds, and performance through the Rivet Hub using the links provided in the deployment output:
+
+		- **Actors**: View and manage your deployed actors
+		- **Builds**: Review build history and logs
+		- **Actor Manager**: Access the actor manager endpoint for direct connections
+
+		Visit the [Rivet Dashboard](https://hub.rivet.gg) to view your project.
 
 		![Dashboard](/media/platforms/rivet/dash.png)
 	</Step>
 </Steps>
 
 ## Available Regions
+
+Rivet supports deploying your actors to multiple regions automatically. You can specify region preferences in your Rivet project settings in the Rivet Hub.
 
 See available regions [here](https://rivet.gg/docs/regions).
 

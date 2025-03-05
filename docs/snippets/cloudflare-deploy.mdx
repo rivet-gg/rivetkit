@@ -1,0 +1,33 @@
+1. Create a new KV namespace with:
+
+	```sh
+	npx wrangler kv namespace create ACTOR_KV
+	```
+
+2. After creating the KV namespace, you will receive an ID. Update your `wrangler.json` file by replacing the placeholder in the `kv_namespaces` section with this ID. It should look like this:
+
+	```json
+	{
+		"kv_namespaces": [
+			{
+				"binding": "ACTOR_KV",
+				"id": "your-namespace-id-here"  // Replace with your actual ID
+			}
+		]
+		// ...etc...
+	}
+	```
+
+3. Deploy your project to Cloudflare Workers by running:
+
+	```sh
+	npx wrangler deploy
+	```
+
+4. Update `tests/client.ts` (or wherever your client lives) to use the deployed endpoint. Replace the local endpoint in `client.ts` with your Cloudflare Workers URL:
+
+	```typescript
+	const client = new Client("https://your-worker-subdomain.workers.dev");
+	```
+
+	Ensure you replace `your-worker-subdomain` with the actual subdomain assigned to your worker.

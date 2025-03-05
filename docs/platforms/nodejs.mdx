@@ -2,59 +2,83 @@
 title: Node.js
 ---
 
-import SetupActor from '/snippets/setup-actor.mdx';
-import SetupNextSteps from '/snippets/setup-next-steps.mdx';
-import MvpWarning from '/snippets/mvp-warning.mdx';
-import IntegrationExistingProjects from '/snippets/integration-existing-projects.mdx';
-
+import SetupActor from "/snippets/setup-actor.mdx";
+import SetupNextSteps from "/snippets/setup-next-steps.mdx";
+import MvpWarning from "/snippets/mvp-warning.mdx";
+import IntegrationExistingProjects from "/snippets/integration-existing-projects.mdx";
+import CreateActorCli from '/snippets/create-actor-cli.mdx';
 
 <MvpWarning />
 
-<Steps>
-	<Step title="Install Node.js">
-		Install Node.js [here](https://nodejs.org/en/download).
-	</Step>
-	<Step title="Install & Configure Redis">
-		Install Redis [here](https://redis.io/docs/latest/operate/oss_and_stack/install/install-redis/).
+## Create New Project
 
-		By default, ActorCore will connect to `redis://127.0.0.1:6379`. See [instructions on configuring Redis](#configuring-redis).
+<Steps>
+	<Step title="Create Project with CLI">
+		Run this command:
+
+		<CreateActorCli />
+
+		Follow the prompts:
+		1. **Where would you like to create your project?** - Choose your project directory
+		2. **To which platform would you like to deploy?** - Select Node.js
+		3. **Which template would you like to use?** - Select counter, or your template of choice
+
+		The CLI will set up your project and install all dependencies automatically.
 	</Step>
-	<Step title="Create New Node.js Project">
+	<Step title="Start Development Server">
+		Start your development server with:
+
+		```sh
+		cd your-project
+		npm run dev
+		```
+
+		This will start your ActorCore server in development mode.
+	</Step>
+	<Step title="Test">
+		In a separate terminal, run the auto-generated test client:
+
+		```sh
+		npx tsx tests/client.ts
+		# Outputs:
+		# Event: 1
+		# RPC: 1
+		```
+
+		Run this again to see the state update.
+	</Step>
+	<Step title="Deploy">
+		_Request a guide for deploying Node.js to your preferred cloud provider on [GitHub Discussions](https://github.com/rivet-gg/actor-core/discussions)._
+	</Step>
+</Steps>
+
+## Integrate With Existing Projects
+
+If you already have a Node.js project and want to add ActorCore, you can follow these steps for manual integration. This approach gives you more control over how ActorCore fits into your existing codebase.
+
+<Steps>
+	<Step title="Install Packages">
 		<CodeGroup>
 			```sh npm
-			# Create project
-			npm init -y
-
 			# Install ActorCore
 			npm add actor-core @actor-core/nodejs
 			```
 
 			```sh pnpm
-			# Create project
-			pnpm init -y
-
 			# Install ActorCore
 			pnpm add actor-core @actor-core/nodejs
 			```
 
 			```sh yarn
-			# Create project
-			yarn init -y
-
 			# Install ActorCore
-			yarn add actor-core @actor-core/nodejs
+			npm add actor-core @actor-core/nodejs
 			```
 
 			```sh bun
-			# Create project
-			bun init --yes
-
 			# Install ActorCore
 			bun add actor-core @actor-core/nodejs
 			```
 		</CodeGroup>
-
-		<Tip>ActorCore can also be used with existing Node.js projects.</Tip>
 	</Step>
 	<Step title="Create Actor">
 		Create a new file for your actor at `src/counter.ts`:
@@ -74,6 +98,8 @@ import IntegrationExistingProjects from '/snippets/integration-existing-projects
 			cors: { origin: "http://localhost:3000" }
 		});
 		```
+
+		<IntegrationExistingProjects />
 	</Step>
 	<Step title="Create Client">
 		Create a client to connect to your actor in `src/client.ts`:
@@ -110,39 +136,17 @@ import IntegrationExistingProjects from '/snippets/integration-existing-projects
 		```sh
 		npx tsx src/client.ts
 		# Outputs:
-		# Event: 43
-		# RPC: 43
+		# Event: 1
+		# RPC: 1
 		```
-	</Step>
-	<Step title="Deploy">
-		_Request a guide for deploying Node.js to your preferred cloud provider on [GitHub Discussions](https://github.com/rivet-gg/actor-core/discussions)._
+
+		Run this again to see the state update.
 	</Step>
 </Steps>
-
-## Integrating With Existing Projects
-
-<IntegrationExistingProjects />
 
 ## Available Regions
 
 Node.js can only run in one region at the moment. See [Rivet](https://rivet.gg/docs/setup) and [Cloudflare Workers](/platforms/cloudflare-workers) for supporting multiple regions.
-
-## Configuring Redis
-
-Configure your Redis connection like this:
-
-```typescript
-serve({
-	redis: {
-		port: 6379,
-		host: "127.0.0.1",
-		password: "my-top-secret"
-	},
-	// ...
-});
-```
-
-See all available options [here](https://redis.github.io/ioredis/index.html#RedisOptions).
 
 ## Next Steps
 
