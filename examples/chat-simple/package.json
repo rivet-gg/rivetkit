@@ -1,6 +1,6 @@
 {
   "name": "chat-room",
-  "version": "0.6.0",
+  "version": "0.6.1-rc.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -19,5 +19,6 @@
     "actors": {
       "chat-room": "src/chat-room.ts"
     }
-  }
+  },
+  "stableVersion": "0.6.0"
 }

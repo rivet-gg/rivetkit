@@ -1,6 +1,6 @@
 {
 	"name": "docs-middleware",
-	"version": "0.6.0",
+	"version": "0.6.1-rc.1",
 	"private": true,
 	"scripts": {
 		"deploy": "wrangler deploy",
@@ -14,5 +14,6 @@
 		"typescript": "^5.5.2",
 		"vitest": "~2.1.9",
 		"wrangler": "^3.101.0"
-	}
+	},
+	"stableVersion": "0.6.0"
 }

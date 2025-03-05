@@ -1,6 +1,6 @@
 {
   "name": "@actor-core/redis",
-  "version": "0.6.0",
+  "version": "0.6.1-rc.1",
   "files": [
     "src",
     "dist",
@@ -58,5 +58,6 @@
     "hono": "^4.7.0",
     "ioredis": "^5.4.2",
     "p-retry": "^6.2.1"
-  }
+  },
+  "stableVersion": "0.6.0"
 }
