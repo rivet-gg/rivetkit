@@ -42,7 +42,16 @@ async function bumpPackageVersions(version: string) {
 async function commitVersionChanges(version: string) {
 	console.log(chalk.blue("Committing..."));
 	await $`git add .`;
-	await $`git commit -m "chore: release version ${version}"`;
+	
+	// Check if there are changes to commit
+	const { stdout: statusOutput } = await $`git status --porcelain`;
+	if (statusOutput.trim()) {
+		console.log(chalk.blue("Changes detected, committing version changes..."));
+		await $`git commit -m "chore: release version ${version}"`;
+	} else {
+		console.log(chalk.yellow("No changes to commit for version bump"));
+	}
+	
 	await $`git commit --allow-empty -m "chore: release ${version}" -m "Release-As: ${version}"`;
 	await $`git push`;
 	await $`git push --tags -f`;
