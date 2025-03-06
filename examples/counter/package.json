@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "test": "tsx tests/client.ts"
   },
   "devDependencies": {
     "actor-core": "workspace:*",

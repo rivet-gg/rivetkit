@@ -50,13 +50,11 @@ export const deploy = new Command()
 					}
 				});
 
-				const platformOptions = yield* ctx.task(
-					"Resolve platform specific files",
-					async () => {
-						return resolvePlatformSpecificOptions(platform as Platform, {
-							files: {},
-							version: opts.version || VERSION,
-						});
+				const platformOptions = await resolvePlatformSpecificOptions(
+					platform as Platform,
+					{
+						files: {},
+						version: opts.version || VERSION,
 					},
 				);
 
@@ -94,13 +92,8 @@ export const deploy = new Command()
 			const { accessToken, projectName, envName, endpoint } = yield* ctx.task(
 				"Auth to Rivet",
 				async function* (ctx) {
-					const isLogged = yield* ctx.task(
-						"Check if logged in",
-						async function* (ctx) {
-							const output = yield* ctx.$`${cli} metadata auth-status`;
-							return output.stdout === "true";
-						},
-					);
+					const { stdout } = yield* ctx.$`${cli} metadata auth-status`;
+					const isLogged = stdout === "true";
 
 					let endpoint: string | undefined;
 					if (!isLogged) {
@@ -125,14 +118,10 @@ export const deploy = new Command()
 							});
 						}
 
-						yield* ctx.task("Login to Rivet", async function* (ctx) {
-							yield* ctx.$`${cli} login --api-endpoint=${endpoint}`;
-						});
+						yield* ctx.$`${cli} login --api-endpoint=${endpoint}`;
 					} else {
-						endpoint = yield* ctx.task("Get API endpoint", async function* () {
-							const { stdout } = yield* ctx.$`${cli} metadata api-endpoint`;
-							return stdout;
-						});
+						const { stdout } = yield* ctx.$`${cli} metadata api-endpoint`;
+						endpoint = stdout;
 					}
 
 					const { stdout: accessToken } =
@@ -155,13 +144,8 @@ export const deploy = new Command()
 						},
 					);
 
-					const projectName = yield* ctx.task(
-						"Get project metadata",
-						async function* (ctx) {
-							const { stdout } = yield* ctx.$`${cli} metadata project-name-id`;
-							return stdout;
-						},
-					);
+					const { stdout: projectName } =
+						yield* ctx.$`${cli} metadata project-name-id`;
 
 					return { accessToken, projectName, envName, endpoint };
 				},
@@ -175,52 +159,36 @@ export const deploy = new Command()
 			const RivetHttp = createRivetApi(endpoint, accessToken);
 
 			const manager = yield* ctx.task(
-				"Verify Actor Manager",
+				"Deploy Actor Manager",
 				async function* (ctx) {
-					yield* ctx.task("Deploy Actor Manager", async function* (ctx) {
-						yield fs.mkdir(path.join(cwd, ".actorcore"), {
-							recursive: true,
-						});
+					yield fs.mkdir(path.join(cwd, ".actorcore"), {
+						recursive: true,
+					});
 
-						const entrypoint = path.join(cwd, ".actorcore", "manager.js");
-						yield fs.writeFile(
-							entrypoint,
-							dedent`
+					const entrypoint = path.join(cwd, ".actorcore", "manager.js");
+					yield fs.writeFile(
+						entrypoint,
+						dedent`
 								import { createManagerHandler } from "@actor-core/rivet";
 								import config from "../actor-core.config.ts";
 								export default createManagerHandler(config);
 							`,
-						);
-
-						const relative = path.relative(cwd, entrypoint);
-
-						yield* ctx.task(
-							`Run \`${cli} publish manager ${relative}\``,
-							async function* (ctx) {
-								const output =
-									yield* ctx.$`${cli} publish manager --env ${envName} --access=private ${entrypoint} `;
-								if (output.exitCode !== 0) {
-									throw ctx.error("Failed to deploy actors.", {
-										hint: "Check the logs above for more information.",
-									});
-								}
-							},
-						);
-					});
-
-					const managers = yield* ctx.task(
-						"List Actor Managers",
-						async (ctx) => {
-							const { actors } = await Rivet.actor.list({
-								tagsJson: JSON.stringify({ name: "manager" }),
-								environment: envName,
-								project: projectName,
-								includeDestroyed: false,
-							});
-
-							return actors;
-						},
 					);
+
+					const output =
+						yield* ctx.$`${cli} publish manager --env ${envName} --access=private ${entrypoint} `;
+					if (output.exitCode !== 0) {
+						throw ctx.error("Failed to deploy actors.", {
+							hint: "Check the logs above for more information.",
+						});
+					}
+
+					const { actors: managers } = await Rivet.actor.list({
+						tagsJson: JSON.stringify({ name: "manager" }),
+						environment: envName,
+						project: projectName,
+						includeDestroyed: false,
+					});
 
 					if (managers.length > 1) {
 						yield* ctx.warn(
@@ -230,27 +198,19 @@ export const deploy = new Command()
 
 					if (managers.length > 0) {
 						for (const manager of managers) {
-							yield* ctx.task(
-								`Upgrade Actor Manager ${manager.id}`,
-								async (ctx) => {
-									await Rivet.actor.upgrade(manager.id, {
-										project: projectName,
-										environment: envName,
-										body: {
-											buildTags: {
-												name: "manager",
-												current: "true",
-											},
-										},
-									});
+							await Rivet.actor.upgrade(manager.id, {
+								project: projectName,
+								environment: envName,
+								body: {
+									buildTags: {
+										name: "manager",
+										current: "true",
+									},
 								},
-							);
+							});
 						}
-
 						return managers[0];
-					}
-
-					return yield* ctx.task("Create Actor Manager", async (ctx) => {
+					} else {
 						const serviceToken = await getServiceToken(RivetHttp, {
 							project: projectName,
 							env: envName,
@@ -300,9 +260,8 @@ export const deploy = new Command()
 								},
 							},
 						});
-
 						return actor;
-					});
+					}
 				},
 			);
 
@@ -312,57 +271,43 @@ export const deploy = new Command()
 						Object.keys(config.actors).length
 					})`,
 					async function* (ctx) {
-						const entrypoint = yield* ctx.task(
-							`Create entrypoint for ${actorName}`,
-							async function* () {
-								yield fs.mkdir(path.join(cwd, ".actorcore"), {
-									recursive: true,
-								});
+						yield fs.mkdir(path.join(cwd, ".actorcore"), {
+							recursive: true,
+						});
 
-								const entrypoint = path.join(
-									cwd,
-									".actorcore",
-									`entrypoint-${actorName}.js`,
-								);
-								yield fs.writeFile(
-									entrypoint,
-									dedent`
+						const entrypoint = path.join(
+							cwd,
+							".actorcore",
+							`entrypoint-${actorName}.js`,
+						);
+						yield fs.writeFile(
+							entrypoint,
+							dedent`
 									import { createActorHandler } from "@actor-core/rivet";
 									import config from "../actor-core.config.ts";
 									export default createActorHandler(config);
 								`,
-								);
-
-								return entrypoint;
-							},
 						);
 
-						yield* ctx.task(
-							`Run \`${cli} publish ${actorName}\``,
-							async function* (ctx) {
-								const output =
-									yield* ctx.$`${cli} publish --access=public --env ${envName} ${actorName} ${entrypoint}`;
+						const output =
+							yield* ctx.$`${cli} publish --access=public --env ${envName} ${actorName} ${entrypoint}`;
 
-								if (output.exitCode !== 0) {
-									throw ctx.error("Failed to deploy actors.", {
-										hint: "Check the logs above for more information.",
-									});
-								}
-							},
-						);
-
-						yield* ctx.task(`Upgrade Actor ${actorName}`, async (ctx) => {
-							await Rivet.actor.upgradeAll({
-								project: projectName,
-								environment: envName,
-								body: {
-									tags: { name: actorName },
-									buildTags: {
-										name: actorName,
-										current: "true",
-									},
-								},
+						if (output.exitCode !== 0) {
+							throw ctx.error("Failed to deploy actors.", {
+								hint: "Check the logs above for more information.",
 							});
+						}
+
+						await Rivet.actor.upgradeAll({
+							project: projectName,
+							environment: envName,
+							body: {
+								tags: { name: actorName },
+								buildTags: {
+									name: actorName,
+									current: "true",
+								},
+							},
 						});
 					},
 				);

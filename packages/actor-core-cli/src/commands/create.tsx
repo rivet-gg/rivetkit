@@ -31,183 +31,181 @@ export const create = new Command()
 		).choices(Object.keys(PLATFORM_NAMES)),
 	)
 	.addOption(new Option("-v [version]", "Specify version of actor-core"))
-	.action(async (cmdPath, opts) => {
-		await workflow(
-			"Bootstrap Actor Core in your project",
-			async function* (ctx) {
-				const wd =
-					cmdPath ||
-					(yield* ctx.prompt("Where would you like to create your project?", {
-						type: "text",
-						defaultValue: "./",
-						validate: (input) => {
-							if (path.isAbsolute(input)) {
-								return "Please provide a relative path";
-							}
-							const parsed = path.parse(input);
-							const isValidPathRegex =
-								/^\.*?([a-zA-Z0-9_-]{0,}\/)*[a-zA-Z0-9_-]+$/;
-							const isValidPath = (path: string) =>
-								path === "." || path === ".." || isValidPathRegex.test(path);
-							if (!isValidPath(parsed.base) || !isValidPath(parsed.name)) {
-								return "Invalid path. Please use a valid directory name like 'randomName'";
-							}
-							return true;
-						},
-					}));
+	.action(action);
 
-				const stat = fs.statSync(wd, { throwIfNoEntry: false });
+export async function action(
+	cmdPath: string,
+	opts: { platform?: string; template?: string; version?: string },
+) {
+	await workflow("Bootstrap Actor Core in your project", async function* (ctx) {
+		const wd =
+			cmdPath ||
+			(yield* ctx.prompt("Where would you like to create your project?", {
+				type: "text",
+				defaultValue: "./",
+				validate: (input) => {
+					if (path.isAbsolute(input)) {
+						return "Please provide a relative path";
+					}
+					const parsed = path.parse(input);
+					const isValidPathRegex = /^\.*?([a-zA-Z0-9_-]{0,}\/)*[a-zA-Z0-9_-]+$/;
+					const isValidPath = (path: string) =>
+						path === "." || path === ".." || isValidPathRegex.test(path);
+					if (!isValidPath(parsed.base) || !isValidPath(parsed.name)) {
+						return "Invalid path. Please use a valid directory name like 'randomName'";
+					}
+					return true;
+				},
+			}));
 
-				let detectedPlatform: Platform | undefined;
-				if (stat?.isDirectory()) {
-					detectedPlatform = yield* ctx.task("Check directory", async (ctx) => {
-						const files = await fs.promises.readdir(wd);
-						const nextJs = micromatch(files, ["next.config.*"]);
+		const stat = fs.statSync(wd, { throwIfNoEntry: false });
 
-						if (nextJs.length > 0) {
-							return "vercel" as Platform;
-						}
+		let detectedPlatform: Platform | undefined;
+		if (stat?.isDirectory()) {
+			detectedPlatform = yield* ctx.task("Check directory", async (ctx) => {
+				const files = await fs.promises.readdir(wd);
+				const nextJs = micromatch(files, ["next.config.*"]);
 
-						const deno = micromatch(files, ["deno.*", "jsr.*"]);
-						if (deno.length > 0) {
-							return "deno" as Platform;
-						}
-
-						const bun = micromatch(files, ["bun.*"]);
-						if (bun.length > 0) {
-							return "bun" as Platform;
-						}
-
-						const cloudflare = micromatch(files, ["wrangler.json"]);
-						if (cloudflare.length > 0) {
-							return "cloudflare-workers" as Platform;
-						}
-
-						const supabase = micromatch(files, [
-							"supabase.json",
-							"supabase",
-							"*.toml",
-						]);
-						if (supabase.length > 0) {
-							return "supabase" as Platform;
-						}
-					});
+				if (nextJs.length > 0) {
+					return "vercel" as Platform;
 				}
 
-				const cwd = path.join(process.cwd(), wd);
+				const deno = micromatch(files, ["deno.*", "jsr.*"]);
+				if (deno.length > 0) {
+					return "deno" as Platform;
+				}
 
-				const platform =
-					(opts.platform as string) ||
-					(yield* ctx.prompt(
-						`To which platform would you like to deploy? ${detectedPlatform ? `(detected ${PLATFORM_NAMES[detectedPlatform]})` : ""}`,
-						{
-							type: "select",
-							choices: Object.entries(PLATFORM_NAMES).map(([value, label]) => ({
-								label,
-								value,
-							})),
-						},
-					));
+				const bun = micromatch(files, ["bun.*"]);
+				if (bun.length > 0) {
+					return "bun" as Platform;
+				}
 
-				const template =
-					opts.template ||
-					(yield* ctx.prompt("Which template would you like to use?", {
-						type: "select",
-						choices: Object.values(EXAMPLES)
-							.filter((example) => example.supports.includes(platform))
-							.map((example) => ({
-								label: example.name,
-								value: example.slug,
-							})),
-					}));
+				const cloudflare = micromatch(files, ["wrangler.json"]);
+				if (cloudflare.length > 0) {
+					return "cloudflare-workers" as Platform;
+				}
 
-				const platformOptions = yield* ctx.task(
-					"Resolve platform specific files",
-					async () => {
-						return resolvePlatformSpecificOptions(platform as Platform, {
-							files: EXAMPLES[template].files,
-							version: opts.version || VERSION,
-						});
-					},
-				);
+				const supabase = micromatch(files, [
+					"supabase.json",
+					"supabase",
+					"*.toml",
+				]);
+				if (supabase.length > 0) {
+					return "supabase" as Platform;
+				}
+			});
+		}
 
-				const omittedPaths: string[] = [];
-				yield* ctx.task("Create files", async function* () {
-					for (const [name, contents] of Object.entries(
-						platformOptions.files,
-					)) {
-						const filePath = path.join(cwd, name);
+		const cwd = path.join(process.cwd(), wd);
 
-						const stat = fs.statSync(filePath, {
-							throwIfNoEntry: false,
-						});
+		const platform =
+			(opts.platform as string) ||
+			(yield* ctx.prompt(
+				`To which platform would you like to deploy? ${detectedPlatform ? `(detected ${PLATFORM_NAMES[detectedPlatform]})` : ""}`,
+				{
+					type: "select",
+					choices: Object.entries(PLATFORM_NAMES).map(([value, label]) => ({
+						label,
+						value,
+					})),
+				},
+			));
 
-						if (!stat) {
-							yield fs.promises.mkdir(path.dirname(filePath), {
-								recursive: true,
-							});
-							yield fs.promises.writeFile(filePath, contents, "utf8");
-						} else {
-							omittedPaths.push(filePath);
-						}
-					}
+		const template =
+			opts.template ||
+			(yield* ctx.prompt("Which template would you like to use?", {
+				type: "select",
+				choices: Object.values(EXAMPLES)
+					.filter((example) => example.supports.includes(platform))
+					.map((example) => ({
+						label: example.name,
+						value: example.slug,
+					})),
+			}));
+
+		const platformOptions = yield* ctx.task(
+			"Resolve platform specific files",
+			async () => {
+				return resolvePlatformSpecificOptions(platform as Platform, {
+					files: EXAMPLES[template].files,
+					version: opts.version || VERSION,
 				});
-
-				yield* ctx.task("Install dependencies", async () => {
-					await $({ cwd: wd })(...platformOptions.cmds.install);
-				});
-
-				yield ctx.render(
-					<>
-						{omittedPaths.length > 0 && (
-							<Box
-								flexDirection="column"
-								marginBottom={1}
-								marginLeft={1}
-								paddingX={4}
-								paddingY={1}
-								borderStyle="single"
-								borderColor="yellow"
-							>
-								<Text color="yellow" bold>
-									Warning
-								</Text>
-								<Text>
-									We couldn't create the following files because they already
-									exist.
-								</Text>
-								<Text>Remove them and re-run the command to create them.</Text>
-								{omittedPaths.map((omittedPath) => (
-									<Text key={omittedPath}>
-										<Text>• </Text>
-										{path.relative(process.cwd(), omittedPath)}
-									</Text>
-								))}
-							</Box>
-						)}
-						<Box flexDirection="column" marginTop={1} marginBottom={1}>
-							<Text>▸ To get started, run</Text>
-
-							<Box flexDirection="column" marginX={3} marginY={1}>
-								<Text>cd {wd}</Text>
-								<Text>{cmd(platformOptions.cmds.run)} dev</Text>
-							</Box>
-							{platformOptions.deployable ? (
-								<>
-									<Text>▸ To deploy, run</Text>
-									<Box flexDirection="column" marginX={3} marginY={1}>
-										<Text>{cmd(platformOptions.cmds.run)} deploy</Text>
-									</Box>
-								</>
-							) : null}
-							<Text>▸ For more information, visit</Text>
-
-							<Box flexDirection="column" marginX={3} marginY={1}>
-								<Text underline>https://actorcore.org/</Text>
-							</Box>
-						</Box>
-					</>,
-				);
 			},
-		).render();
-	});
+		);
+
+		const omittedPaths: string[] = [];
+		yield* ctx.task("Create files", async function* () {
+			for (const [name, contents] of Object.entries(platformOptions.files)) {
+				const filePath = path.join(cwd, name);
+
+				const stat = fs.statSync(filePath, {
+					throwIfNoEntry: false,
+				});
+
+				if (!stat) {
+					yield fs.promises.mkdir(path.dirname(filePath), {
+						recursive: true,
+					});
+					yield fs.promises.writeFile(filePath, contents, "utf8");
+				} else {
+					omittedPaths.push(filePath);
+				}
+			}
+		});
+
+		yield* ctx.task("Install dependencies", async () => {
+			await $({ cwd: wd })(...platformOptions.cmds.install);
+		});
+
+		yield ctx.render(
+			<>
+				{omittedPaths.length > 0 && (
+					<Box
+						flexDirection="column"
+						marginBottom={1}
+						marginLeft={1}
+						paddingX={4}
+						paddingY={1}
+						borderStyle="single"
+						borderColor="yellow"
+					>
+						<Text color="yellow" bold>
+							Warning
+						</Text>
+						<Text>
+							We couldn't create the following files because they already exist.
+						</Text>
+						<Text>Remove them and re-run the command to create them.</Text>
+						{omittedPaths.map((omittedPath) => (
+							<Text key={omittedPath}>
+								<Text>• </Text>
+								{path.relative(process.cwd(), omittedPath)}
+							</Text>
+						))}
+					</Box>
+				)}
+				<Box flexDirection="column" marginTop={1} marginBottom={1}>
+					<Text>▸ To get started, run</Text>
+
+					<Box flexDirection="column" marginX={3} marginY={1}>
+						<Text>cd {wd}</Text>
+						<Text>{cmd(platformOptions.cmds.run)} dev</Text>
+					</Box>
+					{platformOptions.deployable ? (
+						<>
+							<Text>▸ To deploy, run</Text>
+							<Box flexDirection="column" marginX={3} marginY={1}>
+								<Text>{cmd(platformOptions.cmds.run)} deploy</Text>
+							</Box>
+						</>
+					) : null}
+					<Text>▸ For more information, visit</Text>
+
+					<Box flexDirection="column" marginX={3} marginY={1}>
+						<Text underline>https://actorcore.org/</Text>
+					</Box>
+				</Box>
+			</>,
+		);
+	}).render();
+}

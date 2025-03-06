@@ -1,12 +1,11 @@
-import { Client, type Encoding, type Transport } from "actor-core/client";
+import { Client, type Encoding } from "actor-core/client";
 import type ChatRoom from "../src/chat-room";
 import prompts from "prompts";
 
 async function main() {
-	const { encoding, transport, username, room } = await initPrompt();
+	const { encoding, username, room } = await initPrompt();
 	const client = new Client("http://localhost:8787", {
 		encoding,
-		transport,
 	});
 
 	// connect to chat room
@@ -47,7 +46,6 @@ async function main() {
 
 async function initPrompt(): Promise<{
 	encoding: Encoding;
-	transport: Transport;
 	room: string;
 	username: string;
 }> {
@@ -59,15 +57,6 @@ async function initPrompt(): Promise<{
 			choices: [
 				{ title: "CBOR", value: "cbor" },
 				{ title: "JSON", value: "json" },
-			],
-		},
-		{
-			type: "select",
-			name: "transport",
-			message: "Transport",
-			choices: [
-				{ title: "WebSocket", value: "websocket" },
-				{ title: "Server Sent Events", value: "sse" },
 			],
 		},
 		{
