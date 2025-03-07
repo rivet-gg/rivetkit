@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { Client } from "actor-core/client";
 import { setupLogging } from "actor-core/log";
 import type ChatRoom from "../src/chat-room.ts";

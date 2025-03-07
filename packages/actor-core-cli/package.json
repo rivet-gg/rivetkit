@@ -23,9 +23,13 @@
   "sideEffects": true,
   "preferGlobal": true,
   "preferUnplugged": true,
+  "engines": {
+    "node": "^20 || ^22 || ^18.20"
+  },
   "scripts": {
     "build": "tsup",
     "dev": "yarn build --watch",
+    "test": "vitest",
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
@@ -55,9 +59,11 @@
     "react": "^18.3",
     "semver": "^7.7.1",
     "strip-ansi": "^7.1.0",
+    "testcontainers": "^10.18.0",
     "tsup": "^8.4.0",
     "typescript": "^5.8.2",
     "unplugin-macros": "^0.16.0",
+    "vitest": "^3.0.8",
     "which": "^5.0.0",
     "zod": "^3.24.2"
   }

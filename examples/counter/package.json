@@ -8,6 +8,7 @@
     "test": "tsx tests/client.ts"
   },
   "devDependencies": {
+    "@types/node": "^22.13.9",
     "actor-core": "workspace:*",
     "eventsource": "^3.0.5",
     "mitata": "^1.0.34",

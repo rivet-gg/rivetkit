@@ -14,6 +14,7 @@
     "start": "npx turbo watch build",
     "dev": "npx turbo watch dev",
     "build": "npx turbo build",
+    "test": "yarn workspaces foreach -A run test",
     "check-types": "npx turbo check-types",
     "fmt": "yarn biome check --write .",
     "dev-docs": "cd docs && yarn dlx mintlify@latest dev",

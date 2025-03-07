@@ -8,6 +8,7 @@
     "test": "tsx tests/client.ts"
   },
   "devDependencies": {
+    "@types/node": "^22.13.9",
     "@types/prompts": "^2",
     "actor-core": "workspace:*",
     "prompts": "^2.4.2",

@@ -14,6 +14,7 @@ interface WorkflowResult {
 interface TaskMetadata {
 	name: string;
 	parent: string | null;
+	opts?: TaskOptions;
 }
 
 export type Option = {
@@ -202,11 +203,16 @@ interface Context {
 	>;
 }
 
+interface TaskOptions {
+	showLabel?: boolean;
+}
+
 export function workflow(
 	title: string,
 	workflowFn: (
 		toolbox: Context,
 	) => AsyncGenerator<WorkflowAction.All | undefined>,
+	opts: TaskOptions = {},
 ) {
 	let renderUtils: ReturnType<typeof render> | null = null;
 
@@ -214,11 +220,12 @@ export function workflow(
 		meta: TaskMetadata,
 		name: string,
 		taskFn: (ctx: Context) => T,
+		opts: TaskOptions = {},
 	): AsyncGenerator<WorkflowAction.All, T> {
-		const p = WorkflowAction.progress.bind(null, { ...meta, name });
+		const p = WorkflowAction.progress.bind(null, { ...meta, name, opts });
 		yield p("running");
 		try {
-			const output = taskFn(createContext({ ...meta, name }));
+			const output = taskFn(createContext({ ...meta, name, opts }));
 			if (output instanceof Promise) {
 				const result = await output;
 				yield p("done", { result });
@@ -318,7 +325,10 @@ export function workflow(
 		// task <> parent
 		const parentMap = new Map<string, string>();
 		try {
-			yield WorkflowAction.progress({ name: title, parent: null }, "running");
+			yield WorkflowAction.progress(
+				{ name: title, parent: null, opts },
+				"running",
+			);
 			for await (const task of workflowFn(
 				createContext({ name: title, parent: null }),
 			)) {
@@ -353,12 +363,19 @@ export function workflow(
 				}
 			}
 
-			yield WorkflowAction.progress({ name: title, parent: null }, "done");
+			yield WorkflowAction.progress(
+				{ name: title, parent: null, opts },
+				"done",
+			);
 			return { success: true };
 		} catch (error) {
-			yield WorkflowAction.progress({ name: title, parent: null }, "error", {
-				error,
-			});
+			yield WorkflowAction.progress(
+				{ name: title, parent: null, opts },
+				"error",
+				{
+					error,
+				},
+			);
 			return { success: false, error };
 		}
 	}

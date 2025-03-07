@@ -9,7 +9,7 @@ import {
 import { ExecaError } from "execa";
 import { Box, Text, type TextProps } from "ink";
 import Spinner from "ink-spinner";
-import { Fragment, useState } from "react";
+import { useState } from "react";
 import stripAnsi from "strip-ansi";
 import { type WorkflowAction, WorkflowError } from "../workflow";
 
@@ -55,9 +55,11 @@ function Tasks({
 	tasks,
 	parent,
 	interactive,
+	parentOpts,
 }: {
 	tasks: WorkflowAction.Interface[];
 	parent: string | null;
+	parentOpts?: WorkflowAction.Progress["meta"]["opts"];
 	interactive?: boolean;
 }) {
 	const currentTasks = tasks.filter((task) => task.meta.parent === parent);
@@ -70,13 +72,14 @@ function Tasks({
 				<Box
 					key={task.meta.name}
 					flexDirection="column"
-					marginLeft={parent ? 2 : 0}
+					marginLeft={parent && parentOpts?.showLabel !== false ? 2 : 0}
 				>
 					<Task task={task} parent={parent} interactive={interactive} />
 					{"status" in task && task.status === "done" ? null : (
 						<Tasks
 							tasks={tasks}
 							parent={task.meta.name}
+							parentOpts={task.meta.opts}
 							interactive={interactive}
 						/>
 					)}
@@ -166,9 +169,12 @@ export function Task({
 	if ("__taskProgress" in task) {
 		return (
 			<>
-				<Status value={task.status} interactive={interactive}>
-					{task.meta.name}
-				</Status>
+				{task.meta.opts?.showLabel === false &&
+				task.status !== "error" ? null : (
+					<Status value={task.status} interactive={interactive}>
+						{task.meta.name}
+					</Status>
+				)}
 				{task.status === "error" ? (
 					<Box marginLeft={2}>
 						{task.error instanceof WorkflowError ? (

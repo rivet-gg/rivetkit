@@ -1,0 +1,147 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`npx create-actor > should create example 'chat-simple' for 'bun' > it should create directory with files matching the example 1`] = `
+[
+  "",
+  "/app/test-chat-simple-bun",
+  "/app/test-chat-simple-bun/.gitignore",
+  "/app/test-chat-simple-bun/cli",
+  "/app/test-chat-simple-bun/cli/index.ts",
+  "/app/test-chat-simple-bun/node_modules",
+  "/app/test-chat-simple-bun/package-lock.json",
+  "/app/test-chat-simple-bun/package.json",
+  "/app/test-chat-simple-bun/src",
+  "/app/test-chat-simple-bun/src/chat-room.ts",
+  "/app/test-chat-simple-bun/src/index.ts",
+  "/app/test-chat-simple-bun/tests",
+  "/app/test-chat-simple-bun/tests/client.ts",
+  "/app/test-chat-simple-bun/tsconfig.json",
+]
+`;
+
+exports[`npx create-actor > should create example 'chat-simple' for 'cloudflare-workers' > it should create directory with files matching the example 1`] = `
+[
+  "",
+  "/app/test-chat-simple-cloudflare-workers",
+  "/app/test-chat-simple-cloudflare-workers/.gitignore",
+  "/app/test-chat-simple-cloudflare-workers/cli",
+  "/app/test-chat-simple-cloudflare-workers/cli/index.ts",
+  "/app/test-chat-simple-cloudflare-workers/node_modules",
+  "/app/test-chat-simple-cloudflare-workers/package-lock.json",
+  "/app/test-chat-simple-cloudflare-workers/package.json",
+  "/app/test-chat-simple-cloudflare-workers/src",
+  "/app/test-chat-simple-cloudflare-workers/src/chat-room.ts",
+  "/app/test-chat-simple-cloudflare-workers/src/index.ts",
+  "/app/test-chat-simple-cloudflare-workers/tests",
+  "/app/test-chat-simple-cloudflare-workers/tests/client.ts",
+  "/app/test-chat-simple-cloudflare-workers/tsconfig.json",
+  "/app/test-chat-simple-cloudflare-workers/wrangler.json",
+]
+`;
+
+exports[`npx create-actor > should create example 'chat-simple' for 'nodejs' > it should create directory with files matching the example 1`] = `
+[
+  "",
+  "/app/test-chat-simple-nodejs",
+  "/app/test-chat-simple-nodejs/.gitignore",
+  "/app/test-chat-simple-nodejs/cli",
+  "/app/test-chat-simple-nodejs/cli/index.ts",
+  "/app/test-chat-simple-nodejs/node_modules",
+  "/app/test-chat-simple-nodejs/package-lock.json",
+  "/app/test-chat-simple-nodejs/package.json",
+  "/app/test-chat-simple-nodejs/src",
+  "/app/test-chat-simple-nodejs/src/chat-room.ts",
+  "/app/test-chat-simple-nodejs/src/index.ts",
+  "/app/test-chat-simple-nodejs/tests",
+  "/app/test-chat-simple-nodejs/tests/client.ts",
+  "/app/test-chat-simple-nodejs/tsconfig.json",
+]
+`;
+
+exports[`npx create-actor > should create example 'chat-simple' for 'rivet' > it should create directory with files matching the example 1`] = `
+[
+  "",
+  "/app/test-chat-simple-rivet",
+  "/app/test-chat-simple-rivet/.gitignore",
+  "/app/test-chat-simple-rivet/actor-core.config.ts",
+  "/app/test-chat-simple-rivet/cli",
+  "/app/test-chat-simple-rivet/cli/index.ts",
+  "/app/test-chat-simple-rivet/node_modules",
+  "/app/test-chat-simple-rivet/package-lock.json",
+  "/app/test-chat-simple-rivet/package.json",
+  "/app/test-chat-simple-rivet/src",
+  "/app/test-chat-simple-rivet/src/chat-room.ts",
+  "/app/test-chat-simple-rivet/tests",
+  "/app/test-chat-simple-rivet/tests/client.ts",
+  "/app/test-chat-simple-rivet/tsconfig.json",
+]
+`;
+
+exports[`npx create-actor > should create example 'counter' for 'bun' > it should create directory with files matching the example 1`] = `
+[
+  "",
+  "/app/test-counter-bun",
+  "/app/test-counter-bun/.gitignore",
+  "/app/test-counter-bun/node_modules",
+  "/app/test-counter-bun/package-lock.json",
+  "/app/test-counter-bun/package.json",
+  "/app/test-counter-bun/src",
+  "/app/test-counter-bun/src/counter.ts",
+  "/app/test-counter-bun/src/index.ts",
+  "/app/test-counter-bun/tests",
+  "/app/test-counter-bun/tests/client.ts",
+  "/app/test-counter-bun/tsconfig.json",
+]
+`;
+
+exports[`npx create-actor > should create example 'counter' for 'cloudflare-workers' > it should create directory with files matching the example 1`] = `
+[
+  "",
+  "/app/test-counter-cloudflare-workers",
+  "/app/test-counter-cloudflare-workers/.gitignore",
+  "/app/test-counter-cloudflare-workers/node_modules",
+  "/app/test-counter-cloudflare-workers/package-lock.json",
+  "/app/test-counter-cloudflare-workers/package.json",
+  "/app/test-counter-cloudflare-workers/src",
+  "/app/test-counter-cloudflare-workers/src/counter.ts",
+  "/app/test-counter-cloudflare-workers/src/index.ts",
+  "/app/test-counter-cloudflare-workers/tests",
+  "/app/test-counter-cloudflare-workers/tests/client.ts",
+  "/app/test-counter-cloudflare-workers/tsconfig.json",
+  "/app/test-counter-cloudflare-workers/wrangler.json",
+]
+`;
+
+exports[`npx create-actor > should create example 'counter' for 'nodejs' > it should create directory with files matching the example 1`] = `
+[
+  "",
+  "/app/test-counter-nodejs",
+  "/app/test-counter-nodejs/.gitignore",
+  "/app/test-counter-nodejs/node_modules",
+  "/app/test-counter-nodejs/package-lock.json",
+  "/app/test-counter-nodejs/package.json",
+  "/app/test-counter-nodejs/src",
+  "/app/test-counter-nodejs/src/counter.ts",
+  "/app/test-counter-nodejs/src/index.ts",
+  "/app/test-counter-nodejs/tests",
+  "/app/test-counter-nodejs/tests/client.ts",
+  "/app/test-counter-nodejs/tsconfig.json",
+]
+`;
+
+exports[`npx create-actor > should create example 'counter' for 'rivet' > it should create directory with files matching the example 1`] = `
+[
+  "",
+  "/app/test-counter-rivet",
+  "/app/test-counter-rivet/.gitignore",
+  "/app/test-counter-rivet/actor-core.config.ts",
+  "/app/test-counter-rivet/node_modules",
+  "/app/test-counter-rivet/package-lock.json",
+  "/app/test-counter-rivet/package.json",
+  "/app/test-counter-rivet/src",
+  "/app/test-counter-rivet/src/counter.ts",
+  "/app/test-counter-rivet/tests",
+  "/app/test-counter-rivet/tests/client.ts",
+  "/app/test-counter-rivet/tsconfig.json",
+]
+`;

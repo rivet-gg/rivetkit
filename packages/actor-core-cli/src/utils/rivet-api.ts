@@ -130,7 +130,6 @@ export const createActorEndpoint = (network: {
 		url.pathname = http.path || "/";
 		return url.href;
 	} catch (e) {
-		console.log(e);
 		return undefined;
 	}
 };

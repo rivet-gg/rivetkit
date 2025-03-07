@@ -1,0 +1,38 @@
+name: 'Test'
+on: 
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      verdaccio:
+        image: verdaccio/verdaccio:6
+        ports:
+          - 4873:4873
+        options: --name verdaccio
+
+    steps:
+        - uses: actions/checkout@v4
+        - run: corepack enable
+        # https://github.com/orgs/community/discussions/42127
+        - run: /usr/bin/docker cp ${{ github.workspace }}/.verdaccio/conf/config.yaml verdaccio:/verdaccio/conf/config.yaml
+        - run: /usr/bin/docker restart verdaccio
+
+        - uses: actions/cache@v4
+          with: 
+            path: .turbo
+            key: ${{ runner.os }}-turbo-${{ github.sha }}
+            restore-keys: |
+              ${{ runner.os }}-turbo-
+        - uses: actions/setup-node@v4
+          with:
+            node-version: '22.14'
+            cache: 'yarn'
+        - run: yarn install
+        - run: yarn build
+        - run: npm i -g tsx
+        - run: ./scripts/e2e-publish.ts
+        - run: yarn workspace @actor-core/cli run test
+        

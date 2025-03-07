@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { Client } from "actor-core/client";
 import type Counter from "../src/counter.ts";
 

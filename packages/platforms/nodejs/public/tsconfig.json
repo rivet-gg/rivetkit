@@ -15,7 +15,7 @@
     /* Specify how TypeScript looks up a file from a given module specifier. */
     "moduleResolution": "bundler",
     /* Specify type package names to be included without being referenced in a source file. */
-    "types": ["deno"],
+    "types": ["node"],
     /* Enable importing .json files */
     "resolveJsonModule": true,
 

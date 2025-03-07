@@ -56,7 +56,9 @@ function getVersionFromArgs() {
 	const versionRegex = /^\d+\.\d+\.\d+(-rc\.\d+)?$/;
 	if (!versionRegex.test(version)) {
 		console.error(chalk.red(`Invalid version format: ${version}`));
-		console.error(chalk.yellow("Version must be in format x.x.x or x.x.x-rc.x"));
+		console.error(
+			chalk.yellow("Version must be in format x.x.x or x.x.x-rc.x"),
+		);
 		process.exit(1);
 	}
 
@@ -165,7 +167,7 @@ async function publishPackage(pkg: any, version: string) {
 		// Add --tag flag for release candidates
 		const isReleaseCandidate = version.includes("-rc.");
 		const tag = isReleaseCandidate ? "rc" : "latest";
-		
+
 		await $({
 			stdio: "inherit",
 		})`yarn workspace ${name} npm publish --access public --tag ${tag}`;

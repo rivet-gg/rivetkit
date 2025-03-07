@@ -7,7 +7,7 @@ import { PLATFORM_SLUGS } from "./utils/platforms";
 
 const EXAMPLES_PATH = path.join(__dirname, "../../../examples");
 
-const IGNORED_PATHS = /platforms|benches|tsconfig/;
+const IGNORED_PATHS = /platforms|benches|(^tsconfig.json$)/;
 
 interface ExamplesRegistry {
 	[key: string]: {
@@ -29,7 +29,10 @@ export async function getExamples(): Promise<ExamplesRegistry> {
 			encoding: "utf-8",
 		});
 
-		const files = output.split("\n").filter(Boolean);
+		const files = output
+			.split("\n")
+			.filter(Boolean)
+			.map((file) => path.relative(dir, file));
 
 		const packageJson = await readFile(
 			path.join(EXAMPLES_PATH, dir, "package.json"),
@@ -52,13 +55,13 @@ export async function getExamples(): Promise<ExamplesRegistry> {
 				continue;
 			}
 
-			const info = await stat(path.join(EXAMPLES_PATH, file));
+			const info = await stat(path.join(EXAMPLES_PATH, dir, file));
 			if (info.isDirectory()) {
 				continue;
 			}
 
-			registry[dir].files[path.relative(dir, file)] = await readFile(
-				path.join(EXAMPLES_PATH, file),
+			registry[dir].files[file] = await readFile(
+				path.join(EXAMPLES_PATH, dir, file),
 				{ encoding: "utf-8" },
 			);
 		}
