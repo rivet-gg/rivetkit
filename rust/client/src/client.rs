@@ -54,7 +54,11 @@ impl Client {
         Ok(body)
     }
 
-    pub async fn get(&self, tags: Vec<(String, String)>) -> Result<ActorHandle> {
+    pub async fn get(
+        &self,
+        tags: Vec<(String, String)>,
+        parameters: Option<Value>,
+    ) -> Result<ActorHandle> {
         // TODO: opts
         // TODO: Make sure `name` tag is present
         let mut tag_map = serde_json::Map::new();
@@ -81,9 +85,10 @@ impl Client {
         let handle = ActorHandleInner::new(
             endpoint.to_string(),
             self.transport_kind,
-            self.encoding_kind
+            self.encoding_kind,
+            parameters
         )?;
-        handle.connect().await?;
+        handle.start_connection().await;
 
         Ok(handle)
     }

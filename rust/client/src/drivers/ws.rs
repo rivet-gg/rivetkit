@@ -1,154 +1,127 @@
 use std::sync::Arc;
 use futures_util::{SinkExt, StreamExt};
+use serde_json::Value;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
+use tokio::task::JoinHandle;
 use tokio_tungstenite::tungstenite::Message;
 use anyhow::{Result, Context};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
-use url::Url;
 
 use crate::encoding::EncodingKind;
 use crate::protocol::{ToClient, ToServer};
 
+use super::{build_conn_url, DriverHandle, DriverStopReason, MessageToClient, MessageToServer, TransportKind};
 
-pub struct WebSocketSender {
-    pub tx: mpsc::Sender<Arc<ToServer>>,
+pub(crate) async fn connect(endpoint: String, encoding_kind: EncodingKind, parameters: &Option<Value>) -> Result<(
+    DriverHandle,
+    mpsc::Receiver<MessageToClient>,
+    JoinHandle<DriverStopReason>
+)> {
+    let url = build_conn_url(&endpoint, &TransportKind::WebSocket, encoding_kind, parameters)?;
+
+    let (ws, _res) = tokio_tungstenite::connect_async(url)
+        .await
+        .context("Failed to connect to WebSocket")?;
+
+    let (in_tx, in_rx) = mpsc::channel::<MessageToClient>(32);
+    let (out_tx, out_rx) = mpsc::channel::<MessageToServer>(32);
+    let task = tokio::spawn(start(
+        ws,
+        encoding_kind,
+        in_tx,
+        out_rx
+    ));
+
+    let handle = DriverHandle::new(out_tx, task.abort_handle());
+
+    Ok((handle, in_rx, task))
 }
+    
+async fn start(
+    ws: WebSocketStream<MaybeTlsStream<TcpStream>>,
+    encoding_kind: EncodingKind,
+    in_tx: mpsc::Sender<MessageToClient>,
+    mut out_rx: mpsc::Receiver<MessageToServer>,
+) -> DriverStopReason {
+    let (mut ws_sink, mut ws_stream) = ws.split(); 
 
-// TODO: Maybe turn this into a Sink
-impl WebSocketSender {
-    pub async fn send_raw(&self, msg: Arc<ToServer>) -> Result<()> {
-        self.tx.send(msg)
-            .await
-            .context("Failed to send message")?;
+    let serialize = get_msg_serializer(encoding_kind);
+    let deserialize = get_msg_deserializer(encoding_kind);
+    
+    loop {
+        tokio::select! {
+            // Dispatch ws outgoing queue
+            msg = out_rx.recv() => {
+                // If the sender is dropped, break the loop
+                let Some(msg) = msg else {
+                    println!("Sender dropped");
+                    return DriverStopReason::UserAborted;
+                };
 
-        Ok(())
-    }
-}
+                let msg = match serialize(&msg) {
+                    Ok(msg) => msg,
+                    Err(e) => {
+                        eprintln!("Failed to serialize message: {:?}", e);
+                        continue;
+                    }
+                };
 
-pub struct WebSocketReceiver {
-    pub rx: mpsc::Receiver<Arc<ToClient>>,
-}
+                if let Err(e) = ws_sink.send(msg).await {
+                    eprintln!("Failed to send message: {:?}", e);
+                    continue;
+                }
+            },
+            // Handle ws incoming
+            msg = ws_stream.next() => {
+                let Some(msg) = msg else {
+                    println!("Receiver dropped");
+                    return DriverStopReason::ServerDisconnect;
+                };
 
-// TODO: Maybe turn this into a StreamExt
-impl WebSocketReceiver {  
-    pub async fn recv_msg(&mut self) -> Option<Arc<ToClient>> {
-        self.rx.recv().await
-    }
-}
-
-pub struct WebSocketDriver {
-    endpoint: String,
-    encoding_kind: EncodingKind
-}
-
-impl WebSocketDriver {
-    pub fn new(endpoint: String, encoding_kind: EncodingKind) -> Result<Self> {
-        Ok(WebSocketDriver {
-            endpoint: replace_http_with_ws(&endpoint)?,
-            encoding_kind
-        })
-    }
-
-    pub async fn connect(
-        &self
-    ) -> Result<(WebSocketSender, WebSocketReceiver)> {
-        let (in_tx, in_rx) = mpsc::channel::<Arc<ToClient>>(32);
-        let (out_tx, out_rx) = mpsc::channel::<Arc<ToServer>>(32);
-
-        let url = self.build_conn_url();
-        println!("ws url: {}", url);
-        let (ws, _res) = tokio_tungstenite::connect_async(url)
-            .await
-            .context("Failed to connect to WebSocket")?;
-        
-        tokio::spawn(WebSocketDriver::start(ws, self.encoding_kind, in_tx, out_rx));
-
-        Ok((WebSocketSender { tx: out_tx }, WebSocketReceiver { rx: in_rx }))
-    }
-        
-    async fn start(
-        ws: WebSocketStream<MaybeTlsStream<TcpStream>>,
-        encoding_kind: EncodingKind,
-        in_tx: mpsc::Sender<Arc<ToClient>>,
-        mut out_rx: mpsc::Receiver<Arc<ToServer>>
-    ) {
-        let (mut ws_sink, mut ws_stream) = ws.split(); 
-
-        let serialize = match encoding_kind {
-            EncodingKind::Json => json_msg_serialize,
-            EncodingKind::Cbor => cbor_msg_serialize
-        };
-        let deserialize = match encoding_kind {
-            EncodingKind::Json => json_msg_deserialize,
-            EncodingKind::Cbor => cbor_msg_deserialize
-        };
-
-        tokio::spawn(async move {
-            loop {
-                tokio::select! {
-                    // Dispatch ws outgoing queue
-                    msg = out_rx.recv() => {
-                        // If the sender is dropped, break the loop
-                        let Some(msg) = msg else {
-                            println!("Sender dropped");
-                            break;
-                        };
-
-                        let msg = match serialize(&msg) {
-                            Ok(msg) => msg,
-                            Err(e) => {
-                                eprintln!("Failed to serialize message: {:?}", e);
+                match msg {
+                    Ok(msg) => match msg {
+                        Message::Text(_) | Message::Binary(_) => {
+                            let Ok(msg) = deserialize(&msg) else {
+                                eprintln!("Failed to parse message, {:?}", msg);
                                 continue;
-                            }
-                        };
+                            };
 
-                        if let Err(e) = ws_sink.send(msg).await {
-                            eprintln!("Failed to send message: {:?}", e);
-                            break;
-                        }
-                    },
-                    // Handle ws incoming
-                    msg = ws_stream.next() => {
-                        let Some(msg) = msg else {
-                            println!("Receiver dropped");
-                            break;
-                        };
-
-                        match msg {
-                            Ok(msg) => match msg {
-                                Message::Text(_) | Message::Binary(_) => {
-                                    let Ok(msg) = deserialize(&msg) else {
-                                        eprintln!("Failed to parse message, {:?}", msg);
-                                        continue;
-                                    };
-        
-                                    if let Err(e) = in_tx.send(Arc::new(msg)).await {
-                                        eprintln!("Failed to send text message: {}", e);
-                                        break;
-                                    }
-                                },
-                                Message::Close(_) => {
-                                    eprintln!("Close message");
-                                    break;
-                                },
-                                _ => {
-                                    eprintln!("Invalid message type");
-                                }
+                            if let Err(e) = in_tx.send(Arc::new(msg)).await {
+                                eprintln!("Failed to send text message: {}", e);
+                                // failure to send means user dropped incoming receiver
+                                return DriverStopReason::UserAborted;
                             }
-                            Err(e) => {
-                                eprintln!("WebSocket error: {}", e);
-                                break;
-                            }
+                        },
+                        Message::Close(_) => {
+                            eprintln!("Close message");
+                            return DriverStopReason::ServerDisconnect;
+                        },
+                        _ => {
+                            eprintln!("Invalid message type");
                         }
+                    }
+                    Err(e) => {
+                        eprintln!("WebSocket error: {}", e);
+                        return DriverStopReason::ServerError;
                     }
                 }
             }
-        });
+        }
     }
+}
 
-    fn build_conn_url(&self) -> String {
-        format!("{}/connect/websocket?encoding={}", self.endpoint, self.encoding_kind.as_str())
+fn get_msg_deserializer(encoding_kind: EncodingKind) -> fn(&Message) -> Result<ToClient> {
+    match encoding_kind {
+        EncodingKind::Json => json_msg_deserialize,
+        EncodingKind::Cbor => cbor_msg_deserialize
+    }
+}
+
+fn get_msg_serializer(encoding_kind: EncodingKind) -> fn(&ToServer) -> Result<Message> {
+    match encoding_kind {
+        EncodingKind::Json => json_msg_serialize,
+        EncodingKind::Cbor => cbor_msg_serialize
     }
 }
 
@@ -178,21 +151,4 @@ fn cbor_msg_serialize(value: &ToServer) -> Result<Message> {
     Ok(Message::Binary(
         serde_cbor::to_vec(value)?.into()
     ))
-}
-
-
-fn replace_http_with_ws(url_str: &str) -> Result<String, anyhow::Error> {
-    let mut url = Url::parse(url_str)?;
-    if url.scheme() == "http" {
-        if url.set_scheme("ws").is_err() {
-            return Err(anyhow::anyhow!("Failed to set scheme to ws"));
-        }
-    } else if url.scheme() == "https" {
-        if url.set_scheme("wss").is_err() {
-            return Err(anyhow::anyhow!("Failed to set scheme to wss"));
-        }
-    } else {
-        return Err(anyhow::anyhow!("Invalid scheme: {:?}", url.scheme()));
-    }
-    Ok(url.to_string())
 }
