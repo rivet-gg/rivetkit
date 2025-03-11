@@ -223,7 +223,7 @@ export const deploy = new Command()
 							);
 
 							if (!manager) {
-								throw ctx.error("Failed to find ActorCore Endpoint.", {
+								throw ctx.error("Failed to find Actor Core Endpoint.", {
 									hint: "Any existing manager actor is not running or not accessible.",
 								});
 							}
@@ -286,7 +286,7 @@ export const deploy = new Command()
 
 				for (const [idx, actorName] of Object.keys(config.actors).entries()) {
 					yield* ctx.task(
-						`Deploy Actor "${actorName}" (${idx + 1}/${
+						`Deploy & upload "${actorName}" build (${idx + 1}/${
 							Object.keys(config.actors).length
 						})`,
 						async function* (ctx) {
@@ -312,7 +312,7 @@ export const deploy = new Command()
 								yield* ctx.$`${cli} publish --access=public --env ${envName} ${actorName} ${entrypoint}`;
 
 							if (output.exitCode !== 0) {
-								throw ctx.error("Failed to deploy actors.", {
+								throw ctx.error("Failed to deploy & upload actors.", {
 									hint: "Check the logs above for more information.",
 								});
 							}
