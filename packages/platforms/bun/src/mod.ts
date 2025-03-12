@@ -6,8 +6,7 @@ import { logger } from "./log";
 import { createBunWebSocket } from "hono/bun";
 import type { Hono } from "hono";
 import { StandaloneTopology } from "actor-core";
-import { MemoryManagerDriver } from "@actor-core/memory/manager";
-import { MemoryActorDriver } from "@actor-core/memory/actor";
+import { MemoryGlobalState, MemoryManagerDriver, MemoryActorDriver } from "@actor-core/memory";
 
 export { InputConfig as Config } from "./config";
 
@@ -28,10 +27,15 @@ export function createRouter(inputConfig: InputConfig): {
 
 	// Configure default configuration
 	if (!config.topology) config.topology = "standalone";
-	if (!config.drivers) config.drivers = {};
-	if (!config.drivers.manager)
-		config.drivers.manager = new MemoryManagerDriver();
-	if (!config.drivers.actor) config.drivers.actor = new MemoryActorDriver();
+	if (!config.drivers.manager || !config.drivers.actor) {
+		const memoryState = new MemoryGlobalState();
+		if (!config.drivers.manager) {
+			config.drivers.manager = new MemoryManagerDriver(memoryState);
+		}
+		if (!config.drivers.actor) {
+			config.drivers.actor = new MemoryActorDriver(memoryState);
+		}
+	}
 
 	// Setup topology
 	if (config.topology === "standalone") {

@@ -6,13 +6,13 @@ import type {
 	GetWithTagsInput,
 	ManagerDriver,
 } from "actor-core/driver-helpers";
-import { GlobalState } from "./global_state";
+import type { MemoryGlobalState } from "./global_state";
 
 export class MemoryManagerDriver implements ManagerDriver {
-	#state: GlobalState;
+	#state: MemoryGlobalState;
 
-	constructor() {
-		this.#state = GlobalState.getInstance();
+	constructor(state: MemoryGlobalState) {
+		this.#state = state;
 	}
 
 	async getForId({

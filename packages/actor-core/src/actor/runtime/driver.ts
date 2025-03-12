@@ -44,6 +44,7 @@ export interface ManagerDriver {
 export type KvKey = unknown[];
 export type KvValue = unknown;
 
+
 export interface ActorDriver {
 	//load(): Promise<LoadOutput>;
 
@@ -56,7 +57,7 @@ export interface ActorDriver {
 	kvDeleteBatch(actorId: string, key: KvKey[]): Promise<void>;
 
 	// Schedule
-	setAlarm(actorId: string, timestamp: number): Promise<void>;
+	setAlarm(actor: AnyActor, timestamp: number): Promise<void>;
 
 	// TODO:
 	//destroy(): Promise<void>;

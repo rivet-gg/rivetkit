@@ -21,27 +21,9 @@ export class ActorState {
 /**
  * Global state singleton for the memory driver
  */
-export class GlobalState {
-	// Singleton instance
-	static #instance: GlobalState | null = null;
-
+export class MemoryGlobalState {
 	// Single map for all actor state
 	#actors: Map<string, ActorState> = new Map();
-
-	/**
-	 * Private constructor to enforce singleton
-	 */
-	private constructor() {}
-
-	/**
-	 * Get the singleton instance
-	 */
-	static getInstance(): GlobalState {
-		if (!GlobalState.#instance) {
-			GlobalState.#instance = new GlobalState();
-		}
-		return GlobalState.#instance;
-	}
 
 	/**
 	 * Get an actor by ID, throwing an error if it doesn't exist

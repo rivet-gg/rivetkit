@@ -8,30 +8,18 @@
   ],
   "type": "module",
   "exports": {
-    "./actor": {
-      "import": {
-        "types": "./dist/actor.d.ts",
-        "default": "./dist/actor.js"
-      },
-      "require": {
-        "types": "./dist/actor.d.cts",
-        "default": "./dist/actor.cjs"
-      }
+    "import": {
+      "types": "./dist/mod.d.ts",
+      "default": "./dist/mod.js"
     },
-    "./manager": {
-      "import": {
-        "types": "./dist/manager.d.ts",
-        "default": "./dist/manager.js"
-      },
-      "require": {
-        "types": "./dist/manager.d.cts",
-        "default": "./dist/manager.cjs"
-      }
+    "require": {
+      "types": "./dist/mod.d.cts",
+      "default": "./dist/mod.cjs"
     }
   },
   "sideEffects": false,
   "scripts": {
-    "build": "tsup src/actor.ts src/manager.ts",
+    "build": "tsup src/mod.ts",
     "check-types": "tsc --noEmit"
   },
   "peerDependencies": {

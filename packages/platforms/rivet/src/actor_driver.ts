@@ -1,4 +1,5 @@
 import type { ActorContext } from "@rivet-gg/actor-core";
+import { AnyActor } from "actor-core";
 import { ActorDriver, KvKey, KvValue } from "actor-core/driver-helpers";
 
 export class RivetActorDriver implements ActorDriver {
@@ -13,11 +14,11 @@ export class RivetActorDriver implements ActorDriver {
 	}
 
 	async kvGetBatch(
-		_actorId: string, 
-		keys: KvKey[]
+		_actorId: string,
+		keys: KvKey[],
 	): Promise<(KvValue | undefined)[]> {
 		const response = await this.#ctx.kv.getBatch(keys);
-		return keys.map(key => response.get(key));
+		return keys.map((key) => response.get(key));
 	}
 
 	async kvPut(_actorId: string, key: KvKey, value: KvValue): Promise<void> {
@@ -26,7 +27,7 @@ export class RivetActorDriver implements ActorDriver {
 
 	async kvPutBatch(
 		_actorId: string,
-		entries: [KvKey, KvValue][]
+		entries: [KvKey, KvValue][],
 	): Promise<void> {
 		await this.#ctx.kv.putBatch(new Map(entries));
 	}
@@ -39,11 +40,10 @@ export class RivetActorDriver implements ActorDriver {
 		await this.#ctx.kv.deleteBatch(keys);
 	}
 
-	async setAlarm(_actorId: string, timestamp: number): Promise<void> {
+	async setAlarm(actor: AnyActor, timestamp: number): Promise<void> {
 		const timeout = Math.max(0, timestamp - Date.now());
 		setTimeout(() => {
-			// TODO: This will need to be updated to call the actor from the topology
-			// actorTopology.actor.__onAlarm();
+			actor.__onAlarm();
 		}, timeout);
 	}
 }

@@ -82,7 +82,7 @@ export class Schedule {
 		// - this is the newest event (i.e. at beginning of array) or
 		// - this is the only event (i.e. the only event in the array)
 		if (insertIndex === 0 || schedule.events.length === 1) {
-			await this.#driver.setAlarm(this.#actor.id, newEvent.timestamp);
+			await this.#driver.setAlarm(this.#actor, newEvent.timestamp);
 		}
 	}
 
@@ -119,7 +119,7 @@ export class Schedule {
 		// Set alarm for next event
 		if (scheduleIndex.events.length > 0) {
 			await this.#driver.setAlarm(
-				this.#actor.id,
+				this.#actor,
 				scheduleIndex.events[0].timestamp,
 			);
 		}

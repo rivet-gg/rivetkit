@@ -1,4 +1,4 @@
-export { Actor } from "./actor";
+export { Actor, type AnyActor, type AnyActorConstructor } from "./actor";
 export { UserError, type UserErrorOptions } from "../errors";
 export type { OnBeforeConnectOptions, SaveStateOptions } from "./actor";
 export { Connection } from "./connection";

@@ -1,11 +1,12 @@
 import type { ActorDriver, KvKey, KvValue } from "actor-core/driver-helpers";
-import { GlobalState } from "./global_state";
+import type { MemoryGlobalState } from "./global_state";
+import type { AnyActor } from "actor-core";
 
 export class MemoryActorDriver implements ActorDriver {
-	#state: GlobalState;
+	#state: MemoryGlobalState;
 
-	constructor() {
-		this.#state = GlobalState.getInstance();
+	constructor(state: MemoryGlobalState) {
+		this.#state = state;
 	}
 
 	async kvGet(actorId: string, key: KvKey): Promise<KvValue | undefined> {
@@ -55,10 +56,9 @@ export class MemoryActorDriver implements ActorDriver {
 		}
 	}
 
-	async setAlarm(_actorId: string, timestamp: number): Promise<void> {
+	async setAlarm(actor: AnyActor, timestamp: number): Promise<void> {
 		setTimeout(() => {
-			// TODO: This will need to be updated to call the actor from the topology
-			// actorTopology.actor.__onAlarm();
+			 actor.__onAlarm();
 		}, timestamp - Date.now());
 	}
 

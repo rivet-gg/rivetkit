@@ -1,3 +1,4 @@
+import { AnyActor } from "actor-core";
 import { ActorDriver, KvKey, KvValue } from "actor-core/driver-helpers";
 
 export class CloudflareWorkersActorDriver implements ActorDriver {
@@ -42,7 +43,7 @@ export class CloudflareWorkersActorDriver implements ActorDriver {
 		await this.#doCtx.storage.delete(keys.map(this.#serializeKey));
 	}
 
-	async setAlarm(_actorId: string, timestamp: number): Promise<void> {
+	async setAlarm(_actor: AnyActor, timestamp: number): Promise<void> {
 		await this.#doCtx.storage.setAlarm(timestamp);
 	}
 
