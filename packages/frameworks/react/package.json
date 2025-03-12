@@ -1,0 +1,40 @@
+{
+  "name": "@actor-core/react",
+  "version": "0.6.1",
+  "license": "Apache-2.0",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "package.json"
+  ],
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/mod.d.mts",
+        "default": "./dist/mod.mjs"
+      },
+      "require": {
+        "types": "./dist/mod.d.ts",
+        "default": "./dist/mod.js"
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsup src/mod.tsx",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@actor-core/framework-base": "workspace:*"
+  },
+  "peerDependencies": {
+    "actor-core": "*",
+    "react": "^18 || ^19",
+    "react-dom": "^18 || ^19"
+  },
+  "devDependencies": {
+    "actor-core": "workspace:^",
+    "tsup": "^8.3.6",
+    "typescript": "^5.5.2",
+    "vitest": "~2.1.9"
+  }
+}

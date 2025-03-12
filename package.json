@@ -8,6 +8,7 @@
     "packages/drivers/*",
     "packages/components/*",
     "packages/misc/*",
+    "packages/frameworks/*",
     "examples/*"
   ],
   "scripts": {
@@ -37,5 +38,8 @@
     "react-dom@^19": "^19.0.0",
     "react@^18": "^18.3",
     "hono": "^4.7.0"
+  },
+  "dependencies": {
+    "esbuild": "^0.25.1"
   }
 }

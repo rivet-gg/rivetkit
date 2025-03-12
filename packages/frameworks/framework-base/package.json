@@ -1,0 +1,36 @@
+{
+  "name": "@actor-core/framework-base",
+  "version": "0.6.1",
+  "license": "Apache-2.0",
+  "sideEffects": false,
+  "type": "module",
+  "files": [
+    "dist",
+    "package.json"
+  ],
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/mod.d.ts",
+        "default": "./dist/mod.js"
+      },
+      "require": {
+        "types": "./dist/mod.d.cts",
+        "default": "./dist/mod.cjs"
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsup src/mod.ts",
+    "check-types": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "actor-core": "*"
+  },
+  "devDependencies": {
+    "actor-core": "workspace:^",
+    "tsup": "^8.3.6",
+    "typescript": "^5.5.2",
+    "vitest": "~2.1.9"
+  }
+}
