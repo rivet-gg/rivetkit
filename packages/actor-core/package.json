@@ -101,11 +101,31 @@
         "types": "./dist/cli/mod.d.cts",
         "default": "./dist/cli/mod.cjs"
       }
+    },
+    "./protocol/inspector": {
+      "import": {
+        "types": "./dist/actor/protocol/inspector/mod.d.ts",
+        "default": "./dist/actor/protocol/inspector/mod.js"
+      },
+      "require": {
+        "types": "./dist/actor/protocol/inspector/mod.d.cts",
+        "default": "./dist/actor/protocol/inspector/mod.cjs"
+      }
+    },
+    "./protocol/http": {
+      "import": {
+        "types": "./dist/actor/protocol/http/rpc.d.ts",
+        "default": "./dist/actor/protocol/http/rpc.js"
+      },
+      "require": {
+        "types": "./dist/actor/protocol/http/rpc.d.cts",
+        "default": "./dist/actor/protocol/http/rpc.cjs"
+      }
     }
   },
   "sideEffects": false,
   "scripts": {
-    "build": "tsup src/mod.ts src/client/mod.ts src/common/log.ts src/actor/errors.ts src/topologies/coordinate/mod.ts src/topologies/partition/mod.ts src/utils.ts src/driver-helpers.ts src/cli/mod.ts",
+    "build": "tsup src/mod.ts src/client/mod.ts src/common/log.ts src/actor/errors.ts src/topologies/coordinate/mod.ts src/topologies/partition/mod.ts src/utils.ts src/driver-helpers.ts src/cli/mod.ts src/actor/protocol/inspector/mod.ts src/actor/protocol/http/rpc.ts",
     "check-types": "tsc --noEmit"
   },
   "dependencies": {

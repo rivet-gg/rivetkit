@@ -23,6 +23,7 @@ import {
 } from "../common/generic_conn_driver";
 import type { ConnectionDriver } from "@/actor/runtime/driver";
 import type { ActorTags } from "@/common/utils";
+import { InspectorConnection } from "@/actor/runtime/inspect";
 
 export class PartitionTopologyManager {
 	router: Hono;
@@ -214,6 +215,33 @@ export class PartitionTopologyActor {
 
 					// Process message
 					await actor.__processMessage(message, conn);
+				},
+				onConnectInspector: async () => {
+					if (this.#actorStartedPromise)
+						await this.#actorStartedPromise.promise;
+
+					const actor = this.#actor;
+					if (!actor) throw new Error("Actor should be defined");
+
+					let conn: InspectorConnection | undefined;
+					return {
+						onOpen: async (ws) => {
+							conn = actor._inspector.__createConnection(ws);
+						},
+						onMessage: async (message) => {
+							if (!conn) {
+								logger().warn("`conn` does not exist");
+								return;
+							}
+
+							await actor._inspector.__processMessage(conn, message);
+						},
+						onClose: async () => {
+							if (conn) {
+								actor._inspector.__removeConnection(conn);
+							}
+						},
+					};
 				},
 			}),
 		);

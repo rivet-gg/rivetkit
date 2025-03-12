@@ -1,33 +1,22 @@
-import * as protoHttpRpc from "@/actor/protocol/http/rpc";
 import type { PersistedConn } from "./connection";
-import type * as wsToClient from "@/actor/protocol/message/to_client";
 import type { Logger } from "@/common//log";
-import { listObjectMethods } from "@/common//reflect";
-import { ActorTags, isJsonSerializable } from "@/common//utils";
-import { HonoRequest, type Context as HonoContext } from "hono";
-import { streamSSE } from "hono/streaming";
-import type { ContentfulStatusCode } from "hono/utils/http-status";
-import type { WSContext, WSEvents } from "hono/ws";
+import { type ActorTags, isJsonSerializable } from "@/common//utils";
 import onChange from "on-change";
 import { type ActorConfig, mergeActorConfig } from "./actor_config";
 import { Connection, type ConnectionId } from "./connection";
 import type { ActorDriver, ConnectionDrivers } from "./driver";
 import type { ConnectionDriver } from "./driver";
 import * as errors from "../errors";
-import { parseMessage, processMessage } from "../protocol/message/mod";
+import { processMessage } from "../protocol/message/mod";
 import { instanceLogger, logger } from "./log";
-import { Rpc } from "./rpc";
-import { Lock, assertUnreachable, deadline } from "./utils";
+import type { Rpc } from "./rpc";
+import { Lock, deadline } from "./utils";
 import { Schedule } from "./schedule";
 import { KEYS } from "./keys";
-import * as wsToServer from "@/actor/protocol/message/to_server";
-import {
-	Encoding,
-	EncodingSchema,
-	InputData,
-	CachedSerializer,
-	encodeDataToString,
-} from "../protocol/serde";
+import type * as wsToServer from "@/actor/protocol/message/to_server";
+import { CachedSerializer } from "../protocol/serde";
+import { Inspector } from "@/actor/runtime/inspect";
+import { listObjectMethods } from "@/common/reflect";
 
 /**
  * Options for the `_onBeforeConnect` method.
@@ -169,6 +158,12 @@ export abstract class Actor<
 
 	#schedule!: Schedule;
 
+	/**
+	 * Inspector for the actor.
+	 * @internal
+	 */
+	_inspector!: Inspector;
+
 	get id() {
 		return this.#actorId;
 	}
@@ -197,6 +192,7 @@ export abstract class Actor<
 		this.#tags = tags;
 		this.#region = region;
 		this.#schedule = new Schedule(this, actorDriver);
+		this._inspector = new Inspector(this);
 
 		// Initialize server
 		//
@@ -215,12 +211,12 @@ export abstract class Actor<
 		await this.#schedule.__onAlarm();
 	}
 
-	get #stateEnabled() {
+	get _stateEnabled() {
 		return typeof this._onInitialize === "function";
 	}
 
 	#validateStateEnabled() {
-		if (!this.#stateEnabled) {
+		if (!this._stateEnabled) {
 			throw new errors.StateNotEnabled();
 		}
 	}
@@ -320,6 +316,9 @@ export abstract class Actor<
 				}
 				this.#persistChanged = true;
 
+				// Call inspect handler
+				this._inspector.onStateChange(this.#persistRaw.s);
+
 				// Call onStateChange if it exists
 				if (this._onStateChange && this.#ready) {
 					try {
@@ -376,7 +375,7 @@ export abstract class Actor<
 
 			// Initialize actor state
 			let stateData: unknown = undefined;
-			if (this.#stateEnabled) {
+			if (this._stateEnabled) {
 				if (!this._onInitialize) throw new Error("missing _onInitialize");
 
 				logger().info("actor state initializing");
@@ -444,6 +443,7 @@ export abstract class Actor<
 			this.#removeSubscription(eventName, conn, true);
 		}
 
+		this._inspector.onConnectionsChange(this.#connections);
 		this._onDisconnect?.(conn);
 	}
 
@@ -515,6 +515,8 @@ export abstract class Actor<
 		this.#persist.c.push(persist);
 		this._saveState({ immediate: true });
 
+		this._inspector.onConnectionsChange(this.#connections);
+
 		// Handle connection
 		const CONNECT_TIMEOUT = 5000; // 5 seconds
 		if (this._onConnect) {
@@ -566,6 +568,9 @@ export abstract class Actor<
 	#isValidRpc(rpcName: string): boolean {
 		// Prevent calling private methods
 		if (rpcName.startsWith("#")) return false;
+
+		// Prevent calling id method
+		if (rpcName === "id") return false;
 
 		// Prevent accidental leaking of private methods, since this is a common
 		// convention
@@ -694,12 +699,15 @@ export abstract class Actor<
 		}
 	}
 
-	//get #rpcNames(): string[] {
-	//	return listObjectMethods(this).filter(
-	//		(name): name is string =>
-	//			typeof name === "string" && this.#isValidRpc(name),
-	//	);
-	//}
+	/**
+	 * Returns a list of RPC methods available on this actor.
+	 */
+	get _rpcs(): string[] {
+		return listObjectMethods(this).filter(
+			(name): name is string =>
+				typeof name === "string" && this.#isValidRpc(name),
+		);
+	}
 
 	// MARK: Lifecycle hooks
 	/**
@@ -838,7 +846,7 @@ export abstract class Actor<
 	 * @see _onInitialize
 	 * @see {@link https://rivet.gg/docs/state|State Documentation}
 	 */
-	protected get _state(): State {
+	get _state(): State {
 		this.#validateStateEnabled();
 		return this.#persist.s;
 	}
@@ -850,7 +858,7 @@ export abstract class Actor<
 	 *
 	 * @see {@link https://rivet.gg/docs/state|State Documentation}
 	 */
-	protected set _state(value: State) {
+	set _state(value: State) {
 		this.#validateStateEnabled();
 		this.#persist.s = value;
 	}

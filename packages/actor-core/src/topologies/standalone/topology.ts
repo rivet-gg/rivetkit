@@ -257,6 +257,9 @@ export class StandaloneTopology {
 				// Process message
 				await actor.__processMessage(message, conn);
 			},
+			onConnectInspector: async () => {
+				throw new errors.Unsupported("inspect");
+			},
 		});
 
 		// Mount the actor router

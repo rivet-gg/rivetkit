@@ -76,6 +76,10 @@ export class Connection<A extends AnyActor> {
 		return this.__persist.p;
 	}
 
+	public get _stateEnabled() {
+		return this.#stateEnabled;
+	}
+
 	/**
 	 * Gets the current state of the connection.
 	 *

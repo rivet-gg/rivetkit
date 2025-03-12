@@ -27,7 +27,7 @@ export async function rivetRequest<RequestBody, ResponseBody>(
 	if (!response.ok) {
 		const errorData = await response.json().catch(() => ({}));
 		throw new Error(
-			`Rivet API error (${response.status}): ${errorData.message || response.statusText}`,
+			`Rivet API error (${response.status}, ${method} ${url}): ${errorData.message || response.statusText}`,
 		);
 	}
 

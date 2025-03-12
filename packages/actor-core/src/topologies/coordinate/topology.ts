@@ -26,12 +26,10 @@ export class CoordinateTopology {
 
 	constructor(config: BaseConfig) {
 		if (!config.drivers) throw new Error("config.drivers not defined.");
-		const {
-			actor: actorDriver,
-			coordinate: CoordinateDriver,
-		} = config.drivers;
+		const { actor: actorDriver, coordinate: CoordinateDriver } = config.drivers;
 		if (!actorDriver) throw new Error("config.drivers.actor not defined.");
-		if (!CoordinateDriver) throw new Error("config.drivers.coordinate not defined.");
+		if (!CoordinateDriver)
+			throw new Error("config.drivers.coordinate not defined.");
 
 		// Allow usage of a lot of AbortSignals (which are EventEmitters)
 		//events.defaultMaxListeners = 100_000;
@@ -104,6 +102,9 @@ export class CoordinateTopology {
 					},
 					req.raw.signal,
 				);
+			},
+			onConnectInspector: async () => {
+				throw new errors.Unsupported("inspect");
 			},
 		});
 

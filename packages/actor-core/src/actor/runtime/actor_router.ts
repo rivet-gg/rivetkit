@@ -12,6 +12,7 @@ import type { InputData } from "@/actor/protocol/serde";
 import { SSEStreamingApi, streamSSE } from "hono/streaming";
 import { cors } from "hono/cors";
 import { assertUnreachable } from "./utils";
+import { createInspectorRouter, InspectorConnectionHandler } from "./inspect";
 
 export interface ConnectWebSocketOpts {
 	req: HonoRequest;
@@ -64,6 +65,7 @@ export interface ActorRouterHandler {
 	onConnectSse(opts: ConnectSseOpts): Promise<ConnectSseOutput>;
 	onRpc(opts: RpcOpts): Promise<RpcOutput>;
 	onConnectionsMessage(opts: ConnectionsMessageOpts): Promise<void>;
+	onConnectInspector?: InspectorConnectionHandler;
 }
 
 /**
@@ -204,10 +206,7 @@ export function createActorRouter(
 
 			// Parse request body if present
 			const contentLength = Number(c.req.header("content-length") || "0");
-			if (
-				contentLength >
-				config.maxIncomingMessageSize
-			) {
+			if (contentLength > config.maxIncomingMessageSize) {
 				throw new errors.MessageTooLong();
 			}
 
@@ -288,10 +287,7 @@ export function createActorRouter(
 
 			// Parse request body if present
 			const contentLength = Number(c.req.header("content-length") || "0");
-			if (
-				contentLength >
-				config.maxIncomingMessageSize
-			) {
+			if (contentLength > config.maxIncomingMessageSize) {
 				throw new errors.MessageTooLong();
 			}
 
@@ -361,6 +357,11 @@ export function createActorRouter(
 		}
 	});
 
+	app.route(
+		"/inspect",
+		createInspectorRouter(handler.upgradeWebSocket, handler.onConnectInspector),
+	);
+
 	app.all("*", (c) => {
 		return c.text("Not Found (ActorCore)", 404);
 	});
@@ -387,11 +388,7 @@ function getRequestConnectionParameters(
 ): unknown {
 	// Validate params size
 	const paramsStr = req.query("params");
-	if (
-		paramsStr &&
-		paramsStr.length >
-			config.maxConnectionParametersSize
-	) {
+	if (paramsStr && paramsStr.length > config.maxConnectionParametersSize) {
 		logger().warn("connection parameters too long");
 		throw new errors.ConnectionParametersTooLong();
 	}
