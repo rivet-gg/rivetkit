@@ -86,7 +86,7 @@ export function createActorRouter(
 
 	app.get("/", (c) => {
 		return c.text(
-			"This is a ActorCore server.\n\nLearn more at https://actorcore.org",
+			"This is an ActorCore server.\n\nLearn more at https://actorcore.org",
 		);
 	});
 
