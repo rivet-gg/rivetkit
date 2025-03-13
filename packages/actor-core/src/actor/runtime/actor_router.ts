@@ -362,7 +362,7 @@ export function createActorRouter(
 		createInspectorRouter(handler.upgradeWebSocket, handler.onConnectInspector),
 	);
 
-	app.all("*", (c) => {
+	app.notFound((c) => {
 		return c.text("Not Found (ActorCore)", 404);
 	});
 

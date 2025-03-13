@@ -73,10 +73,6 @@ export function createRouter(inputConfig: InputConfig): {
 			return stub.fetch(actorRequest);
 		});
 
-		app.all("*", (c) => {
-			return c.text("Not Found (ActorCore)", 404);
-		});
-
 		return { router: app, ActorHandler };
 	} else if (
 		config.topology === "standalone" ||

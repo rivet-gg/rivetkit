@@ -47,10 +47,6 @@ export function createManagerHandler(inputConfig: InputConfig): RivetHandler {
 
 			const app = managerTopology.router;
 
-			app.all("*", (c) => {
-				return c.text("Not Found (ActorCore)", 404);
-			});
-
 			logger().info("server running", { port });
 			const server = Deno.serve(
 				{

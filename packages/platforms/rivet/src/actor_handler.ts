@@ -5,7 +5,7 @@ import { upgradeWebSocket } from "hono/deno";
 import { logger } from "./log";
 import type { RivetHandler } from "./util";
 import { PartitionTopologyActor } from "actor-core/topologies/partition";
-import { ConfigSchema, type Config, type InputConfig } from "./config";
+import { ConfigSchema, type InputConfig } from "./config";
 import { RivetActorDriver } from "./actor_driver";
 
 export function createActorHandler(
@@ -43,9 +43,6 @@ export function createActorHandler(
 
 			// Set a catch-all route
 			const router = actorTopology.router;
-			router.all("*", (c) => {
-				return c.text("Not Found (ActorCore)", 404);
-			});
 
 			// Start server
 			logger().info("server running", { port });

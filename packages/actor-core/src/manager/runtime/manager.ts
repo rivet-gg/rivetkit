@@ -42,6 +42,10 @@ export class Manager {
 
 		app.route("/manager", this.#buildManagerRouter());
 
+		app.notFound((c) => {
+			return c.text("Not Found (ActorCore)", 404);
+		});
+
 		return app;
 	}
 

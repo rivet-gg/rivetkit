@@ -110,7 +110,7 @@ export class CoordinateTopology {
 
 		app.route("/actors/:actorId", actorRouter);
 
-		app.all("*", (c) => {
+		app.notFound((c) => {
 			return c.text("Not Found (ActorCore)", 404);
 		});
 
