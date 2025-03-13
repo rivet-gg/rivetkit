@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.6.2](https://github.com/rivet-gg/actor-core/compare/v0.6.1...v0.6.2) (2025-03-13)
+
+
+### Features
+
+* add inpector ([#676](https://github.com/rivet-gg/actor-core/issues/676)) ([a38c3af](https://github.com/rivet-gg/actor-core/commit/a38c3af13aace93ddd0d3e488de10737ae9741b3))
+* add skip-install flag to create command ([#673](https://github.com/rivet-gg/actor-core/issues/673)) ([71dbd10](https://github.com/rivet-gg/actor-core/commit/71dbd105fe16f3453e3d837920cea8217277bd1d))
+* **cli:** tests ([#671](https://github.com/rivet-gg/actor-core/issues/671)) ([44d1f7b](https://github.com/rivet-gg/actor-core/commit/44d1f7ba378d8c44c9e95987d5986af0d6e55b4a))
+
+
+### Bug Fixes
+
+* **cli:** adjust deploy command to use proper lib ([#681](https://github.com/rivet-gg/actor-core/issues/681)) ([037ed55](https://github.com/rivet-gg/actor-core/commit/037ed55a3939863f12d9acae4c3c04b5c3ec0720))
+* **cli:** improve examples, and create-actor help, reduce information overload when deploying ([#670](https://github.com/rivet-gg/actor-core/issues/670)) ([2f19149](https://github.com/rivet-gg/actor-core/commit/2f19149218f3a645d647bc6d97755313222886b0))
+
+
+### Chores
+
+* bump required rivet cli version to 25.2.0 ([#679](https://github.com/rivet-gg/actor-core/issues/679)) ([e31e921](https://github.com/rivet-gg/actor-core/commit/e31e92144f04a9f10e04af813ebb32c8a368744b))
+* **main:** release 0.7.0 ([#678](https://github.com/rivet-gg/actor-core/issues/678)) ([6a61617](https://github.com/rivet-gg/actor-core/commit/6a616178cd4b9ed5d465e3cd44a8791023ee0fe2))
+* release 0.6.2 ([4361f9e](https://github.com/rivet-gg/actor-core/commit/4361f9ea3bbd1da97f51b39772f4d9cc410cb86c))
+* release version 0.6.2 ([677bda2](https://github.com/rivet-gg/actor-core/commit/677bda2f934ca2a26a1579aeefa871145ecaaecb))
+* update lockfile ([7b61057](https://github.com/rivet-gg/actor-core/commit/7b6105796a2bbec69d75dbd0cae717b2e8fd7827))
+
 ## [0.6.1](https://github.com/rivet-gg/actor-core/compare/v0.6.0...v0.6.1) (2025-03-05)
 
 
