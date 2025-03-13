@@ -85,7 +85,7 @@ export const deploy = new Command()
 						}
 					}
 
-					return `${platformOptions.cmds.exec} rivet-cli@latest`;
+					return `${platformOptions.cmds.exec} @rivet-gg/cli@latest`;
 				});
 
 				return { config, cli };
