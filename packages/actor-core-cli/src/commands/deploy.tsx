@@ -9,6 +9,7 @@ import which from "which";
 import { MIN_RIVET_CLI_VERSION } from "../constants";
 import { VERSION } from "../macros" with { type: "macro" };
 import {
+	cmd,
 	type Platform,
 	resolvePlatformSpecificOptions,
 	validateConfig,
@@ -36,6 +37,11 @@ export const deploy = new Command()
 	)
 	.action(async (platform, wd, opts) => {
 		const cwd = path.join(process.cwd(), wd);
+
+		const exec = $({
+			cwd,
+			env: { ...process.env, npm_config_yes: "true" },
+		});
 
 		await workflow(
 			"Deploy actors to Rivet",
@@ -65,31 +71,31 @@ export const deploy = new Command()
 						const cli = yield* ctx.task(
 							"Locale rivet-cli",
 							async function* (ctx) {
-								let cmd = await which("rivet-cli", { nothrow: true });
+								let cliLocation = await which("rivet-cli", { nothrow: true });
 
-								if (!cmd) {
-									cmd = await which("rivet", { nothrow: true });
+								if (!cliLocation) {
+									cliLocation = await which("rivet", { nothrow: true });
 								}
 
 								if (process.env.RIVET_CLI_PATH) {
-									cmd = process.env.RIVET_CLI_PATH;
+									cliLocation = process.env.RIVET_CLI_PATH;
 								}
 
-								if (cmd) {
+								if (cliLocation) {
 									// check version
-									const { stdout } = yield* ctx.$`${cmd} --version`;
+									const { stdout } = yield* ctx.$`${cliLocation} --version`;
 									const semVersion = semver.coerce(
 										stdout.split("\n")[2].split(" ")[1].trim(),
 									);
 
 									if (semVersion) {
 										if (semver.gte(semVersion, MIN_RIVET_CLI_VERSION)) {
-											return cmd;
+											return cliLocation;
 										}
 									}
 								}
 
-								return `${platformOptions.cmds.exec} @rivet-gg/cli@latest`;
+								return [cmd(platformOptions.cmds.exec), "@rivet-gg/cli@latest"];
 							},
 						);
 
@@ -100,7 +106,7 @@ export const deploy = new Command()
 				const { accessToken, projectName, envName, endpoint } = yield* ctx.task(
 					"Auth with Rivet",
 					async function* (ctx) {
-						const { stdout } = yield* ctx.$`${cli} metadata auth-status`;
+						const { stdout } = await exec`${cli} metadata auth-status`;
 						const isLogged = stdout === "true";
 
 						let endpoint: string | undefined;
@@ -126,19 +132,19 @@ export const deploy = new Command()
 								});
 							}
 
-							yield* ctx.$`${cli} login --api-endpoint=${endpoint}`;
+							await exec`${cli} login --api-endpoint=${endpoint}`;
 						} else {
-							const { stdout } = yield* ctx.$`${cli} metadata api-endpoint`;
+							const { stdout } = await exec`${cli} metadata api-endpoint`;
 							endpoint = stdout;
 						}
 
 						const { stdout: accessToken } =
-							yield* ctx.$`${cli} metadata access-token`;
+							await exec`${cli} metadata access-token`;
 
 						const envName = yield* ctx.task(
 							"Select environment",
 							async function* () {
-								const { stdout } = await $`${cli} env ls --json`;
+								const { stdout } = await exec`${cli} env ls --json`;
 								const envs = JSON.parse(stdout);
 								return yield* ctx.prompt("Select environment", {
 									type: "select",
@@ -153,7 +159,7 @@ export const deploy = new Command()
 						);
 
 						const { stdout: projectName } =
-							yield* ctx.$`${cli} metadata project-name-id`;
+							await exec`${cli} metadata project-name-id`;
 
 						return { accessToken, projectName, envName, endpoint };
 					},
@@ -184,7 +190,7 @@ export const deploy = new Command()
 						);
 
 						const output =
-							yield* ctx.$`${cli} publish manager --env ${envName} --access=private ${entrypoint} `;
+							await exec`${cli} publish manager --env ${envName} --access=private ${entrypoint}`;
 						if (output.exitCode !== 0) {
 							throw ctx.error("Failed to deploy Actor Core.", {
 								hint: "Check the logs above for more information.",
@@ -309,7 +315,7 @@ export const deploy = new Command()
 							);
 
 							const output =
-								yield* ctx.$`${cli} publish --access=public --env ${envName} ${actorName} ${entrypoint}`;
+								await exec`${cli} publish --access=public --env ${envName} ${actorName} ${entrypoint}`;
 
 							if (output.exitCode !== 0) {
 								throw ctx.error("Failed to deploy & upload actors.", {

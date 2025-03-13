@@ -5,7 +5,7 @@ __metadata:
   version: 8
   cacheKey: 10c0
 
-"@actor-core/bun@workspace:*, @actor-core/bun@workspace:packages/platforms/bun":
+"@actor-core/bun@workspace:packages/platforms/bun":
   version: 0.0.0-use.local
   resolution: "@actor-core/bun@workspace:packages/platforms/bun"
   dependencies:
@@ -64,7 +64,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@actor-core/cloudflare-workers@workspace:*, @actor-core/cloudflare-workers@workspace:packages/platforms/cloudflare-workers":
+"@actor-core/cloudflare-workers@workspace:packages/platforms/cloudflare-workers":
   version: 0.0.0-use.local
   resolution: "@actor-core/cloudflare-workers@workspace:packages/platforms/cloudflare-workers"
   dependencies:
@@ -94,7 +94,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@actor-core/nodejs@workspace:*, @actor-core/nodejs@workspace:packages/platforms/nodejs":
+"@actor-core/nodejs@workspace:packages/platforms/nodejs":
   version: 0.0.0-use.local
   resolution: "@actor-core/nodejs@workspace:packages/platforms/nodejs"
   dependencies:
@@ -111,7 +111,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@actor-core/redis@workspace:*, @actor-core/redis@workspace:packages/drivers/redis":
+"@actor-core/redis@workspace:packages/drivers/redis":
   version: 0.0.0-use.local
   resolution: "@actor-core/redis@workspace:packages/drivers/redis"
   dependencies:
@@ -128,7 +128,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@actor-core/rivet@workspace:*, @actor-core/rivet@workspace:packages/platforms/rivet":
+"@actor-core/rivet@workspace:packages/platforms/rivet":
   version: 0.0.0-use.local
   resolution: "@actor-core/rivet@workspace:packages/platforms/rivet"
   dependencies:
@@ -651,13 +651,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@esbuild/aix-ppc64@npm:0.25.1":
-  version: 0.25.1
-  resolution: "@esbuild/aix-ppc64@npm:0.25.1"
-  conditions: os=aix & cpu=ppc64
-  languageName: node
-  linkType: hard
-
 "@esbuild/android-arm64@npm:0.17.19":
   version: 0.17.19
   resolution: "@esbuild/android-arm64@npm:0.17.19"
@@ -682,13 +675,6 @@ __metadata:
 "@esbuild/android-arm64@npm:0.25.0":
   version: 0.25.0
   resolution: "@esbuild/android-arm64@npm:0.25.0"
-  conditions: os=android & cpu=arm64
-  languageName: node
-  linkType: hard
-
-"@esbuild/android-arm64@npm:0.25.1":
-  version: 0.25.1
-  resolution: "@esbuild/android-arm64@npm:0.25.1"
   conditions: os=android & cpu=arm64
   languageName: node
   linkType: hard
@@ -721,13 +707,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@esbuild/android-arm@npm:0.25.1":
-  version: 0.25.1
-  resolution: "@esbuild/android-arm@npm:0.25.1"
-  conditions: os=android & cpu=arm
-  languageName: node
-  linkType: hard
-
 "@esbuild/android-x64@npm:0.17.19":
   version: 0.17.19
   resolution: "@esbuild/android-x64@npm:0.17.19"
@@ -752,13 +731,6 @@ __metadata:
 "@esbuild/android-x64@npm:0.25.0":
   version: 0.25.0
   resolution: "@esbuild/android-x64@npm:0.25.0"
-  conditions: os=android & cpu=x64
-  languageName: node
-  linkType: hard
-
-"@esbuild/android-x64@npm:0.25.1":
-  version: 0.25.1
-  resolution: "@esbuild/android-x64@npm:0.25.1"
   conditions: os=android & cpu=x64
   languageName: node
   linkType: hard
@@ -791,13 +763,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@esbuild/darwin-arm64@npm:0.25.1":
-  version: 0.25.1
-  resolution: "@esbuild/darwin-arm64@npm:0.25.1"
-  conditions: os=darwin & cpu=arm64
-  languageName: node
-  linkType: hard
-
 "@esbuild/darwin-x64@npm:0.17.19":
   version: 0.17.19
   resolution: "@esbuild/darwin-x64@npm:0.17.19"
@@ -822,13 +787,6 @@ __metadata:
 "@esbuild/darwin-x64@npm:0.25.0":
   version: 0.25.0
   resolution: "@esbuild/darwin-x64@npm:0.25.0"
-  conditions: os=darwin & cpu=x64
-  languageName: node
-  linkType: hard
-
-"@esbuild/darwin-x64@npm:0.25.1":
-  version: 0.25.1
-  resolution: "@esbuild/darwin-x64@npm:0.25.1"
   conditions: os=darwin & cpu=x64
   languageName: node
   linkType: hard
@@ -861,13 +819,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@esbuild/freebsd-arm64@npm:0.25.1":
-  version: 0.25.1
-  resolution: "@esbuild/freebsd-arm64@npm:0.25.1"
-  conditions: os=freebsd & cpu=arm64
-  languageName: node
-  linkType: hard
-
 "@esbuild/freebsd-x64@npm:0.17.19":
   version: 0.17.19
   resolution: "@esbuild/freebsd-x64@npm:0.17.19"
@@ -892,13 +843,6 @@ __metadata:
 "@esbuild/freebsd-x64@npm:0.25.0":
   version: 0.25.0
   resolution: "@esbuild/freebsd-x64@npm:0.25.0"
-  conditions: os=freebsd & cpu=x64
-  languageName: node
-  linkType: hard
-
-"@esbuild/freebsd-x64@npm:0.25.1":
-  version: 0.25.1
-  resolution: "@esbuild/freebsd-x64@npm:0.25.1"
   conditions: os=freebsd & cpu=x64
   languageName: node
   linkType: hard
@@ -931,13 +875,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@esbuild/linux-arm64@npm:0.25.1":
-  version: 0.25.1
-  resolution: "@esbuild/linux-arm64@npm:0.25.1"
-  conditions: os=linux & cpu=arm64
-  languageName: node
-  linkType: hard
-
 "@esbuild/linux-arm@npm:0.17.19":
   version: 0.17.19
   resolution: "@esbuild/linux-arm@npm:0.17.19"
@@ -962,13 +899,6 @@ __metadata:
 "@esbuild/linux-arm@npm:0.25.0":
   version: 0.25.0
   resolution: "@esbuild/linux-arm@npm:0.25.0"
-  conditions: os=linux & cpu=arm
-  languageName: node
-  linkType: hard
-
-"@esbuild/linux-arm@npm:0.25.1":
-  version: 0.25.1
-  resolution: "@esbuild/linux-arm@npm:0.25.1"
   conditions: os=linux & cpu=arm
   languageName: node
   linkType: hard
@@ -1001,13 +931,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@esbuild/linux-ia32@npm:0.25.1":
-  version: 0.25.1
-  resolution: "@esbuild/linux-ia32@npm:0.25.1"
-  conditions: os=linux & cpu=ia32
-  languageName: node
-  linkType: hard
-
 "@esbuild/linux-loong64@npm:0.17.19":
   version: 0.17.19
   resolution: "@esbuild/linux-loong64@npm:0.17.19"
@@ -1032,13 +955,6 @@ __metadata:
 "@esbuild/linux-loong64@npm:0.25.0":
   version: 0.25.0
   resolution: "@esbuild/linux-loong64@npm:0.25.0"
-  conditions: os=linux & cpu=loong64
-  languageName: node
-  linkType: hard
-
-"@esbuild/linux-loong64@npm:0.25.1":
-  version: 0.25.1
-  resolution: "@esbuild/linux-loong64@npm:0.25.1"
   conditions: os=linux & cpu=loong64
   languageName: node
   linkType: hard
@@ -1071,13 +987,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@esbuild/linux-mips64el@npm:0.25.1":
-  version: 0.25.1
-  resolution: "@esbuild/linux-mips64el@npm:0.25.1"
-  conditions: os=linux & cpu=mips64el
-  languageName: node
-  linkType: hard
-
 "@esbuild/linux-ppc64@npm:0.17.19":
   version: 0.17.19
   resolution: "@esbuild/linux-ppc64@npm:0.17.19"
@@ -1102,13 +1011,6 @@ __metadata:
 "@esbuild/linux-ppc64@npm:0.25.0":
   version: 0.25.0
   resolution: "@esbuild/linux-ppc64@npm:0.25.0"
-  conditions: os=linux & cpu=ppc64
-  languageName: node
-  linkType: hard
-
-"@esbuild/linux-ppc64@npm:0.25.1":
-  version: 0.25.1
-  resolution: "@esbuild/linux-ppc64@npm:0.25.1"
   conditions: os=linux & cpu=ppc64
   languageName: node
   linkType: hard
@@ -1141,13 +1043,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@esbuild/linux-riscv64@npm:0.25.1":
-  version: 0.25.1
-  resolution: "@esbuild/linux-riscv64@npm:0.25.1"
-  conditions: os=linux & cpu=riscv64
-  languageName: node
-  linkType: hard
-
 "@esbuild/linux-s390x@npm:0.17.19":
   version: 0.17.19
   resolution: "@esbuild/linux-s390x@npm:0.17.19"
@@ -1172,13 +1067,6 @@ __metadata:
 "@esbuild/linux-s390x@npm:0.25.0":
   version: 0.25.0
   resolution: "@esbuild/linux-s390x@npm:0.25.0"
-  conditions: os=linux & cpu=s390x
-  languageName: node
-  linkType: hard
-
-"@esbuild/linux-s390x@npm:0.25.1":
-  version: 0.25.1
-  resolution: "@esbuild/linux-s390x@npm:0.25.1"
   conditions: os=linux & cpu=s390x
   languageName: node
   linkType: hard
@@ -1211,13 +1099,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@esbuild/linux-x64@npm:0.25.1":
-  version: 0.25.1
-  resolution: "@esbuild/linux-x64@npm:0.25.1"
-  conditions: os=linux & cpu=x64
-  languageName: node
-  linkType: hard
-
 "@esbuild/netbsd-arm64@npm:0.24.2":
   version: 0.24.2
   resolution: "@esbuild/netbsd-arm64@npm:0.24.2"
@@ -1228,13 +1109,6 @@ __metadata:
 "@esbuild/netbsd-arm64@npm:0.25.0":
   version: 0.25.0
   resolution: "@esbuild/netbsd-arm64@npm:0.25.0"
-  conditions: os=netbsd & cpu=arm64
-  languageName: node
-  linkType: hard
-
-"@esbuild/netbsd-arm64@npm:0.25.1":
-  version: 0.25.1
-  resolution: "@esbuild/netbsd-arm64@npm:0.25.1"
   conditions: os=netbsd & cpu=arm64
   languageName: node
   linkType: hard
@@ -1267,13 +1141,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@esbuild/netbsd-x64@npm:0.25.1":
-  version: 0.25.1
-  resolution: "@esbuild/netbsd-x64@npm:0.25.1"
-  conditions: os=netbsd & cpu=x64
-  languageName: node
-  linkType: hard
-
 "@esbuild/openbsd-arm64@npm:0.24.2":
   version: 0.24.2
   resolution: "@esbuild/openbsd-arm64@npm:0.24.2"
@@ -1284,13 +1151,6 @@ __metadata:
 "@esbuild/openbsd-arm64@npm:0.25.0":
   version: 0.25.0
   resolution: "@esbuild/openbsd-arm64@npm:0.25.0"
-  conditions: os=openbsd & cpu=arm64
-  languageName: node
-  linkType: hard
-
-"@esbuild/openbsd-arm64@npm:0.25.1":
-  version: 0.25.1
-  resolution: "@esbuild/openbsd-arm64@npm:0.25.1"
   conditions: os=openbsd & cpu=arm64
   languageName: node
   linkType: hard
@@ -1323,13 +1183,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@esbuild/openbsd-x64@npm:0.25.1":
-  version: 0.25.1
-  resolution: "@esbuild/openbsd-x64@npm:0.25.1"
-  conditions: os=openbsd & cpu=x64
-  languageName: node
-  linkType: hard
-
 "@esbuild/sunos-x64@npm:0.17.19":
   version: 0.17.19
   resolution: "@esbuild/sunos-x64@npm:0.17.19"
@@ -1354,13 +1207,6 @@ __metadata:
 "@esbuild/sunos-x64@npm:0.25.0":
   version: 0.25.0
   resolution: "@esbuild/sunos-x64@npm:0.25.0"
-  conditions: os=sunos & cpu=x64
-  languageName: node
-  linkType: hard
-
-"@esbuild/sunos-x64@npm:0.25.1":
-  version: 0.25.1
-  resolution: "@esbuild/sunos-x64@npm:0.25.1"
   conditions: os=sunos & cpu=x64
   languageName: node
   linkType: hard
@@ -1393,13 +1239,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@esbuild/win32-arm64@npm:0.25.1":
-  version: 0.25.1
-  resolution: "@esbuild/win32-arm64@npm:0.25.1"
-  conditions: os=win32 & cpu=arm64
-  languageName: node
-  linkType: hard
-
 "@esbuild/win32-ia32@npm:0.17.19":
   version: 0.17.19
   resolution: "@esbuild/win32-ia32@npm:0.17.19"
@@ -1424,13 +1263,6 @@ __metadata:
 "@esbuild/win32-ia32@npm:0.25.0":
   version: 0.25.0
   resolution: "@esbuild/win32-ia32@npm:0.25.0"
-  conditions: os=win32 & cpu=ia32
-  languageName: node
-  linkType: hard
-
-"@esbuild/win32-ia32@npm:0.25.1":
-  version: 0.25.1
-  resolution: "@esbuild/win32-ia32@npm:0.25.1"
   conditions: os=win32 & cpu=ia32
   languageName: node
   linkType: hard
@@ -1463,13 +1295,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@esbuild/win32-x64@npm:0.25.1":
-  version: 0.25.1
-  resolution: "@esbuild/win32-x64@npm:0.25.1"
-  conditions: os=win32 & cpu=x64
-  languageName: node
-  linkType: hard
-
 "@fastify/busboy@npm:^2.0.0":
   version: 2.1.1
   resolution: "@fastify/busboy@npm:2.1.1"
@@ -1477,7 +1302,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@hono/node-server@npm:^1.0.0, @hono/node-server@npm:^1.13.8":
+"@hono/node-server@npm:^1.13.8":
   version: 1.13.8
   resolution: "@hono/node-server@npm:1.13.8"
   peerDependencies:
@@ -4050,102 +3875,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"chat-room-bun@workspace:examples/chat-simple/platforms/bun":
-  version: 0.0.0-use.local
-  resolution: "chat-room-bun@workspace:examples/chat-simple/platforms/bun"
-  dependencies:
-    "@actor-core/bun": "workspace:*"
-    "@types/prompts": "npm:^2"
-    actor-core: "workspace:*"
-    prompts: "npm:^2.4.2"
-    typescript: "npm:^5.5.2"
-  languageName: unknown
-  linkType: soft
-
-"chat-room-cloudflare-workers-custom-path@workspace:examples/chat-simple/platforms/cloudflare-workers-custom-path":
-  version: 0.0.0-use.local
-  resolution: "chat-room-cloudflare-workers-custom-path@workspace:examples/chat-simple/platforms/cloudflare-workers-custom-path"
-  dependencies:
-    "@actor-core/cloudflare-workers": "workspace:*"
-    "@cloudflare/workers-types": "npm:^4.20250129.0"
-    "@types/prompts": "npm:^2"
-    actor-core: "workspace:*"
-    hono: "npm:^4.7.0"
-    prompts: "npm:^2.4.2"
-    typescript: "npm:^5.5.2"
-    wrangler: "npm:^3.101.0"
-  languageName: unknown
-  linkType: soft
-
-"chat-room-cloudflare-workers@workspace:examples/chat-simple/platforms/cloudflare-workers":
-  version: 0.0.0-use.local
-  resolution: "chat-room-cloudflare-workers@workspace:examples/chat-simple/platforms/cloudflare-workers"
-  dependencies:
-    "@actor-core/cloudflare-workers": "workspace:*"
-    "@cloudflare/workers-types": "npm:^4.20250129.0"
-    "@types/prompts": "npm:^2"
-    actor-core: "workspace:*"
-    prompts: "npm:^2.4.2"
-    typescript: "npm:^5.5.2"
-    wrangler: "npm:^3.101.0"
-  languageName: unknown
-  linkType: soft
-
-"chat-room-nodejs-custom-path@workspace:examples/chat-simple/platforms/nodejs-custom-path":
-  version: 0.0.0-use.local
-  resolution: "chat-room-nodejs-custom-path@workspace:examples/chat-simple/platforms/nodejs-custom-path"
-  dependencies:
-    "@actor-core/memory": "workspace:*"
-    "@actor-core/nodejs": "workspace:*"
-    "@hono/node-server": "npm:^1.0.0"
-    "@types/prompts": "npm:^2"
-    actor-core: "workspace:*"
-    hono: "npm:^4.0.0"
-    prompts: "npm:^2.4.2"
-    tsx: "npm:^4.19.2"
-    typescript: "npm:^5.5.2"
-  languageName: unknown
-  linkType: soft
-
-"chat-room-nodejs-redis@workspace:examples/chat-simple/platforms/nodejs-redis":
-  version: 0.0.0-use.local
-  resolution: "chat-room-nodejs-redis@workspace:examples/chat-simple/platforms/nodejs-redis"
-  dependencies:
-    "@actor-core/nodejs": "workspace:*"
-    "@actor-core/redis": "workspace:*"
-    "@types/prompts": "npm:^2"
-    actor-core: "workspace:*"
-    prompts: "npm:^2.4.2"
-    tsx: "npm:^4.19.2"
-    typescript: "npm:^5.5.2"
-  languageName: unknown
-  linkType: soft
-
-"chat-room-nodejs@workspace:examples/chat-simple/platforms/nodejs":
-  version: 0.0.0-use.local
-  resolution: "chat-room-nodejs@workspace:examples/chat-simple/platforms/nodejs"
-  dependencies:
-    "@actor-core/nodejs": "workspace:*"
-    "@types/prompts": "npm:^2"
-    actor-core: "workspace:*"
-    prompts: "npm:^2.4.2"
-    tsx: "npm:^4.19.2"
-    typescript: "npm:^5.5.2"
-  languageName: unknown
-  linkType: soft
-
-"chat-room-rivet@workspace:examples/chat-simple/platforms/rivet":
-  version: 0.0.0-use.local
-  resolution: "chat-room-rivet@workspace:examples/chat-simple/platforms/rivet"
-  dependencies:
-    "@actor-core/rivet": "workspace:*"
-    "@types/prompts": "npm:^2"
-    actor-core: "workspace:*"
-    prompts: "npm:^2.4.2"
-    typescript: "npm:^5.5.2"
-  languageName: unknown
-  linkType: soft
-
 "chat-room@workspace:examples/chat-simple":
   version: 0.0.0-use.local
   resolution: "chat-room@workspace:examples/chat-simple"
@@ -4390,102 +4119,6 @@ __metadata:
   checksum: 10c0/90a0e40abbddfd7618f8ccd63a74d88deea94e77d0e8dbbea059fa7ebebb8fbb4e2909667fe26f3a467073de1a542ebe6ae4c73a73745ac5833786759cd906c9
   languageName: node
   linkType: hard
-
-"counter-bun@workspace:examples/counter/platforms/bun":
-  version: 0.0.0-use.local
-  resolution: "counter-bun@workspace:examples/counter/platforms/bun"
-  dependencies:
-    "@actor-core/bun": "workspace:*"
-    actor-core: "workspace:*"
-    eventsource: "npm:^3.0.5"
-    mitata: "npm:^1.0.34"
-    typescript: "npm:^5.5.2"
-  languageName: unknown
-  linkType: soft
-
-"counter-cloudflare-workers-custom-path@workspace:examples/counter/platforms/cloudflare-workers-custom-path":
-  version: 0.0.0-use.local
-  resolution: "counter-cloudflare-workers-custom-path@workspace:examples/counter/platforms/cloudflare-workers-custom-path"
-  dependencies:
-    "@actor-core/cloudflare-workers": "workspace:*"
-    "@cloudflare/workers-types": "npm:^4.20250129.0"
-    actor-core: "workspace:*"
-    eventsource: "npm:^3.0.5"
-    hono: "npm:^4.7.0"
-    mitata: "npm:^1.0.34"
-    typescript: "npm:^5.5.2"
-    wrangler: "npm:^3.101.0"
-  languageName: unknown
-  linkType: soft
-
-"counter-cloudflare-workers@workspace:examples/counter/platforms/cloudflare-workers":
-  version: 0.0.0-use.local
-  resolution: "counter-cloudflare-workers@workspace:examples/counter/platforms/cloudflare-workers"
-  dependencies:
-    "@actor-core/cloudflare-workers": "workspace:*"
-    "@cloudflare/workers-types": "npm:^4.20250129.0"
-    actor-core: "workspace:*"
-    eventsource: "npm:^3.0.5"
-    mitata: "npm:^1.0.34"
-    typescript: "npm:^5.5.2"
-    wrangler: "npm:^3.101.0"
-  languageName: unknown
-  linkType: soft
-
-"counter-nodejs-custom-path@workspace:examples/counter/platforms/nodejs-custom-path":
-  version: 0.0.0-use.local
-  resolution: "counter-nodejs-custom-path@workspace:examples/counter/platforms/nodejs-custom-path"
-  dependencies:
-    "@actor-core/memory": "workspace:*"
-    "@actor-core/nodejs": "workspace:*"
-    "@hono/node-server": "npm:^1.0.0"
-    actor-core: "workspace:*"
-    eventsource: "npm:^3.0.5"
-    hono: "npm:^4.0.0"
-    mitata: "npm:^1.0.34"
-    tsx: "npm:^4.19.2"
-    typescript: "npm:^5.5.2"
-  languageName: unknown
-  linkType: soft
-
-"counter-nodejs-redis@workspace:examples/counter/platforms/nodejs-redis":
-  version: 0.0.0-use.local
-  resolution: "counter-nodejs-redis@workspace:examples/counter/platforms/nodejs-redis"
-  dependencies:
-    "@actor-core/nodejs": "workspace:*"
-    "@actor-core/redis": "workspace:*"
-    actor-core: "workspace:*"
-    eventsource: "npm:^3.0.5"
-    mitata: "npm:^1.0.34"
-    tsx: "npm:^4.19.2"
-    typescript: "npm:^5.5.2"
-  languageName: unknown
-  linkType: soft
-
-"counter-nodejs@workspace:examples/counter/platforms/nodejs":
-  version: 0.0.0-use.local
-  resolution: "counter-nodejs@workspace:examples/counter/platforms/nodejs"
-  dependencies:
-    "@actor-core/nodejs": "workspace:*"
-    actor-core: "workspace:*"
-    eventsource: "npm:^3.0.5"
-    mitata: "npm:^1.0.34"
-    tsx: "npm:^4.19.2"
-    typescript: "npm:^5.5.2"
-  languageName: unknown
-  linkType: soft
-
-"counter-rivet@workspace:examples/counter/platforms/rivet":
-  version: 0.0.0-use.local
-  resolution: "counter-rivet@workspace:examples/counter/platforms/rivet"
-  dependencies:
-    "@actor-core/rivet": "workspace:*"
-    actor-core: "workspace:*"
-    eventsource: "npm:^3.0.5"
-    mitata: "npm:^1.0.34"
-    typescript: "npm:^5.5.2"
-  languageName: unknown
-  linkType: soft
 
 "counter@workspace:examples/counter":
   version: 0.0.0-use.local
@@ -5169,92 +4802,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"esbuild@npm:~0.25.0":
-  version: 0.25.1
-  resolution: "esbuild@npm:0.25.1"
-  dependencies:
-    "@esbuild/aix-ppc64": "npm:0.25.1"
-    "@esbuild/android-arm": "npm:0.25.1"
-    "@esbuild/android-arm64": "npm:0.25.1"
-    "@esbuild/android-x64": "npm:0.25.1"
-    "@esbuild/darwin-arm64": "npm:0.25.1"
-    "@esbuild/darwin-x64": "npm:0.25.1"
-    "@esbuild/freebsd-arm64": "npm:0.25.1"
-    "@esbuild/freebsd-x64": "npm:0.25.1"
-    "@esbuild/linux-arm": "npm:0.25.1"
-    "@esbuild/linux-arm64": "npm:0.25.1"
-    "@esbuild/linux-ia32": "npm:0.25.1"
-    "@esbuild/linux-loong64": "npm:0.25.1"
-    "@esbuild/linux-mips64el": "npm:0.25.1"
-    "@esbuild/linux-ppc64": "npm:0.25.1"
-    "@esbuild/linux-riscv64": "npm:0.25.1"
-    "@esbuild/linux-s390x": "npm:0.25.1"
-    "@esbuild/linux-x64": "npm:0.25.1"
-    "@esbuild/netbsd-arm64": "npm:0.25.1"
-    "@esbuild/netbsd-x64": "npm:0.25.1"
-    "@esbuild/openbsd-arm64": "npm:0.25.1"
-    "@esbuild/openbsd-x64": "npm:0.25.1"
-    "@esbuild/sunos-x64": "npm:0.25.1"
-    "@esbuild/win32-arm64": "npm:0.25.1"
-    "@esbuild/win32-ia32": "npm:0.25.1"
-    "@esbuild/win32-x64": "npm:0.25.1"
-  dependenciesMeta:
-    "@esbuild/aix-ppc64":
-      optional: true
-    "@esbuild/android-arm":
-      optional: true
-    "@esbuild/android-arm64":
-      optional: true
-    "@esbuild/android-x64":
-      optional: true
-    "@esbuild/darwin-arm64":
-      optional: true
-    "@esbuild/darwin-x64":
-      optional: true
-    "@esbuild/freebsd-arm64":
-      optional: true
-    "@esbuild/freebsd-x64":
-      optional: true
-    "@esbuild/linux-arm":
-      optional: true
-    "@esbuild/linux-arm64":
-      optional: true
-    "@esbuild/linux-ia32":
-      optional: true
-    "@esbuild/linux-loong64":
-      optional: true
-    "@esbuild/linux-mips64el":
-      optional: true
-    "@esbuild/linux-ppc64":
-      optional: true
-    "@esbuild/linux-riscv64":
-      optional: true
-    "@esbuild/linux-s390x":
-      optional: true
-    "@esbuild/linux-x64":
-      optional: true
-    "@esbuild/netbsd-arm64":
-      optional: true
-    "@esbuild/netbsd-x64":
-      optional: true
-    "@esbuild/openbsd-arm64":
-      optional: true
-    "@esbuild/openbsd-x64":
-      optional: true
-    "@esbuild/sunos-x64":
-      optional: true
-    "@esbuild/win32-arm64":
-      optional: true
-    "@esbuild/win32-ia32":
-      optional: true
-    "@esbuild/win32-x64":
-      optional: true
-  bin:
-    esbuild: bin/esbuild
-  checksum: 10c0/80fca30dd0f21aec23fdfab34f0a8d5f55df5097dd7f475f2ab561d45662c32ee306f5649071cd1a0ba0614b164c48ca3dc3ee1551a4daf204b8af90e4d893f5
-  languageName: node
-  linkType: hard
-
 "escalade@npm:^3.2.0":
   version: 3.2.0
   resolution: "escalade@npm:3.2.0"
@@ -5554,15 +5101,6 @@ __metadata:
     "@sec-ant/readable-stream": "npm:^0.4.1"
     is-stream: "npm:^4.0.1"
   checksum: 10c0/d70e73857f2eea1826ac570c3a912757dcfbe8a718a033fa0c23e12ac8e7d633195b01710e0559af574cbb5af101009b42df7b6f6b29ceec8dbdf7291931b948
-  languageName: node
-  linkType: hard
-
-"get-tsconfig@npm:^4.7.5":
-  version: 4.10.0
-  resolution: "get-tsconfig@npm:4.10.0"
-  dependencies:
-    resolve-pkg-maps: "npm:^1.0.0"
-  checksum: 10c0/c9b5572c5118923c491c04285c73bd55b19e214992af957c502a3be0fc0043bb421386ffd45ca3433c0a7fba81221ca300479e8393960acf15d0ed4563f38a86
   languageName: node
   linkType: hard
 
@@ -7456,13 +6994,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"resolve-pkg-maps@npm:^1.0.0":
-  version: 1.0.0
-  resolution: "resolve-pkg-maps@npm:1.0.0"
-  checksum: 10c0/fb8f7bbe2ca281a73b7ef423a1cbc786fb244bd7a95cbe5c3fba25b27d327150beca8ba02f622baea65919a57e061eb5005204daa5f93ed590d9b77463a567ab
-  languageName: node
-  linkType: hard
-
 "resolve@npm:^1.22.8":
   version: 1.22.10
   resolution: "resolve@npm:1.22.10"
@@ -8733,22 +8264,6 @@ __metadata:
     tsup: dist/cli-default.js
     tsup-node: dist/cli-node.js
   checksum: 10c0/c6636ffd6ade59d3544cd424c7115449f8712eb5c872e1e36d25817436f9ea9424d8ee8f1b6244ac7c9a887b0fcf6cc42c102baa55a9080236afc18ba73871e6
-  languageName: node
-  linkType: hard
-
-"tsx@npm:^4.19.2":
-  version: 4.19.3
-  resolution: "tsx@npm:4.19.3"
-  dependencies:
-    esbuild: "npm:~0.25.0"
-    fsevents: "npm:~2.3.3"
-    get-tsconfig: "npm:^4.7.5"
-  dependenciesMeta:
-    fsevents:
-      optional: true
-  bin:
-    tsx: dist/cli.mjs
-  checksum: 10c0/cacfb4cf1392ae10e8e4fe032ad26ccb07cd8a3b32e5a0da270d9c48d06ee74f743e4a84686cbc9d89b48032d59bbc56cd911e076f53cebe61dc24fa525ff790
   languageName: node
   linkType: hard
 
