@@ -95,7 +95,7 @@ export const deploy = new Command()
 									}
 								}
 
-								return [cmd(platformOptions.cmds.exec), "@rivet-gg/cli@latest"];
+								return ["npx", "@rivet-gg/cli@latest"];
 							},
 						);
 
