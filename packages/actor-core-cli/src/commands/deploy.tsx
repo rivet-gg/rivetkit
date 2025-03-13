@@ -256,7 +256,7 @@ export const deploy = new Command()
 								environment: envName,
 								body: {
 									region: region.id,
-									tags: { name: "manager", onwer: "rivet" },
+									tags: { name: "manager", owner: "rivet" },
 									buildTags: { name: "manager", current: "true" },
 									runtime: {
 										environment: {
