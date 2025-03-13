@@ -190,7 +190,7 @@ enc
 			onFailedAttempt: (error) => {
 				logger().warn("failed to reconnect", {
 					attempt: error.attemptNumber,
-					error: `${error.cause}`,
+					error: `${error}`,
 				});
 			},
 
@@ -227,10 +227,10 @@ enc
 
 	#pickTransport(): Transport {
 		// Choose first supported transport from server's list that client also supports
-		const transport = this.serverTransports.find(t => 
-			this.supportedTransports.includes(t)
+		const transport = this.serverTransports.find((t) =>
+			this.supportedTransports.includes(t),
 		);
-		
+
 		if (!transport) {
 			throw new errors.NoSupportedTransport();
 		}
@@ -243,6 +243,7 @@ enc
 
 		const url = this.#buildConnectionUrl("websocket");
 
+		logger().debug("connecting to websocket", { url });
 		const ws = new WebSocket(url);
 		if (this.encodingKind === "cbor") {
 			ws.binaryType = "arraybuffer";
@@ -275,6 +276,7 @@ enc
 
 		const url = this.#buildConnectionUrl("sse");
 
+		logger().debug("connecting to sse", { url });
 		const eventSource = new EventSource(url);
 		this.#transport = { sse: eventSource };
 		eventSource.onopen = () => {
@@ -421,6 +423,10 @@ enc
 			}
 
 			url += `&params=${encodeURIComponent(paramsStr)}`;
+		}
+
+		if (transport === "websocket") {
+			url = url.replace(/^http:/, "ws:").replace(/^https:/, "wss:");
 		}
 
 		return url;
