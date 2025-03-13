@@ -10,6 +10,7 @@ import type { Hono } from "hono";
 import { createActorRouter } from "@/actor/runtime/actor_router";
 import type { BaseConfig } from "@/actor/runtime/config";
 import { Manager } from "@/manager/runtime/manager";
+import { handleRouteError, handleRouteNotFound } from "@/common/router";
 
 export interface GlobalState {
 	nodeId: string;
@@ -110,9 +111,8 @@ export class CoordinateTopology {
 
 		app.route("/actors/:actorId", actorRouter);
 
-		app.notFound((c) => {
-			return c.text("Not Found (ActorCore)", 404);
-		});
+		app.notFound(handleRouteNotFound);
+		app.onError(handleRouteError);
 
 		this.router = app;
 	}

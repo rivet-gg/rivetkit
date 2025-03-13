@@ -5,6 +5,7 @@ import type { ManagerDriver } from "@/actor/runtime/driver";
 import { logger } from "./log";
 import { type ActorTags, assertUnreachable } from "@/common/utils";
 import type { BaseConfig } from "@/driver-helpers";
+import { handleRouteError, handleRouteNotFound } from "@/common/router";
 
 export class Manager {
 	#config: BaseConfig;
@@ -42,9 +43,8 @@ export class Manager {
 
 		app.route("/manager", this.#buildManagerRouter());
 
-		app.notFound((c) => {
-			return c.text("Not Found (ActorCore)", 404);
-		});
+		app.notFound(handleRouteNotFound);
+		app.onError(handleRouteError);
 
 		return app;
 	}

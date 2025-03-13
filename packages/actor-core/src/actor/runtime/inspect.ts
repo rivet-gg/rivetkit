@@ -4,12 +4,13 @@ import { throttle } from "@/actor/runtime/utils";
 import type { UpgradeWebSocket, WSContext } from "hono/ws";
 import { Hono, type HonoRequest } from "hono";
 import * as errors from "@/actor/errors";
-import { safeStringify } from "@/common/utils";
+import { deconstructError, safeStringify } from "@/common/utils";
 import {
 	type ToServer,
 	ToServerSchema,
 } from "@/actor/protocol/inspector/to_server";
 import type { ToClient } from "@/actor/protocol/inspector/to_client";
+import { logger } from "./log";
 
 export interface ConnectInspectorOpts {
 	req: HonoRequest;
@@ -38,32 +39,55 @@ export function createInspectorRouter(
 	if (!upgradeWebSocket || !onConnect) {
 		return app.get("/", async (c) => {
 			return c.json({
-				error: "Inspector disabled. Only aviailable on WebSocket connections.",
+				error: "Inspector disabled. Only available on WebSocket connections.",
 			});
 		});
 	}
 	return app.get(
 		"/",
 		upgradeWebSocket(async (c) => {
-			const handler = await onConnect({ req: c.req });
-			return {
-				onOpen: async (_, ws) => {
-					await handler.onOpen(ws);
-				},
-				onClose: async () => {
-					await handler.onClose();
-				},
-				onMessage: async (event) => {
-					try {
-						const result = ToServerSchema.parse(
-							JSON.parse(event.data.valueOf() as string),
-						);
-						await handler.onMessage(result);
-					} catch (error) {
-						throw new errors.MalformedMessage(error);
-					}
-				},
-			};
+			try {
+				const handler = await onConnect({ req: c.req });
+				return {
+					onOpen: async (_, ws) => {
+						try {
+							await handler.onOpen(ws);
+						} catch (error) {
+							const { code } = deconstructError(error, logger(), {
+								wsEvent: "open",
+							});
+							ws.close(1011, code);
+						}
+					},
+					onClose: async () => {
+						try {
+							await handler.onClose();
+						} catch (error) {
+							deconstructError(error, logger(), {
+								wsEvent: "close",
+							});
+						}
+					},
+					onMessage: async (event, ws) => {
+						try {
+							const { success, data, error } = ToServerSchema.safeParse(
+								JSON.parse(event.data.valueOf() as string),
+							);
+							if (!success) throw new errors.MalformedMessage(error);
+
+							await handler.onMessage(data);
+						} catch (error) {
+							const { code } = deconstructError(error, logger(), {
+								wsEvent: "message",
+							});
+							ws.close(1011, code);
+						}
+					},
+				};
+			} catch (error) {
+				deconstructError(error, logger(), {});
+				return {};
+			}
 		}),
 	);
 }

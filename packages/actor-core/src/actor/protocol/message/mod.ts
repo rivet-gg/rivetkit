@@ -13,6 +13,7 @@ import {
 	InputData,
 	CachedSerializer,
 } from "@/actor/protocol/serde";
+import { deconstructError } from "@/common/utils";
 
 export const TransportSchema = z.enum(["websocket", "sse"]);
 
@@ -132,38 +133,11 @@ export async function processMessage<A extends AnyActor>(
 			assertUnreachable(message.b);
 		}
 	} catch (error) {
-		// Build response error information. Only return errors if flagged as public in order to prevent leaking internal behavior.
-		//
-		// We log the error here instead of after generating the code & message because we need to log the original error, not the masked internal error.
-		let code: string;
-		let message: string;
-		let metadata: unknown = undefined;
-		if (error instanceof errors.ActorError && error.public) {
-			code = error.code;
-			message = String(error);
-			metadata = error.metadata;
-
-			logger().info("public error", {
-				code,
-				message,
-				connectionId: conn.id,
-				rpcId,
-				rpcName,
-			});
-		} else {
-			code = errors.INTERNAL_ERROR_CODE;
-			message = errors.INTERNAL_ERROR_DESCRIPTION;
-			metadata = {
-				//url: `https://hub.rivet.gg/projects/${actorMetadata.project.slug}/environments/${actorMetadata.environment.slug}/actors?actorId=${actorMetadata.actor.id}`,
-			} satisfies errors.InternalErrorMetadata;
-
-			logger().warn("internal error", {
-				error: String(error),
-				connectionId: conn.id,
-				rpcId,
-				rpcName,
-			});
-		}
+		const { code, message, metadata } = deconstructError(error, logger(), {
+			connectionId: conn.id,
+			rpcId,
+			rpcName,
+		});
 
 		// Build response
 		if (rpcId !== undefined) {

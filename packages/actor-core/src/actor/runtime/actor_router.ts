@@ -13,6 +13,8 @@ import { SSEStreamingApi, streamSSE } from "hono/streaming";
 import { cors } from "hono/cors";
 import { assertUnreachable } from "./utils";
 import { createInspectorRouter, InspectorConnectionHandler } from "./inspect";
+import { handleRouteError, handleRouteNotFound } from "@/common/router";
+import { deconstructError } from "@/common/utils";
 
 export interface ConnectWebSocketOpts {
 	req: HonoRequest;
@@ -98,58 +100,85 @@ export function createActorRouter(
 		app.get(
 			"/connect/websocket",
 			handler.upgradeWebSocket(async (c) => {
-				if (!handler.onConnectWebSocket)
-					throw new Error("onConnectWebSocket is not implemented");
+				try {
+					if (!handler.onConnectWebSocket)
+						throw new Error("onConnectWebSocket is not implemented");
 
-				const encoding = getRequestEncoding(c.req);
-				const parameters = getRequestConnectionParameters(c.req, config);
+					const encoding = getRequestEncoding(c.req);
+					const parameters = getRequestConnectionParameters(c.req, config);
 
-				const wsHandler = await handler.onConnectWebSocket({
-					req: c.req,
-					encoding,
-					parameters,
-				});
+					const wsHandler = await handler.onConnectWebSocket({
+						req: c.req,
+						encoding,
+						parameters,
+					});
 
-				const { promise: onOpenPromise, resolve: onOpenResolve } =
-					Promise.withResolvers<undefined>();
-				return {
-					onOpen: async (_evt, ws) => {
-						logger().debug("websocket open");
+					const { promise: onOpenPromise, resolve: onOpenResolve } =
+						Promise.withResolvers<undefined>();
+					return {
+						onOpen: async (_evt, ws) => {
+							try {
+								logger().debug("websocket open");
 
-						// Call handler
-						await wsHandler.onOpen(ws);
+								// Call handler
+								await wsHandler.onOpen(ws);
 
-						// Resolve promise
-						onOpenResolve(undefined);
-					},
-					onMessage: async (evt) => {
-						await onOpenPromise;
+								// Resolve promise
+								onOpenResolve(undefined);
+							} catch (error) {
+								const { code } = deconstructError(error, logger(), {
+									wsEvent: "open",
+								});
+								ws.close(1011, code);
+							}
+						},
+						onMessage: async (evt, ws) => {
+							try {
+								await onOpenPromise;
 
-						logger().debug("received message");
+								logger().debug("received message");
 
-						const value = evt.data.valueOf() as InputData;
-						const message = await parseMessage(value, {
-							encoding: encoding,
-							maxIncomingMessageSize: config.maxIncomingMessageSize,
-						});
+								const value = evt.data.valueOf() as InputData;
+								const message = await parseMessage(value, {
+									encoding: encoding,
+									maxIncomingMessageSize: config.maxIncomingMessageSize,
+								});
 
-						await wsHandler.onMessage(message);
-					},
-					onClose: async (_evt) => {
-						await onOpenPromise;
+								await wsHandler.onMessage(message);
+							} catch (error) {
+								const { code } = deconstructError(error, logger(), {
+									wsEvent: "message",
+								});
+								ws.close(1011, code);
+							}
+						},
+						onClose: async (_evt) => {
+							try {
+								await onOpenPromise;
 
-						logger().debug("websocket closed");
+								logger().debug("websocket closed");
 
-						await wsHandler.onClose();
-					},
-					onError: async (error) => {
-						await onOpenPromise;
+								await wsHandler.onClose();
+							} catch (error) {
+								deconstructError(error, logger(), { wsEvent: "close" });
+							}
+						},
+						onError: async (error) => {
+							try {
+								await onOpenPromise;
 
-						// Actors don't need to know about this, since it's abstracted
-						// away
-						logger().warn("websocket error", { error: `${error}` });
-					},
-				};
+								// Actors don't need to know about this, since it's abstracted
+								// away
+								logger().warn("websocket error", { error: `${error}` });
+							} catch (error) {
+								deconstructError(error, logger(), { wsEvent: "error" });
+							}
+						},
+					};
+				} catch (error) {
+					deconstructError(error, logger(), {});
+					return {};
+				}
 			}),
 		);
 	} else {
@@ -233,34 +262,12 @@ export function createActorRouter(
 			} satisfies protoHttpRpc.ResponseOk);
 		} catch (error) {
 			// Build response error information similar to WebSocket handling
-			let status: ContentfulStatusCode;
-			let code: string;
-			let message: string;
-			let metadata: unknown = undefined;
 
-			if (error instanceof errors.ActorError && error.public) {
-				logger().info("http rpc public error", {
-					rpc: rpcName,
-					error,
-				});
-
-				status = 400;
-				code = error.code;
-				message = String(error);
-				metadata = error.metadata;
-			} else {
-				logger().warn("http rpc internal error", {
-					rpc: rpcName,
-					error,
-				});
-
-				status = 500;
-				code = errors.INTERNAL_ERROR_CODE;
-				message = errors.INTERNAL_ERROR_DESCRIPTION;
-				metadata = {
-					//url: `https://hub.rivet.gg/projects/${this.#driver.metadata.project.slug}/environments/${this.#driver.metadata.environment.slug}/actors?actorId=${this.#driver.metadata.actor.id}`,
-				} satisfies errors.InternalErrorMetadata;
-			}
+			const { statusCode, code, message, metadata } = deconstructError(
+				error,
+				logger(),
+				{ rpc: rpcName },
+			);
 
 			return c.json(
 				{
@@ -268,7 +275,7 @@ export function createActorRouter(
 					m: message,
 					md: metadata,
 				} satisfies protoHttpRpc.ResponseErr,
-				{ status },
+				{ status: statusCode },
 			);
 		}
 	});
@@ -319,32 +326,11 @@ export function createActorRouter(
 			return c.json({});
 		} catch (error) {
 			// Build response error information similar to WebSocket handling
-			let status: ContentfulStatusCode;
-			let code: string;
-			let message: string;
-			let metadata: unknown = undefined;
-
-			if (error instanceof errors.ActorError && error.public) {
-				logger().info("http rpc public error", {
-					error,
-				});
-
-				status = 400;
-				code = error.code;
-				message = String(error);
-				metadata = error.metadata;
-			} else {
-				logger().warn("http rpc internal error", {
-					error,
-				});
-
-				status = 500;
-				code = errors.INTERNAL_ERROR_CODE;
-				message = errors.INTERNAL_ERROR_DESCRIPTION;
-				metadata = {
-					//url: `https://hub.rivet.gg/projects/${this.#driver.metadata.project.slug}/environments/${this.#driver.metadata.environment.slug}/actors?actorId=${this.#driver.metadata.actor.id}`,
-				} satisfies errors.InternalErrorMetadata;
-			}
+			const { statusCode, code, message, metadata } = deconstructError(
+				error,
+				logger(),
+				{},
+			);
 
 			return c.json(
 				{
@@ -352,7 +338,7 @@ export function createActorRouter(
 					m: message,
 					md: metadata,
 				} satisfies protoHttpRpc.ResponseErr,
-				{ status },
+				{ status: statusCode },
 			);
 		}
 	});
@@ -362,9 +348,8 @@ export function createActorRouter(
 		createInspectorRouter(handler.upgradeWebSocket, handler.onConnectInspector),
 	);
 
-	app.notFound((c) => {
-		return c.text("Not Found (ActorCore)", 404);
-	});
+	app.notFound(handleRouteNotFound);
+	app.onError(handleRouteError);
 
 	return app;
 }
