@@ -56,26 +56,64 @@ export function safeStringify(obj: unknown, maxSize: number) {
 
 // TODO: Instead of doing this, use a temp var for state and attempt to write
 // it. Roll back state if fails to serialize.
-export function isJsonSerializable(value: unknown): boolean {
+
+/**
+ * Check if a value is JSON serializable.
+ * Optionally pass an onInvalid callback to receive the path to invalid values.
+ */
+export function isJsonSerializable(
+	value: unknown, 
+	onInvalid?: (path: string) => void,
+	currentPath = ""
+): boolean {
 	// Handle primitive types directly
-	if (value === null || value === undefined) return true;
-	if (typeof value === "number") return Number.isFinite(value);
-	if (typeof value === "boolean" || typeof value === "string") return true;
+	if (value === null || value === undefined) {
+		return true;
+	}
+	
+	if (typeof value === "number") {
+		if (!Number.isFinite(value)) {
+			onInvalid?.(currentPath);
+			return false;
+		}
+		return true;
+	}
+	
+	if (typeof value === "boolean" || typeof value === "string") {
+		return true;
+	}
 
 	// Handle arrays
 	if (Array.isArray(value)) {
-		return value.every(isJsonSerializable);
+		for (let i = 0; i < value.length; i++) {
+			const itemPath = currentPath ? `${currentPath}[${i}]` : `[${i}]`;
+			if (!isJsonSerializable(value[i], onInvalid, itemPath)) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	// Handle plain objects
 	if (typeof value === "object") {
 		// Reject if it's not a plain object
-		if (Object.getPrototypeOf(value) !== Object.prototype) return false;
-
-		// Check all values recursively
-		return Object.values(value).every(isJsonSerializable);
+		if (Object.getPrototypeOf(value) !== Object.prototype) {
+			onInvalid?.(currentPath);
+			return false;
+		}
+		
+		// Check all properties recursively
+		for (const key in value) {
+			const propPath = currentPath ? `${currentPath}.${key}` : key;
+			if (!isJsonSerializable(value[key as keyof typeof value], onInvalid, propPath)) {
+				return false;
+			}
+		}
+		return true;
 	}
 
+	// Not serializable
+	onInvalid?.(currentPath);
 	return false;
 }
 

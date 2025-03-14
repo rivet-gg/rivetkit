@@ -286,16 +286,16 @@ export abstract class Actor<
 	 * Creates proxy for `#persist` that handles automatically flagging when state needs to be updated.
 	 */
 	#setPersist(target: PersistedActor<Actor<State, ConnParams, ConnState>>) {
-		// Set raw perist object
+		// Set raw persist object
 		this.#persistRaw = target;
 
 		// TODO: Only validate this for conn state
 		// TODO: Allow disabling in production
 		// If this can't be proxied, return raw value
 		if (target === null || typeof target !== "object") {
-			if (!isJsonSerializable(target)) {
-				console.log("invalid value", target);
-				throw new errors.InvalidStateType();
+			let invalidPath = "";
+			if (!isJsonSerializable(target, (path) => { invalidPath = path; }, "")) {
+				throw new errors.InvalidStateType({ path: invalidPath });
 			}
 			return target;
 		}
@@ -309,10 +309,12 @@ export abstract class Actor<
 		this.#persist = onChange(
 			target,
 			// biome-ignore lint/suspicious/noExplicitAny: Don't know types in proxy
-			(path: any, value: any, _previousValue: any, _applyData: any) => {
-				if (!isJsonSerializable(value)) {
-					console.log("invalid value", target);
-					throw new errors.InvalidStateType({ path });
+			(path: string, value: any, _previousValue: any, _applyData: any) => {
+				let invalidPath = "";
+				if (!isJsonSerializable(value, (invalidPathPart) => { invalidPath = invalidPathPart; }, "")) {
+					throw new errors.InvalidStateType({
+						path: path + (invalidPath ? `.${invalidPath}` : ""),
+					});
 				}
 				this.#persistChanged = true;
 
@@ -332,9 +334,7 @@ export abstract class Actor<
 
 				// State will be flushed at the end of the RPC
 			},
-			{
-				ignoreDetached: true,
-			},
+			{ ignoreDetached: true },
 		);
 	}
 
