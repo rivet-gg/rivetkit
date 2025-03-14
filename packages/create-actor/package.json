@@ -1,6 +1,6 @@
 {
   "name": "create-actor",
-  "description": "Easily create your new Actor with Actor Core",
+  "description": "Easily create your new Actor with ActorCore",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/rivet-gg/actor-core.git",

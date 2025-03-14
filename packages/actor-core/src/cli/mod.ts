@@ -50,7 +50,7 @@ console.log(colours.bg.red + " ".repeat(msg.length) + colours.reset);
 console.log();
 
 console.log(
-	`To get access to the Actor Core CLI, ${colours.fg.red}tsc${colours.reset}, from the command line either:\n`,
+	`To get access to the ActorCore CLI, ${colours.fg.red}tsc${colours.reset}, from the command line either:\n`,
 );
 
 console.log(

@@ -43,7 +43,7 @@ export async function action(
 		skipInstall?: boolean;
 	} = {},
 ) {
-	await workflow("Bootstrap Actor Core in your project", async function* (ctx) {
+	await workflow("Bootstrap ActorCore in your project", async function* (ctx) {
 		const wd =
 			cmdPath ||
 			(yield* ctx.prompt("Where would you like to create your project?", {

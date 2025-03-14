@@ -1,6 +1,6 @@
 {
   "name": "@actor-core/cli",
-  "description": "All purpose CLI for Actor Core",
+  "description": "All purpose CLI for ActorCore",
   "version": "0.6.3",
   "license": "Apache-2.0",
   "repository": {

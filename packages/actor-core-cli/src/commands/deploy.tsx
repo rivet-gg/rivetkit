@@ -173,7 +173,7 @@ export const deploy = new Command()
 				const RivetHttp = createRivetApi(endpoint, accessToken);
 
 				const manager = yield* ctx.task(
-					"Deploy Actor Core",
+					"Deploy ActorCore",
 					async function* (ctx) {
 						yield fs.mkdir(path.join(cwd, ".actorcore"), {
 							recursive: true,
@@ -192,7 +192,7 @@ export const deploy = new Command()
 						const output =
 							await exec`${cli} publish manager --env ${envName} --access=private ${entrypoint}`;
 						if (output.exitCode !== 0) {
-							throw ctx.error("Failed to deploy Actor Core.", {
+							throw ctx.error("Failed to deploy ActorCore.", {
 								hint: "Check the logs above for more information.",
 							});
 						}
@@ -229,7 +229,7 @@ export const deploy = new Command()
 							);
 
 							if (!manager) {
-								throw ctx.error("Failed to find Actor Core Endpoint.", {
+								throw ctx.error("Failed to find ActorCore Endpoint.", {
 									hint: "Any existing manager actor is not running or not accessible.",
 								});
 							}
@@ -292,8 +292,7 @@ export const deploy = new Command()
 
 				for (const [idx, actorName] of Object.keys(config.actors).entries()) {
 					yield* ctx.task(
-						`Deploy & upload "${actorName}" build (${idx + 1}/${
-							Object.keys(config.actors).length
+						`Deploy & upload "${actorName}" build (${idx + 1}/${Object.keys(config.actors).length
 						})`,
 						async function* (ctx) {
 							yield fs.mkdir(path.join(cwd, ".actorcore"), {
@@ -383,7 +382,7 @@ export const deploy = new Command()
 								<Text>▸ Resources</Text>
 								<Box marginX={2} gap={4}>
 									<Box flexDirection="column">
-										{managerEndpoint ? <Text bold>Actor Core</Text> : null}
+										{managerEndpoint ? <Text bold>ActorCore</Text> : null}
 										<Text bold>Builds</Text>
 										<Text bold>Actors</Text>
 										<Text bold>Documentation</Text>

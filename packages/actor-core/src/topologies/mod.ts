@@ -1,5 +1,5 @@
 /**
- * Actor Core topologies for different scaling patterns
+ * ActorCore topologies for different scaling patterns
  */
 
 // Export the coordinate topology
