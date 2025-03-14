@@ -136,16 +136,14 @@ export class Schedule {
 					);
 
 				// Call function
-				const res = await fn.apply(this.#actor, event.args);
-
-				// Write error if needed
-				if ("error" in res.result) {
+				try {
+					await fn.apply(this.#actor, event.args);
+				} catch (error) {
 					await this.#driver.kvPut(
 						this.#actor.id,
 						KEYS.SCHEDULE.alarmError(event.fn),
 						{
-							error: res.result.error,
-							logs: res.logs,
+							error: error,
 							timestamp: now,
 						},
 					);
