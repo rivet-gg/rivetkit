@@ -30,6 +30,7 @@ export const deploy = new Command()
 		new Argument("<platform>", "The platform to deploy to").choices(["rivet"]),
 	)
 	.addArgument(new Argument("[path]", "Location of the project").default("./"))
+	.addOption(new Option("--skip-manager", "Skip deploying ActorCore manager"))
 	.addOption(new Option("-v [version]", "Specify version of actor-core"))
 	.addHelpText(
 		"afterAll",
@@ -172,9 +173,9 @@ export const deploy = new Command()
 
 				const RivetHttp = createRivetApi(endpoint, accessToken);
 
-				const manager = yield* ctx.task(
-					"Deploy ActorCore",
-					async function* (ctx) {
+				let manager = undefined;
+				if (!opts.skipManager) {
+					manager = yield* ctx.task("Deploy ActorCore", async function* (ctx) {
 						yield fs.mkdir(path.join(cwd, ".actorcore"), {
 							recursive: true,
 						});
@@ -183,10 +184,10 @@ export const deploy = new Command()
 						yield fs.writeFile(
 							entrypoint,
 							dedent`
-								import { createManagerHandler } from "@actor-core/rivet";
-								import config from "../actor-core.config.ts";
-								export default createManagerHandler(config);
-							`,
+									import { createManagerHandler } from "@actor-core/rivet";
+									import config from "../actor-core.config.ts";
+									export default createManagerHandler(config);
+								`,
 						);
 
 						const output =
@@ -287,8 +288,8 @@ export const deploy = new Command()
 							});
 							return actor;
 						}
-					},
-				);
+					});
+				}
 
 				for (const [idx, actorName] of Object.keys(config.actors).entries()) {
 					yield* ctx.task(
@@ -337,7 +338,9 @@ export const deploy = new Command()
 					);
 				}
 
-				const managerEndpoint = createActorEndpoint(manager.network);
+				const managerEndpoint = manager
+					? createActorEndpoint(manager.network)
+					: undefined;
 				const actorName = Object.keys(config.actors)[0];
 				const hub = endpoint.includes("localhost")
 					? `${endpoint}/ui`
@@ -349,7 +352,17 @@ export const deploy = new Command()
 							<Text color={"#ff4f00"}>✔</Text> Build uploaded successfully!
 						</Text>
 						<Box flexDirection="column" gap={1}>
-							{managerEndpoint ? (
+							{opts.skipManager ? (
+								<>
+									<Text>▸ ActorCore Manager:</Text>
+
+									<Box flexDirection="column" marginX={2}>
+										<Text>
+											Manager deployment was skipped.
+										</Text>
+									</Box>
+								</>
+							) : managerEndpoint ? (
 								<>
 									<Text>▸ Connect to your Actor:</Text>
 
@@ -382,13 +395,15 @@ export const deploy = new Command()
 								<Text>▸ Resources</Text>
 								<Box marginX={2} gap={4}>
 									<Box flexDirection="column">
-										{managerEndpoint ? <Text bold>ActorCore</Text> : null}
+										{!opts.skipManager && managerEndpoint ? (
+											<Text bold>ActorCore</Text>
+										) : null}
 										<Text bold>Builds</Text>
 										<Text bold>Actors</Text>
 										<Text bold>Documentation</Text>
 									</Box>
 									<Box flexDirection="column">
-										{managerEndpoint ? (
+										{!opts.skipManager && managerEndpoint ? (
 											<Text underline>{managerEndpoint}</Text>
 										) : null}
 										<Text
