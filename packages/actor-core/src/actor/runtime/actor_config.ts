@@ -22,7 +22,7 @@ export const DEFAULT_ACTOR_CONFIG: ActorConfig = {
 		saveInterval: 1000,
 	},
 	rpc: {
-		timeout: 5000,
+		timeout: 60_000,
 	},
 };
 
