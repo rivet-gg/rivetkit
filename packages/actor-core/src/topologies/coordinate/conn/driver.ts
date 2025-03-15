@@ -1,9 +1,9 @@
-import type { ConnectionDriver } from "@/actor/runtime/driver";
+import type { ConnectionDriver } from "@/actor/driver";
 import type { GlobalState } from "../topology";
-import type { AnyActor } from "@/actor/runtime/actor";
-import type { Connection } from "@/actor/runtime/connection";
+import type { AnyActorInstance } from "@/actor/instance";
+import type { AnyConnection, Connection } from "@/actor/connection";
 import type { CachedSerializer } from "@/actor/protocol/serde";
-import type * as messageToClient from "@/actor/protocol/message/to_client";
+import type * as messageToClient from "@/actor/protocol/message/to-client";
 import { logger } from "../log";
 import type { NodeMessage } from "../node/protocol";
 import type { CoordinateDriver } from "../driver";
@@ -20,8 +20,8 @@ export function createCoordinateRelayDriver(
 ): ConnectionDriver<CoordinateRelayState> {
 	return {
 		sendMessage: (
-			actor: AnyActor,
-			conn: Connection<AnyActor>,
+			actor: AnyActorInstance,
+			conn: AnyConnection,
 			state: CoordinateRelayState,
 			message: CachedSerializer<messageToClient.ToClient>,
 		) => {
@@ -43,12 +43,12 @@ export function createCoordinateRelayDriver(
 			CoordinateDriver.publishToNode(state.nodeId, JSON.stringify(messageRaw));
 		},
 		disconnect: async (
-			actor: AnyActor,
-			conn: Connection<AnyActor>,
+			actor: AnyActorInstance,
+			conn: AnyConnection,
 			state: CoordinateRelayState,
 			reason?: string,
 		) => {
-			if (actor.__isStopping) return;
+			if (actor.isStopping) return;
 
 			const actorPeer = globalState.actorPeers.get(actor.id);
 			if (!actorPeer) {

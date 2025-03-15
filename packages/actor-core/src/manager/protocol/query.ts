@@ -1,13 +1,15 @@
-import type { ActorTags } from "@/common//utils";
+import { ActorTagsSchema, type ActorTags } from "@/common//utils";
 import { z } from "zod";
 
 export const CreateRequestSchema = z.object({
+	name: z.string(),
+	tags: ActorTagsSchema,
 	region: z.string().optional(),
-	tags: z.custom<ActorTags>(),
 });
 
 export const GetOrCreateRequestSchema = z.object({
-	tags: z.custom<ActorTags>(),
+	name: z.string(),
+	tags: ActorTagsSchema,
 	create: CreateRequestSchema.optional(),
 });
 
@@ -31,4 +33,3 @@ export type GetOrCreateRequest = z.infer<typeof GetOrCreateRequestSchema>;
  * Interface representing a request to create an actor.
  */
 export type CreateRequest = z.infer<typeof CreateRequestSchema>;
-

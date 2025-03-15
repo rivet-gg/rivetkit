@@ -7,13 +7,15 @@ export class ActorState {
 	// Basic actor information
 	initialized = true;
 	id: string;
+	name: string;
 	tags: ActorTags;
 
 	// KV store - maps serialized keys to serialized values
 	kvStore: Map<string, string> = new Map();
 
-	constructor(id: string, tags: ActorTags) {
+	constructor(id: string, name: string, tags: ActorTags) {
 		this.id = id;
+		this.name = name;
 		this.tags = tags;
 	}
 }
@@ -50,10 +52,7 @@ export class MemoryGlobalState {
 	putKv(actorId: string, serializedKey: string, value: string): void {
 		let actor = this.#actors.get(actorId);
 		if (!actor) {
-			// Create default tags with a name property
-			const tags: ActorTags = { name: "default" };
-			actor = new ActorState(actorId, tags);
-			this.#actors.set(actorId, actor);
+			throw new Error(`Actor does not exist for ID: ${actorId}`);
 		}
 		actor.kvStore.set(serializedKey, value);
 	}
@@ -68,10 +67,10 @@ export class MemoryGlobalState {
 	/**
 	 * Create or update an actor
 	 */
-	createActor(actorId: string, tags: ActorTags): void {
+	createActor(actorId: string, name: string, tags: ActorTags): void {
 		// Create actor state if it doesn't exist
 		if (!this.#actors.has(actorId)) {
-			this.#actors.set(actorId, new ActorState(actorId, tags));
+			this.#actors.set(actorId, new ActorState(actorId, name, tags));
 		} else {
 			throw new Error(`Actor already exists for ID: ${actorId}`);
 		}
@@ -97,7 +96,7 @@ export class MemoryGlobalState {
 	getActor(actorId: string): ActorState | undefined {
 		return this.#actors.get(actorId);
 	}
-	
+
 	/**
 	 * Check if an actor exists
 	 */

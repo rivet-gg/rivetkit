@@ -27,23 +27,28 @@ export class MemoryManagerDriver implements ManagerDriver {
 
 		return {
 			endpoint: buildActorEndpoint(baseUrl, actorId),
+			name: actor.name,
 			tags: actor.tags,
 		};
 	}
 
 	async getWithTags({
 		baseUrl,
+		name,
 		tags,
 	}: GetWithTagsInput): Promise<GetActorOutput | undefined> {
 		// TODO: Update tag search to use inverse tree
 		const serializedSearchTags = JSON.stringify(tags);
 		const actor = this.#state.findActor(
-			(actor) => JSON.stringify(actor.tags) === serializedSearchTags,
+			(actor) =>
+				actor.name === name &&
+				JSON.stringify(actor.tags) === serializedSearchTags,
 		);
 
 		if (actor) {
 			return {
 				endpoint: buildActorEndpoint(baseUrl, actor.id),
+				name,
 				tags: actor.tags,
 			};
 		}
@@ -53,11 +58,11 @@ export class MemoryManagerDriver implements ManagerDriver {
 
 	async createActor({
 		baseUrl,
-		region: _,
+		name,
 		tags,
 	}: CreateActorInput): Promise<CreateActorOutput> {
 		const actorId = crypto.randomUUID();
-		this.#state.createActor(actorId, tags);
+		this.#state.createActor(actorId, name, tags);
 		return {
 			endpoint: buildActorEndpoint(baseUrl, actorId),
 		};

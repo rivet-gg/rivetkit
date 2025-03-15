@@ -1,7 +1,7 @@
 import { z } from "zod";
 import * as errors from "@/actor/errors";
-import { logger } from "../runtime/log";
-import { assertUnreachable } from "../runtime/utils";
+import { logger } from "../log";
+import { assertUnreachable } from "../utils";
 import * as cbor from "cbor-x";
 
 /** Data that can be deserialized. */

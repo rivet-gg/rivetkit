@@ -94,7 +94,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@actor-core/nodejs@workspace:packages/platforms/nodejs":
+"@actor-core/nodejs@npm:0.6.3, @actor-core/nodejs@workspace:packages/platforms/nodejs":
   version: 0.0.0-use.local
   resolution: "@actor-core/nodejs@workspace:packages/platforms/nodejs"
   dependencies:
@@ -3887,6 +3887,19 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"chat-simple-nodejs@workspace:templates/chat-simple-nodejs":
+  version: 0.0.0-use.local
+  resolution: "chat-simple-nodejs@workspace:templates/chat-simple-nodejs"
+  dependencies:
+    "@actor-core/nodejs": "npm:0.6.3"
+    "@types/node": "npm:^22.13.9"
+    "@types/prompts": "npm:^2"
+    actor-core: "workspace:*"
+    prompts: "npm:^2.4.2"
+    typescript: "npm:^5.5.2"
+  languageName: unknown
+  linkType: soft
+
 "check-error@npm:^2.1.1":
   version: 2.1.1
   resolution: "check-error@npm:2.1.1"
@@ -4119,6 +4132,19 @@ __metadata:
   checksum: 10c0/90a0e40abbddfd7618f8ccd63a74d88deea94e77d0e8dbbea059fa7ebebb8fbb4e2909667fe26f3a467073de1a542ebe6ae4c73a73745ac5833786759cd906c9
   languageName: node
   linkType: hard
+
+"counter-nodejs@workspace:templates/counter-nodejs":
+  version: 0.0.0-use.local
+  resolution: "counter-nodejs@workspace:templates/counter-nodejs"
+  dependencies:
+    "@actor-core/nodejs": "npm:0.6.3"
+    "@types/node": "npm:^22.13.9"
+    actor-core: "workspace:*"
+    eventsource: "npm:^3.0.5"
+    mitata: "npm:^1.0.34"
+    typescript: "npm:^5.5.2"
+  languageName: unknown
+  linkType: soft
 
 "counter@workspace:examples/counter":
   version: 0.0.0-use.local

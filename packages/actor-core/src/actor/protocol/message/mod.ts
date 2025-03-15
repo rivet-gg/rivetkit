@@ -1,11 +1,11 @@
-import * as wsToClient from "@/actor/protocol/message/to_client";
-import * as wsToServer from "@/actor/protocol/message/to_server";
-import type { AnyActor } from "../../runtime/actor";
-import type { Connection } from "../../runtime/connection";
+import * as wsToClient from "@/actor/protocol/message/to-client";
+import * as wsToServer from "@/actor/protocol/message/to-server";
+import type { ActorInstance, AnyActorInstance } from "../../instance";
+import type { Connection } from "../../connection";
 import * as errors from "../../errors";
-import { logger } from "../../runtime/log";
-import { Rpc } from "../../runtime/rpc";
-import { assertUnreachable } from "../../runtime/utils";
+import { logger } from "../../log";
+import { RpcContext } from "../../rpc";
+import { assertUnreachable } from "../../utils";
 import { z } from "zod";
 import {
 	deserialize,
@@ -14,6 +14,7 @@ import {
 	CachedSerializer,
 } from "@/actor/protocol/serde";
 import { deconstructError } from "@/common/utils";
+import { Rpcs } from "@/actor/config";
 
 export const TransportSchema = z.enum(["websocket", "sse"]);
 
@@ -68,20 +69,21 @@ export async function parseMessage(
 	return message;
 }
 
-export interface ProcessMessageHandler<A extends AnyActor> {
+export interface ProcessMessageHandler<S, CP, CS> {
 	onExecuteRpc?: (
-		ctx: Rpc<A>,
+		ctx: RpcContext<S, CP, CS>,
 		name: string,
 		args: unknown[],
 	) => Promise<unknown>;
-	onSubscribe?: (eventName: string, conn: Connection<A>) => Promise<void>;
-	onUnsubscribe?: (eventName: string, conn: Connection<A>) => Promise<void>;
+	onSubscribe?: (eventName: string, conn: Connection<S, CP, CS>) => Promise<void>;
+	onUnsubscribe?: (eventName: string, conn: Connection<S, CP, CS>) => Promise<void>;
 }
 
-export async function processMessage<A extends AnyActor>(
+export async function processMessage<S, CP, CS>(
 	message: wsToServer.ToServer,
-	conn: Connection<A>,
-	handler: ProcessMessageHandler<A>,
+	actor: ActorInstance<S, CP, CS>,
+	conn: Connection<S, CP, CS>,
+	handler: ProcessMessageHandler<S, CP, CS>,
 ) {
 	let rpcId: number | undefined;
 	let rpcName: string | undefined;
@@ -99,7 +101,7 @@ export async function processMessage<A extends AnyActor>(
 			rpcId = id;
 			rpcName = name;
 
-			const ctx = new Rpc<A>(conn);
+			const ctx = new RpcContext<S, CP, CS>(actor.actorContext, conn);
 			const output = await handler.onExecuteRpc(ctx, name, args);
 
 			conn._sendMessage(

@@ -2,17 +2,19 @@ import type { GlobalState } from "@/topologies/coordinate/topology";
 import type { WSContext } from "hono/ws";
 import { logger } from "../log";
 import { serialize } from "@/actor/protocol/serde";
-import type * as messageToServer from "@/actor/protocol/message/to_server";
+import type * as messageToServer from "@/actor/protocol/message/to-server";
 import * as errors from "@/actor/errors";
 import type { CoordinateDriver } from "../driver";
 import { RelayConnection } from "../conn/mod";
 import { publishMessageToLeader } from "../node/message";
-import type { ActorDriver } from "@/actor/runtime/driver";
-import type { BaseConfig } from "@/actor/runtime/config";
-import type { ConnectWebSocketOpts, ConnectWebSocketOutput } from "@/actor/runtime/actor_router";
+import type { ActorDriver } from "@/actor/driver";
+import type { ConnectWebSocketOpts, ConnectWebSocketOutput } from "@/actor/router";
+import { DriverConfig } from "@/driver-helpers/config";
+import { AppConfig } from "@/app/config";
 
 export async function serveWebSocket(
-	config: BaseConfig,
+	appConfig: AppConfig,
+	driverConfig: DriverConfig,
 	actorDriver: ActorDriver,
 	CoordinateDriver: CoordinateDriver,
 	globalState: GlobalState,
@@ -23,7 +25,8 @@ export async function serveWebSocket(
 	return {
 		onOpen: async (ws: WSContext) => {
 			conn = new RelayConnection(
-				config,
+				appConfig,
+				driverConfig,
 				actorDriver,
 				CoordinateDriver,
 				globalState,
@@ -47,7 +50,8 @@ export async function serveWebSocket(
 			}
 
 			await publishMessageToLeader(
-				config,
+				appConfig,
+				driverConfig,
 				CoordinateDriver,
 				globalState,
 				actorId,

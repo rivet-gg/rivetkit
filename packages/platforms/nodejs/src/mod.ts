@@ -4,7 +4,7 @@ import { assertUnreachable } from "actor-core/utils";
 import { CoordinateTopology } from "actor-core/topologies/coordinate";
 import { logger } from "./log";
 import type { Hono } from "hono";
-import { StandaloneTopology } from "actor-core";
+import { StandaloneTopology, type ActorCoreApp } from "actor-core";
 import {
 	MemoryGlobalState,
 	MemoryManagerDriver,
@@ -14,7 +14,7 @@ import { type InputConfig, ConfigSchema } from "./config";
 
 export { InputConfig as Config } from "./config";
 
-export function createRouter(inputConfig: InputConfig): {
+export function createRouter(app: ActorCoreApp<any>, inputConfig?: InputConfig): {
 	router: Hono;
 	injectWebSocket: NodeWebSocket["injectWebSocket"];
 } {
@@ -46,13 +46,13 @@ export function createRouter(inputConfig: InputConfig): {
 
 	// Setup topology
 	if (config.topology === "standalone") {
-		const topology = new StandaloneTopology(config);
+		const topology = new StandaloneTopology(app.config, config);
 		if (!injectWebSocket) throw new Error("injectWebSocket not defined");
 		return { router: topology.router, injectWebSocket };
 	} else if (config.topology === "partition") {
 		throw new Error("Node.js only supports standalone & coordinate topology.");
 	} else if (config.topology === "coordinate") {
-		const topology = new CoordinateTopology(config);
+		const topology = new CoordinateTopology(app.config, config);
 		if (!injectWebSocket) throw new Error("injectWebSocket not defined");
 		return { router: topology.router, injectWebSocket };
 	} else {
@@ -60,10 +60,10 @@ export function createRouter(inputConfig: InputConfig): {
 	}
 }
 
-export function serve(inputConfig: InputConfig) {
+export function serve(app: ActorCoreApp<any>, inputConfig?: InputConfig) {
 	const config = ConfigSchema.parse(inputConfig);
 
-	const { router, injectWebSocket } = createRouter(config);
+	const { router, injectWebSocket } = createRouter(app, config);
 
 	const server = honoServe({
 		fetch: router.fetch,

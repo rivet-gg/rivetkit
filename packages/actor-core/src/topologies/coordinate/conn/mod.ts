@@ -1,13 +1,14 @@
 import type { GlobalState } from "@/topologies/coordinate/topology";
-import type * as messageToClient from "@/actor/protocol/message/to_client";
+import type * as messageToClient from "@/actor/protocol/message/to-client";
 import * as errors from "@/actor/errors";
 import type { CoordinateDriver } from "../driver";
 import { logger } from "../log";
-import { ActorPeer } from "../actor_peer";
+import { ActorPeer } from "../actor-peer";
 import { publishMessageToLeader } from "../node/message";
-import { generateConnectionId, generateConnectionToken } from "@/actor/runtime/connection";
-import type { ActorDriver } from "@/actor/runtime/driver";
-import type { BaseConfig } from "@/actor/runtime/config";
+import { generateConnectionId, generateConnectionToken } from "@/actor/connection";
+import type { ActorDriver } from "@/actor/driver";
+import { DriverConfig } from "@/driver-helpers/config";
+import { AppConfig } from "@/app/config";
 
 export interface RelayConnectionDriver {
 	sendMessage(message: messageToClient.ToClient): void;
@@ -18,7 +19,8 @@ export interface RelayConnectionDriver {
  * This is different than `Connection`. `Connection` represents the data of the connection state on the actor itself, `RelayConnection` supports managing a connection for an actor running on another machine over pubsub.
  */
 export class RelayConnection {
-	#config: BaseConfig;
+	#appConfig: AppConfig;
+	#driverConfig: DriverConfig;
 	#coordinateDriver: CoordinateDriver;
 	#actorDriver: ActorDriver;
 	#globalState: GlobalState;
@@ -46,7 +48,8 @@ export class RelayConnection {
 	}
 
 	constructor(
-		config: BaseConfig,
+		appConfig: AppConfig,
+		driverConfig: DriverConfig,
 		actorDriver: ActorDriver,
 		CoordinateDriver: CoordinateDriver,
 		globalState: GlobalState,
@@ -54,7 +57,8 @@ export class RelayConnection {
 		actorId: string,
 		parameters: unknown,
 	) {
-		this.#config = config;
+		this.#appConfig = appConfig;
+		this.#driverConfig = driverConfig;
 		this.#coordinateDriver = CoordinateDriver;
 		this.#actorDriver = actorDriver;
 		this.#driver = driver;
@@ -79,7 +83,8 @@ export class RelayConnection {
 
 		// Create actor peer
 		this.#actorPeer = await ActorPeer.acquire(
-			this.#config,
+			this.#appConfig,
+			this.#driverConfig,
 			this.#actorDriver,
 			this.#coordinateDriver,
 			this.#globalState,
@@ -91,7 +96,8 @@ export class RelayConnection {
 
 		// Publish connection open
 		await publishMessageToLeader(
-			this.#config,
+			this.#appConfig,
+			this.#driverConfig,
 			this.#coordinateDriver,
 			this.#globalState,
 			this.#actorId,
@@ -139,7 +145,8 @@ export class RelayConnection {
 			if (!fromLeader && this.#actorPeer?.leaderNodeId) {
 				// Publish connection close
 				await publishMessageToLeader(
-					this.#config,
+					this.#appConfig,
+					this.#driverConfig,
 					this.#coordinateDriver,
 					this.#globalState,
 					this.#actorId,

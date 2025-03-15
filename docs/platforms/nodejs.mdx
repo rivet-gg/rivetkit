@@ -109,7 +109,7 @@ If you already have a Node.js project and want to add ActorCore, you can follow 
 		import type Counter from "./counter.ts";
 
 		async function main() {
-			const client = new Client("http://localhost:8787");
+			const client = new Client("http://localhost:6420");
 
 			const counter = await client.get<Counter>({ name: "counter" });
 

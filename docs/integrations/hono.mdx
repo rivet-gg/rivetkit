@@ -120,13 +120,13 @@ app.route("/my-path", actorRouter);
 // Create server with the combined app
 const server = serve({
   fetch: app.fetch,
-  port: 8787,
+  port: 6420,
 });
 
 // IMPORTANT: Inject the websocket handler into the server
 injectWebSocket(server);
 
-console.log("Server running at http://localhost:8787");
+console.log("Server running at http://localhost:6420");
 ```
 
 Make sure to update your client connection URL to include the custom path:
@@ -134,7 +134,7 @@ Make sure to update your client connection URL to include the custom path:
 ```typescript
 // If you mounted ActorCore at /my-path
 import { Client } from "actor-core/client";
-const client = new Client("http://localhost:8787/my-path");
+const client = new Client("http://localhost:6420/my-path");
 ```
 
 ### Bun
@@ -163,7 +163,7 @@ app.route("/my-path", actorRouter);
 
 // Create and start the server
 export default {
-  port: 8787,
+  port: 6420,
   fetch: app.fetch,
   // IMPORTANT: Pass the webSocketHandler to Bun
   websocket: webSocketHandler,
@@ -175,6 +175,6 @@ Make sure to update your client connection URL to include the custom path:
 ```typescript
 // If you mounted ActorCore at /my-path
 import { Client } from "actor-core/client";
-const client = new Client("http://localhost:8787/my-path");
+const client = new Client("http://localhost:6420/my-path");
 ```
 

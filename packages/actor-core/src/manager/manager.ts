@@ -1,24 +1,27 @@
 import { ActorsRequestSchema } from "@/manager/protocol/mod";
 import { Hono, type Context as HonoContext } from "hono";
 import { cors } from "hono/cors";
-import type { ManagerDriver } from "@/actor/runtime/driver";
+import type { ManagerDriver } from "@/manager/driver";
 import { logger } from "./log";
 import { type ActorTags, assertUnreachable } from "@/common/utils";
-import type { BaseConfig } from "@/driver-helpers";
 import { handleRouteError, handleRouteNotFound } from "@/common/router";
+import { DriverConfig } from "@/driver-helpers/config";
+import { AppConfig } from "@/app/config";
 
 export class Manager {
-	#config: BaseConfig;
+	#appConfig: AppConfig;
+	#driverConfig: DriverConfig;
 	#driver: ManagerDriver;
 
 	router: Hono;
 
-	public constructor(config: BaseConfig) {
-		this.#config = config;
+	public constructor(appConfig: AppConfig, driverConfig: DriverConfig) {
+		this.#appConfig = appConfig;
+		this.#driverConfig = driverConfig;
 
-		if (!config.drivers?.manager)
+		if (!driverConfig.drivers?.manager)
 			throw new Error("config.drivers.manager is not defined.");
-		this.#driver = config.drivers.manager;
+		this.#driver = driverConfig.drivers.manager;
 
 		this.router = this.#buildRouter();
 	}
@@ -27,8 +30,8 @@ export class Manager {
 		const app = new Hono();
 
 		// Apply CORS middleware if configured
-		if (this.#config.cors) {
-			app.use("*", cors(this.#config.cors));
+		if (this.#appConfig.cors) {
+			app.use("*", cors(this.#appConfig.cors));
 		}
 
 		app.get("/", (c) => {
@@ -62,8 +65,8 @@ export class Manager {
 			//
 			// This is used to build actor endpoints
 			let baseUrl = url.origin;
-			if (this.#config.basePath) {
-				const basePath = this.#config.basePath;
+			if (this.#appConfig.basePath) {
+				const basePath = this.#appConfig.basePath;
 				if (!basePath.startsWith("/"))
 					throw new Error("config.basePath must start with /");
 				if (basePath.endsWith("/"))
@@ -85,13 +88,11 @@ export class Manager {
 					);
 				actorOutput = output;
 			} else if ("getOrCreateForTags" in query) {
-				const tags = query.getOrCreateForTags.tags;
-				if (!tags) throw new Error("Must define tags in getOrCreateForTags");
-
 				const existingActor = await this.#driver.getWithTags({
 					c,
 					baseUrl: baseUrl,
-					tags: tags as ActorTags,
+					name: query.getOrCreateForTags.name,
+					tags: query.getOrCreateForTags.tags
 				});
 				if (existingActor) {
 					// Actor exists

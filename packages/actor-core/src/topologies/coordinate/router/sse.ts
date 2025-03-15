@@ -3,12 +3,14 @@ import { logger } from "../log";
 import { encodeDataToString, serialize } from "@/actor/protocol/serde";
 import type { CoordinateDriver } from "../driver";
 import { RelayConnection } from "../conn/mod";
-import type { ActorDriver } from "@/actor/runtime/driver";
-import type { BaseConfig } from "@/actor/runtime/config";
-import type { ConnectSseOpts, ConnectSseOutput } from "@/actor/runtime/actor_router";
+import type { ActorDriver } from "@/actor/driver";
+import type { ConnectSseOpts, ConnectSseOutput } from "@/actor/router";
+import { DriverConfig } from "@/driver-helpers/config";
+import { AppConfig } from "@/app/config";
 
 export async function serveSse(
-	config: BaseConfig,
+	appConfig: AppConfig,
+	driverConfig: DriverConfig,
 	actorDriver: ActorDriver,
 	CoordinateDriver: CoordinateDriver,
 	globalState: GlobalState,
@@ -19,7 +21,8 @@ export async function serveSse(
 	return {
 		onOpen: async (stream) => {
 			conn = new RelayConnection(
-				config,
+				appConfig,
+				driverConfig,
 				actorDriver,
 				CoordinateDriver,
 				globalState,

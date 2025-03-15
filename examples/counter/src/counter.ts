@@ -1,17 +1,16 @@
-import { Actor, type Rpc } from "actor-core";
+import { actor } from "actor-core";
 
-export interface State {
-	count: number;
-}
-
-export default class Counter extends Actor<State> {
-	_onInitialize() {
+const counter = actor({
+	onInitialize: () => {
 		return { count: 0 };
-	}
+	},
+	rpcs: {
+		increment: (c, x: number) => {
+			c.state.count += x;
+			c.broadcast("newCount", c.state.count);
+			return c.state.count;
+		},
+	},
+});
 
-	increment(rpc: Rpc<Counter>, x: number) {
-		this._state.count += x;
-		this._broadcast("newCount", this._state.count);
-		return this._state.count;
-	}
-}
+export default counter;

@@ -1,6 +1,5 @@
-import type { ActorDriver, KvKey, KvValue } from "actor-core/driver-helpers";
+import type { ActorDriver, KvKey, KvValue, AnyActorInstance } from "actor-core/driver-helpers";
 import type { MemoryGlobalState } from "./global_state";
-import type { AnyActor } from "actor-core";
 
 export class MemoryActorDriver implements ActorDriver {
 	#state: MemoryGlobalState;
@@ -56,9 +55,9 @@ export class MemoryActorDriver implements ActorDriver {
 		}
 	}
 
-	async setAlarm(actor: AnyActor, timestamp: number): Promise<void> {
+	async setAlarm(actor: AnyActorInstance, timestamp: number): Promise<void> {
 		setTimeout(() => {
-			 actor.__onAlarm();
+			 actor.onAlarm();
 		}, timestamp - Date.now());
 	}
 

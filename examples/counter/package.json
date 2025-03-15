@@ -17,9 +17,6 @@
   "example": {
     "platforms": [
       "*"
-    ],
-    "actors": {
-      "counter": "src/counter.ts"
-    }
+    ]
   }
 }

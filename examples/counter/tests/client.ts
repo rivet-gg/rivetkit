@@ -1,11 +1,15 @@
 /// <reference types="node" />
-import { Client } from "actor-core/client";
-import type Counter from "../src/counter.ts";
+import { createClient } from "actor-core/client";
+import type { App } from "../src/index";
+import type counterDef from "../src/counter";
 
 async function main() {
-	const client = new Client(`http://localhost:${process.env.PORT ?? 8787}`);
+	const client = createClient<App>(process.env.ENDPOINT ?? `http://localhost:6420`);
 
-	const counter = await client.get<Counter>({ name: "counter" });
+	const counter = await client.counter.get()
+	//const counter = await client.get<typeof counterDef>({ name: "counter" });
+
+	//const counter = await client.get<Counter>({ name: "counter" });
 
 	counter.on("newCount", (count: number) => console.log("Event:", count));
 

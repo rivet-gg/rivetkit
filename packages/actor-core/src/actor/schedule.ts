@@ -1,4 +1,4 @@
-import type { AnyActor } from "./actor";
+import type { AnyActorInstance } from "./instance";
 import type { ActorDriver } from "./driver";
 import { KEYS } from "./keys";
 import { logger } from "./log";
@@ -20,10 +20,10 @@ interface ScheduleEvent {
 }
 
 export class Schedule {
-	#actor: AnyActor;
+	#actor: AnyActorInstance;
 	#driver: ActorDriver;
 
-	constructor(actor: AnyActor, driver: ActorDriver) {
+	constructor(actor: AnyActorInstance, driver: ActorDriver) {
 		this.#actor = actor;
 		this.#driver = driver;
 	}
@@ -128,7 +128,7 @@ export class Schedule {
 		for (const event of scheduleEvents) {
 			try {
 				// Look up function
-				const fn: unknown = this.#actor[event.fn as keyof AnyActor];
+				const fn: unknown = this.#actor[event.fn as keyof AnyActorInstance];
 				if (!fn) throw new Error(`Missing function for alarm ${event.fn}`);
 				if (typeof fn !== "function")
 					throw new Error(

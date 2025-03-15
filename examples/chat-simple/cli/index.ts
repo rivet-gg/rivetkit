@@ -4,7 +4,7 @@ import prompts from "prompts";
 
 async function main() {
 	const { encoding, username, room } = await initPrompt();
-	const client = new Client("http://localhost:8787", {
+	const client = new Client("http://localhost:6420", {
 		encoding,
 	});
 

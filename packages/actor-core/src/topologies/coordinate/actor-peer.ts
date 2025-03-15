@@ -1,21 +1,24 @@
-import { BaseConfig } from "@/actor/runtime/config";
 import type { GlobalState } from "@/topologies/coordinate/topology";
 import { logger } from "./log";
 import type { CoordinateDriver } from "./driver";
-import type { Actor, AnyActor } from "@/actor/runtime/actor";
+import type { ActorInstance, AnyActorInstance } from "@/actor/instance";
 import type { ActorTags } from "@/common/utils";
-import { ActorDriver } from "@/actor/runtime/driver";
+import { ActorDriver } from "@/actor/driver";
 import {
 	CONN_DRIVER_COORDINATE_RELAY,
 	createCoordinateRelayDriver,
 } from "./conn/driver";
+import { DriverConfig } from "@/driver-helpers/config";
+import { AppConfig, AppConfigSchema } from "@/app/config";
 
 export class ActorPeer {
-	#config: BaseConfig;
+	#appConfig: AppConfig;
+	#driverConfig: DriverConfig;
 	#coordinateDriver: CoordinateDriver;
 	#actorDriver: ActorDriver;
 	#globalState: GlobalState;
 	#actorId: string;
+	#actorName?: string;
 	#actorTags?: ActorTags;
 	#isDisposed = false;
 
@@ -26,7 +29,7 @@ export class ActorPeer {
 	#leaderNodeId?: string;
 
 	/** Holds the insantiated actor class if is leader. */
-	#loadedActor?: Actor;
+	#loadedActor?: AnyActorInstance;
 
 	#heartbeatTimeout?: NodeJS.Timeout;
 
@@ -40,13 +43,15 @@ export class ActorPeer {
 	}
 
 	constructor(
-		config: BaseConfig,
+		appConfig: AppConfig,
+		driverConfig: DriverConfig,
 		CoordinateDriver: CoordinateDriver,
 		actorDriver: ActorDriver,
 		globalState: GlobalState,
 		actorId: string,
 	) {
-		this.#config = config;
+		this.#appConfig = appConfig;
+		this.#driverConfig = driverConfig;
 		this.#coordinateDriver = CoordinateDriver;
 		this.#actorDriver = actorDriver;
 		this.#globalState = globalState;
@@ -55,7 +60,8 @@ export class ActorPeer {
 
 	/** Acquires a `ActorPeer` for a connection and includes the connection ID in the references. */
 	static async acquire(
-		config: BaseConfig,
+		appConfig: AppConfig,
+		driverConfig: DriverConfig,
 		actorDriver: ActorDriver,
 		CoordinateDriver: CoordinateDriver,
 		globalState: GlobalState,
@@ -67,7 +73,8 @@ export class ActorPeer {
 		// Create peer if needed
 		if (!peer) {
 			peer = new ActorPeer(
-				config,
+				appConfig,
+				driverConfig,
 				CoordinateDriver,
 				actorDriver,
 				globalState,
@@ -91,7 +98,7 @@ export class ActorPeer {
 	static getLeaderActor(
 		globalState: GlobalState,
 		actorId: string,
-	): AnyActor | undefined {
+	): AnyActorInstance | undefined {
 		const peer = globalState.actorPeers.get(actorId);
 		if (!peer) return undefined;
 		if (peer.#isLeader) {
@@ -126,7 +133,7 @@ export class ActorPeer {
 		const { actor } = await this.#coordinateDriver.startActorAndAcquireLease(
 			this.#actorId,
 			this.#globalState.nodeId,
-			this.#config.actorPeer.leaseDuration,
+			this.#appConfig.actorPeer.leaseDuration,
 		);
 		// Log
 		logger().debug("starting actor peer", {
@@ -139,6 +146,7 @@ export class ActorPeer {
 		}
 
 		// Parse tags
+		this.#actorName = actor.name;
 		this.#actorTags = actor.tags;
 
 		// Handle leadership
@@ -181,13 +189,13 @@ export class ActorPeer {
 		let hbTimeout: number;
 		if (this.#isLeader) {
 			hbTimeout =
-				this.#config.actorPeer.leaseDuration -
-				this.#config.actorPeer.renewLeaseGrace;
+				this.#appConfig.actorPeer.leaseDuration -
+				this.#appConfig.actorPeer.renewLeaseGrace;
 		} else {
 			// TODO: Add jitter
 			hbTimeout =
-				this.#config.actorPeer.checkLeaseInterval +
-				Math.random() * this.#config.actorPeer.checkLeaseJitter;
+				this.#appConfig.actorPeer.checkLeaseInterval +
+				Math.random() * this.#appConfig.actorPeer.checkLeaseJitter;
 		}
 		if (hbTimeout < 0)
 			throw new Error("Actor peer heartbeat timeout is negative, check config");
@@ -195,20 +203,20 @@ export class ActorPeer {
 	}
 
 	async #convertToLeader() {
-		if (!this.#actorTags) throw new Error("missing tags");
+		if (!this.#actorName || !this.#actorTags) throw new Error("missing name or tags");
 
 		logger().debug("peer acquired leadership", { actorId: this.#actorId });
 
 		// Build actor
-		const actorName = this.#actorTags.name;
-		const prototype = this.#config.actors[actorName];
-		if (!prototype) throw new Error(`no actor for name ${prototype}`);
+		const actorName = this.#actorName;
+		const definition = this.#appConfig.actors[actorName];
+		if (!definition) throw new Error(`no actor definition for name ${definition}`);
 
 		// Create leader actor
-		const actor = new prototype();
+		const actor = definition.instantiate();
 		this.#loadedActor = actor;
 
-		await actor.__start(
+		await actor.start(
 			{
 				[CONN_DRIVER_COORDINATE_RELAY]: createCoordinateRelayDriver(
 					this.#globalState,
@@ -217,6 +225,7 @@ export class ActorPeer {
 			},
 			this.#actorDriver,
 			this.#actorId,
+			this.#actorName,
 			this.#actorTags,
 			"unknown",
 		);
@@ -231,7 +240,7 @@ export class ActorPeer {
 		const { leaseValid } = await this.#coordinateDriver.extendLease(
 			this.#actorId,
 			this.#globalState.nodeId,
-			this.#config.actorPeer.leaseDuration,
+			this.#appConfig.actorPeer.leaseDuration,
 		);
 		if (leaseValid) {
 			logger().debug("lease is valid", { actorId: this.#actorId });
@@ -251,7 +260,7 @@ export class ActorPeer {
 			await this.#coordinateDriver.attemptAcquireLease(
 				this.#actorId,
 				this.#globalState.nodeId,
-				this.#config.actorPeer.leaseDuration,
+				this.#appConfig.actorPeer.leaseDuration,
 			);
 
 		// Check if the lease was successfully acquired and promoted to leader
@@ -304,7 +313,7 @@ export class ActorPeer {
 		//
 		// We wait for this to finish to ensure that state is persisted safely to storage
 		if (this.#isLeader && this.#loadedActor) {
-			await this.#loadedActor.__stop();
+			await this.#loadedActor.stop();
 		}
 
 		// Clear the lease if needed

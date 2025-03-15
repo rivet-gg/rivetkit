@@ -2,8 +2,9 @@ import type { GlobalState } from "@/topologies/coordinate/topology";
 import { logger } from "../log";
 import pRetry, { AbortError } from "p-retry";
 import type { CoordinateDriver } from "../driver";
-import { type BaseConfig } from "@/actor/runtime/config";
 import type { NodeMessage } from "./protocol";
+import { DriverConfig } from "@/driver-helpers/config";
+import { AppConfig } from "@/app/config";
 
 /**
  * Publishes a message and waits for an ack. If no ack is received, then retries accordingly.
@@ -11,7 +12,8 @@ import type { NodeMessage } from "./protocol";
  * This should be used any time a message to the leader is being published since it correctly handles leadership transfer edge cases.
  */
 export async function publishMessageToLeader(
-	config: BaseConfig,
+	appConfig: AppConfig,
+	driverConfig: DriverConfig,
 	CoordinateDriver: CoordinateDriver,
 	globalState: GlobalState,
 	actorId: string,
@@ -29,7 +31,8 @@ export async function publishMessageToLeader(
 	await pRetry(
 		() =>
 			publishMessageToLeaderInner(
-				config,
+				appConfig,
+				driverConfig,
 				CoordinateDriver,
 				globalState,
 				actorId,
@@ -52,7 +55,8 @@ export async function publishMessageToLeader(
 }
 
 async function publishMessageToLeaderInner(
-	config: BaseConfig,
+	appConfig: AppConfig,
+	driverConfig: DriverConfig,
 	CoordinateDriver: CoordinateDriver,
 	globalState: GlobalState,
 	actorId: string,
@@ -88,7 +92,7 @@ async function publishMessageToLeaderInner(
 	// Throw error on timeout
 	const timeoutId = setTimeout(
 		() => ackReject(new Error("Ack timed out")),
-		config.actorPeer.messageAckTimeout,
+		appConfig.actorPeer.messageAckTimeout,
 	);
 
 	try {

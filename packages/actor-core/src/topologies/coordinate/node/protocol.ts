@@ -1,6 +1,6 @@
 import { z } from "zod";
-import * as messageToServer from "@/actor/protocol/message/to_server"
-import * as messageToClient from "@/actor/protocol/message/to_client"
+import * as messageToServer from "@/actor/protocol/message/to-server"
+import * as messageToClient from "@/actor/protocol/message/to-client"
 
 export const AckSchema = z.object({
 	// Message ID

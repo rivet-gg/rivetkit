@@ -1,4 +1,5 @@
-export { type BaseConfig, BaseConfigSchema } from "@/actor/runtime/config";
+export { type DriverConfig, DriverConfigSchema } from "./config";
+export type { ActorInstance, AnyActorInstance } from "@/actor/instance";
 export {
 	AttemptAcquireLease,
 	ExtendLeaseOutput,
@@ -8,13 +9,15 @@ export {
 	StartActorAndAcquireLeaseOutput,
 } from "@/topologies/coordinate/driver";
 export {
-	ManagerDriver,
 	ActorDriver,
 	KvKey,
 	KvValue,
+} from "@/actor/driver";
+export {
+	ManagerDriver,
 	CreateActorInput,
 	CreateActorOutput,
 	GetActorOutput,
 	GetForIdInput,
 	GetWithTagsInput,
-} from "@/actor/runtime/driver";
+} from "@/manager/driver";

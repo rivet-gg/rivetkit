@@ -10,7 +10,7 @@
 //const runtime = isBun ? "bun" : "node";
 //
 //bench(`rpc (${runtime}, $encoding, $transport)`, async function* (state) {
-//	const client = new Client(`http://localhost:${process.env.PORT ?? 8787}`, {
+//	const client = new Client(`http://localhost:${process.env.PORT ?? 6420}`, {
 //		transport: state.get("transport"),
 //		encoding: state.get("encoding"),
 //	});

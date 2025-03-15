@@ -1,6 +1,6 @@
-import type { AnyActor } from "@/actor/runtime/actor";
-import type { Connection, ConnectionId } from "@/actor/runtime/connection";
-import { throttle } from "@/actor/runtime/utils";
+import type { AnyActorInstance } from "@/actor/instance";
+import type { AnyConnection, Connection, ConnectionId } from "@/actor/connection";
+import { throttle } from "@/actor/utils";
 import type { UpgradeWebSocket, WSContext } from "hono/ws";
 import { Hono, type HonoRequest } from "hono";
 import * as errors from "@/actor/errors";
@@ -8,8 +8,8 @@ import { deconstructError, safeStringify } from "@/common/utils";
 import {
 	type ToServer,
 	ToServerSchema,
-} from "@/actor/protocol/inspector/to_server";
-import type { ToClient } from "@/actor/protocol/inspector/to_client";
+} from "@/actor/protocol/inspector/to-server";
+import type { ToClient } from "@/actor/protocol/inspector/to-client";
 import { logger } from "./log";
 
 export interface ConnectInspectorOpts {
@@ -124,7 +124,7 @@ export class Inspector {
 	 * Inspected actor instance.
 	 * @internal
 	 */
-	readonly actor: AnyActor;
+	readonly actor: AnyActorInstance;
 
 	/**
 	 * Map of all connections to the inspector.
@@ -153,13 +153,13 @@ export class Inspector {
 	 * @internal
 	 */
 	onConnectionsChange = throttle(
-		(connections: Map<ConnectionId, Connection<AnyActor>>) => {
+		(connections: Map<ConnectionId, AnyConnection>) => {
 			this.__broadcast(this.#createInfoMessage());
 		},
 		500,
 	);
 
-	constructor(actor: AnyActor) {
+	constructor(actor: AnyActorInstance) {
 		this.actor = actor;
 	}
 
@@ -182,7 +182,7 @@ export class Inspector {
 			return connection.send(this.#createInfoMessage());
 		}
 		if (message.type === "setState") {
-			this.actor._state = message.state;
+			this.actor.state = message.state;
 			return;
 		}
 
@@ -195,7 +195,7 @@ export class Inspector {
 	#createInfoMessage(): ToClient {
 		return {
 			type: "info",
-			connections: Array.from(this.actor._connections).map(
+			connections: Array.from(this.actor.connections).map(
 				([id, connection]) => ({
 					id,
 					parameters: connection.parameters,
@@ -205,10 +205,10 @@ export class Inspector {
 					},
 				}),
 			),
-			rpcs: this.actor._rpcs,
+			rpcs: this.actor.rpcs,
 			state: {
-				value: this.actor._stateEnabled ? this.actor._state : undefined,
-				enabled: this.actor._stateEnabled,
+				value: this.actor.stateEnabled ? this.actor.state : undefined,
+				enabled: this.actor.stateEnabled,
 			},
 		};
 	}

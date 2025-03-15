@@ -101,12 +101,13 @@ export class RivetManagerDriver implements ManagerDriver {
 	}
 
 	async createActor({
-		region,
+		name,
 		tags,
+		region,
 	}: CreateActorInput): Promise<GetActorOutput> {
 		// Verify build access
 		const build = await this.#getBuildWithTags({
-			name: tags.name,
+			name: name,
 			current: "true",
 			access: "public",
 		});

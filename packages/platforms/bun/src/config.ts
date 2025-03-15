@@ -9,6 +9,6 @@ export const ConfigSchema = BaseConfigSchema.extend({
 	port: z
 		.number()
 		.optional()
-		.default(Number.parseInt(process.env.PORT ?? "8787")),
+		.default(Number.parseInt(process.env.PORT ?? "6420")),
 });
 export type InputConfig = z.input<typeof ConfigSchema>;

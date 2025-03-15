@@ -1,9 +1,9 @@
-import type { AnyActor } from "@/actor/runtime/actor";
-import { Connection } from "@/actor/runtime/connection";
+import type { AnyActorInstance } from "@/actor/instance";
+import { AnyConnection, Connection } from "@/actor/connection";
 import { logger } from "./log";
 import { CachedSerializer, Encoding } from "@/actor/protocol/serde";
-import { ConnectionDriver } from "@/actor/runtime/driver";
-import * as messageToClient from "@/actor/protocol/message/to_client";
+import { ConnectionDriver } from "@/actor/driver";
+import * as messageToClient from "@/actor/protocol/message/to-client";
 import { encodeDataToString } from "@/actor/protocol/serde";
 import { WSContext } from "hono/ws";
 import { SSEStreamingApi } from "hono/streaming";
@@ -43,8 +43,8 @@ export function createGenericWebSocketDriver(
 ): ConnectionDriver<GenericWebSocketDriverState> {
 	return {
 		sendMessage: (
-			_actor: AnyActor,
-			conn: Connection<AnyActor>,
+			_actor: AnyActorInstance,
+			conn: AnyConnection,
 			state: GenericWebSocketDriverState,
 			message: CachedSerializer<messageToClient.ToClient>,
 		) => {
@@ -57,8 +57,8 @@ export function createGenericWebSocketDriver(
 		},
 
 		disconnect: async (
-			_actor: AnyActor,
-			conn: Connection<AnyActor>,
+			_actor: AnyActorInstance,
+			conn: AnyConnection,
 			_state: GenericWebSocketDriverState,
 			reason?: string,
 		) => {
@@ -96,8 +96,8 @@ export interface GenericSseDriverState {
 export function createGenericSseDriver(globalState: GenericConnGlobalState) {
 	return {
 		sendMessage: (
-			_actor: AnyActor,
-			conn: Connection<AnyActor>,
+			_actor: AnyActorInstance,
+			conn: AnyConnection,
 			state: GenericSseDriverState,
 			message: CachedSerializer<messageToClient.ToClient>,
 		) => {
@@ -114,8 +114,8 @@ export function createGenericSseDriver(globalState: GenericConnGlobalState) {
 		},
 
 		disconnect: async (
-			_actor: AnyActor,
-			conn: Connection<AnyActor>,
+			_actor: AnyActorInstance,
+			conn: AnyConnection,
 			_state: GenericSseDriverState,
 			_reason?: string,
 		) => {

@@ -3,7 +3,7 @@ import {
 	LevelNameMap,
 	type LogLevel,
 	LogLevels,
-} from "./log_levels";
+} from "./log-levels";
 import { type LogEntry, castToLogValue, stringify } from "./logfmt";
 
 interface LogRecord {

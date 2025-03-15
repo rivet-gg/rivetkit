@@ -30,7 +30,8 @@ export const create = new Command()
 			"Specify which platform to use",
 		).choices(Object.keys(PLATFORM_NAMES)),
 	)
-	.addOption(new Option("-v [version]", "Specify version of actor-core"))
+	.addOption(new Option("--actor-core-version [version]", "Specify version of actor-core"))
+	.addOption(new Option("--package-name [name]", "Name of the NPM package"))
 	.addOption(new Option("--skip-install", "Skip installing dependencies"))
 	.action(action);
 
@@ -39,7 +40,8 @@ export async function action(
 	opts: {
 		platform?: string;
 		template?: string;
-		version?: string;
+		actorCoreVersion?: string;
+		packageName?: string,
 		skipInstall?: boolean;
 	} = {},
 ) {
@@ -133,8 +135,9 @@ export async function action(
 			"Resolve platform specific files",
 			async () => {
 				return resolvePlatformSpecificOptions(platform as Platform, {
+					packageName: opts.packageName,
 					files: EXAMPLES[template].files,
-					version: opts.version || VERSION,
+					version: opts.actorCoreVersion || VERSION,
 				});
 			},
 		);

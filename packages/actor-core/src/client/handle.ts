@@ -1,7 +1,7 @@
 import type { Transport } from "@/actor/protocol/message/mod";
 import type { Encoding } from "@/actor/protocol/serde";
-import type * as wsToClient from "@/actor/protocol/message/to_client";
-import type * as wsToServer from "@/actor/protocol/message/to_server";
+import type * as wsToClient from "@/actor/protocol/message/to-client";
+import type * as wsToServer from "@/actor/protocol/message/to-server";
 import { MAX_CONN_PARAMS_SIZE } from "@/common/network";
 import { assertUnreachable } from "@/common/utils";
 import * as cbor from "cbor-x";
@@ -11,7 +11,8 @@ import {
 	type WebSocketMessage as ConnectionMessage,
 	messageLength,
 } from "./utils";
-import { ACTOR_HANDLES_SYMBOL, Client, DynamicImports } from "./client";
+import { ACTOR_HANDLES_SYMBOL, ClientRaw, DynamicImports } from "./client";
+import { ActorDefinition, AnyActorDefinition } from "@/actor/definition";
 import pRetry from "p-retry";
 
 interface RpcInFlight {
@@ -92,7 +93,7 @@ export class ActorHandleRaw {
 	 * @protected
 	 */
 	public constructor(
-		private readonly client: Client,
+		private readonly client: ClientRaw,
 		private readonly endpoint: string,
 		private readonly parameters: unknown,
 		private readonly encodingKind: Encoding,
@@ -722,3 +723,49 @@ enc
 		);
 	}
 }
+
+type ExtractActorDefinitionRpcs<AD extends AnyActorDefinition> = AD extends ActorDefinition<infer R, any, any, any> ? R : never;
+
+type ActorDefinitionRpcs<AD extends AnyActorDefinition> = 
+{
+	[K in keyof ExtractActorDefinitionRpcs<AD>]: ExtractActorDefinitionRpcs<AD>[K] extends (...args: infer Args) => infer Return ? ActorRPCFunction<Args, Return> : never;
+};
+
+/**
+ * Connection to an actor. Allows calling actor's remote procedure calls with inferred types. See {@link ActorHandleRaw} for underlying methods.
+ *
+ * @example
+ * ```
+ * const room = await client.get<ChatRoom>(...etc...);
+ * // This calls the rpc named `sendMessage` on the `ChatRoom` actor.
+ * await room.sendMessage('Hello, world!');
+ * ```
+ *
+ * Private methods (e.g. those starting with `_`) are automatically excluded.
+ *
+ * @template AD The actor class that this handle is connected to.
+ * @see {@link ActorHandleRaw}
+ */
+
+export type ActorHandle<AD extends AnyActorDefinition> = ActorHandleRaw & ActorDefinitionRpcs<AD>;
+
+//{
+//	[K in keyof A as K extends string ? K extends `_${string}` ? never : K : K]: A[K] extends (...args: infer Args) => infer Return ? ActorRPCFunction<Args, Return> : never;
+//};
+/**
+ * RPC function returned by `ActorHandle`. This will call `ActorHandle.rpc` when triggered.
+ *
+ * @typedef {Function} ActorRPCFunction
+ * @template Args
+ * @template Response
+ * @param {...Args} args - Arguments for the RPC function.
+ * @returns {Promise<Response>}
+ */
+
+export type ActorRPCFunction<
+	Args extends Array<unknown> = unknown[],
+	Response = unknown
+> = (
+	...args: Args extends [unknown, ...infer Rest] ? Rest : Args
+) => Promise<Response>;
+

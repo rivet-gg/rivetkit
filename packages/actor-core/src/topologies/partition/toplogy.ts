@@ -1,16 +1,16 @@
-import { BaseConfig } from "@/driver-helpers";
-import { Manager } from "@/manager/runtime/manager";
+import { Manager } from "@/manager/manager";
 import { Hono } from "hono";
-import { createActorRouter } from "@/actor/runtime/actor_router";
-import { AnyActor } from "@/actor/runtime/actor";
+import { createActorRouter } from "@/actor/router";
+import { AnyActorInstance } from "@/actor/instance";
 import * as errors from "@/actor/errors";
 import {
+    AnyConnection,
 	Connection,
 	generateConnectionId,
 	generateConnectionToken,
-} from "@/actor/runtime/connection";
+} from "@/actor/connection";
 import { logger } from "./log";
-import { Rpc } from "@/actor/runtime/rpc";
+import { RpcContext } from "@/actor/rpc";
 import {
 	CONN_DRIVER_GENERIC_HTTP,
 	CONN_DRIVER_GENERIC_SSE,
@@ -20,16 +20,18 @@ import {
 	GenericHttpDriverState,
 	GenericSseDriverState,
 	GenericWebSocketDriverState,
-} from "../common/generic_conn_driver";
-import type { ConnectionDriver } from "@/actor/runtime/driver";
+} from "../common/generic-conn-driver";
+import type { ConnectionDriver } from "@/actor/driver";
 import type { ActorTags } from "@/common/utils";
-import { InspectorConnection } from "@/actor/runtime/inspect";
+import { InspectorConnection } from "@/actor/inspect";
+import { DriverConfig } from "@/driver-helpers/config";
+import { AppConfig } from "@/app/config";
 
 export class PartitionTopologyManager {
 	router: Hono;
 
-	constructor(config: BaseConfig) {
-		const manager = new Manager(config);
+	constructor(appConfig: AppConfig, driverConfig: DriverConfig) {
+		const manager = new Manager(appConfig, driverConfig);
 		this.router = manager.router;
 	}
 }
@@ -38,11 +40,12 @@ export class PartitionTopologyManager {
 export class PartitionTopologyActor {
 	router: Hono;
 
-	#config: BaseConfig;
+	#appConfig: AppConfig;
+	#driverConfig: DriverConfig;
 	#connDrivers: Record<string, ConnectionDriver>;
-	#actor?: AnyActor;
+	#actor?: AnyActorInstance;
 
-	get actor(): AnyActor {
+	get actor(): AnyActorInstance {
 		if (!this.#actor) throw new Error("Actor not loaded");
 		return this.#actor;
 	}
@@ -52,8 +55,9 @@ export class PartitionTopologyActor {
 	 **/
 	#actorStartedPromise?: PromiseWithResolvers<void> = Promise.withResolvers();
 
-	constructor(config: BaseConfig) {
-		this.#config = config;
+	constructor(appConfig: AppConfig, driverConfig: DriverConfig) {
+		this.#appConfig = appConfig;
+		this.#driverConfig = driverConfig;
 
 		const genericConnGlobalState = new GenericConnGlobalState();
 		this.#connDrivers = createGenericConnDrivers(genericConnGlobalState);
@@ -64,8 +68,8 @@ export class PartitionTopologyActor {
 		// This route rhas to be mounted at the root since the root router must be passed to `upgradeWebSocket`
 		actorRouter.route(
 			"/",
-			createActorRouter(config, {
-				upgradeWebSocket: config.getUpgradeWebSocket?.(actorRouter),
+			createActorRouter(appConfig, driverConfig, {
+				upgradeWebSocket: driverConfig.getUpgradeWebSocket?.(actorRouter),
 				onConnectWebSocket: async ({
 					req,
 					encoding,
@@ -79,19 +83,19 @@ export class PartitionTopologyActor {
 
 					const connId = generateConnectionId();
 					const connToken = generateConnectionToken();
-					const connState = await actor.__prepareConnection(
+					const connState = await actor.pepareConnection(
 						connParams,
 						req.raw,
 					);
 
-					let conn: Connection<AnyActor> | undefined;
+					let conn: AnyConnection | undefined;
 					return {
 						onOpen: async (ws) => {
 							// Save socket
 							genericConnGlobalState.websockets.set(connId, ws);
 
 							// Create connection
-							conn = await actor.__createConnection(
+							conn = await actor.createConnection(
 								connId,
 								connToken,
 
@@ -109,7 +113,7 @@ export class PartitionTopologyActor {
 								return;
 							}
 
-							await actor.__processMessage(message, conn);
+							await actor.processMessage(message, conn);
 						},
 						onClose: async () => {
 							genericConnGlobalState.websockets.delete(connId);
@@ -129,19 +133,19 @@ export class PartitionTopologyActor {
 
 					const connId = generateConnectionId();
 					const connToken = generateConnectionToken();
-					const connState = await actor.__prepareConnection(
+					const connState = await actor.pepareConnection(
 						connParams,
 						req.raw,
 					);
 
-					let conn: Connection<AnyActor> | undefined;
+					let conn: AnyConnection | undefined;
 					return {
 						onOpen: async (stream) => {
 							// Save socket
 							genericConnGlobalState.sseStreams.set(connId, stream);
 
 							// Create connection
-							conn = await actor.__createConnection(
+							conn = await actor.createConnection(
 								connId,
 								connToken,
 								connParams,
@@ -160,7 +164,7 @@ export class PartitionTopologyActor {
 					};
 				},
 				onRpc: async ({ req, parameters: connParams, rpcName, rpcArgs }) => {
-					let conn: Connection<AnyActor> | undefined;
+					let conn: AnyConnection | undefined;
 					try {
 						// Wait for init to finish
 						if (this.#actorStartedPromise)
@@ -170,11 +174,11 @@ export class PartitionTopologyActor {
 						if (!actor) throw new Error("Actor should be defined");
 
 						// Create conn
-						const connState = await actor.__prepareConnection(
+						const connState = await actor.pepareConnection(
 							connParams,
 							req.raw,
 						);
-						conn = await actor.__createConnection(
+						conn = await actor.createConnection(
 							generateConnectionId(),
 							generateConnectionToken(),
 							connParams,
@@ -184,8 +188,8 @@ export class PartitionTopologyActor {
 						);
 
 						// Call RPC
-						const ctx = new Rpc<AnyActor>(conn);
-						const output = await actor.__executeRpc(ctx, rpcName, rpcArgs);
+						const ctx = new RpcContext(actor.actorContext!, conn!);
+						const output = await actor.executeRpc(ctx, rpcName, rpcArgs);
 
 						return { output };
 					} finally {
@@ -203,7 +207,7 @@ export class PartitionTopologyActor {
 					if (!actor) throw new Error("Actor should be defined");
 
 					// Find connection
-					const conn = actor._connections.get(connId);
+					const conn = actor.connections.get(connId);
 					if (!conn) {
 						throw new errors.ConnectionNotFound(connId);
 					}
@@ -214,7 +218,7 @@ export class PartitionTopologyActor {
 					}
 
 					// Process message
-					await actor.__processMessage(message, conn);
+					await actor.processMessage(message, conn);
 				},
 				onConnectInspector: async () => {
 					if (this.#actorStartedPromise)
@@ -226,7 +230,7 @@ export class PartitionTopologyActor {
 					let conn: InspectorConnection | undefined;
 					return {
 						onOpen: async (ws) => {
-							conn = actor._inspector.__createConnection(ws);
+							conn = actor.inspector.__createConnection(ws);
 						},
 						onMessage: async (message) => {
 							if (!conn) {
@@ -234,11 +238,11 @@ export class PartitionTopologyActor {
 								return;
 							}
 
-							await actor._inspector.__processMessage(conn, message);
+							actor.inspector.__processMessage(conn, message);
 						},
 						onClose: async () => {
 							if (conn) {
-								actor._inspector.__removeConnection(conn);
+								actor.inspector.__removeConnection(conn);
 							}
 						},
 					};
@@ -249,21 +253,20 @@ export class PartitionTopologyActor {
 		this.router = actorRouter;
 	}
 
-	async start(id: string, tags: ActorTags, region: string) {
-		const actorDriver = this.#config.drivers?.actor;
+	async start(id: string, name: string, tags: ActorTags, region: string) {
+		const actorDriver = this.#driverConfig.drivers?.actor;
 		if (!actorDriver) throw new Error("config.drivers.actor not defined.");
 
 		// Find actor prototype
-		const actorName = tags.name;
-		const prototype = this.#config.actors[actorName];
+		const definition = this.#appConfig.actors[name];
 		// TODO: Handle error here gracefully somehow
-		if (!prototype) throw new Error(`no actor for name ${prototype}`);
+		if (!definition) throw new Error(`no actor in registry for name ${definition}`);
 
 		// Create actor
-		this.#actor = new prototype();
+		this.#actor = definition.instantiate();
 
 		// Start actor
-		await this.#actor.__start(this.#connDrivers, actorDriver, id, tags, region);
+		await this.#actor.start(this.#connDrivers, actorDriver, id, name, tags, region);
 
 		this.#actorStartedPromise?.resolve();
 		this.#actorStartedPromise = undefined;

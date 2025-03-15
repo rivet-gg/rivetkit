@@ -1,14 +1,16 @@
 import type {
-	AnyActor,
+    ActorInstance,
+	AnyActorInstance,
 	ExtractActorConnParams,
 	ExtractActorConnState,
-} from "./actor";
-import * as errors from "../errors";
+} from "./instance";
+import * as errors from "./errors";
 import { generateSecureToken } from "./utils";
-import { CachedSerializer, Encoding } from "../protocol/serde";
+import { CachedSerializer, Encoding } from "./protocol/serde";
 import { logger } from "./log";
 import { ConnectionDriver } from "./driver";
-import * as messageToClient from "@/actor/protocol/message/to_client";
+import * as messageToClient from "@/actor/protocol/message/to-client";
+import { Rpcs } from "./config";
 
 export function generateConnectionId(): string {
 	return crypto.randomUUID();
@@ -21,7 +23,7 @@ export function generateConnectionToken(): string {
 export type ConnectionId = string;
 
 /** Object representing connection that gets persisted to storage. */
-export interface PersistedConn<A extends AnyActor> {
+export interface PersistedConn<CP, CS> {
 	// ID
 	i: string;
 	// Token
@@ -31,9 +33,9 @@ export interface PersistedConn<A extends AnyActor> {
 	// Connection driver state
 	ds: unknown;
 	// Parameters
-	p: ExtractActorConnParams<A>;
+	p: CP;
 	// State
-	s: ExtractActorConnState<A>;
+	s: CS;
 	// Subscriptions
 	su: PersistedSub[];
 }
@@ -43,6 +45,8 @@ export interface PersistedSub {
 	n: string;
 }
 
+export type AnyConnection = Connection<any, any, any>;
+
 /**
  * Represents a client connection to an actor.
  *
@@ -50,20 +54,20 @@ export interface PersistedSub {
  *
  * @see {@link https://rivet.gg/docs/connections|Connection Documentation}
  */
-export class Connection<A extends AnyActor> {
+export class Connection<S, CP, CS> {
 	subscriptions: Set<string> = new Set<string>();
 
 	#stateEnabled: boolean;
 
 	// TODO: Remove this cyclical reference
-	#actor: A;
+	#actor: ActorInstance<S, CP, CS>;
 
 	/**
 	 * The proxied state that notifies of changes automatically.
 	 *
 	 * Any data that should be stored indefinitely should be held within this object.
 	 */
-	__persist: PersistedConn<A>;
+	__persist: PersistedConn<CP, CS>;
 
 	/**
 	 * Driver used to manage realtime connection communication.
@@ -72,7 +76,7 @@ export class Connection<A extends AnyActor> {
 	 */
 	#driver: ConnectionDriver;
 
-	public get parameters(): ExtractActorConnParams<A> {
+	public get parameters(): CP {
 		return this.__persist.p;
 	}
 
@@ -85,7 +89,7 @@ export class Connection<A extends AnyActor> {
 	 *
 	 * Throws an error if the state is not enabled.
 	 */
-	public get state(): ExtractActorConnState<A> {
+	public get state(): CS {
 		this.#validateStateEnabled();
 		if (!this.__persist.s) throw new Error("state should exists");
 		return this.__persist.s;
@@ -96,7 +100,7 @@ export class Connection<A extends AnyActor> {
 	 *
 	 * Throws an error if the state is not enabled.
 	 */
-	public set state(value: ExtractActorConnState<A>) {
+	public set state(value: CS) {
 		this.#validateStateEnabled();
 		this.__persist.s = value;
 	}
@@ -123,8 +127,8 @@ export class Connection<A extends AnyActor> {
 	 * @protected
 	 */
 	public constructor(
-		actor: A,
-		persist: PersistedConn<A>,
+		actor: ActorInstance<S, CP, CS>,
+		persist: PersistedConn<CP, CS>,
 		driver: ConnectionDriver,
 		stateEnabled: boolean,
 	) {

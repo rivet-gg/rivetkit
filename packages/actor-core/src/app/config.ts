@@ -1,19 +1,11 @@
+//! These configs configs hold anything that's not platform-specific about running actors.
+
 import { z } from "zod";
-import type { AnyActorConstructor } from "./actor";
-import type { ActorDriver, ManagerDriver } from "./driver";
-import type { CoordinateDriver } from "@/driver-helpers";
-import type {
-	Hono,
-	Context as HonoContext,
-	Handler as HonoHandler,
-} from "hono";
 import type { cors } from "hono/cors";
+import { ActorDefinition, AnyActorDefinition } from "@/actor/definition";
 
 // Define CORS options schema
 type CorsOptions = NonNullable<Parameters<typeof cors>[0]>;
-
-export const TopologySchema = z.enum(["standalone", "partition", "coordinate"]);
-export type Topology = z.infer<typeof TopologySchema>;
 
 export const ActorPeerConfigSchema = z.object({
 	/**
@@ -49,28 +41,15 @@ export const ActorPeerConfigSchema = z.object({
 });
 export type ActorPeerConfig = z.infer<typeof ActorPeerConfigSchema>;
 
-export type GetUpgradeWebSocket = (
-	app: Hono,
-) => (createEvents: (c: HonoContext) => any) => HonoHandler;
+export const ActorsSchema = z.record(z.string(), z.custom<ActorDefinition<any, any, any, any>>())
+export type Actors = z.infer<typeof ActorsSchema>;
 
 /** Base config used for the actor config across all platforms. */
-export const BaseConfigSchema = z.object({
-	actors: z.record(z.string(), z.custom<AnyActorConstructor>()),
-	topology: TopologySchema.optional(),  // Default value depends on the platform selected
-	drivers: z
-		.object({
-			manager: z.custom<ManagerDriver>().optional(),
-			actor: z.custom<ActorDriver>().optional(),
-			coordinate: z.custom<CoordinateDriver>().optional(),
-		})
-		.optional()
-		.default({}),
+export const AppConfigSchema = z.object({
+	actors: z.record(z.string(), z.custom<AnyActorDefinition>()),
 
 	/** CORS configuration for the router. Uses Hono's CORS middleware options. */
 	cors: z.custom<CorsOptions>().optional(),
-
-	// This is dynamic since NodeJS requires a reference to the app to initialize WebSockets
-	getUpgradeWebSocket: z.custom<GetUpgradeWebSocket>().optional(),
 
 	/** Base path used to build URLs from. This is specifically used when returning the endpoint to connect to for actors. */
 	basePath: z.string().optional(),
@@ -83,4 +62,5 @@ export const BaseConfigSchema = z.object({
 	/** Peer configuration for coordinated topology. */
 	actorPeer: ActorPeerConfigSchema.optional().default({}),
 });
-export type BaseConfig = z.infer<typeof BaseConfigSchema>;
+export type AppConfig = z.infer<typeof AppConfigSchema>;
+export type AppConfigInput<A extends Actors> = Omit<z.input<typeof AppConfigSchema>, "actors"> & { actors: A};

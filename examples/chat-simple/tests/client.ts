@@ -6,7 +6,7 @@ import type ChatRoom from "../src/chat-room.ts";
 async function main() {
 	setupLogging();
 
-	const client = new Client(`http://localhost:${process.env.PORT ?? 8787}`);
+	const client = new Client(`http://localhost:${process.env.PORT ?? 6420}`);
 
 	// connect to chat room
 	const chatRoom = await client.get<ChatRoom>({ name: "chat-room" });

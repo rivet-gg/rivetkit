@@ -12,9 +12,8 @@ export interface GetActorLeaderOutput {
 export interface StartActorAndAcquireLeaseOutput {
 	/** Undefined if not initialized. */
 	actor?: {
-		/** Tags for the actor. */
+		name?: string;
 		tags?: ActorTags;
-		/** Leader node ID, if exists. */
 		leaderNodeId?: string;
 	};
 }

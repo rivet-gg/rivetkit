@@ -1,16 +1,17 @@
 import { serveSse } from "./router/sse";
 import { serveWebSocket } from "./router/websocket";
 import { Node } from "./node/mod";
-import type { ActorPeer } from "./actor_peer";
+import type { ActorPeer } from "./actor-peer";
 import * as errors from "@/actor/errors";
 import * as events from "node:events";
 import { publishMessageToLeader } from "./node/message";
 import type { RelayConnection } from "./conn/mod";
 import type { Hono } from "hono";
-import { createActorRouter } from "@/actor/runtime/actor_router";
-import type { BaseConfig } from "@/actor/runtime/config";
-import { Manager } from "@/manager/runtime/manager";
+import { createActorRouter } from "@/actor/router";
+import { Manager } from "@/manager/manager";
 import { handleRouteError, handleRouteNotFound } from "@/common/router";
+import { DriverConfig } from "@/driver-helpers/config";
+import { AppConfig } from "@/app/config";
 
 export interface GlobalState {
 	nodeId: string;
@@ -25,9 +26,9 @@ export interface GlobalState {
 export class CoordinateTopology {
 	public readonly router: Hono;
 
-	constructor(config: BaseConfig) {
-		if (!config.drivers) throw new Error("config.drivers not defined.");
-		const { actor: actorDriver, coordinate: CoordinateDriver } = config.drivers;
+	constructor(appConfig: AppConfig, driverConfig: DriverConfig) {
+		if (!driverConfig.drivers) throw new Error("config.drivers not defined.");
+		const { actor: actorDriver, coordinate: CoordinateDriver } = driverConfig.drivers;
 		if (!actorDriver) throw new Error("config.drivers.actor not defined.");
 		if (!CoordinateDriver)
 			throw new Error("config.drivers.coordinate not defined.");
@@ -46,19 +47,20 @@ export class CoordinateTopology {
 		const node = new Node(CoordinateDriver, globalState);
 		node.start();
 
-		const manager = new Manager(config);
+		const manager = new Manager(appConfig, driverConfig);
 
 		// Build router
 		const app = manager.router;
 
 		// Forward requests to actor
-		const actorRouter = createActorRouter(config, {
-			upgradeWebSocket: config.getUpgradeWebSocket?.(app),
+		const actorRouter = createActorRouter(appConfig, driverConfig, {
+			upgradeWebSocket: driverConfig.getUpgradeWebSocket?.(app),
 			onConnectWebSocket: async (opts) => {
 				const actorId = opts.req.param("actorId");
 				if (!actorId) throw new errors.InternalError("Missing actor ID");
 				return await serveWebSocket(
-					config,
+					appConfig,
+					driverConfig,
 					actorDriver,
 					CoordinateDriver,
 					globalState,
@@ -70,7 +72,8 @@ export class CoordinateTopology {
 				const actorId = opts.req.param("actorId");
 				if (!actorId) throw new errors.InternalError("Missing actor ID");
 				return await serveSse(
-					config,
+					appConfig,
+					driverConfig,
 					actorDriver,
 					CoordinateDriver,
 					globalState,
@@ -87,7 +90,8 @@ export class CoordinateTopology {
 				if (!actorId) throw new errors.InternalError("Missing actor ID");
 
 				await publishMessageToLeader(
-					config,
+					appConfig,
+					driverConfig,
 					CoordinateDriver,
 					globalState,
 					actorId,

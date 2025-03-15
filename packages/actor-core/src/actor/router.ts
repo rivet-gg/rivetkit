@@ -1,13 +1,12 @@
 import { Handler, Hono, Context as HonoContext, HonoRequest } from "hono";
 import { ContentfulStatusCode } from "hono/utils/http-status";
 import type { UpgradeWebSocket, WSContext, WSEvents } from "hono/ws";
-import * as errors from "../errors";
+import * as errors from "./errors";
 import { logger } from "./log";
 import { type Encoding, EncodingSchema } from "@/actor/protocol/serde";
-import { type BaseConfig } from "./config";
 import { parseMessage } from "@/actor/protocol/message/mod";
 import * as protoHttpRpc from "@/actor/protocol/http/rpc";
-import * as messageToServer from "@/actor/protocol/message/to_server";
+import * as messageToServer from "@/actor/protocol/message/to-server";
 import type { InputData } from "@/actor/protocol/serde";
 import { SSEStreamingApi, streamSSE } from "hono/streaming";
 import { cors } from "hono/cors";
@@ -15,6 +14,8 @@ import { assertUnreachable } from "./utils";
 import { createInspectorRouter, InspectorConnectionHandler } from "./inspect";
 import { handleRouteError, handleRouteNotFound } from "@/common/router";
 import { deconstructError } from "@/common/utils";
+import { DriverConfig } from "@/driver-helpers/config";
+import { AppConfig } from "@/app/config";
 
 export interface ConnectWebSocketOpts {
 	req: HonoRequest;
@@ -76,13 +77,14 @@ export interface ActorRouterHandler {
  * This allows for creating a universal protocol across all platforms.
  */
 export function createActorRouter(
-	config: BaseConfig,
+	appConfig: AppConfig,
+	driverConfig: DriverConfig,
 	handler: ActorRouterHandler,
 ): Hono {
 	const app = new Hono();
 
 	// Apply CORS middleware if configured
-	if (config.cors) {
+	if (appConfig.cors) {
 		app.use("*", async (c, next) => {
 			const path = c.req.path;
 
@@ -91,7 +93,7 @@ export function createActorRouter(
 				return next();
 			}
 
-			return cors(config.cors)(c, next);
+			return cors(appConfig.cors)(c, next);
 		});
 	}
 
@@ -114,7 +116,7 @@ export function createActorRouter(
 						throw new Error("onConnectWebSocket is not implemented");
 
 					const encoding = getRequestEncoding(c.req);
-					const parameters = getRequestConnectionParameters(c.req, config);
+					const parameters = getRequestConnectionParameters(c.req, appConfig, driverConfig);
 
 					const wsHandler = await handler.onConnectWebSocket({
 						req: c.req,
@@ -150,7 +152,7 @@ export function createActorRouter(
 								const value = evt.data.valueOf() as InputData;
 								const message = await parseMessage(value, {
 									encoding: encoding,
-									maxIncomingMessageSize: config.maxIncomingMessageSize,
+									maxIncomingMessageSize: appConfig.maxIncomingMessageSize,
 								});
 
 								await wsHandler.onMessage(message);
@@ -201,7 +203,7 @@ export function createActorRouter(
 
 	app.get("/connect/sse", async (c) => {
 		const encoding = getRequestEncoding(c.req);
-		const parameters = getRequestConnectionParameters(c.req, config);
+		const parameters = getRequestConnectionParameters(c.req, appConfig, driverConfig);
 
 		const sseHandler = await handler.onConnectSse({
 			req: c.req,
@@ -240,11 +242,11 @@ export function createActorRouter(
 		try {
 			// TODO: Support multiple encodings
 			const encoding: Encoding = "json";
-			const parameters = getRequestConnectionParameters(c.req, config);
+			const parameters = getRequestConnectionParameters(c.req, appConfig, driverConfig);
 
 			// Parse request body if present
 			const contentLength = Number(c.req.header("content-length") || "0");
-			if (contentLength > config.maxIncomingMessageSize) {
+			if (contentLength > appConfig.maxIncomingMessageSize) {
 				throw new errors.MessageTooLong();
 			}
 
@@ -303,7 +305,7 @@ export function createActorRouter(
 
 			// Parse request body if present
 			const contentLength = Number(c.req.header("content-length") || "0");
-			if (contentLength > config.maxIncomingMessageSize) {
+			if (contentLength > appConfig.maxIncomingMessageSize) {
 				throw new errors.MessageTooLong();
 			}
 
@@ -321,7 +323,7 @@ export function createActorRouter(
 			// Parse message
 			const message = await parseMessage(value, {
 				encoding,
-				maxIncomingMessageSize: config.maxIncomingMessageSize,
+				maxIncomingMessageSize: appConfig.maxIncomingMessageSize,
 			});
 
 			await handler.onConnectionsMessage({
@@ -378,11 +380,12 @@ function getRequestEncoding(req: HonoRequest): Encoding {
 
 function getRequestConnectionParameters(
 	req: HonoRequest,
-	config: BaseConfig,
+	appConfig: AppConfig,
+	driverConfig: DriverConfig,
 ): unknown {
 	// Validate params size
 	const paramsStr = req.query("params");
-	if (paramsStr && paramsStr.length > config.maxConnectionParametersSize) {
+	if (paramsStr && paramsStr.length > appConfig.maxConnectionParametersSize) {
 		logger().warn("connection parameters too long");
 		throw new errors.ConnectionParametersTooLong();
 	}

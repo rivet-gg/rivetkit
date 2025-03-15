@@ -1,13 +1,13 @@
-import type { AnyActor } from "@/actor/runtime/actor";
-import type { BaseConfig } from "@/actor/runtime/config";
+import type { AnyActorInstance } from "@/actor/instance";
 import type { Hono } from "hono";
 import {
+	AnyConnection,
 	type Connection,
 	generateConnectionId,
 	generateConnectionToken,
-} from "@/actor/runtime/connection";
-import { createActorRouter } from "@/actor/runtime/actor_router";
-import { Manager } from "@/manager/runtime/manager";
+} from "@/actor/connection";
+import { createActorRouter } from "@/actor/router";
+import { Manager } from "@/manager/manager";
 import { logger } from "./log";
 import * as errors from "@/actor/errors";
 import {
@@ -19,12 +19,14 @@ import {
 	type GenericHttpDriverState,
 	type GenericSseDriverState,
 	type GenericWebSocketDriverState,
-} from "../common/generic_conn_driver";
-import { Rpc } from "@/actor/runtime/rpc";
+} from "../common/generic-conn-driver";
+import { RpcContext } from "@/actor/rpc";
+import { DriverConfig } from "@/driver-helpers/config";
+import { AppConfig } from "@/app/config";
 
 class ActorHandler {
 	/** Will be undefined if not yet loaded. */
-	actor?: AnyActor;
+	actor?: AnyActorInstance;
 
 	/** Promise that will resolve when the actor is loaded. This should always be awaited before accessing the actor. */
 	actorPromise?: PromiseWithResolvers<void> = Promise.withResolvers();
@@ -42,12 +44,13 @@ export class StandaloneTopology {
 	 */
 	readonly router: Hono;
 
-	#config: BaseConfig;
+	#appConfig: AppConfig;
+	#driverConfig: DriverConfig;
 	#actors = new Map<string, ActorHandler>();
 
 	async #getActor(
 		actorId: string,
-	): Promise<{ handler: ActorHandler; actor: AnyActor }> {
+	): Promise<{ handler: ActorHandler; actor: AnyActorInstance }> {
 		// Load existing actor
 		let handler = this.#actors.get(actorId);
 		if (handler) {
@@ -64,13 +67,13 @@ export class StandaloneTopology {
 		this.#actors.set(actorId, handler);
 
 		// Validate config
-		if (!this.#config.drivers?.actor)
+		if (!this.#driverConfig.drivers?.actor)
 			throw new Error("config.drivers.actor is not defined.");
-		if (!this.#config.drivers?.manager)
+		if (!this.#driverConfig.drivers?.manager)
 			throw new Error("config.drivers.manager is not defined.");
 
 		// Load actor meta
-		const actorMetadata = await this.#config.drivers.manager.getForId({
+		const actorMetadata = await this.#driverConfig.drivers.manager.getForId({
 			// HACK: The endpoint doesn't matter here, so we're passing a bogon IP
 			baseUrl: "http://192.0.2.0",
 			actorId,
@@ -78,12 +81,12 @@ export class StandaloneTopology {
 		if (!actorMetadata) throw new Error(`No actor found for ID ${actorId}`);
 
 		// Build actor
-		const actorName = actorMetadata.tags.name;
-		const prototype = this.#config.actors[actorName];
-		if (!prototype) throw new Error(`no actor for name ${prototype}`);
+		const definition = this.#appConfig.actors[actorMetadata.name];
+		if (!definition)
+			throw new Error(`no actor in registry for name ${definition}`);
 
 		// Create leader actor
-		const actor = new prototype();
+		const actor = definition.instantiate();
 		handler.actor = actor;
 
 		// Create connection drivers
@@ -92,10 +95,11 @@ export class StandaloneTopology {
 		);
 
 		// Start actor
-		await handler.actor.__start(
+		await handler.actor.start(
 			connDrivers,
-			this.#config.drivers.actor,
+			this.#driverConfig.drivers.actor,
 			actorId,
+			actorMetadata.name,
 			actorMetadata.tags,
 			"unknown",
 		);
@@ -107,21 +111,22 @@ export class StandaloneTopology {
 		return { handler, actor };
 	}
 
-	constructor(config: BaseConfig) {
-		this.#config = config;
+	constructor(appConfig: AppConfig, driverConfig: DriverConfig) {
+		this.#appConfig = appConfig;
+		this.#driverConfig = driverConfig;
 
-		if (!config.drivers?.actor)
+		if (!driverConfig.drivers?.actor)
 			throw new Error("config.drivers.actor not defined.");
 
 		// Create manager
-		const manager = new Manager(config);
+		const manager = new Manager(appConfig, driverConfig);
 
 		// Build router
 		const app = manager.router;
 
 		// Build actor router
-		const actorRouter = createActorRouter(config, {
-			upgradeWebSocket: config.getUpgradeWebSocket?.(app),
+		const actorRouter = createActorRouter(appConfig, driverConfig, {
+			upgradeWebSocket: driverConfig.getUpgradeWebSocket?.(app),
 			onConnectWebSocket: async ({ req, encoding, parameters: connParams }) => {
 				const actorId = req.param("actorId");
 				if (!actorId) throw new errors.InternalError("Missing actor ID");
@@ -130,16 +135,16 @@ export class StandaloneTopology {
 
 				const connId = generateConnectionId();
 				const connToken = generateConnectionToken();
-				const connState = await actor.__prepareConnection(connParams, req.raw);
+				const connState = await actor.pepareConnection(connParams, req.raw);
 
-				let conn: Connection<AnyActor> | undefined;
+				let conn: AnyConnection | undefined;
 				return {
 					onOpen: async (ws) => {
 						// Save socket
 						handler.genericConnGlobalState.websockets.set(connId, ws);
 
 						// Create connection
-						conn = await actor.__createConnection(
+						conn = await actor.createConnection(
 							connId,
 							connToken,
 
@@ -157,7 +162,7 @@ export class StandaloneTopology {
 							return;
 						}
 
-						await actor.__processMessage(message, conn);
+						await actor.processMessage(message, conn);
 					},
 					onClose: async () => {
 						handler.genericConnGlobalState.websockets.delete(connId);
@@ -176,16 +181,16 @@ export class StandaloneTopology {
 
 				const connId = generateConnectionId();
 				const connToken = generateConnectionToken();
-				const connState = await actor.__prepareConnection(connParams, req.raw);
+				const connState = await actor.pepareConnection(connParams, req.raw);
 
-				let conn: Connection<AnyActor> | undefined;
+				let conn: AnyConnection | undefined;
 				return {
 					onOpen: async (stream) => {
 						// Save socket
 						handler.genericConnGlobalState.sseStreams.set(connId, stream);
 
 						// Create connection
-						conn = await actor.__createConnection(
+						conn = await actor.createConnection(
 							connId,
 							connToken,
 							connParams,
@@ -207,16 +212,16 @@ export class StandaloneTopology {
 				const actorId = req.param("actorId");
 				if (!actorId) throw new errors.InternalError("Missing actor ID");
 
-				let conn: Connection<AnyActor> | undefined;
+				let conn: AnyConnection | undefined;
 				try {
 					const { actor } = await this.#getActor(actorId);
 
 					// Create conn
-					const connState = await actor.__prepareConnection(
+					const connState = await actor.pepareConnection(
 						connParams,
 						req.raw,
 					);
-					conn = await actor.__createConnection(
+					conn = await actor.createConnection(
 						generateConnectionId(),
 						generateConnectionToken(),
 						connParams,
@@ -226,8 +231,8 @@ export class StandaloneTopology {
 					);
 
 					// Call RPC
-					const ctx = new Rpc<AnyActor>(conn);
-					const output = await actor.__executeRpc(ctx, rpcName, rpcArgs);
+					const ctx = new RpcContext(actor.actorContext!, conn);
+					const output = await actor.executeRpc(ctx, rpcName, rpcArgs);
 
 					return { output };
 				} finally {
@@ -244,7 +249,7 @@ export class StandaloneTopology {
 				const { actor } = await this.#getActor(actorId);
 
 				// Find connection
-				const conn = actor._connections.get(connId);
+				const conn = actor.connections.get(connId);
 				if (!conn) {
 					throw new errors.ConnectionNotFound(connId);
 				}
@@ -255,7 +260,7 @@ export class StandaloneTopology {
 				}
 
 				// Process message
-				await actor.__processMessage(message, conn);
+				await actor.processMessage(message, conn);
 			},
 			onConnectInspector: async () => {
 				throw new errors.Unsupported("inspect");

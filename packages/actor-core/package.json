@@ -64,12 +64,12 @@
     },
     "./driver-helpers": {
       "import": {
-        "types": "./dist/driver-helpers.d.ts",
-        "default": "./dist/driver-helpers.js"
+        "types": "./dist/driver-helpers/mod.d.ts",
+        "default": "./dist/driver-helpers/mod.js"
       },
       "require": {
-        "types": "./dist/driver-helpers.d.cts",
-        "default": "./dist/driver-helpers.cjs"
+        "types": "./dist/driver-helpers/mod.d.cts",
+        "default": "./dist/driver-helpers/mod.cjs"
       }
     },
     "./topologies/coordinate": {
@@ -125,7 +125,7 @@
   },
   "sideEffects": false,
   "scripts": {
-    "build": "tsup src/mod.ts src/client/mod.ts src/common/log.ts src/actor/errors.ts src/topologies/coordinate/mod.ts src/topologies/partition/mod.ts src/utils.ts src/driver-helpers.ts src/cli/mod.ts src/actor/protocol/inspector/mod.ts src/actor/protocol/http/rpc.ts",
+    "build": "tsup src/mod.ts src/client/mod.ts src/common/log.ts src/actor/errors.ts src/topologies/coordinate/mod.ts src/topologies/partition/mod.ts src/utils.ts src/driver-helpers/mod.ts src/cli/mod.ts src/actor/protocol/inspector/mod.ts src/actor/protocol/http/rpc.ts",
     "check-types": "tsc --noEmit"
   },
   "dependencies": {

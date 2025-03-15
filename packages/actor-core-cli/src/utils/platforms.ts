@@ -14,7 +14,8 @@ interface PlatformOutput {
 	files: Record<string, string>;
 }
 
-interface PlatformOptions extends ExampleMetadata {
+interface PlatformOptions {
+	packageName?: string;
 	version: string;
 	files: Record<string, string>;
 	pkgJson: PackageJson;
@@ -94,103 +95,103 @@ const PLATFORMS = {
 
 	// 	return { files };
 	// },
-	rivet: {
-		deployable: true,
-		modify: ({ files, pkgJson, actorMap, actorImports, version }) => {
-			files["package.json"] = stringifyJson({
-				...pkgJson,
-				scripts: {
-					...pkgJson.scripts,
-					deploy: "actor-core deploy rivet",
-				},
-				devDependencies: {
-					"@actor-core/cli": version,
-					"@actor-core/rivet": version,
-					"@types/deno": "^2.2.0",
-					...pkgJson.devDependencies,
-				},
-			});
-
-			files["actor-core.config.ts"] = dedent`
-				import type { Config } from "@actor-core/rivet";
-				${actorImports("./actor-core.config.ts")}
-
-				export default {
-					actors: {
-						${actorMap}
-					},
-				} satisfies Config;
-			`;
-
-			return {
-				files,
-			};
-		},
-	},
-	"cloudflare-workers": {
-		deployable: true,
-		modify: ({ files, pkgJson, version, actorImports, actorMap }) => {
-			files["package.json"] = stringifyJson({
-				...pkgJson,
-				devDependencies: {
-					"@actor-core/cloudflare-workers": version,
-					wrangler: "^3.101.0",
-					"@cloudflare/workers-types": "^4.20250129.0",
-					...pkgJson.devDependencies,
-				},
-				scripts: {
-					deploy: "wrangler deploy",
-					dev: "wrangler dev",
-					start: "wrangler dev",
-					"cf-typegen": "wrangler types",
-					...pkgJson.scripts,
-				},
-			});
-
-			files["wrangler.json"] = stringifyJson({
-				name: "actor-core",
-				main: "src/index.ts",
-				compatibility_date: "2025-01-29",
-				migrations: [
-					{
-						new_classes: ["ActorHandler"],
-						tag: "v1",
-					},
-				],
-				durable_objects: {
-					bindings: [
-						{
-							class_name: "ActorHandler",
-							name: "ACTOR_DO",
-						},
-					],
-				},
-				kv_namespaces: [
-					{
-						binding: "ACTOR_KV",
-						id: "TODO",
-					},
-				],
-				observability: {
-					enabled: true,
-				},
-			});
-			files["src/index.ts"] = dedent`
-				import { createHandler } from "@actor-core/cloudflare-workers";
-				${actorImports("./src/index.ts")}
-
-				const { handler, ActorHandler } = createHandler({
-					actors: { ${actorMap} }
-				});
-
-				export { handler as default, ActorHandler };
-                `;
-
-			return {
-				files,
-			};
-		},
-	},
+	//rivet: {
+	//	deployable: true,
+	//	modify: ({ files, pkgJson, actorMap, actorImports, version }) => {
+	//		files["package.json"] = stringifyJson({
+	//			...pkgJson,
+	//			scripts: {
+	//				...pkgJson.scripts,
+	//				deploy: "actor-core deploy rivet",
+	//			},
+	//			devDependencies: {
+	//				"@actor-core/cli": version,
+	//				"@actor-core/rivet": version,
+	//				"@types/deno": "^2.2.0",
+	//				...pkgJson.devDependencies,
+	//			},
+	//		});
+	//
+	//		files["actor-core.config.ts"] = dedent`
+	//			import type { Config } from "@actor-core/rivet";
+	//			${actorImports("./actor-core.config.ts")}
+	//
+	//			export default {
+	//				actors: {
+	//					${actorMap}
+	//				},
+	//			} satisfies Config;
+	//		`;
+	//
+	//		return {
+	//			files,
+	//		};
+	//	},
+	//},
+	//"cloudflare-workers": {
+	//	deployable: true,
+	//	modify: ({ files, pkgJson, version, actorImports, actorMap }) => {
+	//		files["package.json"] = stringifyJson({
+	//			...pkgJson,
+	//			devDependencies: {
+	//				"@actor-core/cloudflare-workers": version,
+	//				wrangler: "^3.101.0",
+	//				"@cloudflare/workers-types": "^4.20250129.0",
+	//				...pkgJson.devDependencies,
+	//			},
+	//			scripts: {
+	//				deploy: "wrangler deploy",
+	//				dev: "wrangler dev",
+	//				start: "wrangler dev",
+	//				"cf-typegen": "wrangler types",
+	//				...pkgJson.scripts,
+	//			},
+	//		});
+	//
+	//		files["wrangler.json"] = stringifyJson({
+	//			name: "actor-core",
+	//			main: "src/index.ts",
+	//			compatibility_date: "2025-01-29",
+	//			migrations: [
+	//				{
+	//					new_classes: ["ActorHandler"],
+	//					tag: "v1",
+	//				},
+	//			],
+	//			durable_objects: {
+	//				bindings: [
+	//					{
+	//						class_name: "ActorHandler",
+	//						name: "ACTOR_DO",
+	//					},
+	//				],
+	//			},
+	//			kv_namespaces: [
+	//				{
+	//					binding: "ACTOR_KV",
+	//					id: "TODO",
+	//				},
+	//			],
+	//			observability: {
+	//				enabled: true,
+	//			},
+	//		});
+	//		files["src/index.ts"] = dedent`
+	//			import { createHandler } from "@actor-core/cloudflare-workers";
+	//			${actorImports("./src/index.ts")}
+	//
+	//			const { handler, ActorHandler } = createHandler({
+	//				actors: { ${actorMap} }
+	//			});
+	//
+	//			export { handler as default, ActorHandler };
+	//               `;
+	//
+	//		return {
+	//			files,
+	//		};
+	//	},
+	//},
 	// deno: ({ files, pkgJson, version, actorImports, actorMap }) => {
 	// 	files["package.json"] = stringifyJson({
 	// 		...pkgJson,
@@ -216,36 +217,36 @@ const PLATFORMS = {
 
 	// 	return { files };
 	// },
-	bun: {
-		modify: ({ files, pkgJson, version, actorImports, actorMap }) => {
-			files["package.json"] = stringifyJson({
-				...pkgJson,
-				devDependencies: {
-					"@actor-core/bun": version,
-					"@types/bun": "^1.2.4",
-					...pkgJson.devDependencies,
-				},
-				scripts: {
-					dev: "bun run --hot src/index.ts",
-					start: "bun run src/index.ts",
-					...pkgJson.scripts,
-				},
-			});
-
-			files["src/index.ts"] = dedent`
-            import { createHandler } from "@actor-core/bun"
-            ${actorImports("./src/index.ts")}
-
-            export default createHandler({
-                actors: { ${actorMap} }
-            });
-        `;
-
-			return { files };
-		},
-	},
+	//bun: {
+	//	modify: ({ files, pkgJson, version, actorImports, actorMap }) => {
+	//		files["package.json"] = stringifyJson({
+	//			...pkgJson,
+	//			devDependencies: {
+	//				"@actor-core/bun": version,
+	//				"@types/bun": "^1.2.4",
+	//				...pkgJson.devDependencies,
+	//			},
+	//			scripts: {
+	//				dev: "bun run --hot src/index.ts",
+	//				start: "bun run src/index.ts",
+	//				...pkgJson.scripts,
+	//			},
+	//		});
+	//
+	//		files["src/index.ts"] = dedent`
+	//           import { createHandler } from "@actor-core/bun"
+	//           ${actorImports("./src/index.ts")}
+	//
+	//           export default createHandler({
+	//               actors: { ${actorMap} }
+	//           });
+	//       `;
+	//
+	//		return { files };
+	//	},
+	//},
 	nodejs: {
-		modify: ({ files, pkgJson, version, actorImports, actorMap }) => {
+		modify: ({ files, pkgJson, version }) => {
 			files["package.json"] = stringifyJson({
 				...pkgJson,
 				devDependencies: {
@@ -260,14 +261,10 @@ const PLATFORMS = {
 				},
 			});
 
-			files["src/index.ts"] = dedent`
-            import { serve } from "@actor-core/nodejs"
-            ${actorImports("./src/index.ts")}
-
-            serve({
-                actors: { ${actorMap} }
-            });
-        `;
+			files["src/index.ts"] = `import { serve } from "@actor-core/nodejs"
+${files["src/index.ts"]}
+serve(app);
+`;
 			return { files };
 		},
 	},
@@ -327,7 +324,7 @@ export function cmd(input: [string, string[]]) {
 
 export function resolvePlatformSpecificOptions(
 	platform: keyof typeof PLATFORMS,
-	opts: Pick<PlatformOptions, "files" | "version">,
+	opts: Pick<PlatformOptions, "packageName" | "files" | "version">,
 ): ResolvedPlatform {
 	const platformConfig = PLATFORMS[platform];
 	if (!platformConfig) {
@@ -342,14 +339,30 @@ export function resolvePlatformSpecificOptions(
 
 	const pkgJson = JSON.parse(opts.files["package.json"] || "{}");
 
+	if (opts.packageName) {
+		pkgJson.name = opts.packageName;
+	}
+
 	if (pkgJson.devDependencies) {
 		pkgJson.devDependencies["actor-core"] = opts.version;
+	}
+
+	// If local dev, then use workspace names
+	if (process.env._ACTOR_CORE_CLI_DEV_TEMPLATE === "1") {
+		for (const name in pkgJson.devDependencies) {
+			if (name.includes("actor-core"))
+				pkgJson.devDependencies[name] = "workspace:*";
+		}
+
+		for (const name in pkgJson.dependencies) {
+			if (name.includes("actor-core"))
+				pkgJson.devDependencies[name] = "workspace:*";
+		}
 	}
 
 	const configOpts = {
 		...opts,
 		pkgJson,
-		...buildExampleMetadata(pkgJson),
 	};
 
 	const { modify, ...platformConfigWithoutModify } = platformConfig;
@@ -378,43 +391,6 @@ export function resolvePlatformSpecificOptions(
 	tsConfig.extends = `@actor-core/${platform}/tsconfig`;
 	newPkgManagerOpts.files["tsconfig.json"] = stringifyJson(tsConfig);
 	return newPkgManagerOpts;
-}
-
-interface ExampleMetadata {
-	actorImports: (path?: string) => string;
-	actorMap: string;
-	actors: {
-		name: string;
-		path: string;
-		relativeImport: (base: string, includeExt?: boolean) => string;
-	}[];
-}
-
-function buildExampleMetadata(pkgJson: PackageJson): ExampleMetadata {
-	const actorImports = (base = ".") =>
-		Object.entries<string>(pkgJson.example?.actors || {})
-			.map(([k, actorPath]) => {
-				const importPath = path.relative(path.dirname(base), actorPath);
-				return `import ${k.replace("-", "_")} from "./${removeExt(importPath)}";`;
-			})
-			.join("\n");
-	const actorMap = Object.entries(pkgJson.example?.actors || {})
-		.map(([k, _v]) => `"${k}": ${k.replace("-", "_")}`)
-		.join("\n");
-
-	const actors = Object.entries<string>(pkgJson.example?.actors || {}).map(
-		([name, actorPath]) => {
-			return {
-				name,
-				path: actorPath,
-				relativeImport: (base: string, includeExt = false) => {
-					const importPath = path.relative(path.dirname(base), actorPath);
-					return `./${includeExt ? importPath : removeExt(importPath)}`;
-				},
-			};
-		},
-	);
-	return { actorImports, actorMap, actors };
 }
 
 export function getPackageManager(): { manager: PackageManager } {

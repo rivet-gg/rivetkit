@@ -1,7 +1,7 @@
-export { Client } from "./client";
+export { createClient } from "./client";
 export type {
-	ActorHandle,
-	ActorRPCFunction,
+	Client,
+	ActorAccessor,
 	ClientOptions,
 	CreateOptions,
 	GetOptions,
@@ -9,6 +9,10 @@ export type {
 	QueryOptions,
 	Region,
 } from "./client";
+export type {
+	ActorHandle,
+	ActorRPCFunction,
+} from "./handle";
 export { ActorHandleRaw } from "./handle";
 export type { EventUnsubscribe } from "./handle";
 export type { Transport } from "@/actor/protocol/message/mod";

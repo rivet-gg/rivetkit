@@ -3,22 +3,9 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 import * as errors from "@/actor/errors";
 import { Logger } from "./log";
 
-export const ActorTagsSchema = z
-	.object({
-		name: z.string(),
-	})
-	.catchall(z.string());
-
-export const BuildTagsSchema = z
-	.object({
-		name: z.string(),
-	})
-	.catchall(z.string());
+export const ActorTagsSchema = z.record(z.string());
 
 export type ActorTags = z.infer<typeof ActorTagsSchema>;
-
-// TODO: This does not belong as part of ActorCore
-export type BuildTags = z.infer<typeof BuildTagsSchema>;
 
 export interface RivetEnvironment {
 	project?: string;
@@ -62,15 +49,15 @@ export function safeStringify(obj: unknown, maxSize: number) {
  * Optionally pass an onInvalid callback to receive the path to invalid values.
  */
 export function isJsonSerializable(
-	value: unknown, 
+	value: unknown,
 	onInvalid?: (path: string) => void,
-	currentPath = ""
+	currentPath = "",
 ): boolean {
 	// Handle primitive types directly
 	if (value === null || value === undefined) {
 		return true;
 	}
-	
+
 	if (typeof value === "number") {
 		if (!Number.isFinite(value)) {
 			onInvalid?.(currentPath);
@@ -78,7 +65,7 @@ export function isJsonSerializable(
 		}
 		return true;
 	}
-	
+
 	if (typeof value === "boolean" || typeof value === "string") {
 		return true;
 	}
@@ -101,11 +88,17 @@ export function isJsonSerializable(
 			onInvalid?.(currentPath);
 			return false;
 		}
-		
+
 		// Check all properties recursively
 		for (const key in value) {
 			const propPath = currentPath ? `${currentPath}.${key}` : key;
-			if (!isJsonSerializable(value[key as keyof typeof value], onInvalid, propPath)) {
+			if (
+				!isJsonSerializable(
+					value[key as keyof typeof value],
+					onInvalid,
+					propPath,
+				)
+			) {
 				return false;
 			}
 		}

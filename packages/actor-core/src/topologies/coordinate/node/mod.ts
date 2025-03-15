@@ -10,7 +10,7 @@ import {
 	type ToLeaderConnectionOpen,
 	type ToLeaderMessage,
 } from "./protocol";
-import { ActorPeer } from "../actor_peer";
+import { ActorPeer } from "../actor-peer";
 import type { CoordinateDriver } from "../driver";
 import { CONN_DRIVER_COORDINATE_RELAY, type CoordinateRelayState } from "../conn/driver";
 import { assertUnreachable } from "@/common/utils";
@@ -125,8 +125,8 @@ export class Node {
 				return;
 			}
 
-			const connState = await actor.__prepareConnection(connParams);
-			await actor.__createConnection(
+			const connState = await actor.pepareConnection(connParams);
+			await actor.createConnection(
 				connId,
 				connToken,
 				connParams,
@@ -206,7 +206,7 @@ export class Node {
 			}
 
 			// Process message
-			await actor.__processMessage(message, conn);
+			await actor.processMessage(message, conn);
 		} else {
 			logger().warn("received message for nonexisting connection", {
 				connId,

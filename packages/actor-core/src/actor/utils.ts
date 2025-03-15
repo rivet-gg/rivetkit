@@ -1,4 +1,4 @@
-import * as errors from "../errors";
+import * as errors from "./errors";
 
 export function assertUnreachable(x: never): never {
 	throw new errors.Unreachable(x);
@@ -73,17 +73,6 @@ export class Lock<T> {
 		}
 	}
 }
-
-/**
- * Like `Partial` but makes all sub-properties `Partial` too.
- */
-export type RecursivePartial<T> = {
-	[P in keyof T]?: T[P] extends (infer U)[]
-		? RecursivePartial<U>[]
-		: T[P] extends object | undefined
-			? RecursivePartial<T[P]>
-			: T[P];
-};
 
 export function generateSecureToken(length = 32) {
 	const array = new Uint8Array(length);
