@@ -43,7 +43,7 @@ export class StateNotEnabled extends ActorError {
 	constructor() {
 		super(
 			"state_not_enabled",
-			"State not enabled. Must implement `_onInitialize` to use state.",
+			"State not enabled. Must implement `createState` or `state` to use state.",
 		);
 	}
 }
@@ -52,7 +52,7 @@ export class ConnectionStateNotEnabled extends ActorError {
 	constructor() {
 		super(
 			"connection_state_not_enabled",
-			"Connection state not enabled. Must implement `_onBeforeConnect` to use connection state.",
+			"Connection state not enabled. Must implement `createConnectionState` or `connectionState` to use connection state.",
 		);
 	}
 }

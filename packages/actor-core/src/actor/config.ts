@@ -117,7 +117,7 @@ export const createActorConfigSchema = <
 			 * Use this hook to initialize your actor's state.
 			 * This is called before any other lifecycle hooks.
 			 */
-			onInitialize: z.custom<() => void | Promise<void>>().optional(),
+			onCreate: z.custom<() => void | Promise<void>>().optional(),
 
 			/**
 			 * Called when the actor is started and ready to receive connections and action.

@@ -352,8 +352,8 @@ export class ActorInstance<S, CP, CS> {
 		} else {
 			logger().info("actor creating");
 
-			if (this.#config.onInitialize) {
-				await this.#config.onInitialize();
+			if (this.#config.onCreate) {
+				await this.#config.onCreate();
 			}
 
 			// Initialize actor state

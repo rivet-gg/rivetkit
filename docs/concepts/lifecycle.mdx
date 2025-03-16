@@ -13,9 +13,9 @@ Actor lifecycle hooks are defined as functions in the actor configuration.
 
 The `createState` function or `state` constant defines the initial state of the actor (see [state documentation](/concepts/state)). The `createState` function is called only once when the actor is first created.
 
-### `onInitialize`
+### `onCreate`
 
-The `onInitialize` hook is called at the same time as `createState`, but unlike `createState`, it doesn't return any value. Use this hook for initialization logic that doesn't affect the initial state.
+The `onCreate` hook is called at the same time as `createState`, but unlike `createState`, it doesn't return any value. Use this hook for initialization logic that doesn't affect the initial state.
 
 ```typescript
 import { actor } from "actor-core";
@@ -35,12 +35,12 @@ const counter2 = actor({
   actions: { /* ... */ }
 });
 
-// Using onInitialize
+// Using onCreate
 const counter3 = actor({
   state: { count: 0 },
   
   // Run initialization logic (logging, external service setup, etc.)
-  onInitialize: (c) => {
+  onCreate: (c) => {
     console.log("Counter actor initialized");
     // Can perform async operations or setup
     // No need to return anything
@@ -290,7 +290,7 @@ const counter = actor({
   }),
   
   // Initialize actor (run setup that doesn't affect initial state)
-  onInitialize: (c) => {
+  onCreate: (c) => {
     console.log('Counter actor initialized');
     // Set up external resources, etc.
   },
