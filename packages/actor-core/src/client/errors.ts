@@ -30,7 +30,7 @@ export class NoSupportedTransport extends ActorClientError {
 	}
 }
 
-export class RpcError extends ActorClientError {
+export class ActionError extends ActorClientError {
 	constructor(
 		public readonly code: string,
 		message: string,

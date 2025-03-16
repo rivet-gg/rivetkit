@@ -10,7 +10,7 @@ import { CachedSerializer, Encoding } from "./protocol/serde";
 import { logger } from "./log";
 import { ConnectionDriver } from "./driver";
 import * as messageToClient from "@/actor/protocol/message/to-client";
-import { Rpcs } from "./config";
+import { Actions } from "./config";
 
 export function generateConnectionId(): string {
 	return crypto.randomUUID();

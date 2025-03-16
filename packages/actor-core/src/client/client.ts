@@ -437,7 +437,7 @@ export class ClientRaw {
 				if (typeof prop === "string") {
 					let method = methodCache.get(prop);
 					if (!method) {
-						method = (...args: unknown[]) => target.rpc(prop, ...args);
+						method = (...args: unknown[]) => target.action(prop, ...args);
 						methodCache.set(prop, method);
 					}
 					return method;
@@ -476,7 +476,7 @@ export class ClientRaw {
 						configurable: true,
 						enumerable: false,
 						writable: false,
-						value: (...args: unknown[]) => target.rpc(prop, ...args),
+						value: (...args: unknown[]) => target.action(prop, ...args),
 					};
 				}
 				return undefined;

@@ -5,23 +5,22 @@ import type { ActorTags } from "@/common/utils";
 import type { Schedule } from "./schedule";
 import type { ConnectionId } from "./connection";
 import type { SaveStateOptions } from "./instance";
-import { Rpcs } from "./config";
+import { Actions } from "./config";
 import { ActorContext } from "./context";
 
 /**
  * Context for a remote procedure call.
  *
- * @typeParam A Actor this RPC belongs to
- * @see {@link https://rivet.gg/docs/rpc|RPC Documentation}
+ * @typeParam A Actor this action belongs to
  */
-export class RpcContext<S, CP, CS> {
+export class ActionContext<S, CP, CS> {
   #actorContext: ActorContext<S, CP, CS>;
   
   /**
    * Should not be called directly.
    *
    * @param actorContext - The actor context
-   * @param connection - The connection associated with the RPC.
+   * @param connection - The connection associated with the action
    */
   constructor(
     actorContext: ActorContext<S, CP, CS>,
@@ -33,7 +32,7 @@ export class RpcContext<S, CP, CS> {
   /**
    * Get the actor state
    */
-  get state(): any {
+  get state(): S {
     return this.#actorContext.state;
   }
   

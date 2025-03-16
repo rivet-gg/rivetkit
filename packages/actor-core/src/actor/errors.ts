@@ -57,15 +57,15 @@ export class ConnectionStateNotEnabled extends ActorError {
 	}
 }
 
-export class RpcTimedOut extends ActorError {
+export class ActionTimedOut extends ActorError {
 	constructor() {
-		super("rpc_timed_out", "RPC timed out.", { public: true });
+		super("action_timed_out", "Action timed out.", { public: true });
 	}
 }
 
-export class RpcNotFound extends ActorError {
+export class ActionNotFound extends ActorError {
 	constructor() {
-		super("rpc_not_found", "RPC not found.", { public: true });
+		super("action_not_found", "Action not found.", { public: true });
 	}
 }
 

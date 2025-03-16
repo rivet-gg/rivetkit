@@ -9,7 +9,7 @@ import type { ConnectionDriver } from "./driver";
 import * as errors from "./errors";
 import { processMessage } from "./protocol/message/mod";
 import { instanceLogger, logger } from "./log";
-import { RpcContext } from "./rpc";
+import { ActionContext } from "./action";
 import { Lock, deadline } from "./utils";
 import { Schedule } from "./schedule";
 import { KEYS } from "./keys";
@@ -172,7 +172,7 @@ export class ActorInstance<S, CP, CS> {
 	}
 
 	get stateEnabled() {
-		return typeof this.#config.onInitialize === "function";
+		return "createState" in this.#config || "state" in this.#config;
 	}
 
 	#validateStateEnabled() {
@@ -182,7 +182,10 @@ export class ActorInstance<S, CP, CS> {
 	}
 
 	get #connectionStateEnabled() {
-		return typeof this.#config.onBeforeConnect === "function";
+		return (
+			"createConnectionState" in this.#config ||
+			"connectionState" in this.#config
+		);
 	}
 
 	/** Promise used to wait for a save to complete. This is required since you cannot await `#saveStateThrottled`. */
@@ -349,19 +352,22 @@ export class ActorInstance<S, CP, CS> {
 		} else {
 			logger().info("actor creating");
 
+			if (this.#config.onInitialize) {
+				await this.#config.onInitialize();
+			}
+
 			// Initialize actor state
 			let stateData: unknown = undefined;
 			if (this.stateEnabled) {
-				if (!this.#config.onInitialize) throw new Error("missing onInitialize");
-
 				logger().info("actor state initializing");
 
-				const stateOrPromise = await this.#config.onInitialize();
-
-				if (stateOrPromise instanceof Promise) {
-					stateData = await stateOrPromise;
+				if ("createState" in this.#config) {
+					this.#config.createState;
+					stateData = await this.#config.createState();
+				} else if ("state" in this.#config) {
+					stateData = structuredClone(this.#config.state);
 				} else {
-					stateData = stateOrPromise;
+					throw new Error("Both 'createState' or 'state' were not defined");
 				}
 			} else {
 				logger().debug("state not enabled");
@@ -435,7 +441,7 @@ export class ActorInstance<S, CP, CS> {
 		}
 	}
 
-	async pepareConnection(
+	async prepareConnection(
 		// biome-ignore lint/suspicious/noExplicitAny: TypeScript bug with ExtractActorConnParams<this>,
 		parameters: any,
 		request?: Request,
@@ -443,15 +449,31 @@ export class ActorInstance<S, CP, CS> {
 		// Authenticate connection
 		let connState: CS | undefined = undefined;
 		const PREPARE_CONNECT_TIMEOUT = 5000; // 5 seconds
+
+		const onBeforeConnectOpts = {
+			request,
+			parameters,
+		};
+
 		if (this.#config.onBeforeConnect) {
-			const dataOrPromise = this.#config.onBeforeConnect({
-				request,
-				parameters,
-			});
-			if (dataOrPromise instanceof Promise) {
-				connState = await deadline(dataOrPromise, PREPARE_CONNECT_TIMEOUT);
+			await this.#config.onBeforeConnect(onBeforeConnectOpts);
+		}
+
+		if (this.#connectionStateEnabled) {
+			if ("createConnectionState" in this.#config) {
+				const dataOrPromise =
+					this.#config.createConnectionState(onBeforeConnectOpts);
+				if (dataOrPromise instanceof Promise) {
+					connState = await deadline(dataOrPromise, PREPARE_CONNECT_TIMEOUT);
+				} else {
+					connState = dataOrPromise;
+				}
+			} else if ("connectionState" in this.#config) {
+				connState = structuredClone(this.#config.connectionState);
 			} else {
-				connState = dataOrPromise;
+				throw new Error(
+					"Could not create connection state from 'createConnectionState' or 'connectionState'",
+				);
 			}
 		}
 
@@ -651,22 +673,22 @@ export class ActorInstance<S, CP, CS> {
 	 * @internal
 	 */
 	async executeRpc(
-		ctx: RpcContext<S, CP, CS>,
+		ctx: ActionContext<S, CP, CS>,
 		rpcName: string,
 		args: unknown[],
 	): Promise<unknown> {
 		// Prevent calling private or reserved methods
-		if (!(rpcName in this.#config.rpcs)) {
+		if (!(rpcName in this.#config.actions)) {
 			logger().warn("rpc does not exist", { rpcName });
-			throw new errors.RpcNotFound();
+			throw new errors.ActionNotFound();
 		}
 
 		// Check if the method exists on this object
 		// biome-ignore lint/suspicious/noExplicitAny: RPC name is dynamic from client
-		const rpcFunction = this.#config.rpcs[rpcName];
+		const rpcFunction = this.#config.actions[rpcName];
 		if (typeof rpcFunction !== "function") {
-			logger().warn("rpc not found", { rpcName });
-			throw new errors.RpcNotFound();
+			logger().warn("action not found", { actionName: rpcName });
+			throw new errors.ActionNotFound();
 		}
 
 		// TODO: pass abortable to the rpc to decide when to abort
@@ -678,16 +700,16 @@ export class ActorInstance<S, CP, CS> {
 			if (outputOrPromise instanceof Promise) {
 				output = await deadline(
 					outputOrPromise,
-					this.#config.options.rpc.timeout,
+					this.#config.options.action.timeout,
 				);
 			} else {
 				output = outputOrPromise;
 			}
 
 			// Process the output through onBeforeRpcResponse if configured
-			if (this.#config.onBeforeRpcResponse) {
+			if (this.#config.onBeforeActionResponse) {
 				try {
-					const processedOutput = this.#config.onBeforeRpcResponse(
+					const processedOutput = this.#config.onBeforeActionResponse(
 						rpcName,
 						args,
 						output,
@@ -707,7 +729,7 @@ export class ActorInstance<S, CP, CS> {
 			return output;
 		} catch (error) {
 			if (error instanceof DOMException && error.name === "TimeoutError") {
-				throw new errors.RpcTimedOut();
+				throw new errors.ActionTimedOut();
 			}
 			throw error;
 		} finally {
@@ -719,7 +741,7 @@ export class ActorInstance<S, CP, CS> {
 	 * Returns a list of RPC methods available on this actor.
 	 */
 	get rpcs(): string[] {
-		return Object.keys(this.#config.rpcs);
+		return Object.keys(this.#config.actions);
 	}
 
 	// MARK: Lifecycle hooks

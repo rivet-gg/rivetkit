@@ -20,7 +20,7 @@ import {
 	type GenericSseDriverState,
 	type GenericWebSocketDriverState,
 } from "../common/generic-conn-driver";
-import { RpcContext } from "@/actor/rpc";
+import { ActionContext } from "@/actor/action";
 import { DriverConfig } from "@/driver-helpers/config";
 import { AppConfig } from "@/app/config";
 
@@ -135,7 +135,7 @@ export class StandaloneTopology {
 
 				const connId = generateConnectionId();
 				const connToken = generateConnectionToken();
-				const connState = await actor.pepareConnection(connParams, req.raw);
+				const connState = await actor.prepareConnection(connParams, req.raw);
 
 				let conn: AnyConnection | undefined;
 				return {
@@ -181,7 +181,7 @@ export class StandaloneTopology {
 
 				const connId = generateConnectionId();
 				const connToken = generateConnectionToken();
-				const connState = await actor.pepareConnection(connParams, req.raw);
+				const connState = await actor.prepareConnection(connParams, req.raw);
 
 				let conn: AnyConnection | undefined;
 				return {
@@ -217,7 +217,7 @@ export class StandaloneTopology {
 					const { actor } = await this.#getActor(actorId);
 
 					// Create conn
-					const connState = await actor.pepareConnection(
+					const connState = await actor.prepareConnection(
 						connParams,
 						req.raw,
 					);
@@ -231,7 +231,7 @@ export class StandaloneTopology {
 					);
 
 					// Call RPC
-					const ctx = new RpcContext(actor.actorContext!, conn);
+					const ctx = new ActionContext(actor.actorContext!, conn);
 					const output = await actor.executeRpc(ctx, rpcName, rpcArgs);
 
 					return { output };

@@ -125,7 +125,7 @@ export class Node {
 				return;
 			}
 
-			const connState = await actor.pepareConnection(connParams);
+			const connState = await actor.prepareConnection(connParams);
 			await actor.createConnection(
 				connId,
 				connToken,

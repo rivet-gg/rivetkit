@@ -31,7 +31,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250129.0",
     "actor-core": "workspace:*",
-    "tsup": "^8.3.6",
+    "tsup": "^8.4.0",
     "typescript": "^5.5.2",
     "wrangler": "^3.101.0"
   },

@@ -1,32 +1,39 @@
 import { Connection } from "./connection";
-import { RpcContext } from "./rpc";
+import { ActionContext as ActionContext } from "./action";
 import { z } from "zod";
+import { ActorDefinition } from "./definition";
 
 /**
  * Schema for actor state configuration
  */
-export const StateOptionsSchema = z.object({
-	saveInterval: z.number().positive().default(10_000),
-}).strict();
+export const StateOptionsSchema = z
+	.object({
+		saveInterval: z.number().positive().default(10_000),
+	})
+	.strict();
 
 export type StateOptionsType = z.infer<typeof StateOptionsSchema>;
 
 /**
- * Schema for RPC configuration
+ * Schema for action configuration
  */
-export const RpcOptionsSchema = z.object({
-	timeout: z.number().positive().default(60_000),
-}).strict();
+export const ActionOptionsSchema = z
+	.object({
+		timeout: z.number().positive().default(60_000),
+	})
+	.strict();
 
-export type RpcOptionsType = z.infer<typeof RpcOptionsSchema>;
+export type ActionOptionsType = z.infer<typeof ActionOptionsSchema>;
 
 /**
  * Full options schema
  */
-export const OptionsSchema = z.object({
-	state: StateOptionsSchema.default({}),
-	rpc: RpcOptionsSchema.default({}),
-}).strict();
+export const OptionsSchema = z
+	.object({
+		state: StateOptionsSchema.default({}),
+		action: ActionOptionsSchema.default({}),
+	})
+	.strict();
 
 export type OptionsType = z.infer<typeof OptionsSchema>;
 
@@ -36,141 +43,188 @@ export type OptionsType = z.infer<typeof OptionsSchema>;
 export const createOnBeforeConnectOptionsSchema = <CP extends z.ZodTypeAny>(
 	connectParams: CP,
 ) =>
-	z.object({
-		/**
-		 * The request object associated with the connection.
-		 *
-		 * @experimental
-		 */
-		request: z.instanceof(Request).optional(),
+	z
+		.object({
+			/**
+			 * The request object associated with the connection.
+			 *
+			 * @experimental
+			 */
+			request: z.instanceof(Request).optional(),
 
-		/**
-		 * The parameters passed when a client connects to the actor.
-		 */
-		parameters: connectParams,
-	}).strict();
+			/**
+			 * The parameters passed when a client connects to the actor.
+			 */
+			parameters: connectParams,
+		})
+		.strict();
 
 /**
- * Creates a type-safe schema for RPC definitions with proper generics
+ * Creates a type-safe schema for action definitions with proper generics
  */
-export const createRpcSchema = <S, CP, CS>() =>
+export const createActionSchema = <S, CP, CS>() =>
 	z.record(
 		z.string(),
-		z.custom<(ctx: RpcContext<S, CP, CS>, ...args: any[]) => any>(),
+		z.custom<(ctx: ActionContext<S, CP, CS>, ...args: any[]) => any>(),
 	);
+
+// Creates state config
+//
+// This must have only one or the other or else S will not be able to be inferred
+export const createStateSchema = <S>() =>
+	z.union([
+		z.object({ state: z.custom<S>() }).strict(),
+		z.object({ createState: z.custom<() => S | Promise<S>>() }).strict(),
+		z.object({}).strict(),
+	]);
+
+// Creates connection state config
+//
+// This must have only one or the other or else S will not be able to be inferred
+export const createConnectionStateSchema = <CS, CP>() =>
+	z.union([
+		z.object({ connectionState: z.custom<CS>() }).strict(),
+		z
+			.object({
+				createConnectionState:
+					z.custom<
+						(
+							opts: z.infer<
+								ReturnType<
+									typeof createOnBeforeConnectOptionsSchema<z.ZodType<CP>>
+								>
+							>,
+						) => CS | Promise<CS>
+					>(),
+			})
+			.strict(),
+		z.object({}).strict(),
+	]);
 
 /**
  * Creates a type-safe schema for full actor configuration
  */
-export const createActorConfigSchema = <S, CP, CS>() => {
-	return z.object({
-		/**
-		 * Called when the actor is first initialized.
-		 * 
-		 * Use this hook to initialize your actor's state.
-		 * This is called before any other lifecycle hooks.
-		 * 
-		 * @returns The initial state for the actor
-		 */
-		onInitialize: z.custom<() => S | Promise<S>>().optional(),
+export const createActorConfigSchema = <
+	S,
+	CP = undefined,
+	CS = undefined,
+>() => {
+	return z
+		.object({
+			/**
+			 * Called when the actor is first initialized.
+			 *
+			 * Use this hook to initialize your actor's state.
+			 * This is called before any other lifecycle hooks.
+			 */
+			onInitialize: z.custom<() => void | Promise<void>>().optional(),
 
-		/**
-		 * Called when the actor is started and ready to receive connections and RPCs.
-		 * 
-		 * Use this hook to initialize resources needed for the actor's operation
-		 * (timers, external connections, etc.)
-		 * 
-		 * @returns Void or a Promise that resolves when startup is complete
-		 */
-		onStart: z.custom<() => void | Promise<void>>().optional(),
+			/**
+			 * Called when the actor is started and ready to receive connections and action.
+			 *
+			 * Use this hook to initialize resources needed for the actor's operation
+			 * (timers, external connections, etc.)
+			 *
+			 * @returns Void or a Promise that resolves when startup is complete
+			 */
+			onStart: z.custom<() => void | Promise<void>>().optional(),
 
-		/**
-		 * Called when the actor's state changes.
-		 * 
-		 * Use this hook to react to state changes, such as updating
-		 * external systems or triggering events.
-		 * 
-		 * @param newState The updated state
-		 */
-		onStateChange: z.custom<(newState: S) => void>().optional(),
+			/**
+			 * Called when the actor's state changes.
+			 *
+			 * Use this hook to react to state changes, such as updating
+			 * external systems or triggering events.
+			 *
+			 * @param newState The updated state
+			 */
+			onStateChange: z.custom<(newState: S) => void>().optional(),
 
-		/**
-		 * Called before a client connects to the actor.
-		 * 
-		 * Use this hook to determine if a connection should be accepted
-		 * and to initialize connection-specific state.
-		 * 
-		 * @param opts Connection parameters including client-provided data
-		 * @returns The initial connection state or a Promise that resolves to it
-		 * @throws Throw an error to reject the connection
-		 */
-		onBeforeConnect: z
-			.custom<
-				(
-					opts: z.infer<
-						ReturnType<typeof createOnBeforeConnectOptionsSchema<z.ZodType<CP>>>
-					>,
-				) => CS | Promise<CS>
-			>()
-			.optional(),
+			/**
+			 * Called before a client connects to the actor.
+			 *
+			 * Use this hook to determine if a connection should be accepted
+			 * and to initialize connection-specific state.
+			 *
+			 * @param opts Connection parameters including client-provided data
+			 * @returns The initial connection state or a Promise that resolves to it
+			 * @throws Throw an error to reject the connection
+			 */
+			onBeforeConnect: z
+				.custom<
+					(
+						opts: z.infer<
+							ReturnType<
+								typeof createOnBeforeConnectOptionsSchema<z.ZodType<CP>>
+							>
+						>,
+					) => void | Promise<void>
+				>()
+				.optional(),
 
-		/**
-		 * Called when a client successfully connects to the actor.
-		 * 
-		 * Use this hook to perform actions when a connection is established,
-		 * such as sending initial data or updating the actor's state.
-		 * 
-		 * @param connection The connection object
-		 * @returns Void or a Promise that resolves when connection handling is complete
-		 */
-		onConnect: z
-			.custom<(connection: Connection<S, CP, CS>) => void | Promise<void>>()
-			.optional(),
+			/**
+			 * Called when a client successfully connects to the actor.
+			 *
+			 * Use this hook to perform actions when a connection is established,
+			 * such as sending initial data or updating the actor's state.
+			 *
+			 * @param connection The connection object
+			 * @returns Void or a Promise that resolves when connection handling is complete
+			 */
+			onConnect: z
+				.custom<(connection: Connection<S, CP, CS>) => void | Promise<void>>()
+				.optional(),
 
-		/**
-		 * Called when a client disconnects from the actor.
-		 * 
-		 * Use this hook to clean up resources associated with the connection
-		 * or update the actor's state.
-		 * 
-		 * @param connection The connection that is being closed
-		 * @returns Void or a Promise that resolves when disconnect handling is complete
-		 */
-		onDisconnect: z
-			.custom<(connection: Connection<S, CP, CS>) => void | Promise<void>>()
-			.optional(),
+			/**
+			 * Called when a client disconnects from the actor.
+			 *
+			 * Use this hook to clean up resources associated with the connection
+			 * or update the actor's state.
+			 *
+			 * @param connection The connection that is being closed
+			 * @returns Void or a Promise that resolves when disconnect handling is complete
+			 */
+			onDisconnect: z
+				.custom<(connection: Connection<S, CP, CS>) => void | Promise<void>>()
+				.optional(),
 
-		/**
-		 * Called before sending an RPC response to the client.
-		 * 
-		 * Use this hook to modify or transform the output of an RPC before it's sent
-		 * to the client. This is useful for formatting responses, adding metadata,
-		 * or applying transformations to the output.
-		 * 
-		 * @param name The name of the RPC that was called
-		 * @param args The arguments that were passed to the RPC
-		 * @param output The output that will be sent to the client
-		 * @returns The modified output to send to the client
-		 */
-		onBeforeRpcResponse: z
-			.custom<
-				<Out>(name: string, args: unknown[], output: Out) => Out | Promise<Out>
-			>()
-			.optional(),
+			/**
+			 * Called before sending an action response to the client.
+			 *
+			 * Use this hook to modify or transform the output of an action before it's sent
+			 * to the client. This is useful for formatting responses, adding metadata,
+			 * or applying transformations to the output.
+			 *
+			 * @param name The name of the action that was called
+			 * @param args The arguments that were passed to the action
+			 * @param output The output that will be sent to the client
+			 * @returns The modified output to send to the client
+			 */
+			onBeforeActionResponse: z
+				.custom<
+					<Out>(
+						name: string,
+						args: unknown[],
+						output: Out,
+					) => Out | Promise<Out>
+				>()
+				.optional(),
 
-		/**
-		 * Remote procedure calls exposed by this actor.
-		 */
-		rpcs: createRpcSchema<S, CP, CS>(),
-		options: OptionsSchema.default({}),
-	}).strict();
+			/**
+			 * Remote procedure calls exposed by this actor.
+			 */
+			actions: createActionSchema<S, CP, CS>(),
+			options: OptionsSchema.default({}),
+		})
+		.strict()
+		.and(createStateSchema<S>())
+		.and(createConnectionStateSchema<CS, CP>());
 };
 
 /**
- * Type helper for RPC schema
+ * Type helper for action schema
  */
-export type Rpcs<S, CP, CS> = z.infer<
-	ReturnType<typeof createRpcSchema<S, CP, CS>>
+export type Actions<S, CP, CS> = z.infer<
+	ReturnType<typeof createActionSchema<S, CP, CS>>
 >;
 
 /**
@@ -180,20 +234,49 @@ export type OnBeforeConnectOptions<CP> = z.infer<
 	ReturnType<typeof createOnBeforeConnectOptionsSchema<z.ZodType<CP>>>
 >;
 
-// RPCs don't need to be generic since this type is used internally at this point.
+// Actions don't need to be generic since this type is used internally at this point.
 export type ActorConfig<S, CP, CS> = z.infer<
 	ReturnType<typeof createActorConfigSchema<S, CP, CS>>
 >;
 
-// Replace `rpcs` with generic type so we can infer RPCs elsewhere in the codebase.
+// Replace `Actions` with generic type so we can infer Action elsewhere in the codebase.
+//
+// `state`, `createState`, and other complex types must be excluded because you cannot do `Omit<A & (B | C), "foo">`. It only works as `Omit<A, "foo"> & (B | C)`
 export type ActorConfigInput<
 	S,
 	CP,
 	CS,
-	R extends Rpcs<S, CP, CS> = Rpcs<S, CP, CS>,
+	R extends Actions<S, CP, CS> = Actions<S, CP, CS>,
 > = Omit<
 	z.input<ReturnType<typeof createActorConfigSchema<S, CP, CS>>>,
-	"rpcs"
-> & {
-	rpcs: R;
-};
+	| "actions"
+	| "state"
+	| "createState"
+	| "connectionState"
+	| "createConnectionState"
+> &
+	z.input<ReturnType<typeof createStateSchema<S>>> &
+	z.input<ReturnType<typeof createConnectionStateSchema<CS, CP>>> & {
+		actions: R;
+	};
+
+// For testing type definitions:
+//export function test<
+//	R extends Actions<S, CP, CS>,
+//	S,
+//	CP = undefined,
+//	CS = undefined,
+//>(input: ActorConfigInput<S, CP, CS, R>): ActorConfig<S, CP, CS> {
+//	return createActorConfigSchema<S, CP, CS>().parse(input);
+//}
+//
+//const x = test({
+//	state: { count: 0 },
+//	actions: {
+//		increment: (c, x: number) => {
+//			c.state.count += x;
+//			c.broadcast("newCount", c.state.count);
+//			return c.state.count;
+//		},
+//	},
+//});

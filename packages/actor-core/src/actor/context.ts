@@ -1,5 +1,5 @@
 import { Logger } from "@/common/log";
-import { Rpcs } from "./config";
+import { Actions } from "./config";
 import { ActorInstance, SaveStateOptions } from "./instance";
 import { Connection, ConnectionId } from "./connection";
 import { ActorTags } from "@/common/utils";

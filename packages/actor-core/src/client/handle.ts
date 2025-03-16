@@ -114,11 +114,11 @@ export class ActorHandleRaw {
 	 * @param {...Args} args - The arguments to pass to the RPC function.
 	 * @returns {Promise<Response>} - A promise that resolves to the response of the RPC function.
 	 */
-	async rpc<Args extends Array<unknown> = unknown[], Response = unknown>(
+	async action<Args extends Array<unknown> = unknown[], Response = unknown>(
 		name: string,
 		...args: Args
 	): Promise<Response> {
-		logger().debug("rpc", { name, args });
+		logger().debug("action", { name, args });
 
 		// TODO: Add to queue if socket is not open
 
@@ -350,14 +350,14 @@ enc
 			const inFlight = this.#takeRpcInFlight(rpcId);
 
 			logger().warn("actor error", {
-				rpcId,
-				rpcName: inFlight?.name,
+				actionId: rpcId,
+				actionName: inFlight?.name,
 				code,
 				message,
 				metadata,
 			});
 
-			inFlight.reject(new errors.RpcError(code, message, metadata));
+			inFlight.reject(new errors.ActionError(code, message, metadata));
 		} else if ("ev" in response.b) {
 			this.#dispatchEvent(response.b.ev);
 		} else if ("er" in response.b) {

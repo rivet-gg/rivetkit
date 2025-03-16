@@ -4,7 +4,7 @@ import type { App } from "../src/index";
 import type counterDef from "../src/counter";
 
 async function main() {
-	const client = createClient<App>(process.env.ENDPOINT ?? `http://localhost:6420`);
+	const client = createClient<App>(process.env.ENDPOINT ?? "http://localhost:6420");
 
 	const counter = await client.counter.get()
 	//const counter = await client.get<typeof counterDef>({ name: "counter" });

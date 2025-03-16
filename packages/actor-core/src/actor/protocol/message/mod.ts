@@ -4,7 +4,7 @@ import type { ActorInstance, AnyActorInstance } from "../../instance";
 import type { Connection } from "../../connection";
 import * as errors from "../../errors";
 import { logger } from "../../log";
-import { RpcContext } from "../../rpc";
+import { ActionContext } from "../../action";
 import { assertUnreachable } from "../../utils";
 import { z } from "zod";
 import {
@@ -14,7 +14,7 @@ import {
 	CachedSerializer,
 } from "@/actor/protocol/serde";
 import { deconstructError } from "@/common/utils";
-import { Rpcs } from "@/actor/config";
+import { Actions } from "@/actor/config";
 
 export const TransportSchema = z.enum(["websocket", "sse"]);
 
@@ -71,7 +71,7 @@ export async function parseMessage(
 
 export interface ProcessMessageHandler<S, CP, CS> {
 	onExecuteRpc?: (
-		ctx: RpcContext<S, CP, CS>,
+		ctx: ActionContext<S, CP, CS>,
 		name: string,
 		args: unknown[],
 	) => Promise<unknown>;
@@ -101,7 +101,7 @@ export async function processMessage<S, CP, CS>(
 			rpcId = id;
 			rpcName = name;
 
-			const ctx = new RpcContext<S, CP, CS>(actor.actorContext, conn);
+			const ctx = new ActionContext<S, CP, CS>(actor.actorContext, conn);
 			const output = await handler.onExecuteRpc(ctx, name, args);
 
 			conn._sendMessage(

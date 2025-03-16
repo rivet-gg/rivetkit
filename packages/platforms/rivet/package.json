@@ -32,7 +32,7 @@
     "@rivet-gg/actor-core": "^25.1.0",
     "@types/deno": "^2.0.0",
     "actor-core": "workspace:*",
-    "tsup": "^8.3.6",
+    "tsup": "^8.4.0",
     "typescript": "^5.5.2"
   },
   "dependencies": {

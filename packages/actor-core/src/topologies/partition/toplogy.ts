@@ -10,7 +10,7 @@ import {
 	generateConnectionToken,
 } from "@/actor/connection";
 import { logger } from "./log";
-import { RpcContext } from "@/actor/rpc";
+import { ActionContext } from "@/actor/action";
 import {
 	CONN_DRIVER_GENERIC_HTTP,
 	CONN_DRIVER_GENERIC_SSE,
@@ -83,7 +83,7 @@ export class PartitionTopologyActor {
 
 					const connId = generateConnectionId();
 					const connToken = generateConnectionToken();
-					const connState = await actor.pepareConnection(
+					const connState = await actor.prepareConnection(
 						connParams,
 						req.raw,
 					);
@@ -133,7 +133,7 @@ export class PartitionTopologyActor {
 
 					const connId = generateConnectionId();
 					const connToken = generateConnectionToken();
-					const connState = await actor.pepareConnection(
+					const connState = await actor.prepareConnection(
 						connParams,
 						req.raw,
 					);
@@ -174,7 +174,7 @@ export class PartitionTopologyActor {
 						if (!actor) throw new Error("Actor should be defined");
 
 						// Create conn
-						const connState = await actor.pepareConnection(
+						const connState = await actor.prepareConnection(
 							connParams,
 							req.raw,
 						);
@@ -188,7 +188,7 @@ export class PartitionTopologyActor {
 						);
 
 						// Call RPC
-						const ctx = new RpcContext(actor.actorContext!, conn!);
+						const ctx = new ActionContext(actor.actorContext!, conn!);
 						const output = await actor.executeRpc(ctx, rpcName, rpcArgs);
 
 						return { output };

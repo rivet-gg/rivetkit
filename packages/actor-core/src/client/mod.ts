@@ -9,10 +9,7 @@ export type {
 	QueryOptions,
 	Region,
 } from "./client";
-export type {
-	ActorHandle,
-	ActorRPCFunction,
-} from "./handle";
+export type { ActorHandle } from "./handle";
 export { ActorHandleRaw } from "./handle";
 export type { EventUnsubscribe } from "./handle";
 export type { Transport } from "@/actor/protocol/message/mod";
