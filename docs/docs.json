@@ -63,12 +63,12 @@
               "concepts/events",
               "concepts/lifecycle",
               "concepts/schedule",
+              "concepts/authentication",
               {
                 "group": "More",
                 "pages": [
                   "concepts/connections",
                   "concepts/metadata",
-                  "concepts/authentication",
                   "concepts/cors",
                   "concepts/logging",
                   "concepts/scaling",
