@@ -9,6 +9,7 @@ import type { Hono } from "hono";
 import { PartitionTopologyManager } from "actor-core/topologies/partition";
 import { logger } from "./log";
 import { CloudflareWorkersManagerDriver } from "./manager_driver";
+import { ActorCoreApp } from "actor-core";
 
 /** Cloudflare Workers env */
 export interface Bindings {
@@ -16,12 +17,12 @@ export interface Bindings {
 	ACTOR_DO: DurableObjectNamespace<ActorHandlerInterface>;
 }
 
-export function createHandler(inputConfig: InputConfig): {
+export function createHandler(app: ActorCoreApp<any>, inputConfig?: InputConfig): {
 	handler: ExportedHandler<Bindings>;
 	ActorHandler: DurableObjectConstructor;
 } {
 	// Create router
-	const { router, ActorHandler } = createRouter(inputConfig);
+	const { router, ActorHandler } = createRouter(app, inputConfig);
 
 	// Create Cloudflare handler
 	const handler = {
@@ -31,33 +32,36 @@ export function createHandler(inputConfig: InputConfig): {
 	return { handler, ActorHandler };
 }
 
-export function createRouter(inputConfig: InputConfig): {
+export function createRouter(
+	app: ActorCoreApp<any>,
+	inputConfig?: InputConfig,
+): {
 	router: Hono<{ Bindings: Bindings }>;
 	ActorHandler: DurableObjectConstructor;
 } {
-	const config = ConfigSchema.parse(inputConfig);
+	const driverConfig = ConfigSchema.parse(inputConfig);
 
 	// Configur drivers
 	//
 	// Actor driver will get set in `ActorHandler`
-	if (!config.drivers) config.drivers = {};
-	if (!config.drivers.manager)
-		config.drivers.manager = new CloudflareWorkersManagerDriver();
+	if (!driverConfig.drivers) driverConfig.drivers = {};
+	if (!driverConfig.drivers.manager)
+		driverConfig.drivers.manager = new CloudflareWorkersManagerDriver();
 
 	// Create Durable Object
-	const ActorHandler = createActorDurableObject(config);
+	const ActorHandler = createActorDurableObject(app, driverConfig);
 
-	config.topology = config.topology ?? "partition";
-	if (config.topology === "partition") {
-		const managerTopology = new PartitionTopologyManager(config);
+	driverConfig.topology = driverConfig.topology ?? "partition";
+	if (driverConfig.topology === "partition") {
+		const managerTopology = new PartitionTopologyManager(app.config, driverConfig);
 
 		// Force the router to have access to the Cloudflare bindings
-		const app = managerTopology.router as unknown as Hono<{
+		const router = managerTopology.router as unknown as Hono<{
 			Bindings: Bindings;
 		}>;
 
 		// Forward requests to actor
-		app.all("/actors/:actorId/:path{.+}", (c) => {
+		router.all("/actors/:actorId/:path{.+}", (c) => {
 			const actorId = c.req.param("actorId");
 			const subpath = `/${c.req.param("path")}`;
 			logger().debug("forwarding request", { actorId, subpath });
@@ -73,13 +77,13 @@ export function createRouter(inputConfig: InputConfig): {
 			return stub.fetch(actorRequest);
 		});
 
-		return { router: app, ActorHandler };
+		return { router, ActorHandler };
 	} else if (
-		config.topology === "standalone" ||
-		config.topology === "coordinate"
+		driverConfig.topology === "standalone" ||
+		driverConfig.topology === "coordinate"
 	) {
 		throw new Error("Cloudflare only supports partition topology.");
 	} else {
-		assertUnreachable(config.topology);
+		assertUnreachable(driverConfig.topology);
 	}
 }

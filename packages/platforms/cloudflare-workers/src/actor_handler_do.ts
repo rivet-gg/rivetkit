@@ -1,15 +1,15 @@
 import { DurableObject } from "cloudflare:workers";
-import type { ActorTags } from "actor-core";
+import type { ActorCoreApp, ActorTags } from "actor-core";
 import { logger } from "./log";
-import { Config } from "./config";
+import type { Config } from "./config";
 import { PartitionTopologyActor } from "actor-core/topologies/partition";
 import { CloudflareWorkersActorDriver } from "./actor_driver";
-import { Hono } from "hono";
 import { upgradeWebSocket } from "./websocket";
 
 const KEYS = {
 	STATE: {
 		INITIALIZED: "actor:state:initialized",
+		NAME: "actor:state:name",
 		TAGS: "actor:state:tags",
 	},
 };
@@ -19,10 +19,12 @@ export interface ActorHandlerInterface extends DurableObject {
 }
 
 export interface ActorInitRequest {
+	name: string;
 	tags: ActorTags;
 }
 
 interface InitializedData {
+	name: string;
 	tags: ActorTags;
 }
 
@@ -35,6 +37,7 @@ interface LoadedActor {
 }
 
 export function createActorDurableObject(
+	app: ActorCoreApp<any>,
 	config: Config,
 ): DurableObjectConstructor {
 	/**
@@ -62,15 +65,18 @@ export function createActorDurableObject(
 					this.#initializedPromise = Promise.withResolvers();
 					const res = await this.ctx.storage.get([
 						KEYS.STATE.INITIALIZED,
+						KEYS.STATE.NAME,
 						KEYS.STATE.TAGS,
 					]);
 					if (res.get(KEYS.STATE.INITIALIZED)) {
+						const name = res.get(KEYS.STATE.NAME) as string;
+						if (!name) throw new Error("missing actor name");
 						const tags = res.get(KEYS.STATE.TAGS) as ActorTags;
 						if (!tags) throw new Error("missing actor tags");
 
-						logger().debug("already initialized", { tags });
+						logger().debug("already initialized", { name, tags });
 
-						this.#initialized = { tags };
+						this.#initialized = { name, tags };
 						this.#initializedPromise.resolve();
 					} else {
 						logger().debug("waiting to initialize");
@@ -91,7 +97,7 @@ export function createActorDurableObject(
 				config.drivers.actor = new CloudflareWorkersActorDriver(this.ctx);
 			if (!config.getUpgradeWebSocket)
 				config.getUpgradeWebSocket = () => upgradeWebSocket;
-			const actorTopology = new PartitionTopologyActor(config);
+			const actorTopology = new PartitionTopologyActor(app.config, config);
 
 			// Save actor
 			this.#actor = {
@@ -101,6 +107,7 @@ export function createActorDurableObject(
 			// Start actor
 			await actorTopology.start(
 				this.ctx.id.toString(),
+				this.#initialized.name,
 				this.#initialized.tags,
 				// TODO:
 				"unknown",
@@ -115,9 +122,11 @@ export function createActorDurableObject(
 
 			await this.ctx.storage.put({
 				[KEYS.STATE.INITIALIZED]: true,
+				[KEYS.STATE.NAME]: req.name,
 				[KEYS.STATE.TAGS]: req.tags,
 			});
 			this.#initialized = {
+				name: req.name,
 				tags: req.tags,
 			};
 
@@ -134,7 +143,7 @@ export function createActorDurableObject(
 
 		async alarm(): Promise<void> {
 			const { actorTopology } = await this.#loadActor();
-			await actorTopology.actor.__onAlarm();
+			await actorTopology.actor.onAlarm();
 		}
 	};
 }

@@ -15,7 +15,10 @@ export class RedisManagerDriver implements ManagerDriver {
 		this.#redis = redis;
 	}
 
-	async getForId({ baseUrl, actorId }: GetForIdInput): Promise<GetActorOutput | undefined> {
+	async getForId({
+		baseUrl,
+		actorId,
+	}: GetForIdInput): Promise<GetActorOutput | undefined> {
 		// TODO: Error handling
 
 		//// Validate actor
@@ -32,37 +35,47 @@ export class RedisManagerDriver implements ManagerDriver {
 		//return res.actor;
 
 		// Get tags from Redis
-		const tagsStr = await this.#redis.get(KEYS.ACTOR.tags(actorId));
-		
+		const [name, tagsStr] = await this.#redis.mget(
+			KEYS.ACTOR.name(actorId),
+			KEYS.ACTOR.tags(actorId),
+		);
+
 		// If the actor doesn't exist, return undefined
-		if (!tagsStr) {
+		if (!name || !tagsStr) {
 			return undefined;
 		}
-		
+
 		const tags = JSON.parse(tagsStr);
 
 		return {
 			endpoint: buildActorEndpoint(baseUrl, actorId),
+			name,
 			tags,
 		};
 	}
 
 	async getWithTags({
 		baseUrl,
+		name,
 		tags,
 	}: GetWithTagsInput): Promise<GetActorOutput | undefined> {
 		// TODO: use an inverse tree for correct tag looups
 
 		const actorId = await this.#redis.get(
-			`actor_tags:${JSON.stringify(tags)}:id`,
+			`actor_tags:${name}:${JSON.stringify(tags)}:id`,
 		);
 		if (actorId) {
 			// Get the complete tags for the actor
-			const tagsStr = await this.#redis.get(KEYS.ACTOR.tags(actorId));
-			const actorTags = tagsStr ? JSON.parse(tagsStr) : tags;
-			
+			const [name, tagsStr] = await this.#redis.mget(
+				KEYS.ACTOR.name(actorId),
+				KEYS.ACTOR.tags(actorId),
+			);
+			if (!name || !tagsStr) throw new Error("No actor found for ID");
+			const actorTags = JSON.parse(tagsStr);
+
 			return {
 				endpoint: buildActorEndpoint(baseUrl, actorId),
+				name,
 				tags: actorTags,
 			};
 		}
@@ -96,19 +109,21 @@ export class RedisManagerDriver implements ManagerDriver {
 
 	async createActor({
 		baseUrl,
-		region: _,
+		name,
 		tags,
 	}: CreateActorInput): Promise<GetActorOutput> {
 		const actorId = crypto.randomUUID();
 
 		await this.#redis.mset({
 			[KEYS.ACTOR.initialized(actorId)]: "1",
+			[KEYS.ACTOR.name(actorId)]: name,
 			[KEYS.ACTOR.tags(actorId)]: JSON.stringify(tags),
 			[`actor_tags:${JSON.stringify(tags)}:id`]: actorId,
 		});
 
 		return {
 			endpoint: buildActorEndpoint(baseUrl, actorId.toString()),
+			name,
 			tags,
 		};
 	}

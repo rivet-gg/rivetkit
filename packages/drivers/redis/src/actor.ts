@@ -1,7 +1,7 @@
 import type { ActorDriver, KvKey, KvValue } from "actor-core/driver-helpers";
 import type Redis from "ioredis";
 import { KEYS } from "./keys";
-import { AnyActor } from "actor-core";
+import { AnyActorInstance } from "actor-core/driver-helpers";
 
 export class RedisActorDriver implements ActorDriver {
     #redis: Redis;
@@ -44,7 +44,7 @@ export class RedisActorDriver implements ActorDriver {
         await this.#redis.del(key.map((k) => this.#serializeKey(actorId, k)));
     }
 
-    async setAlarm(_actor: AnyActor, _timestamp: number): Promise<void> {
+    async setAlarm(_actor: AnyActorInstance, _timestamp: number): Promise<void> {
         throw new Error("Alarms are not yet implemented for this driver.");
     }
 

@@ -33,10 +33,11 @@ export class CloudflareWorkersManagerDriver implements ManagerDriver {
 		//return res.actor;
 
 		// Get tags from KV
+		const name = await c.env.ACTOR_KV.get(`actor:${actorId}:name`);
 		const tagsStr = await c.env.ACTOR_KV.get(`actor:${actorId}:tags`);
 
 		// If the actor doesn't exist, return undefined
-		if (!tagsStr) {
+		if (!name || !tagsStr) {
 			return undefined;
 		}
 
@@ -44,6 +45,7 @@ export class CloudflareWorkersManagerDriver implements ManagerDriver {
 
 		return {
 			endpoint: buildActorEndpoint(baseUrl, actorId),
+			name,
 			tags,
 		};
 	}
@@ -51,6 +53,7 @@ export class CloudflareWorkersManagerDriver implements ManagerDriver {
 	async getWithTags({
 		c,
 		baseUrl,
+		name,
 		tags,
 	}: GetWithTagsInput<{ Bindings: Bindings }>): Promise<
 		GetActorOutput | undefined
@@ -60,15 +63,19 @@ export class CloudflareWorkersManagerDriver implements ManagerDriver {
 		// TODO: use an inverse tree for correct tag looups
 
 		const actorId = await c.env.ACTOR_KV.get(
-			`actor:tags:${JSON.stringify(tags)}:id`,
+			`actor:tags:${name}:${JSON.stringify(tags)}:id`,
 		);
 		if (actorId) {
 			// Get the complete tags for the actor
 			const tagsStr = await c.env.ACTOR_KV.get(`actor:${actorId}:tags`);
-			const actorTags = tagsStr ? JSON.parse(tagsStr) : tags;
+
+			if (!tagsStr) throw new Error("Missing actor for tags.");
+
+			const actorTags = JSON.parse(tagsStr);
 
 			return {
 				endpoint: buildActorEndpoint(baseUrl, actorId),
+				name,
 				tags: actorTags,
 			};
 		}
@@ -78,8 +85,9 @@ export class CloudflareWorkersManagerDriver implements ManagerDriver {
 	async createActor({
 		c,
 		baseUrl,
-		region,
+		name,
 		tags,
+		region,
 	}: CreateActorInput<{ Bindings: Bindings }>): Promise<GetActorOutput> {
 		if (!c) throw new Error("Missing Hono context");
 
@@ -90,20 +98,23 @@ export class CloudflareWorkersManagerDriver implements ManagerDriver {
 		// Init actor
 		const actor = c.env.ACTOR_DO.get(actorId);
 		await actor.initialize({
+			name,
 			tags,
 		});
 
 		// Save tags (after init so the actor is ready)
 		await c.env.ACTOR_KV.put(
-			`actor:tags:${JSON.stringify(tags)}:id`,
+			`actor:tags:${name}:${JSON.stringify(tags)}:id`,
 			actorId.toString(),
 		);
 
 		// Also store the tags indexed by actor ID
+		await c.env.ACTOR_KV.put(`actor:${actorId}:name`, name);
 		await c.env.ACTOR_KV.put(`actor:${actorId}:tags`, JSON.stringify(tags));
 
 		return {
 			endpoint: buildActorEndpoint(baseUrl, actorId.toString()),
+			name,
 			tags,
 		};
 	}

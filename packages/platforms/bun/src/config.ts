@@ -1,7 +1,7 @@
-import { BaseConfigSchema } from "actor-core/driver-helpers";
+import { DriverConfigSchema } from "actor-core/driver-helpers";
 import { z } from "zod";
 
-export const ConfigSchema = BaseConfigSchema.extend({
+export const ConfigSchema = DriverConfigSchema.extend({
 	hostname: z
 		.string()
 		.optional()
@@ -10,5 +10,5 @@ export const ConfigSchema = BaseConfigSchema.extend({
 		.number()
 		.optional()
 		.default(Number.parseInt(process.env.PORT ?? "6420")),
-});
+}).default({});
 export type InputConfig = z.input<typeof ConfigSchema>;

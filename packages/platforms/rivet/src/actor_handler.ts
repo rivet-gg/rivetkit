@@ -8,10 +8,8 @@ import { PartitionTopologyActor } from "actor-core/topologies/partition";
 import { ConfigSchema, type InputConfig } from "./config";
 import { RivetActorDriver } from "./actor_driver";
 
-export function createActorHandler(
-	inputConfig: InputConfig,
-): RivetHandler {
-	const config = ConfigSchema.parse(inputConfig);
+export function createActorHandler(inputConfig: InputConfig): RivetHandler {
+	const driverConfig = ConfigSchema.parse(inputConfig);
 
 	const handler = {
 		async start(ctx: ActorContext): Promise<void> {
@@ -27,19 +25,22 @@ export function createActorHandler(
 			}
 
 			// Setup actor driver
-			if (!config.drivers) config.drivers = {};
-			if (!config.drivers.actor) {
-				config.drivers.actor = new RivetActorDriver(ctx);
+			if (!driverConfig.drivers) driverConfig.drivers = {};
+			if (!driverConfig.drivers.actor) {
+				driverConfig.drivers.actor = new RivetActorDriver(ctx);
 			}
-			
+
 			// Setup WebSocket upgrader
-			if (!config.getUpgradeWebSocket) {
-				config.getUpgradeWebSocket = () => upgradeWebSocket;
+			if (!driverConfig.getUpgradeWebSocket) {
+				driverConfig.getUpgradeWebSocket = () => upgradeWebSocket;
 			}
 
 			// Create actor topology
-			config.topology = config.topology ?? "partition";
-			const actorTopology = new PartitionTopologyActor(config);
+			driverConfig.topology = driverConfig.topology ?? "partition";
+			const actorTopology = new PartitionTopologyActor(
+				inputConfig.app.config,
+				driverConfig,
+			);
 
 			// Set a catch-all route
 			const router = actorTopology.router;
@@ -56,9 +57,17 @@ export function createActorHandler(
 				router.fetch,
 			);
 
+			// Assert name exists
+			if (!("name" in ctx.metadata.actor.tags)) {
+				throw new Error(
+					`Tags for actor ${ctx.metadata.actor.id} do not contain property name: ${JSON.stringify(ctx.metadata.actor.tags)}`,
+				);
+			}
+
 			// Start actor
 			await actorTopology.start(
 				ctx.metadata.actor.id,
+				ctx.metadata.actor.tags.name,
 				ctx.metadata.actor.tags as ActorTags,
 				ctx.metadata.region.id,
 			);
@@ -70,4 +79,3 @@ export function createActorHandler(
 
 	return handler;
 }
-

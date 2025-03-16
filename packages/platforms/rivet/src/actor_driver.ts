@@ -1,6 +1,5 @@
 import type { ActorContext } from "@rivet-gg/actor-core";
-import { AnyActor } from "actor-core";
-import { ActorDriver, KvKey, KvValue } from "actor-core/driver-helpers";
+import type { ActorDriver, KvKey, KvValue, AnyActorInstance } from "actor-core/driver-helpers";
 
 export class RivetActorDriver implements ActorDriver {
 	#ctx: ActorContext;
@@ -40,10 +39,10 @@ export class RivetActorDriver implements ActorDriver {
 		await this.#ctx.kv.deleteBatch(keys);
 	}
 
-	async setAlarm(actor: AnyActor, timestamp: number): Promise<void> {
+	async setAlarm(actor: AnyActorInstance, timestamp: number): Promise<void> {
 		const timeout = Math.max(0, timestamp - Date.now());
 		setTimeout(() => {
-			actor.__onAlarm();
+			actor.onAlarm();
 		}, timeout);
 	}
 }

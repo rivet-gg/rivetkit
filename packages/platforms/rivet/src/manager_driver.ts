@@ -1,5 +1,5 @@
 import { assertUnreachable } from "actor-core/utils";
-import type { ActorTags, BuildTags } from "actor-core";
+import type { ActorTags } from "actor-core";
 import {
 	ManagerDriver,
 	GetForIdInput,
@@ -48,8 +48,13 @@ export class RivetManagerDriver implements ManagerDriver {
 				return undefined;
 			}
 
+			if (!("name" in res.actor.tags)) {
+				throw new Error(`Actor {res.actor.id} missing 'name' in tags.`);
+			}
+
 			return {
 				endpoint: buildActorEndpoint(res.actor),
+				name: res.actor.tags.name,
 				tags: res.actor.tags as ActorTags,
 			};
 		} catch (error) {
@@ -94,9 +99,16 @@ export class RivetManagerDriver implements ManagerDriver {
 			actors.sort((a: RivetActor, b: RivetActor) => a.id.localeCompare(b.id));
 		}
 
+		const actor = actors[0];
+
+		if (!("name" in actor.tags)) {
+			throw new Error(`Actor {res.actor.id} missing 'name' in tags.`);
+		}
+
 		return {
 			endpoint: buildActorEndpoint(actors[0]),
-			tags: actors[0].tags as ActorTags,
+			name: actor.tags.name,
+			tags: actor.tags as ActorTags,
 		};
 	}
 
@@ -113,11 +125,19 @@ export class RivetManagerDriver implements ManagerDriver {
 		});
 		if (!build) throw new Error("Build not found with tags or is private");
 
+		// HACK: We don't allow overriding name on Rivet since that's a special property that's used for the actor name
+		if ("name" in tags || "access" in tags) {
+			throw new Error(
+				"Cannot use property 'name' or 'access' in actor tags. These are reserved.",
+			);
+		}
+
 		// Create actor
 		const req = {
 			tags: {
-				...tags,
+				name,
 				access: "public",
+				...tags,
 			},
 			build: build.id,
 			region,
@@ -140,12 +160,13 @@ export class RivetManagerDriver implements ManagerDriver {
 
 		return {
 			endpoint: buildActorEndpoint(actor),
+			name,
 			tags: actor.tags as ActorTags,
 		};
 	}
 
 	async #getBuildWithTags(
-		buildTags: BuildTags,
+		buildTags: Record<string, string>,
 	): Promise<RivetBuild | undefined> {
 		const tagsJson = JSON.stringify(buildTags);
 		let { builds } = await rivetRequest<void, { builds: RivetBuild[] }>(
@@ -156,7 +177,7 @@ export class RivetManagerDriver implements ManagerDriver {
 
 		builds = builds.filter((b: RivetBuild) => {
 			// Filter out private builds
-			if ((b.tags as BuildTags).access !== "public") return false;
+			if (b.tags.access !== "public") return false;
 
 			return true;
 		});

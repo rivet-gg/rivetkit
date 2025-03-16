@@ -8,7 +8,7 @@ import { PartitionTopologyManager } from "actor-core/topologies/partition";
 import { type InputConfig, ConfigSchema } from "./config";
 
 export function createManagerHandler(inputConfig: InputConfig): RivetHandler {
-	const config = ConfigSchema.parse(inputConfig);
+	const driverConfig = ConfigSchema.parse(inputConfig);
 
 	const handler = {
 		async start(ctx: ActorContext): Promise<void> {
@@ -36,14 +36,14 @@ export function createManagerHandler(inputConfig: InputConfig): RivetHandler {
 			};
 
 			// Setup manager driver
-			if (!config.drivers) config.drivers = {};
-			if (!config.drivers.manager) {
-				config.drivers.manager = new RivetManagerDriver(clientConfig);
+			if (!driverConfig.drivers) driverConfig.drivers = {};
+			if (!driverConfig.drivers.manager) {
+				driverConfig.drivers.manager = new RivetManagerDriver(clientConfig);
 			}
 
 			// Create manager topology
-			config.topology = config.topology ?? "partition";
-			const managerTopology = new PartitionTopologyManager(config);
+			driverConfig.topology = driverConfig.topology ?? "partition";
+			const managerTopology = new PartitionTopologyManager(driverConfig.app.config, driverConfig);
 
 			const app = managerTopology.router;
 

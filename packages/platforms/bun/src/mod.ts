@@ -5,12 +5,12 @@ import { ConfigSchema, type InputConfig } from "./config";
 import { logger } from "./log";
 import { createBunWebSocket } from "hono/bun";
 import type { Hono } from "hono";
-import { StandaloneTopology } from "actor-core";
+import { ActorCoreApp, StandaloneTopology } from "actor-core";
 import { MemoryGlobalState, MemoryManagerDriver, MemoryActorDriver } from "@actor-core/memory";
 
 export { InputConfig as Config } from "./config";
 
-export function createRouter(inputConfig: InputConfig): {
+export function createRouter(app: ActorCoreApp<any>, inputConfig?: InputConfig): {
 	router: Hono;
 	webSocketHandler: WebSocketHandler;
 } {
@@ -39,22 +39,22 @@ export function createRouter(inputConfig: InputConfig): {
 
 	// Setup topology
 	if (config.topology === "standalone") {
-		const topology = new StandaloneTopology(config);
+		const topology = new StandaloneTopology(app.config, config);
 		return { router: topology.router, webSocketHandler };
 	} else if (config.topology === "partition") {
 		throw new Error("Bun only supports standalone & coordinate topology.");
 	} else if (config.topology === "coordinate") {
-		const topology = new CoordinateTopology(config);
+		const topology = new CoordinateTopology(app.config,config);
 		return { router: topology.router, webSocketHandler };
 	} else {
 		assertUnreachable(config.topology);
 	}
 }
 
-export function createHandler(inputConfig: InputConfig): Serve {
+export function createHandler(app: ActorCoreApp<any>, inputConfig?: InputConfig): Serve {
 	const config = ConfigSchema.parse(inputConfig);
 
-	const { router, webSocketHandler } = createRouter(config);
+	const { router, webSocketHandler } = createRouter(app, config);
 
 	return {
 		hostname: config.hostname,
@@ -64,10 +64,10 @@ export function createHandler(inputConfig: InputConfig): Serve {
 	};
 }
 
-export function serve(inputConfig: InputConfig): Server {
+export function serve(app: ActorCoreApp<any>, inputConfig: InputConfig): Server {
 	const config = ConfigSchema.parse(inputConfig);
 
-	const handler = createHandler(config);
+	const handler = createHandler(app, config);
 	const server = Bun.serve(handler);
 
 	logger().info("actorcore started", {
