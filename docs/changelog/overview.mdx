@@ -9,6 +9,22 @@ mode: "center"
 	Releases](https://github.com/rivet-gg/actor-core/releases) page.
 </Info>
 
+<Update label="0.7.0" description="March 16th, 2025">
+  ## Features
+
+  - **Functional Actor API**: Instead of subclassing with `extends Actor`, actors are now created by using `actor({ ... })`
+  - **Cleaner & More Type-Safe Client**: Instead of manually specifying actor names with `client.get<ChatRoom>({ name: "chat-room" })`, you can now simply call `client.chatRoom.get()`
+  - **Shorthand State Initiation**: Use  `state` and `connectionState` to create state without having to implement `createState` and `createConnectionState`
+  - **Portable ActorCore App**: Use `setup` to create an ActorCore app that can be connected to multiple platforms without extra modification.
+
+  ## Enhancements
+
+  - Rename "RPC" to "Actions"
+  - Add `createState` instead of using return value from `onInitialize` for clarity
+  - Add `createConnectionState` instead of using return value from `onBeforeConnect` for clarity
+  - Rename `onInitialize` to `onCreate`
+</Update>
+
 <Update label="0.6.3" description="March 13th, 2025">
   ## Features
 
