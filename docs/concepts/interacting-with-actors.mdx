@@ -7,13 +7,14 @@ This guide covers how to connect to and interact with actors from client applica
 
 ## Setting Up the Client
 
-The first step is to create a client:
+With the new API, the first step is to create a client by importing the app type for type safety:
 
 ```typescript
-import { Client } from "actor-core/client";
+import { createClient } from "actor-core/client";
+import type { App } from "../src/index";
 
-// Create a client with the connection address
-const client = new Client(/* CONNECTION ADDRESS */);
+// Create a client with the connection address and app type
+const client = createClient<App>(/* CONNECTION ADDRESS */);
 ```
 
 <Tip>See the setup guide for your platform for details on how to get the connection address.</Tip>
@@ -28,7 +29,7 @@ The most common way to connect is with `get()`, which finds an existing actor ma
 
 ```typescript
 // Connect to a chat room for the "general" channel
-const room = await client.get<ChatRoom>({
+const room = await client.chatRoom.get({
   name: "chat_room",
   channel: "general"
 });
@@ -43,7 +44,7 @@ When you specifically want to create a new actor instance:
 
 ```typescript
 // Create a new document actor
-const doc = await client.create<MyDocument>({
+const doc = await client.myDocument.create({
   create: {
     tags: {
       name: "my_document",
@@ -62,7 +63,7 @@ Connect to an actor using its internal ID:
 ```typescript
 // Connect to a specific actor by its ID
 const myActorId = "55425f42-82f8-451f-82c1-6227c83c9372";
-const doc = await client.getWithId<MyDocument>(myActorId);
+const doc = await client.myDocument.getWithId(myActorId);
 
 await doc.updateContent("Updated content");
 ```
@@ -71,19 +72,19 @@ await doc.updateContent("Updated content");
 It's usually better to use tags for discovery rather than directly using actor IDs.
 </Note>
 
-## Sending Remote Procedure Calls
+## Calling Actions
 
-Once connected, calling actor methods with [remote procedure calls](/concepts/remote-procedure-calls) is straightforward:
+Once connected, calling actor actions are straightforward:
 
 ```typescript
-// Call an actor method
-const result = await actor.multiplyByTwo(5);
+// Call an action
+const result = await mathUtils.multiplyByTwo(5);
 console.log(result); // 10
 
-// Call a method with multiple parameters
+// Call an action with multiple parameters
 await chatRoom.sendMessage("Alice", "Hello everyone!");
 
-// Call a method with an object parameter
+// Call an action with an object parameter
 await gameRoom.updateSettings({
   maxPlayers: 10,
   timeLimit: 300,
@@ -92,7 +93,7 @@ await gameRoom.updateSettings({
 ```
 
 <Note>
-All actor method calls are asynchronous and require `await`, even if the actor's method is not async.
+All actor action calls are asynchronous and require `await`, even if the actor's action is not async.
 </Note>
 
 ## Listening for Events
@@ -135,82 +136,43 @@ actor.once("requestApproved", () => {
 Pass information with your connection using the `parameters` option:
 
 ```typescript
-const chatRoom = await client.get<ChatRoom>(
-  { name: "chat_room", channel: "private" },
-  {
-    parameters: { 
-      userId: "1234",
-      authToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-      displayName: "Alice"
-    }
+const chatRoom = await client.chatRoom.get({ channel: "super-secret" }, {
+  parameters: { 
+    userId: "1234",
+    authToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    displayName: "Alice"
   }
-);
+});
 ```
 
-The actor can access these parameters:
+The actor can access these parameters in the `onBeforeConnect` or `createConnectionState` hook:
 
 ```typescript
-export default class ChatRoom extends Actor<State, ConnectionParams> {
-  _onBeforeConnect(opts: OnBeforeConnectOptions<ChatRoom>) {
+import { actor } from "actor-core";
+
+const chatRoom = actor({
+  state: { messages: [] },
+  
+  createConnectionState: (c) => {
     // Validate authentication token
-    const { userId, authToken, displayName } = opts.parameters;
-    validateToken(userId, authToken);
+    const { userId, authToken, displayName } = c.parameters;
+    if (!validateToken(userId, authToken)) {
+      throw new Error("Invalid authentication");
+    }
     
     // Return connection state
     return { userId, displayName };
+  },
+  
+  actions: {
+    // ...
   }
-}
+});
 ```
 
 Read more about [connection parameters](/concepts/connections).
 
 ### Additional Options
-
-#### `opts.create.tags`
-
-Specify additional tags when creating an actor:
-
-```typescript
-const actor = client.get<MyDocument>(
-  // Tags used to find the actor
-  {
-    name: "my_document",
-    document_id: "budget_2024"
-  },
-  {
-    create: {
-      // Additional tags if a new actor is created
-      tags: {
-        name: "my_document",
-        workspace_id: "team_alpha",
-        document_id: "budget_2024",
-        created_by: "user_123"
-      }
-    }
-  }
-);
-```
-
-By default, the tags passed to the first parameter will be used when creating a new actor.
-
-#### `opts.create.region`
-
-Specify a region when creating an actor:
-
-```typescript
-const actor = client.get<GameServer>(
-  { name: "game_server" },
-  {
-    create: {
-      region: "eu-west"
-    }
-  }
-);
-```
-
-<Info>
-	Not all platforms support multiple regions. Read the platform's ActorCore docs for more information.
-</Info>
 
 #### `opts.noCreate`
 
@@ -218,10 +180,7 @@ Connect only if an actor exists, without creating a new one:
 
 ```typescript
 try {
-  const doc = await client.get<MyDocument>(
-    { name: "my_document", docId: "123" }, 
-    { noCreate: true }
-  );
+  const doc = await client.document.get({ documentId: "doc-123" }, { noCreate: true });
   await doc.doSomething();
 } catch (error) {
   console.log("Document doesn't exist");
@@ -232,7 +191,7 @@ try {
 
 ```typescript
 // Example with all client options
-const client = new Client(
+const client = createClient<App>(
   "https://actors.example.com",
   {
     // Data serialization format
@@ -268,20 +227,18 @@ Default is `["websocket", "sse"]`, which automatically negotiates the best avail
 
 ActorCore provides specific error types to help you handle different failure scenarios:
 
-### RPC Errors
+### Action Errors
 
-When a remote procedure call fails, it throws an `RpcError` with details about the failure:
+When an action fails, it throws an error with details about the failure:
 
 ```typescript
 try {
-  await actor.someMethod();
+  await actor.someAction();
 } catch (error) {
-  if (error instanceof RpcError) {
-    console.error(`RPC failed: ${error.code} - ${error.message}`);
-    // Handle specific error codes
-    if (error.code === "permission_denied") {
-      // Handle permission errors
-    }
+  console.error(`Action failed: ${error.code} - ${error.message}`);
+  // Handle specific error codes
+  if (error.code === "permission_denied") {
+    // Handle permission errors
   }
 }
 ```
@@ -289,24 +246,28 @@ try {
 These errors can be thrown from within the actor with `UserError`:
 
 ```typescript
-import { UserError, Actor, type Rpc } from "actor-core";
+import { actor, UserError } from "actor-core";
 
-export default class DocumentActor extends Actor {
-  async editDocument(rpc: Rpc<DocumentActor>, userId: string) {
-    // Check if user has permission to edit
-    if (!this.#hasPermission(userId, "edit")) {
-      throw new UserError("You don't have permission to edit this document", {
-        code: "permission_denied",
-        metadata: { userId }
-      });
+const documentActor = actor({
+  state: { content: "" },
+  
+  actions: {
+    editDocument: (c, userId, newContent) => {
+      // Check if user has permission to edit
+      if (!hasPermission(userId, "edit")) {
+        throw new UserError("You don't have permission to edit this document", {
+          code: "permission_denied",
+          meta: { userId }
+        });
+      }
+      
+      c.state.content = newContent;
     }
-    
-    // ...
   }
-}
+});
 ```
 
-ActorCore forces you to subclass `UserError` instead of returning all errors to the client because returning raw errors can expose information about the internals of your application or expose secrets.
+ActorCore doesn't expose internal errors to clients for security, helping to prevent the exposure of sensitive information or internal implementation details.
 
 ### Other Errors
 
@@ -324,17 +285,17 @@ If you need to explicitly disconnect:
 
 ```typescript
 // Disconnect from the actor
-await actor.disconnect();
+await actor.dispose();
 
 // Disconnect the entire client
-await client.disconnect();
+await client.dispose();
 ```
 
 ## Offline and Auto-Reconnection
 
-Clients automatically attempt to reconnect (with [exponential backoff](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/retry-backoff.html)) when disconnected. Remote procedure calls made while disconnected are queued.
+Clients automatically attempt to reconnect (with [exponential backoff](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/retry-backoff.html)) when disconnected. Actions made while disconnected are queued.
  
-On reconnection, event subscriptions are reestablished & queued RPCs are executed.
+On reconnection, event subscriptions are reestablished & queued actions are executed.
 
 This makes your applications resilient to temporary network failures without any extra code.
 

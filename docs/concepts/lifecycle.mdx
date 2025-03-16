@@ -5,125 +5,365 @@ icon: rotate
 
 ## Lifecycle Hooks
 
-Lifecycle hooks can be implemented by overriding the following methods of actors.
+Actor lifecycle hooks are defined as functions in the actor configuration.
 
-### `_onInitialize()`
+### `createState` and `state`
 
 {/* [Documentation](https://jsr.io/@rivet-gg/actor/doc/~/Actor.prototype._onInitialize) */}
 
-Called only once when the actor is first created. This method returns the initial state of the actor (see [state documentation](/concepts/state)).
+The `createState` function or `state` constant defines the initial state of the actor (see [state documentation](/concepts/state)). The `createState` function is called only once when the actor is first created.
 
-If you need to call code when the actor is started (e.g. after restarting for upgrading code), see `_onStart`.
+### `onInitialize`
 
-### `_onStart()`
+The `onInitialize` hook is called at the same time as `createState`, but unlike `createState`, it doesn't return any value. Use this hook for initialization logic that doesn't affect the initial state.
+
+```typescript
+import { actor } from "actor-core";
+
+// Using state constant
+const counter1 = actor({
+  state: { count: 0 },
+  actions: { /* ... */ }
+});
+
+// Using createState function
+const counter2 = actor({
+  createState: () => {
+    // Initialize with a count of 0
+    return { count: 0 };
+  },
+  actions: { /* ... */ }
+});
+
+// Using onInitialize
+const counter3 = actor({
+  state: { count: 0 },
+  
+  // Run initialization logic (logging, external service setup, etc.)
+  onInitialize: (c) => {
+    console.log("Counter actor initialized");
+    // Can perform async operations or setup
+    // No need to return anything
+  },
+  
+  actions: { /* ... */ }
+});
+```
+
+### `onStart`
 
 {/* [Documentation](https://jsr.io/@rivet-gg/actor/doc/~/Actor.prototype._onStart) */}
 
-This method is called any time the actor is started (e.g. after restarting, upgrading code, or crashing).
+This hook is called any time the actor is started (e.g. after restarting, upgrading code, or crashing).
 
 This is called after the actor has been initialized but before any connections are accepted.
 
-Use this method to set up any resources or start any background tasks, such as `setInterval`.
+Use this hook to set up any resources or start any background tasks, such as `setInterval`.
 
-### `_onStateChange(newState)`
+```typescript
+import { actor } from "actor-core";
+
+const counter = actor({
+  state: { count: 0 },
+  
+  onStart: (c) => {
+    console.log('Actor started with count:', c.state.count);
+    
+    // Set up interval for automatic counting
+    const intervalId = setInterval(() => {
+      c.state.count++;
+      console.log('Auto-increment:', c.state.count);
+    }, 10000);
+    
+    // Store interval ID to clean up later if needed
+    c.custom.intervalId = intervalId;
+  },
+  
+  actions: { /* ... */ }
+});
+```
+
+### `onStateChange`
 
 {/* [Documentation](https://jsr.io/@rivet-gg/actor/doc/~/Actor.prototype._onStateChange) */}
 
 Called whenever the actor's state changes. This is often used to broadcast state updates.
 
-### `_onBeforeConnect(opts)`
+```typescript
+import { actor } from "actor-core";
+
+const counter = actor({
+  state: { count: 0 },
+  
+  onStateChange: (c, newState) => {
+    // Broadcast the new count to all connected clients
+    c.broadcast('countUpdated', {
+      count: newState.count
+    });
+  },
+  
+  actions: {
+    increment: (c) => {
+      c.state.count++;
+      return c.state.count;
+    }
+  }
+});
+```
+
+### `createConnectionState` and `connectionState`
+
+{/* [Documentation](https://jsr.io/@rivet-gg/actor/doc/~/Actor.prototype._createConnectionState) */}
+
+There are two ways to define the initial state for connections:
+1. `connectionState`: Define a constant object that will be used as the initial state for all connections
+2. `createConnectionState`: A function that dynamically creates initial connection state based on connection parameters
+
+### `onBeforeConnect`
 
 {/* [Documentation](https://jsr.io/@rivet-gg/actor/doc/~/Actor.prototype._onBeforeConnect) */}
 
-Called whenever a new client connects to the actor. Clients can pass parameters when connecting, accessible via `opts.parameters`.
+The `onBeforeConnect` hook is called whenever a new client connects to the actor. Clients can pass parameters when connecting, accessible via `c.parameters`. This hook is used for connection validation and can throw errors to reject connections.
 
-The returned value becomes the connection's initial state and can be accessed later via `connection.state`.
+The `onBeforeConnect` hook does NOT return connection state - it's used solely for validation.
+
+```typescript
+import { actor } from "actor-core";
+
+const chatRoom = actor({
+  state: { messages: [] },
+  
+  // Method 1: Use a static default connection state
+  connectionState: {
+    role: "guest",
+    joinTime: 0,
+  },
+  
+  // Method 2: Dynamically create connection state
+  createConnectionState: (c) => {
+    return {
+      userId: c.parameters.userId || "anonymous",
+      role: c.parameters.role || "guest",
+      joinTime: Date.now()
+    };
+  },
+  
+  // Validate connections before accepting them
+  onBeforeConnect: (c) => {
+    // Validate authentication
+    const authToken = c.parameters.authToken;
+    if (!authToken || !validateToken(authToken)) {
+      throw new Error("Invalid authentication");
+    }
+    
+    // Authentication is valid, connection will proceed
+    // The actual connection state will come from connectionState or createConnectionState
+  },
+  
+  actions: { /* ... */ }
+});
+```
 
 Connections cannot interact with the actor until this method completes successfully. Throwing an error will abort the connection. This can be used for authentication - see [Authentication](/concepts/authentication) for details.
 
-### `_onConnect(connection)`
+### `onConnect`
 
 {/* [Documentation](https://jsr.io/@rivet-gg/actor/doc/~/Actor.prototype._onConnect) */}
 
 Executed after the client has successfully connected.
 
-Messages will not be processed for this actor until this method succeeds.
+```typescript
+import { actor } from "actor-core";
 
-Errors thrown from this method will cause the client to disconnect.
+const chatRoom = actor({
+  state: { users: {}, messages: [] },
+  
+  onConnect: (c) => {
+    // Add user to the room's user list using connection state
+    const userId = c.connection.state.userId;
+    c.state.users[userId] = {
+      online: true,
+      lastSeen: Date.now()
+    };
+    
+    // Broadcast that a user joined
+    c.broadcast("userJoined", { userId, timestamp: Date.now() });
+    
+    console.log(`User ${userId} connected`);
+  },
+  
+  actions: { /* ... */ }
+});
+```
 
-### `_onDisconnect(connection)`
+Messages will not be processed for this actor until this hook succeeds. Errors thrown from this hook will cause the client to disconnect.
+
+### `onDisconnect`
 
 {/* [Documentation](https://jsr.io/@rivet-gg/actor/doc/~/Actor.prototype._onDisconnect) */}
 
 Called when a client disconnects from the actor. Use this to clean up any connection-specific resources.
 
+```typescript
+import { actor } from "actor-core";
+
+const chatRoom = actor({
+  state: { users: {}, messages: [] },
+  
+  onDisconnect: (c) => {
+    // Update user status when they disconnect
+    const userId = c.connection.state.userId;
+    if (c.state.users[userId]) {
+      c.state.users[userId].online = false;
+      c.state.users[userId].lastSeen = Date.now();
+    }
+    
+    // Broadcast that a user left
+    c.broadcast("userLeft", { userId, timestamp: Date.now() });
+    
+    console.log(`User ${userId} disconnected`);
+  },
+  
+  actions: { /* ... */ }
+});
+```
+
 ## Destroying Actors
 
-Actors can be shut down gracefully with `this._shutdown()`. Clients will be gracefully disconnected.
+Actors can be shut down gracefully with `c.shutdown()`. Clients will be gracefully disconnected.
+
+```typescript
+import { actor } from "actor-core";
+
+const temporaryRoom = actor({
+  state: { 
+    createdAt: 0,
+    expiresAfterMs: 3600000 // 1 hour
+  },
+  
+  createState: () => ({
+    createdAt: Date.now(),
+    expiresAfterMs: 3600000 // 1 hour
+  }),
+  
+  onStart: (c) => {
+    // Check if room is expired
+    const now = Date.now();
+    const expiresAt = c.state.createdAt + c.state.expiresAfterMs;
+    
+    if (now > expiresAt) {
+      console.log("Room expired, shutting down");
+      c.shutdown();
+    } else {
+      // Set up expiration timer
+      const timeUntilExpiry = expiresAt - now;
+      setTimeout(() => {
+        console.log("Room lifetime reached, shutting down");
+        c.shutdown();
+      }, timeUntilExpiry);
+    }
+  },
+  
+  actions: {
+    closeRoom: (c) => {
+      // Notify all clients
+      c.broadcast("roomClosed", { reason: "Admin closed the room" });
+      
+      // Shutdown the actor
+      c.shutdown();
+    }
+  }
+});
+```
 
 This action is permanent and cannot be reverted.
 
 ## Full Example
 
 ```typescript
-import { Actor, type Rpc, OnBeforeConnectOptions } from "actor-core";
+import { actor } from "actor-core";
 
-interface State {
-  count: number;
-}
-
-interface ConnParams {
-  authToken: string;
-}
-
-interface ConnState {
-  userId: string;
-}
-
-export default class Counter extends Actor<State, ConnParams, ConnState> {
-  async _onInitialize(): Promise<State> {
-    // Initialize with a count of 0
+const counter = actor({
+  // Initialize state
+  createState: () => ({
+    count: 0
+  }),
+  
+  // Initialize actor (run setup that doesn't affect initial state)
+  onInitialize: (c) => {
+    console.log('Counter actor initialized');
+    // Set up external resources, etc.
+  },
+  
+  // Define default connection state
+  connectionState: {
+    role: "guest"
+  },
+  
+  // Dynamically create connection state based on params
+  createConnectionState: (c) => {
+    // Get auth info from validation
+    const authToken = c.parameters.authToken;
+    const authInfo = validateAuthToken(authToken);
+    
     return {
-      count: 0
+      userId: authInfo?.userId || "anonymous",
+      role: authInfo?.role || "guest"
     };
-  }
-
-  async _onStart(): Promise<void> {
-    // Upgrade state if needed
-    console.log('Started');
-  }
-
-  async _onStateChange(newState: State): Promise<void> {
-    // Broadcast the new count to all connected clients
-    this._broadcast('countUpdated', {
-      count: newState.count
-    });
-  }
-
-  async _onBeforeConnect(opts: OnBeforeConnectOptions<Counter>): Promise<ConnState> {
-    // Validate auth token with your API and determine the user
-    const auth = await myValidateAuthToken(opts.parameters.authToken);
-    if (!auth) {
+  },
+  
+  // Lifecycle hooks
+  onStart: (c) => {
+    console.log('Counter started with count:', c.state.count);
+  },
+  
+  onStateChange: (c, newState) => {
+    c.broadcast('countUpdated', { count: newState.count });
+  },
+  
+  onBeforeConnect: (c) => {
+    // Validate auth token
+    const authToken = c.parameters.authToken;
+    if (!authToken) {
+      throw new Error('Missing auth token');
+    }
+    
+    // Validate with your API and determine the user
+    const authInfo = validateAuthToken(authToken);
+    if (!authInfo) {
       throw new Error('Invalid auth token');
     }
-
-    // Return connection state that will be available as connection.state
-    return {
-      userId: auth.userId
-    };
+    
+    // If validation succeeds, connection proceeds
+    // Connection state will be set by createConnectionState
+  },
+  
+  onConnect: (c) => {
+    console.log(`User ${c.connection.state.userId} connected`);
+  },
+  
+  onDisconnect: (c) => {
+    console.log(`User ${c.connection.state.userId} disconnected`);
+  },
+  
+  // Define actions
+  actions: {
+    increment: (c) => {
+      c.state.count++;
+      return c.state.count;
+    },
+    
+    reset: (c) => {
+      // Check if user has admin role
+      if (c.connection.state.role !== "admin") {
+        throw new Error("Unauthorized: requires admin role");
+      }
+      
+      c.state.count = 0;
+      return c.state.count;
+    }
   }
+});
 
-  async _onConnect(connection: Connection<Counter>): Promise<void> {
-    console.log(`User ${connection.state.userId} connected`);
-  }
-
-  async _onDisconnect(connection: Connection<Counter>): Promise<void> {
-    console.log(`User ${connection.state.userId} disconnected`);
-  }
-
-  // Example RPC method
-  async increment(rpc: Rpc<Counter>) {
-    this._state.count++;
-  }
-}
+export default counter;
 ```

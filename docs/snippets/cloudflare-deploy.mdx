@@ -27,7 +27,10 @@
 4. Update `tests/client.ts` (or wherever your client lives) to use the deployed endpoint. Replace the local endpoint in `client.ts` with your Cloudflare Workers URL:
 
 	```typescript
-	const client = new Client("https://your-worker-subdomain.workers.dev");
+	import { createClient } from "actor-core/client";
+	import type { App } from "../src/index";
+
+	const client = createClient<App>("https://your-worker-subdomain.workers.dev");
 	```
 
 	Ensure you replace `your-worker-subdomain` with the actual subdomain assigned to your worker.

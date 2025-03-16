@@ -41,8 +41,8 @@ import CreateActorCli from '/snippets/create-actor-cli.mdx';
 		```sh
 		npx tsx tests/client.ts
 		# Outputs:
-		# Event: 1
-		# RPC: 1
+		# Event: 5
+		# RPC: 5
 		```
 
 		Run this again to see the state update.
@@ -71,7 +71,7 @@ If you already have a Node.js project and want to add ActorCore, you can follow 
 
 			```sh yarn
 			# Install ActorCore
-			npm add actor-core @actor-core/nodejs
+			yarn add actor-core @actor-core/nodejs
 			```
 
 			```sh bun
@@ -81,7 +81,7 @@ If you already have a Node.js project and want to add ActorCore, you can follow 
 		</CodeGroup>
 	</Step>
 	<Step title="Create Actor">
-		Create a new file for your actor at `src/counter.ts`:
+		Create a new file for your actor at `src/app.ts`:
 
 		<SetupActor />
 	</Step>
@@ -89,14 +89,10 @@ If you already have a Node.js project and want to add ActorCore, you can follow 
 		Create `src/index.ts` to start your ActorCore server with:
 
 		```typescript src/index.ts
-		import { serve } from "@actor-core/nodejs";
-		import counter from "./counter.ts";
+		import { setup, serve } from "@actor-core/nodejs";
+		import { app } from "./app";
 
-		serve({
-			actors: { counter },
-			// Change this to match your frontend's origin
-			cors: { origin: "http://localhost:3000" }
-		});
+		serve(app);
 		```
 
 		<IntegrationExistingProjects />
@@ -105,20 +101,20 @@ If you already have a Node.js project and want to add ActorCore, you can follow 
 		Create a client to connect to your actor in `src/client.ts`:
 
 		```typescript src/client.ts
-		import { Client } from "actor-core/client";
-		import type Counter from "./counter.ts";
+		import { createClient } from "actor-core/client";
+		import type { App } from "./app";
 
 		async function main() {
-			const client = new Client("http://localhost:6420");
+			const client = createClient<App>("http://localhost:6420");
 
-			const counter = await client.get<Counter>({ name: "counter" });
+			const counter = await client.counter.get();
 
 			counter.on("newCount", (count: number) => console.log("Event:", count));
 
 			const out = await counter.increment(5);
-			console.log("RPC:", out);
+			console.log("Action:", out);
 
-			await counter.disconnect();
+			await counter.dispose();
 		}
 
 		main();
@@ -136,8 +132,8 @@ If you already have a Node.js project and want to add ActorCore, you can follow 
 		```sh
 		npx tsx src/client.ts
 		# Outputs:
-		# Event: 1
-		# RPC: 1
+		# Event: 5
+		# Action: 5
 		```
 
 		Run this again to see the state update.

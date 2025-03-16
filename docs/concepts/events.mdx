@@ -5,55 +5,71 @@ icon: tower-broadcast
 
 Events are used for clients to receive realtime data from actors.
 
-<Info>Events are used for actors to publish updates to clients. Clients call RPCs to communicate with the actor.</Info>
+<Info>Events are used for actors to publish updates to clients. Clients call actions to communicate with the actor.</Info>
 
 ## Publishing from actors
 
-Actors can publish events to clients using `this._broadcast` and `connection.send`.
+Actors can publish events to clients using `c.broadcast` and `connection.send`.
 
 ### Broadcasting events
 
-Actors can publish events to all connected clients with `this._broadcast(name, data)`. For example:
+Actors can publish events to all connected clients with `c.broadcast(name, data)`. For example:
 
 <CodeGroup>
 
 ```typescript chat_room.ts
-import { Actor, type Rpc } from "actor-core";
+import { actor } from "actor-core";
 
-export default class ChatRoom extends Actor {
-  sendMessage(rpc: Rpc<ChatRoom>, message: string) {
-    this._broadcast('newMessage', { message });
+const chatRoom = actor({
+  state: {},
+  actions: {
+    sendMessage: (c, message) => {
+      c.broadcast('newMessage', { message });
+    }
   }
-}
+});
 ```
 
 ```typescript client.ts
-const actor = client.get<ChatRoom>({ name: 'chat_room' });
-await actor.sendMessage('Hello, world!');
+import { createClient } from "actor-core/client";
+import type { App } from "./src/index";
+
+const client = createClient<App>("http://localhost:6420");
+const chatRoom = await client.chatRoom.get();
+await chatRoom.sendMessage('Hello, world!');
 ```
 
 </CodeGroup>
 
 ### Sending events to specific connections
 
-Actors can send messages to specific client connections. All connections are available on the `this._connections` array. For example:
+Actors can send messages to specific client connections. All connections are available through the context object. For example:
 
 <CodeGroup>
 
 ```typescript chat_room.ts
-import { Actor, type Rpc } from "actor-core";
+import { actor } from "actor-core";
 
-export default class ChatRoom extends Actor {
-  sendPrivateMessage(rpc: Rpc<ChatRoom>, connectionId: number, message: string) {
-    const conn = this._connections.find(c => c.id == connectionId);
-    conn.send('newMessage', { message });
+const chatRoom = actor({
+  state: {},
+  actions: {
+    sendPrivateMessage: (c, connectionId, message) => {
+      const conn = c.connections.find(conn => conn.id === connectionId);
+      if (conn) {
+        conn.send('newMessage', { message });
+      }
+    }
   }
-}
+});
 ```
 
 ```typescript client.ts
-const actor = client.get<ChatRoom>({ name: 'chat_room' });
-await actor.sendPrivateMessage(123, 'Hello, world!');
+import { createClient } from "actor-core/client";
+import type { App } from "./src/index";
+
+const client = createClient<App>("http://localhost:6420");
+const chatRoom = await client.chatRoom.get();
+await chatRoom.sendPrivateMessage(123, 'Hello, world!');
 ```
 
 </CodeGroup>
@@ -71,20 +87,28 @@ Clients can subscribe to events that will happen repeatedly using `actor.on(name
 <CodeGroup>
 
 ```typescript client.ts
-const actor = client.get<ChatRoom>({ name: 'chat_room' });
-actor.on('newMessage', ({ message }) => {
+import { createClient } from "actor-core/client";
+import type { App } from "./src/index";
+
+const client = createClient<App>("http://localhost:6420");
+const chatRoom = await client.chatRoom.get();
+
+chatRoom.on('newMessage', ({ message }) => {
   console.log('Message', message);
 });
 ```
 
 ```typescript chat_room.ts
-import { Actor, type Rpc } from "actor-core";
+import { actor } from "actor-core";
 
-export default class ChatRoom extends Actor {
-  sendMessage(rpc: Rpc<ChatRoom>, message: string) {
-    this._broadcast('newMessage', { message });
+const chatRoom = actor({
+  state: {},
+  actions: {
+    sendMessage: (c, message) => {
+      c.broadcast('newMessage', { message });
+    }
   }
-}
+});
 ```
 
 </CodeGroup>
@@ -98,27 +122,39 @@ Clients can listen for an event only one time with `actor.once(name, callback)`.
 <CodeGroup>
 
 ```typescript client.ts
-const actor = client.get<ChatRoom>({ name: 'chat_room' });
-actor.once('joinRequestApproved', () => {
+import { createClient } from "actor-core/client";
+import type { App } from "./src/index";
+
+const client = createClient<App>("http://localhost:6420");
+const chatRoom = await client.chatRoom.get();
+
+chatRoom.once('joinRequestApproved', () => {
   // This will only be called once
   console.log('Join request accepted');
 });
-await actor.requestJoin();
+
+await chatRoom.requestJoin();
 ```
 
-```typescript chat_root.ts
-import { Actor, type Rpc } from "actor-core";
+```typescript chat_room.ts
+import { actor } from "actor-core";
 
-export default class ChatRoom extends Actor {
-  requestJoin(rpc: Rpc<ChatRoom>) {
-    // ...ask the admin to approve the request...
+const chatRoom = actor({
+  state: {
+    pendingJoinRequests: []
+  },
+  actions: {
+    requestJoin: (c) => {
+      // ...add to pending requests...
+    },
+    approveJoinRequest: (c, connectionId) => {
+      const conn = c.connections.find(conn => conn.id === connectionId);
+      if (conn) {
+        conn.send('joinRequestApproved');
+      }
+    }
   }
-
-  approveJoinRequest(rpc: Rpc<ChatRoom>, connectionId: number) {
-    const conn = this._connections.get(connectionId);
-    conn.send('joinRequestApproved');
-  }
-}
+});
 ```
 
 </CodeGroup>

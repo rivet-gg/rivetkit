@@ -60,13 +60,11 @@ The Redis Driver is a production-ready implementation that uses Redis for actor 
     import { RedisActorDriver } from "@actor-core/redis/actor";
     import { RedisCoordinateDriver } from "@actor-core/redis/coordinate";
     import Redis from "ioredis";
-    import Counter from "./counter";
 
     // Create a Redis connection
     const redis = new Redis();
 
-    serve({
-      actors: { "counter": Counter },
+    serve(app, {
       topology: "coordinate", // Can be "standalone" or "coordinate"
       drivers: {
         manager: new RedisManagerDriver(redis),

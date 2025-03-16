@@ -38,7 +38,7 @@ This guide contains essential information for working with the ActorCore project
 
 - **Actor**: A stateful, long-lived entity that processes messages and maintains state
 - **Manager**: Component responsible for creating, routing, and managing actor instances
-- **Remote Procedure Call (RPC)**: Method for an actor to expose callable functions to clients
+- **Action**: Method for an actor to expose callable functions to clients
 - **Event**: Asynchronous message sent from an actor to connected clients
 - **Alarm**: Scheduled callback that triggers at a specific time
 
@@ -85,9 +85,7 @@ When importing from workspace packages, always check the package's `package.json
   - camelCase for variables, functions
   - PascalCase for classes, interfaces, types
   - UPPER_CASE for constants
-  - Use `#` prefix for private class members (not `private` keyword)
 - **Error Handling:** 
-  - Extend from `ActorError` base class
   - Use `UserError` for client-safe errors
   - Use `InternalError` for internal errors
 
@@ -100,46 +98,46 @@ When importing from workspace packages, always check the package's `package.json
 
 ## State Management
 
-- Each actor owns and manages its own isolated state via `this._state`
-- State is automatically persisted between RPC calls
-- State is initialized once via `_onInitialize` method
+- Each actor owns and manages its own isolated state via `c.state`
+- State is automatically persisted between action calls
+- State is initialized via `createState` function or `state` constant
 - Only JSON-serializable types can be stored in state
-- Use `this._onStateChange` to react to state changes
+- Use `onStateChange` to react to state changes
 
 ## Authentication and Security
 
-- Authentication is handled through the `_onBeforeConnect` lifecycle method
-- Connection state is accessed with `rpc.connection.state`
-- Access control should be implemented for each RPC method
-- Throwing an error in `_onBeforeConnect` will abort the connection
+- Authentication is handled through the `onBeforeConnect` lifecycle hook
+- Connection state is accessed with `c.connection.state`
+- Access control should be implemented for each action
+- Throwing an error in `onBeforeConnect` will abort the connection
 - Use `UserError` for safe error messages to clients
 - Use data validation libraries like zod for input validation
 
-## RPC and Events
+## Actions and Events
 
-- **RPC**: Used for clients to call actor methods
+- **Actions**: Used for clients to call actor functions
 - **Events**: For actors to publish updates to clients
-- Methods starting with `_` or `#` are private and not callable by clients
-- Broadcasting is done via `this._broadcast(name, data)`
+- Actions are defined in the `actions` object of the actor configuration
+- Helper functions outside the `actions` object are not callable by clients
+- Broadcasting is done via `c.broadcast(name, data)`
 - Specific client messaging uses `connection.send(name, data)`
 - Clients subscribe to events with `actor.on(eventName, callback)`
 
 ## Lifecycle Hooks
 
-- `_onInitialize()`: Called once when actor is first created
-- `_onStart()`: Called any time actor is started (after restart/upgrade)
-- `_onStateChange(newState)`: Called when actor state changes
-- `_onBeforeConnect(opts)`: Called when new client connects
-- `_onConnect(connection)`: Executed after client connection succeeds
-- `_onDisconnect(connection)`: Called when client disconnects
+- `createState()`: Function that returns initial actor state
+- `onStart(c)`: Called any time actor is started (after restart/upgrade)
+- `onStateChange(c, newState)`: Called when actor state changes
+- `onBeforeConnect(c)`: Called when new client connects
+- `onConnect(c)`: Executed after client connection succeeds
+- `onDisconnect(c)`: Called when client disconnects
 
 ## Actor Management
 
-- Actors are referenced using tags (key-value pairs)
-- The `name` tag is required and specifies the actor type
-- Actors can be created with `client.get(tags, opts)`
-- Actors can be shut down with `this._shutdown()` from within the actor
-- Metadata like region and tags are available via `this._region` and `this._tags`
+- App is configured with actors using `setup({ actors: { actorName }})` followed by `serve(app)`
+- Actors are accessed by client using `client.actorName.get()`
+- Actors can pass an ID parameter or object with `client.actorName.get(id)` or `client.actorName.get({key: value})`
+- Actors can be shut down with `c.shutdown()` from within the actor
 
 ## Scaling and Architecture Guidelines
 
@@ -151,8 +149,8 @@ When importing from workspace packages, always check the package's `package.json
 
 ## Scheduling
 
-- Schedule future events with `after(duration, fn, ...args)`
-- Schedule events for specific time with `at(timestamp, fn, ...args)`
+- Schedule future events with `c.after(duration, fn, ...args)`
+- Schedule events for specific time with `c.at(timestamp, fn, ...args)`
 - Scheduled events persist across actor restarts
 
 ## CORS Configuration
@@ -163,11 +161,10 @@ When importing from workspace packages, always check the package's `package.json
 
 ## Development Best Practices
 
-- Prefer classes over factory functions
+- Prefer functional actor pattern with `actor({ ... })` syntax
 - Use zod for runtime type validation
 - Use `assertUnreachable(x: never)` for exhaustive type checking
 - Add proper JSDoc comments for public APIs
 - Run `yarn check-types` regularly during development
 - Use `tsx` CLI to execute TypeScript scripts directly
 ````
-

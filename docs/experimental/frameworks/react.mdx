@@ -126,7 +126,7 @@ export default function Layout({
 
 The hook also provides the actor's state, error, and loading status. Actor created by `useActor` is available to that particular component tree only. If you call `useActor` somewhere else (even with the same arguments), it will create a new actor instance. To share the actor between components, you can use React's context or a state management library. It's safe to pass `actor` instance to child components as a prop, as it does not change between renders.
 
-Optionally, if you're using TypeScript, you can pass your Actor class type to the hook to get the correct types for [RPC methods](https://rivet.gg/docs/rpc). 
+Optionally, if you're using TypeScript, you can pass your Actor type to the hook to get the correct types for [actions](https://rivet.gg/docs/actions). 
 
 <CodeGroup>
 ```tsx {{"title": "JavaScript"}}
@@ -148,9 +148,9 @@ export const MyComponent = () => {
 ```
 </CodeGroup>
 
-### Remote Procedure Call (RPC)
+### Calling Actions
 
-To call any defined Remote Procedure Call (RPC) method on the actor, you can use the `actor.methodName` syntax. Make sure to replace `methodName` with the name of the method you want to call. Be aware that those methods are asynchronous and return a promise.
+To call any defined action on the actor, you can use the `actor.actionName` syntax. Make sure to replace `actionName` with the name of the action you want to call. Be aware that these methods are asynchronous and return a promise.
 
 <CodeGroup>
 ```tsx {{"title": "JavaScript"}}
@@ -222,35 +222,45 @@ import React from "react";
 
 #### Server Driven UI
 
-You can use the Actor RPC methods to return React components. [This is done by using React Server Components paradigm](https://react.dev/reference/rsc/server-components).
+You can use the Actor actions to return React components. [This is done by using React Server Components paradigm](https://react.dev/reference/rsc/server-components).
 
-In order to render components from your Actor, you need to ensure that your Actor extends the `RscActor` class from the `@rivet-gg/actor` package. Your RPC methods can receive props like any other React component.
+In order to render components from your Actor, you need to ensure that your Actor uses the RSC capabilities from the `@rivet-gg/actor` package. Your actions can receive props like any other React component.
 
 ```tsx {{"title": "your-actor.tsx"}}
-import { Rpc } from "@rivet-gg/actor";
-import { RscActor } from "@rivet-gg/actor/unstable-react";  // [!code focus]
+import { actor } from "@rivet-gg/actor";
+import { createRsc } from "@rivet-gg/actor/unstable-react";  // [!code focus]
 
-export default class ActorName extends RscActor { // [!code focus]
+// Helper function to get messages
+const getMessages = (state) => {
+  /* 
+    your code for getting messages,
+    either from state or external source
+  */
+  return state.messages || [];
+};
 
-  /* ... */
-
-  _getMessages() {
-    /* 
-      your code for getting messages,
-      either from state or external source
-    */
+// Create the actor with RSC support
+const messageActor = actor({
+  state: { messages: [] },
+  
+  // Set up RSC capabilities
+  ...createRsc(), // [!code focus]
+  
+  actions: {
+    // Action that returns a React component
+    messages: (c, props: {limit: number}) => {  // [!code focus]
+      const messages = getMessages(c.state);  // [!code focus]
+      // [!code focus]
+      return <ul>  // [!code focus]
+        {messages.slice(0, props.limit).map((message) => (  // [!code focus]
+          <li key={message.id}>{message.text}</li>  // [!code focus]
+        ))}  // [!code focus]
+      </ul> // [!code focus]
+    } // [!code focus]
   }
+});
 
-  messages(_rpc: Rpc<this>, props: {limit: number}) {  // [!code focus]
-    const messages = this._getMessages();  // [!code focus]
-    // [!code focus]
-    return <ul>  // [!code focus]
-      {messages.slice(0, props.limit).map((message) => (  // [!code focus]
-        <li key={message.id}>{message.text}</li>  // [!code focus]
-      ))}  // [!code focus]
-    </ul> // [!code focus]
-  } // [!code focus]
-}
+export default messageActor;
 ```
 
 Then, you can use the second return value of the `useActor` hook to use your RscActor's elements. Make sure to wrap those elements in `Suspense`.
@@ -282,26 +292,31 @@ export const MyComponent = () => {
 
 ### Manual RSC update
 
-If you need to re-render the component when the something happens in your actor, use `this._updateRsc()` method. This will trigger a re-render of the RSC elements in your actor. Behind the scenes, this method broadcasts an internal event `__rsc` that all RSC elements are listening to.
+If you need to re-render the component when something happens in your actor, use `c.updateRsc()` method. This will trigger a re-render of the RSC elements in your actor. Behind the scenes, this method broadcasts an internal event `__rsc` that all RSC elements are listening to.
 
 ```tsx your-actor.tsx
-import { Rpc } from "@rivet-gg/actor";
-import { RscActor } from "@rivet-gg/actor/unstable-react";
+import { actor } from "@rivet-gg/actor";
+import { createRsc } from "@rivet-gg/actor/unstable-react";
 
-export default class ActorName extends RscActor {
-
-  /* ... */
-
-  someFn(_rpc: Rpc<this>) {
-    this._updateRsc(); // [!code focus]
+const messageActor = actor({
+  state: { messages: [] },
+  
+  // Set up RSC capabilities
+  ...createRsc(),
+  
+  actions: {
+    // Action that triggers RSC update
+    updateMessages: (c) => {
+      // Trigger an update to re-render RSC components
+      c.updateRsc(); // [!code focus]
+    },
+    
+    // RSC component action
+    messages: (c, props: {limit: number}) => { 
+      /* ... */
+    }
   }
-
-  /* ... */
-
-  messages(_rpc: Rpc<this>, props: {limit: number}) { 
-    /* ... */
-  }
-}
+});
 ```
 
 ### `unstable_createActorHooks`

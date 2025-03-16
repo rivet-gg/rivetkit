@@ -29,13 +29,13 @@ Runs on [Rivet](https://actorcore.org/platforms/rivet), [Cloudflare Workers](htt
 
 - 💾 **Persistent, In-Memory State**: Fast in-memory access with built-in durability — no external databases or caches needed.
 - ⚡ **Ultra-Fast State Updates**: Real-time state updates with ultra-low latency, powered by co-locating compute and data.
-- 🔋 **Batteries Included**: Integrated support for state, RPC, events, scheduling, and multiplayer — no extra boilerplate code needed.
+- 🔋 **Batteries Included**: Integrated support for state, actions, events, scheduling, and multiplayer — no extra boilerplate code needed.
 - 🖥️ **Serverless & Scalable**: Effortless scaling, scale-to-zero, and easy deployments on any serverless runtime.
 
 ### Features
 
 - 💾 [**State**](https://actorcore.org/concepts/state): Fast in-memory access with built-in durability.
-- 💻 [**RPC**](https://actorcore.org/concepts/remote-procedure-calls): Remote procedure calls for seamless client-server communication.
+- 💻 [**Actions**](https://actorcore.org/concepts/actions): Callable functions for seamless client-server communication.
 - 📡 [**Events**](https://actorcore.org/concepts/events): Real-time event handling and broadcasting.
 - ⏰ [**Scheduling**](https://actorcore.org/concepts/schedule): Timed tasks and operations management.
 - 🌐 [**Connections & Multiplayer**](https://actorcore.org/concepts/connections): Manage connections and multiplayer interactions.
@@ -49,8 +49,8 @@ ActorCore provides a solid foundation with the features you'd expect for modern 
 | --------------- | --------- | --------------- | --------- | ----- | ---------- |
 | In-Memory State | ✓         | ✓               | ✓         | ✓     |            |
 | Persisted State | ✓         | ✓               |           |       |            |
-| RPC             | ✓         | ✓               | ✓         |       | ✓          |
-| Events          | ✓         | -               | ✓         | ✓     |            |
+| Actions (RPC)   | ✓         | ✓               | ✓         |       | ✓          |
+| Events (Pub/Sub)| ✓         | -               | ✓         | ✓     |            |
 | Scheduling      | ✓         | -               |           |       | -          |
 | Edge Computing  | ✓ †       | ✓               |           |       | ✓          |
 | No Vendor Lock  | ✓         |                 | ✓         | ✓     |            |
@@ -79,43 +79,46 @@ npx create-actor@latest
 **Create Actor**
 
 ```typescript
-import { Actor, type Rpc } from "actor-core";
+import { actor, setup } from "actor-core";
 
-export interface State {
-  messages: { username: string; message: string }[];
-}
+const chatRoom = actor({
+  state: { messages: [] },
+  actions: {
+    // receive an action call from the client
+    sendMessage: (c, username: string, message: string) => {
+      // save message to persistent storage
+      c.state.messages.push({ username, message });
 
-export default class ChatRoom extends Actor<State> {
-  // initialize this._state
-  _onInitialize() {
-    return { messages: [] };
-  }
+      // broadcast message to all clients
+      c.broadcast("newMessage", username, message);
+    },
+    // allow client to request message history
+    getMessages: (c) => c.state.messages
+  },
+});
 
-  // receive an remote procedure call from the client
-  sendMessage(rpc: Rpc<ChatRoom>, username: string, message: string) {
-    // save message to persistent storage
-    this._state.messages.push({ username, message });
+export const app = setup({
+  actors: { chatRoom },
+  cors: { origin: "http://localhost:8080" }
+});
 
-    // broadcast message to all clients
-    this._broadcast("newMessage", username, message);
-  }
-}
+export type App = typeof app;
 ```
 
 **Connect to Actor**
 
 ```typescript
-import { Client } from "actor-core/client";
-import type ChatRoom from "../src/chat-room.ts";
+import { createClient } from "actor-core/client";
+import type { App } from "../src/index";
 
-const client = new Client(/* manager endpoint */);
+const client = createClient<App>(/* manager endpoint */);
 
 // connect to chat room
-const chatRoom = await client.get<ChatRoom>({ name: "chat" });
+const chatRoom = await client.chatRoom.get({ channel: "random" });
 
 // listen for new messages
 chatRoom.on("newMessage", (username: string, message: string) =>
-  console.log(`Message from ${username}: ${message}`)
+  console.log(`Message from ${username}: ${message}`),
 );
 
 // send message to room

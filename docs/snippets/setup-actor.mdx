@@ -1,20 +1,25 @@
-```typescript src/counter.ts
-import { Actor, type Rpc } from "actor-core";
+```typescript src/app.ts
+import { actor, setup } from "actor-core";
 
-export interface State {
-	count: number;
-}
+// Create actor
+const counter = actor({
+  state: { count: 0 },
+  actions: {
+    increment: (c, x: number) => {
+      c.state.count += x;
+      c.broadcast("newCount", c.state.count);
+      return c.state.count;
+    }
+  }
+});
 
-export default class Counter extends Actor<State> {
-	_onInitialize() {
-		return { count: 0 };
-	}
+// Create the application
+export const app = setup({
+  actors: { counter },
+  cors: { origin: "http://localhost:8080" }
+});
 
-	increment(rpc: Rpc<Counter>, x: number) {
-		this._state.count += x;
-		this._broadcast("newCount", this._state.count);
-		return this._state.count;
-	}
-}
+// Export app type for client usage
+export type App = typeof app;
 ```
 

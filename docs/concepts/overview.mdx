@@ -31,8 +31,8 @@ In ActorCore, each actor has these key characteristics:
 - **State Is Automatically Persisted**: State automatically persists between restarts, upgrades, & crashes
 - **State Is Stored In-Memory**: State is stored in memory for high-performance reads/writes while also automatically persisted
 - **Isolated State Ownership**: Actors only manage their own state, which can only be modified by the actor itself
-- **Communicates via Remote Procedure Calls**: How clients and other actors interact with an actor
-- **Remote Procedure Calls Are Low-Latency**: RPCs provide WebSocket-like performance for time-sensitive operations
+- **Communicates via Actions**: How clients and other actors interact with an actor
+- **Actions Are Low-Latency**: Actions provide WebSocket-like performance for time-sensitive operations
 - **Broadcast Updates With Events**: Actors can publish real-time updates to connected clients
 
 ## Code Example
@@ -40,152 +40,165 @@ In ActorCore, each actor has these key characteristics:
 Here's a complete chat room actor that maintains state and handles messages. We'll explore each component in depth throughout this document:
 
 ```typescript chat_room.ts
-import { Actor, type Rpc } from "actor-core";
+import { actor } from "actor-core";
 
-// Define the actor's state structure
-interface State {
-  messages: { sender: string; text: string; }[];
-}
-
-export default class ChatRoom extends Actor<State> {
+// Define a chat room actor
+const chatRoom = actor({
   // Initialize state when the actor is first created
-  _onInitialize(): State {
-    return { messages: [] };
-  }
+  createState: () => ({
+    messages: []
+  }),
 
-  // RPC method clients can call
-  sendMessage(rpc: Rpc<ChatRoom>, sender: string, text: string) {
-    // Update state
-    this._state.messages.push({ sender, text });
+  // Define actions clients can call
+  actions: {
+    // Action to send a message
+    sendMessage: (c, sender, text) => {
+      // Update state
+      c.state.messages.push({ sender, text });
+      
+      // Broadcast to all connected clients
+      c.broadcast("newMessage", { sender, text });
+    },
     
-    // Broadcast to all connected clients
-    this._broadcast("newMessage", { sender, text });
+    // Action to get chat history
+    getHistory: (c) => {
+      return c.state.messages;
+    }
   }
-  
-  // RPC to get chat history
-  getHistory(rpc: Rpc<ChatRoom>) {
-    return this._state.messages;
-  }
-}
+});
+
+export default chatRoom;
+```
+
+## Using the App
+
+To start using your actor, create an app and serve it:
+
+```typescript app.ts
+import { setup, serve } from "actor-core";
+import chatRoom from "./chat_room";
+
+// Create the application
+const app = setup({
+  actors: { chatRoom }
+});
+
+// Start serving on default port
+serve(app);
+
+// Export the app type for client usage
+export type App = typeof app;
 ```
 
 ## Key Actor Components
 
 ### State
 
-Actors maintain state that's stored in memory and automatically persisted. State is created in the `_onInitialize` method:
+Actors maintain state that's stored in memory and automatically persisted. State is defined either as a constant or via a `createState` function:
 
 ```typescript
-import { Actor } from "actor-core";
+import { actor } from "actor-core";
 
-interface State {
-  count: number;
-}
-
-export default class Counter extends Actor<State> {
-  _onInitialize(): State {
-    return { count: 0 };
+// Method 1: State constant
+const counter1 = actor({
+  state: { count: 0 },
+  actions: {
+    // ...
   }
-}
+});
+
+// Method 2: CreateState function
+const counter2 = actor({
+  createState: () => ({ count: 0 }),
+  actions: {
+    // ...
+  }
+});
 ```
 
-Update state by modifying `this._state`:
+Update state by modifying `c.state` in your actions:
 
 ```typescript
-import { Actor, type Rpc } from "actor-core";
+import { actor } from "actor-core";
 
-interface State {
-  count: number;
-}
-
-export default class Counter extends Actor<State> {
-  // Example of state update method
-  increment(rpc: Rpc<Counter>) {
-    this._state.count += 1;
+const counter = actor({
+  state: { count: 0 },
+  actions: {
+    // Example of state update in an action
+    increment: (c) => {
+      c.state.count += 1;
+      return c.state.count;
+    }
   }
-}
+});
 ```
 
 These changes are durable and are automatically persisted across updates, restarts, and crashes.
 
 Learn more about [state management](/concepts/state).
 
-### Remote Procedure Calls (RPCs)
+### Actions
 
-RPCs are methods on your actor class that clients & other actors can call. They must accept parameter of type `Rpc<Actor>` as the first argument:
-
-```typescript
-import { Actor, type Rpc } from "actor-core";
-
-export default class Example extends Actor {
-  multiplyByTwo(rpc: Rpc<Example>, x: number) {
-    return x * 2;
-  }
-}
-```
-
-Private methods starting with `_` or `#` cannot be called by clients:
+Actions are functions defined in your actor configuration that clients & other actors can call:
 
 ```typescript
-import { Actor, type Rpc } from "actor-core";
+import { actor } from "actor-core";
 
-export default class Example extends Actor {
-  // Private - not callable by clients
-  #calculateFee(amount: number) {
-    return amount * 0.05;
+const mathUtils = actor({
+  state: {},
+  actions: {
+    multiplyByTwo: (c, x) => {
+      return x * 2;
+    }
   }
-
-  // Public - callable by clients
-  processPayment(rpc: Rpc<Example>, amount: number) {
-    const fee = this.#calculateFee(amount);
-    // Process payment logic...
-    return { amount, fee };
-  }
-}
+});
 ```
 
-Learn more about [remote procedure calls](/concepts/remote-procedure-calls).
+Each action receives a context object (commonly named `c`) as its first parameter, which provides access to state, connections, and other utilities.
+
+Learn more about [actions](/concepts/actions).
 
 ### Events
 
 Actors can broadcast events to connected clients:
 
 ```typescript
-import { Actor, type Rpc } from "actor-core";
+import { actor } from "actor-core";
 
-interface State {
-  items: string[];
-}
-
-export default class Inventory extends Actor<State> {
-  _onInitialize(): State {
-    return { items: [] };
-  }
+const inventory = actor({
+  createState: () => ({ 
+    items: [] 
+  }),
   
-  addItem(rpc: Rpc<Inventory>, item: string) {
-    // Add to state
-    this._state.items.push(item);
-    
-    // Notify all clients about the new item
-    this._broadcast("itemAdded", { item });
+  actions: {
+    addItem: (c, item) => {
+      // Add to state
+      c.state.items.push(item);
+      
+      // Notify all clients about the new item
+      c.broadcast("itemAdded", { item });
+    }
   }
-}
+});
 ```
 
 You can also send events to specific clients:
 
 ```typescript
-import { Actor, type Rpc } from "actor-core";
+import { actor } from "actor-core";
 
-export default class MessageService extends Actor {
-  sendPrivateMessage(rpc: Rpc<MessageService>, userId: string, text: string) {
-    // Send to a specific connection
-    const connection = this._connections.find(c => c.parameters.userId === userId);
-    if (connection) {
-      connection.send("privateMessage", { text });
+const messageService = actor({
+  state: {},
+  actions: {
+    sendPrivateMessage: (c, userId, text) => {
+      // Send to a specific connection
+      const connection = c.connections.find(conn => conn.parameters.userId === userId);
+      if (connection) {
+        connection.send("privateMessage", { text });
+      }
     }
   }
-}
+});
 ```
 
 Learn more about [events](/concepts/events).
@@ -197,36 +210,28 @@ Tags are key-value pairs attached to actors that serve two purposes:
 1. **Actor Discovery**: Find specific actors using `client.get(tags)`
 2. **Organization**: Group related actors for management purposes
 
-The `name` tag is required and identifies the actor type.
+For example, you can query chat rooms by tag like:
 
-```typescript
-// Tags for a chat room actor
-{
-  name: "chat_room",
-  channel: "general"
-}
+```typescript client.ts
+await client.chatRoom.get({ channel: "random" });
 ```
 
 ### Common Tag Patterns
 
-Tags help clients find the right actor instance. Here are some common patterns:
-
 ```typescript
-// Game room by code
-const gameRoom = await client.get<GameRoom>({
-  name: "game_room",
-  roomCode: "ABC123"
-});
+import { createClient } from "actor-core/client";
+import type { App } from "./src/index";
 
-// User-specific actor
-const userProfile = await client.get<UserProfile>({
-  name: "user_profile",
-  userId: "1234"
-});
+const client = createClient<App>("http://localhost:6420");
 
-// Document with workspace
-const document = await client.get<Document>({
-  name: "document",
+// Game room with ID parameter
+const gameRoom = await client.gameRoom.get({ roomId: "ABC123" });
+
+// User profile with ID
+const userProfile = await client.userProfile.get({ profileId: "1234" });
+
+// Document with multiple parameters
+const document = await client.document.get({
   workspaceId: "team-alpha",
   documentId: "budget-2024"
 });
@@ -236,24 +241,25 @@ const document = await client.get<Document>({
 
 Actors are created automatically when needed and persist until explicitly shutdown.
 
-To shut down an actor, use `this._shutdown()` from within an RPC:
+To shut down an actor, use `c.shutdown()` from within an action:
 
 ```typescript
-import { Actor, type Rpc } from "actor-core";
+import { actor } from "actor-core";
 
-interface State {
-  messages: { sender: string; text: string; }[];
-}
-
-export default class ChatRoom extends Actor<State> {
-  closeRoom(rpc: Rpc<ChatRoom>) {
-    // Do any cleanup needed
-    this._broadcast("roomClosed");
-    
-    // Shutdown the actor
-    this._shutdown();
+const chatRoom = actor({
+  createState: () => ({
+    messages: []
+  }),
+  actions: {
+    closeRoom: (c) => {
+      // Do any cleanup needed
+      c.broadcast("roomClosed");
+      
+      // Shutdown the actor
+      c.shutdown();
+    }
   }
-}
+});
 ```
 
 Learn more about the [actor lifecycle](/concepts/lifecycle).
@@ -267,8 +273,8 @@ Learn more about the [actor lifecycle](/concepts/lifecycle).
   <Card title="State" href="/concepts/state">
     Deep dive into actor state management
   </Card>
-  <Card title="RPCs" href="/concepts/remote-procedure-calls">
-    Learn more about remote procedure calls
+  <Card title="Actions" href="/concepts/actions">
+    Learn more about actor actions
   </Card>
   <Card title="Events" href="/concepts/events">
     Learn more about realtime events

@@ -18,17 +18,22 @@ By default, actors will choose the optimal region based on the client's location
 
 ### Manual region selection
 
-The region an actor is created in can be overridden by defining `create.region`:
+The region an actor is created in can be overridden using region options:
 
 ```typescript client.ts
-const actor = client.get(
-	{ name: "example" },
-	{
-		create: {
-			region: "atl",
-		},
-	}
-);
+import { createClient } from "actor-core/client";
+import type { App } from "./src/index";
+
+const client = createClient<App>("http://localhost:6420");
+
+// Create actor in a specific region
+const actor = await client.example.get({
+  options: {
+    create: {
+      region: "atl"
+    }
+  }
+});
 ```
 
 See [Create & Manage Actors](/docs/manage) for more information.

@@ -1,16 +1,18 @@
-import { Client, type Encoding } from "actor-core/client";
-import type ChatRoom from "../src/chat-room";
+import { createClient, type Encoding } from "actor-core/client";
+import type { App } from "../src/chat-room";
 import prompts from "prompts";
 
 async function main() {
 	const { encoding, username, room } = await initPrompt();
-	const client = new Client("http://localhost:6420", {
+	
+	// Create type-aware client
+	const client = createClient<App>("http://localhost:6420", {
 		encoding,
 	});
 
-	// connect to chat room
-	const chatRoom = await client.get<ChatRoom>({
-		name: "chat-room",
+	// connect to chat room - now accessed via property
+	// can still pass parameters like room
+	const chatRoom = await client.chatRoom.get({
 		room,
 	});
 
@@ -22,7 +24,7 @@ async function main() {
 
 	// listen for new messages
 	//
-	// `needsNewLine` is a hack to work aroudn console.log clobbering prompts
+	// `needsNewLine` is a hack to work around console.log clobbering prompts
 	let needsNewLine = false;
 	chatRoom.on("newMessage", (username: string, message: string) => {
 		if (needsNewLine) {

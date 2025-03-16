@@ -9,15 +9,18 @@ title: Hono
 When mounting the ActorCore router at a custom path, you **must** specify the same path in the router configuration using `basePath`:
 
 ```typescript
-// Example configuration with basePath
-const { router: actorRouter } = createRouter({
-  actors: { "counter": Counter },
+// Setup the ActorCore app
+const app = setup({
+  actors: { counter },
   // IMPORTANT: Must specify the same basePath where your router is mounted
   basePath: "/my-path"
 });
 
+// Create a router from the app
+const { router: actorRouter } = createRouter(app);
+
 // Mount at the same path specified in basePath
-app.route("/my-path", actorRouter);
+honoApp.route("/my-path", actorRouter);
 ```
 
 This ensures that WebSocket connections and other functionality work correctly when accessing your actors through the custom path.
@@ -29,36 +32,45 @@ Each platform has specific requirements for integrating Hono with ActorCore.
 ### Cloudflare Workers
 
 ```typescript
-import { createRouter } from "@actor-core/cloudflare-workers";
+import { setup, createRouter } from "@actor-core/cloudflare-workers";
 import { Hono } from "hono";
-import Counter from "./counter";
+import counter from "./counter";
 
 // Create your Hono app inside the fetch handler
-const app = new Hono();
+const honoApp = new Hono();
 
 // Add your custom routes
-app.get("/", (c) => c.text("Welcome to my app!"));
-app.get("/hello", (c) => c.text("Hello, world!"));
+honoApp.get("/", (c) => c.text("Welcome to my app!"));
+honoApp.get("/hello", (c) => c.text("Hello, world!"));
 
-const { router: actorRouter, ActorHandler } = createRouter({
-  actors: { "counter": Counter },
+// Setup the ActorCore app
+const app = setup({
+  actors: { counter },
   // IMPORTANT: Must specify the same basePath where your router is mounted
   basePath: "/my-path"
 });
 
+// Create a router and handler from the app
+const { router: actorRouter, ActorHandler } = createRouter(app);
+
 // Mount the ActorCore router at /my-path
-app.route("/my-path", actorRouter);
+honoApp.route("/my-path", actorRouter);
+
+// Export the app type for client usage
+export type App = typeof app;
 
 // IMPORTANT: Must export `ActorHandler` as this exact name
-export { app as default, ActorHandler };
+export { honoApp as default, ActorHandler };
 ```
 
 Make sure to update your client connection URL to include the custom path:
 
 ```typescript
 // If you mounted ActorCore at /my-path
-import { Client } from "actor-core/client";
-const client = new Client("https://your-worker.workers.dev/my-path");
+import { createClient } from "actor-core/client";
+import type { App } from "./src/index";
+
+const client = createClient<App>("https://your-worker.workers.dev/my-path");
 ```
 
 For this to work with Cloudflare Workers, your `wrangler.json` **must** include specific Durable Object and KV namespace bindings with the exact names expected by ActorCore:
@@ -97,29 +109,35 @@ For this to work with Cloudflare Workers, your `wrangler.json` **must** include 
 ```typescript
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
-import { createRouter } from "@actor-core/nodejs";
-import Counter from "./counter";
+import { setup, createRouter } from "@actor-core/nodejs";
+import counter from "./counter";
 
 // Create your Hono app
-const app = new Hono();
+const honoApp = new Hono();
 
 // Add your custom routes
-app.get("/", (c) => c.text("Welcome to my app!"));
-app.get("/hello", (c) => c.text("Hello, world!"));
+honoApp.get("/", (c) => c.text("Welcome to my app!"));
+honoApp.get("/hello", (c) => c.text("Hello, world!"));
 
-// Create the ActorCore router and get the injectWebSocket function
-const { router: actorRouter, injectWebSocket } = createRouter({
-  actors: { "counter": Counter },
+// Setup the ActorCore app
+const app = setup({
+  actors: { counter },
   // IMPORTANT: Must specify the same basePath where your router is mounted
   basePath: "/my-path"
 });
 
+// Create a router from the app
+const { router: actorRouter, injectWebSocket } = createRouter(app);
+
 // Mount the ActorCore router at /my-path
-app.route("/my-path", actorRouter);
+honoApp.route("/my-path", actorRouter);
+
+// Export the app type for client usage
+export type App = typeof app;
 
 // Create server with the combined app
 const server = serve({
-  fetch: app.fetch,
+  fetch: honoApp.fetch,
   port: 6420,
 });
 
@@ -133,38 +151,46 @@ Make sure to update your client connection URL to include the custom path:
 
 ```typescript
 // If you mounted ActorCore at /my-path
-import { Client } from "actor-core/client";
-const client = new Client("http://localhost:6420/my-path");
+import { createClient } from "actor-core/client";
+import type { App } from "./src/index";
+
+const client = createClient<App>("http://localhost:6420/my-path");
 ```
 
 ### Bun
 
 ```typescript
 import { Hono } from "hono";
-import { createRouter } from "@actor-core/bun";
-import Counter from "./counter";
+import { setup, createRouter } from "@actor-core/bun";
+import counter from "./counter";
 
 // Create your Hono app
-const app = new Hono();
+const honoApp = new Hono();
 
 // Add your custom routes
-app.get("/", (c) => c.text("Welcome to my app!"));
-app.get("/hello", (c) => c.text("Hello, world!"));
+honoApp.get("/", (c) => c.text("Welcome to my app!"));
+honoApp.get("/hello", (c) => c.text("Hello, world!"));
 
-// Create the ActorCore router and get the websocket handler
-const { router: actorRouter, webSocketHandler } = createRouter({
-  actors: { "counter": Counter },
+// Setup the ActorCore app
+const app = setup({
+  actors: { counter },
   // IMPORTANT: Must specify the same basePath where your router is mounted
   basePath: "/my-path"
 });
 
+// Create a router from the app
+const { router: actorRouter, webSocketHandler } = createRouter(app);
+
 // Mount the ActorCore router at /my-path
-app.route("/my-path", actorRouter);
+honoApp.route("/my-path", actorRouter);
+
+// Export the app type for client usage
+export type App = typeof app;
 
 // Create and start the server
 export default {
   port: 6420,
-  fetch: app.fetch,
+  fetch: honoApp.fetch,
   // IMPORTANT: Pass the webSocketHandler to Bun
   websocket: webSocketHandler,
 };
@@ -174,7 +200,8 @@ Make sure to update your client connection URL to include the custom path:
 
 ```typescript
 // If you mounted ActorCore at /my-path
-import { Client } from "actor-core/client";
-const client = new Client("http://localhost:6420/my-path");
-```
+import { createClient } from "actor-core/client";
+import type { App } from "./src/index";
 
+const client = createClient<App>("http://localhost:6420/my-path");
+```

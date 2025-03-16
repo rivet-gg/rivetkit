@@ -7,6 +7,25 @@
  const PORT = "3000";
 
 const STYLES = `
+.landing-root {
+  max-width: 72rem;
+  margin-left: auto;
+  margin-right: auto;
+  padding-top: 10rem;
+  padding-bottom: 3rem;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .landing-root {
+    padding-top: 5rem;
+    padding-bottom: 3rem;
+    padding-left: 6rem;
+    padding-right: 6rem;
+  }
+}
+
 .inline-icon {
     display: inline-block;
     width: 1em;
@@ -16,6 +35,11 @@ const STYLES = `
     margin-left: 0.2em;
 }
 
+.platform-link {
+    color: white;
+    font-weight: 500;
+}
+
 .no-break {
     white-space: nowrap;
 }
@@ -23,9 +47,9 @@ const STYLES = `
 .button {
 	color: white;
 	padding: 0.5rem 1.25rem;
-	border-radius: 9999px;
-	margin-right: 0.75rem;
+	border-radius: 10px;
     display: block;
+    white-space: nowrap;
 }
 
 .button-orange {
@@ -36,6 +60,8 @@ const STYLES = `
     display: flex;
     margin-top: 2rem;
     margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
 }
 
 .copy-command-container {
@@ -60,7 +86,7 @@ const STYLES = `
 
 .copy-command-button .copy-command-text {
     background: hsl(0, 0%, 15%);
-    border-radius: 9999px;
+    border-radius: 10px;
     padding: 0.5rem 1.25rem;
     color: white;
 }

@@ -2,23 +2,25 @@
 title: ActorCore
 description: Stateful, Scalable, Realtime Backend Framework
 sidebarTitle: Introduction
-mode: wide
+mode: custom
 ---
+
+<div className="landing-root">
 
 <CardGroup cols={2}>
   <div>
-    <h1 style={{ fontSize: "1.875rem", fontWeight: "bold", marginBottom: "0.5rem", color: "#ff4f00" }}>ActorCore</h1>
-    <h2 style={{ fontSize: "1.25rem", marginBottom: "1rem", color: "white" }}>Stateful, Scalable, Realtime Backend Framework</h2>
+    <h1 style={{ fontSize: "2.25rem", fontWeight: "bold", marginBottom: "0.5rem", color: "#ff4f00" }}>ActorCore</h1>
+    <h2 style={{ fontSize: "2.25rem", marginBottom: "1rem", color: "white" }}>Stateful, Scalable, Realtime<br/>Backend Framework</h2>
     <p style={{ fontSize: "1.125rem", marginBottom: "1rem" }}>The modern way to build multiplayer, realtime, or AI agent backends.</p>
     <p style={{ fontSize: "1.125rem" }}>
       Runs on 
-      <a class="no-break" href="/platforms/rivet"><img class="inline-icon" src="/images/platforms/rivet-white.svg" /> Rivet</a>, 
-      <a class="no-break" href="/platforms/cloudflare-workers"><img class="inline-icon" src="/images/platforms/cloudflare-workers.svg" /> Cloudflare Workers</a>, 
-      <a class="no-break" href="/platforms/bun"><img class="inline-icon" src="/images/platforms/bun.svg" /> Bun</a>, and 
-      <a class="no-break" href="/platforms/nodejs"><img class="inline-icon" src="/images/platforms/nodejs.svg" /> Node.js</a>.
+      <a class="platform-link no-break" href="/platforms/rivet"><img class="inline-icon" src="/images/platforms/rivet-white.svg" /> Rivet</a>, 
+      <a class="platform-link no-break" href="/platforms/cloudflare-workers"><img class="inline-icon" src="/images/platforms/cloudflare-workers.svg" /> Cloudflare Workers</a>, 
+      <a class="platform-link no-break" href="/platforms/bun"><img class="inline-icon" src="/images/platforms/bun.svg" /> Bun</a>, and 
+      <a class="platform-link no-break" href="/platforms/nodejs"><img class="inline-icon" src="/images/platforms/nodejs.svg" /> Node.js</a>.
 	  Integrates with 
-      <a class="no-break" href="/integrations/hono"><img class="inline-icon" src="/images/platforms/hono.svg" /> Hono</a> and 
-      <a class="no-break" href="/drivers/redis"><img class="inline-icon" src="/images/platforms/redis.svg" /> Redis</a>.
+      <a class="platform-link no-break" href="/integrations/hono"><img class="inline-icon" src="/images/platforms/hono.svg" /> Hono</a> and 
+      <a class="platform-link no-break" href="/drivers/redis"><img class="inline-icon" src="/images/platforms/redis.svg" /> Redis</a>.
     </p> 
     <div className="buttons-container">
       <a href="/concepts/overview" className="button button-orange">Get Started</a>
@@ -36,29 +38,24 @@ mode: wide
   </div>
   <div style={{ marginTop: "-1.25rem", overflow: "hidden" /* fix scrolling bug */ }}>
     ```typescript
-    import { Actor, type Rpc } from "actor-core";
+    import { actor } from "actor-core";
 
-    export interface State {
-      messages: { username: string; message: string }[];
-    }
+    const chatRoom = actor({
+	  state: { messages: [] },
+      actions: {
+        // receive an action call from the client
+        sendMessage: (c, username, message) => {
+          // save message to persistent storage
+          c.state.messages.push({ username, message });
 
-    export default class ChatRoom extends Actor<State> {
-      // initialize this._state
-      _onInitialize() {
-        return { messages: [] };
+          // broadcast message to all clients
+          c.broadcast("newMessage", username, message);
+        },
+		// allow client to request message history
+		getMessages: (c) => c.state.messages
       }
-
-      // receive an remote procedure call from the client
-      sendMessage(rpc: Rpc<ChatRoom>, username: string, message: string) {
-        // save message to persistent storage
-        this._state.messages.push({ username, message });
-
-        // broadcast message to all clients
-        this._broadcast("newMessage", username, message);
-      }
-    }
+    });
     ```
-
   </div>
 </CardGroup>
 
@@ -74,7 +71,7 @@ mode: wide
     compute and data.
   </Card>
   <Card title="Batteries Included" icon="hammer-brush">
-    Integrated support for state, RPC, events, scheduling, and multiplayer — no
+    Integrated support for state, actions, events, scheduling, and multiplayer — no
     extra boilerplate code needed.
   </Card>
   <Card title="Serverless & Scalable" icon="microchip">
@@ -96,7 +93,7 @@ mode: wide
     icon="floppy-disk"
     horizontal={true}
   />
-  <Card title="RPC" href="/concepts/remote-procedure-calls" icon="code" horizontal={true} />
+  <Card title="Actions" href="/concepts/actions" icon="bolt" horizontal={true} />
   <Card
     title="Events"
     href="/concepts/events"
@@ -158,7 +155,7 @@ mode: wide
         <td></td>
       </tr>
       <tr>
-        <td>RPC</td>
+        <td>Actions</td>
         <td><Icon icon="check" iconType="solid" /></td>
         <td><Icon icon="check" iconType="solid" /></td>
         <td><Icon icon="check" iconType="solid" /></td>
@@ -206,69 +203,50 @@ mode: wide
 
 <div style={{ height: "96px" }} />
 
-## Overview
+<h2 class="text-white text-2xl font-semibold not-prose mt-8 mb-4">
+  Overview
+</h2>
 
 <Steps>
     <Step title="Create Actor">
-      <CodeGroup>
+      ```typescript Actor
+      import { actor, setup } from "actor-core";
 
-      ```typescript Actor (TypeScript)
-      import { Actor, type Rpc } from "actor-core";
+      const chatRoom = actor({
+		state: { messages: [] },
+        actions: {
+          // receive an action call from the client
+          sendMessage: (c, username: string, message: string) => {
+            // save message to persistent storage
+            c.state.messages.push({ username, message });
 
-      export interface State {
-        messages: { username: string; message: string }[];
-      }
+            // broadcast message to all clients
+            c.broadcast("newMessage", username, message);
+          },
+          // allow client to request message history
+          getMessages: (c) => c.state.messages
+        },
+      });
 
-      export default class ChatRoom extends Actor<State> {
-        // initialize this._state
-        _onInitialize() {
-          return { messages: [] };
-        }
+	  export const app = setup({
+        actors: { chatRoom },
+        cors: { origin: "http://localhost:8080" }
+      });
 
-        // receive an remote procedure call from the client
-        sendMessage(rpc: Rpc<ChatRoom>, username: string, message: string) {
-          // save message to persistent storage
-          this._state.messages.push({ username, message });
-
-          // broadcast message to all clients
-          this._broadcast("newMessage", username, message);
-        }
-      }
+      export type App = typeof app;
       ```
-
-      ```javascript Actor (JavaScript)
-      import { Actor } from "actor-core";
-
-      export default class ChatRoom extends Actor {
-        // initialize this._state
-        _onInitialize() {
-          return { messages: [] };
-        }
-
-        // receive an remote procedure call from the client
-        sendMessage(rpc, username, message) {
-          // save message to persistent storage
-          this._state.messages.push({ username, message });
-
-          // broadcast message to all clients
-          this._broadcast("newMessage", username, message);
-        }
-      }
-      ```
-
-      </CodeGroup>
     </Step>
     <Step title="Connect to Actor">
       <CodeGroup>
 
       ```typescript Browser (TypeScript)
-      import { Client } from "actor-core/client";
-      import type ChatRoom from "../src/chat-room.ts";
+      import { createClient } from "actor-core/client";
+      import type { App } from "../src/index";
 
-      const client = new Client(/* manager endpoint */);
+      const client = createClient<App>(/* manager endpoint */);
 
       // connect to chat room
-      const chatRoom = await client.get<ChatRoom>({ name: "chat" });
+      const chatRoom = await client.chatRoom.get({ channel: "random" });
 
       // listen for new messages
       chatRoom.on("newMessage", (username: string, message: string) =>
@@ -280,12 +258,12 @@ mode: wide
       ```
 
       ```javascript Browser (JavaScript)
-      import { Client } from "actor-core/client";
+      import { createClient } from "actor-core/client";
 
-      const client = new Client(/* manager endpoint */);
+      const client = createClient(/* manager endpoint */);
 
       // connect to chat room
-      const chatRoom = await client.get({ name: "chat" });
+      const chatRoom = await client.chatRoom.get();
 
       // listen for new messages
       chatRoom.on("newMessage", (username, message) =>
@@ -303,7 +281,9 @@ mode: wide
 
 {/*
 
-## LLM Prompts
+<h2 class="text-white text-2xl font-semibold not-prose mt-8 mb-4">
+  Overview
+</h2>
 
 Resources to help you use LLMs with ActorCore to build AI agents and tools. The following guides provide information on how to use ActorCore with your vibe coding workflow of choice.
 
@@ -318,7 +298,20 @@ Resources to help you use LLMs with ActorCore to build AI agents and tools. The 
 
 */}
 
-## Community & Support
+<h2 class="text-white text-2xl font-semibold not-prose mt-8 mb-4">
+  Platforms
+</h2>
+
+<CardGroup cols={4}>
+	<Card title="Rivet" href="/platforms/rivet" horizontal={true} />
+	<Card title="Cloudflare Workers" href="/platforms/cloudflare-workers" horizontal={true} />
+	<Card title="Bun" href="/platforms/bun" horizontal={true} />
+	<Card title="Node.js" href="/platforms/nodejs" horizontal={true} />
+</CardGroup>
+
+<h2 class="text-white text-2xl font-semibold not-prose mt-8 mb-4">
+  Community & Support
+</h2>
 
 {" "}
 
@@ -355,12 +348,4 @@ Resources to help you use LLMs with ActorCore to build AI agents and tools. The 
   />
 </CardGroup>
 
-## Get Started With Your Framework
-
-<CardGroup cols={4}>
-	<Card title="Rivet" href="/platforms/rivet" horizontal={true} />
-	<Card title="Cloudflare Workers" href="/platforms/cloudflare-workers" horizontal={true} />
-	<Card title="Bun" href="/platforms/bun" horizontal={true} />
-	<Card title="Node.js" href="/platforms/nodejs" horizontal={true} />
-</CardGroup>
-
+</div>

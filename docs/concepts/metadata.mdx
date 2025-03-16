@@ -7,36 +7,79 @@ Metadata provides information about the currently running actor.
 
 ## Region
 
-Region can accessed from `this._region`.
+Region can be accessed from the context object via `c.region`.
 
-<Warning>`this._region` is only supported on Rivet at the moment.</Warning>
+<Warning>`c.region` is only supported on Rivet at the moment.</Warning>
 
 ## Tags
 
-Tags can be accessed from `this._tags`.
+Tags can be accessed from the context object via `c.tags`.
 
 For example:
 
 <CodeGroup>
 
 ```typescript chat_room.ts
-import { Actor, type Rpc } from "actor-core";
+import { actor } from "actor-core";
 
-export default class ChatRoom extends Actor {
-  // Method used to get the channel ID. Returns `random` for this example.
-  getChannelId(rpc: Rpc<ChatRoom>): string {
-    return this._tags['channel'];
+const chatRoom = actor({
+  state: {
+    messages: []
+  },
+  
+  actions: {
+    // Method used to get the channel ID
+    getChannelId: (c) => {
+      return c.tags['channel'];
+    },
+    
+    addMessage: (c, message) => {
+      // Use the channel for logging or filtering
+      const channel = c.tags['channel'] || 'default';
+      console.log(`Adding message to channel: ${channel}`);
+      
+      c.state.messages.push({
+        channel,
+        message,
+        timestamp: Date.now()
+      });
+      
+      c.broadcast('newMessage', { channel, message });
+    }
   }
-}
+});
+
+export default chatRoom;
 ```
 
 ```typescript client.ts
-// Create an actor with `channel` set to `random`
-const actor = client.get<ChatRoom>({
-  name: 'chat_room',
-  channel: 'random'
+import { createClient } from "actor-core/client";
+import type { App } from "./src/index";
+
+const client = createClient<App>("http://localhost:6420");
+
+// Connect to a specific channel
+const randomChannel = await client.chatRoom.get({ channel: "random" });
+
+// Check the channel ID
+const channelId = await randomChannel.getChannelId();
+console.log("Connected to channel:", channelId); // "random"
+
+// Or connect with multiple parameters
+const teamChannel = await client.chatRoom.get({
+  channel: "team-chat",
+  teamId: "engineering"
 });
 ```
 
 </CodeGroup>
 
+## Actor Name
+
+The actor name (as defined in your app setup) is automatically included in the tags as the "name" tag. You can access it with:
+
+```typescript
+const actorName = c.tags['name'];
+```
+
+This is useful when you need to know which actor type is running, especially if you have generic utility functions that are shared between different actor implementations.

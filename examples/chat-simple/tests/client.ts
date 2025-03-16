@@ -1,17 +1,15 @@
 /// <reference types="node" />
-import { Client } from "actor-core/client";
-import { setupLogging } from "actor-core/log";
-import type ChatRoom from "../src/chat-room.ts";
+import { createClient } from "actor-core/client";
+import type { App } from "../src/index";
 
 async function main() {
-	setupLogging();
+	// Create type-aware client
+	const client = createClient<App>(process.env.ENDPOINT ?? "http://localhost:6420");
 
-	const client = new Client(`http://localhost:${process.env.PORT ?? 6420}`);
+	// connect to chat room - now accessed via property
+	const chatRoom = await client.chatRoom.get();
 
-	// connect to chat room
-	const chatRoom = await client.get<ChatRoom>({ name: "chat-room" });
-
-	// call rpc to get existing messages
+	// call action to get existing messages
 	const messages = await chatRoom.getHistory();
 	console.log("Messages:", messages);
 
@@ -24,7 +22,7 @@ async function main() {
 	await chatRoom.sendMessage("william", "All the world's a stage.");
 
 	// disconnect from actor when finished
-	await chatRoom.disconnect();
+	await chatRoom.dispose();
 }
 
 main();

@@ -43,8 +43,8 @@ import CreateActorCli from '/snippets/create-actor-cli.mdx';
 		```sh
 		bun tests/client.ts
 		# Outputs:
-		# Event: 1
-		# RPC: 1
+		# Event: 5
+		# Action: 5
 		```
 
 		Run this again to see the state update.
@@ -76,7 +76,7 @@ If you already have a Bun project and want to add ActorCore, you can follow thes
         ```
     </Step>
     <Step title="Create Actor">
-    	Create a new file for your actor at `src/counter.ts`:
+    	Create a new file for your actor at `src/app.ts`:
 
 		<SetupActor />
     </Step>
@@ -84,14 +84,11 @@ If you already have a Bun project and want to add ActorCore, you can follow thes
     	Create `src/index.ts` to start your ActorCore server with:
 
     	```typescript src/index.ts
-		import { createHandler } from "@actor-core/bun"
-		import counter from "./counter.ts";
+		import { setup, createHandler } from "@actor-core/bun"
+		import { app } from "./app";
 
-		export default createHandler({
-			actors: { counter },
-			// Change this to match your frontend's origin
-			cors: { origin: "http://localhost:3000" }
-		});
+		// Create a handler for HTTP requests
+		export default createHandler(app);
     	```
 
 		<IntegrationExistingProjects />
@@ -100,20 +97,20 @@ If you already have a Bun project and want to add ActorCore, you can follow thes
 		Create a client to connect to your actor in `src/client.ts`:
 
 		```typescript src/client.ts
-		import { Client } from "actor-core/client";
-		import type Counter from "./counter.ts";
+		import { createClient } from "actor-core/client";
+		import type { App } from "./app";
 
 		async function main() {
-			const client = new Client("http://localhost:6420");
+			const client = createClient<App>("http://localhost:6420");
 
-			const counter = await client.get<Counter>({ name: "counter" });
+			const counter = await client.counter.get();
 
 			counter.on("newCount", (count: number) => console.log("Event:", count));
 
 			const out = await counter.increment(5);
-			console.log("RPC:", out);
+			console.log("Action:", out);
 
-			await counter.disconnect();
+			await counter.dispose();
 		}
 
 		main();
@@ -131,8 +128,8 @@ If you already have a Bun project and want to add ActorCore, you can follow thes
 		```sh
 		bun src/client.ts
 		# Outputs:
-		# Event: 1
-		# RPC: 1
+		# Event: 5
+		# Action: 5
 		```
 
 		Run this again to see the state update.

@@ -36,12 +36,17 @@
   "navigation": {
     "tabs": [
       {
+        "tab": "Home",
+        "pages": [
+          "introduction"
+        ]
+      },
+      {
         "tab": "Documentation",
         "pages": [
           {
             "group": "Get Started",
             "pages": [
-              "introduction",
               "platforms/rivet",
               "platforms/cloudflare-workers",
               "platforms/bun",
@@ -54,7 +59,7 @@
               "concepts/overview",
               "concepts/interacting-with-actors",
               "concepts/state",
-              "concepts/remote-procedure-calls",
+              "concepts/actions",
               "concepts/events",
               "concepts/lifecycle",
               "concepts/schedule",
@@ -154,7 +159,11 @@
     },
     {
       "source": "/concepts/rpc",
-      "destination": "/concepts/remote-procedure-calls"
+      "destination": "/concepts/actions"
+    },
+    {
+      "source": "/concepts/remote-procedure-calls",
+      "destination": "/concepts/actions"
     }
   ]
 }

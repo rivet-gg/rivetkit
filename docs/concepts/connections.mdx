@@ -14,105 +14,179 @@ For example:
 <CodeGroup>
 
 ```typescript actor.ts
-import { Actor, type OnBeforeConnectOptions } from "actor-core";
+import { actor } from "actor-core";
 
-interface ConnectionParams {
-  authToken: string;
-}
-
-export default class Example extends Actor<State, ConnectionParams> {
-  _onBeforeConnect(opts: OnBeforeConnectOptions<Example>) {
-    const authToken = opts.parameters.authToken;
+const gameRoom = actor({
+  state: {},
+  
+  // Handle connection setup
+  createConnectionState: (c) => {
+    // Validate authentication token
+    const authToken = c.parameters.authToken;
+    
+    if (!authToken || !validateToken(authToken)) {
+      throw new Error("Invalid auth token");
+    }
+    
+    // Create connection state
+    return { userId: getUserIdFromToken(authToken), role: "player" };
+  },
+  
+  actions: {
     // ...
   }
-}
+});
 ```
 
 ```typescript client.ts
-const actor = client.get<Example>(
-  { name: 'example' },
-  {
-    parameters: { authToken: 'supersekure' }
-  }
-);
+import { createClient } from "actor-core/client";
+import type { App } from "./src/index";
+
+const client = createClient<App>("http://localhost:6420");
+const gameRoom = await client.gameRoom.get({
+  parameters: { authToken: "supersekure" }
+});
 ```
 
 </CodeGroup>
 
 ## Connection State
 
-The data returned from `_onBeforeConnect` is used as the initial state of the connection. The connection state can be accessed in any actor method using `connection.state`.
+There are two ways to define an actor's connection state:
 
-For example:
+### Method 1: `connectionState` constant
 
-```typescript actor.ts
-import { Actor, type OnBeforeConnectOptions } from "actor-core";
+```typescript
+import { actor } from "actor-core";
 
-interface ConnectionState {
-  userId: number;
-  role: string;
-}
-
-export default class Example extends Actor<State, ConnectionState> {
-  // The data returned from `_onBeforeConnect` will be assigned to the connection's state
-  _onBeforeConnect(opts: OnBeforeConnectOptions<Example>): ConnectionState {
-    return { userId: 123, role: 'admin' };
+const chatRoom = actor({
+  state: { messages: [] },
+  
+  // Define default connection state as a constant
+  connectionState: {
+    role: "guest",
+    joinedAt: 0
+  },
+  
+  onConnect: (c) => {
+    // Update join timestamp when a client connects
+    c.connection.state.joinedAt = Date.now();
+  },
+  
+  actions: {
+    // ...
   }
+});
+```
 
-  // ...
-}
+### Method 2: `createConnectionState` function
+
+The data returned from `createConnectionState` is used as the initial state of the connection. The connection state can be accessed through `connection.state`.
+
+```typescript
+import { actor } from "actor-core";
+
+const chatRoom = actor({
+  state: { messages: [] },
+  
+  // Create connection state dynamically
+  createConnectionState: (c) => {
+    // Validate any connection parameters
+    // ...
+    
+    // Return the connection state
+    return { 
+      userId: generateUserId(),
+      role: "guest",
+      joinedAt: Date.now()
+    };
+  },
+  
+  actions: {
+    sendMessage: (c, message) => {
+      const username = c.connection.state.userId;
+      c.state.messages.push({ username, message });
+      c.broadcast("newMessage", { username, message });
+    }
+  }
+});
 ```
 
 ## Lifecycle Hooks
 
-See the documentation on the following lifecycle hooks:
+The connection lifecycle has several hooks:
 
-- [`_onBeforeConnect`](/concepts/lifecycle#on-before-connect)
-- [`_onConnect`](/concepts/lifecycle#on-connect)
-- [`_onDisconnect`](/concepts/lifecycle#on-disconnect)
+- `onBeforeConnect`: Called before a client connects, returns the connection state
+- `onConnect`: Called when a client successfully connects
+- `onDisconnect`: Called when a client disconnects
+
+See the documentation on [Actor Lifecycle](/concepts/lifecycle) for more details.
 
 ## Connection List
 
-All active connections can be accessed with `this._connections`. This is stored as `Map<number, Connection>` where the key is the connection ID.
+All active connections can be accessed through the context object's `connections` property. This is an array of all current connections.
 
 This is frequently used with `conn.send(name, event)` to send messages directly to clients.
 
 For example:
 
-```typescript actor.ts
-import { Actor, type Rpc } from "actor-core";
+```typescript
+import { actor } from "actor-core";
 
-export default class ChatRoom extends Actor {
-  sendDirectMessage(rpc: Rpc<ChatRoom>, recipientConnectionId: number, message: string) {
-    this._connections.get(recipientConnectionId)?.send('directMessage', {
-      from: rpc.connection.id,
-      message: message
-    });
+const chatRoom = actor({
+  state: { users: {} },
+  
+  actions: {
+    sendDirectMessage: (c, recipientId, message) => {
+      // Find the recipient's connection
+      const recipientConn = c.connections.find(conn => conn.state.userId === recipientId);
+      
+      if (recipientConn) {
+        // Send a private message to just that client
+        recipientConn.send('directMessage', {
+          from: c.connection.state.userId,
+          message: message
+        });
+      }
+    }
   }
-}
+});
 ```
 
 ## Disconnecting clients
 
-Connections can be disconnected with:
+Connections can be disconnected from within an action:
 
-```typescript actor.ts
-await connection.disconnect();
-```
+```typescript
+import { actor } from "actor-core";
 
-A reason can optionally be provided like:
-
-```typescript actor.ts
-await connection.disconnect('Too many requests');
+const secureRoom = actor({
+  state: {},
+  
+  actions: {
+    kickUser: (c, targetUserId, reason) => {
+      // Find the connection to kick
+      const targetConn = c.connections.find(conn => conn.state.userId === targetUserId);
+      
+      if (targetConn) {
+        // Disconnect with a reason
+        targetConn.disconnect(reason || "Kicked by admin");
+      }
+    }
+  }
+});
 ```
 
 <Tip>
-	Waiting the `disconnect` promise is not required, but recommended in order
-	to ensure the underlying network connections close cleanly before exiting
-	the program.
+If you need to wait for the disconnection to complete, you can use `await`:
+
+```typescript
+await connection.disconnect('Too many requests');
+```
+
+This ensures the underlying network connections close cleanly before continuing.
 </Tip>
 
 ## Offline & Auto-Reconnection
 
 See [Interacting with Actors](/concepts/interacting-with-actors#offline-and-auto-reconnection) for details on reconnection behavior.
-

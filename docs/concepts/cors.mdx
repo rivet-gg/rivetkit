@@ -11,45 +11,14 @@ You'll need to configure CORS when:
 - **Local Development:** You're developing locally and your client runs on a different port than your actor service
 - **Different Domain:** Your frontend application is hosted on a different domain than your actor service
 
-## Platform-Specific Examples
-
-### Cloudflare Workers
+## Example
 
 ```ts
-import { createHandler } from "@actor-core/cloudflare-workers";
-import { Counter } from "./counter";
+import { setup } from "actor-core";
+import counter from "./counter";
 
-const { handler, ActorHandler } = createHandler({
-  actors: { counter: Counter },
-  // Change this to match your frontend's origin
-  cors: { origin: "https://yourdomain.com" }
-});
-
-export { handler as default, ActorHandler };
-```
-
-
-### Node.js
-
-```ts
-import { serve } from "@actor-core/nodejs";
-import { Counter } from "./counter";
-
-serve({
-  actors: { counter: Counter },
-  // Change this to match your frontend's origin
-  cors: { origin: "https://yourdomain.com" }
-});
-```
-
-### Bun
-
-```ts
-import { createHandler } from "@actor-core/bun";
-import { Counter } from "./counter";
-
-export default createHandler({
-  actors: { counter: Counter },
+const app = setup({
+  actors: { counter },
   // Change this to match your frontend's origin
   cors: { origin: "https://yourdomain.com" }
 });
@@ -99,27 +68,3 @@ Whether requests can include user credentials like cookies or HTTP authenticatio
 Server headers that browsers are allowed to access. Empty by default `[]`. Example:
 - `["Content-Length", "X-Request-Id"]`
 
-
-## Troubleshooting
-
-### CORS errors during development
-
-When developing locally, ensure your CORS configuration includes your development server's origin:
-
-```ts
-cors: {
-  origin: "http://localhost:3000",
-  credentials: true
-}
-```
-
-### Using credentials with wildcard origin
-
-You cannot use `credentials: true` with `origin: "*"`. Instead, specify exact origins:
-
-```ts
-cors: {
-  origin: ["https://app.example.com", "https://admin.example.com"],
-  credentials: true
-}
-```

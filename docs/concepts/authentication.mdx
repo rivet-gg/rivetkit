@@ -3,36 +3,27 @@ title: Authentication
 icon: fingerprint
 ---
 
-Authentication can be handled through the `_onBeforeConnect` lifecycle method, which acts as middleware before allowing clients to interact with your actor.
+Authentication can be handled through the `onBeforeConnect` or `createConnectionState` lifecycle hook, which acts as middleware before allowing clients to interact with your actor.
 
-## Using `_onBeforeConnect`
+## Using `onBeforeConnect` or `createConnectionState`
 
-The `_onBeforeConnect` method is called whenever a new client attempts to connect to your actor. It takes the value of `opts.parameters` and returns the state to assign to the actor.
+The `onBeforeConnect` and `createConnectionState` hook is called whenever a new client attempts to connect to your actor. It receives a context object that contains the client's connection parameters. `createConnectionState` should return an object that will become the connection state.
 
-Throwing an error in `_onBeforeConnect` will abort the connection.
+Throwing an error in `onBeforeConnect` or `createConnectionState` will abort the connection.
 
 Here's a basic example:
 
 ```typescript
-import { Actor, type OnBeforeConnectOptions } from "actor-core";
+import { actor } from "actor-core";
 
-interface State {
-  // ...
-}
-
-interface ConnectionParams {
-  authToken: string;
-}
-
-interface ConnectionState {
-  userId: string;
-  role: string;
-}
-
-export default class ExampleActor extends Actor<State, ConnectionParams, ConnectionState> {
-  async _onBeforeConnect(opts: OnBeforeConnectOptions<ExampleActor>): Promise<ConnectionState> {
+const exampleActor = actor({
+  state: {
+    // Actor state...
+  },
+  
+  createConnectionState: async (c) => {
     // Verify the token with your authentication system
-    const userData = await myValidateAuthToken(opts.parameters.authToken);
+    const userData = await myValidateAuthToken(c.parameters.authToken);
     if (!userData) {
       throw new Error('Invalid auth token');
     }
@@ -42,25 +33,46 @@ export default class ExampleActor extends Actor<State, ConnectionParams, Connect
       userId: userData.id,
       role: userData.role
     };
+  },
+  
+  actions: {
+    // Actor actions...
   }
-}
+});
 ```
 
 ## Accessing Connection State
 
-After authentication, you can access the connection state in any actor method using `rpc.connection.state`:
+After authentication, you can access the connection state in any action through the context object:
 
 ```typescript
-import { Actor, type Rpc } from "actor-core";
+import { actor } from "actor-core";
 
-export default class AuthenticatedActor extends Actor<State, ConnectionParams, ConnectionState> {
-  exampleAdminCommand(rpc: Rpc<AuthenticatedActor>) {
-    // Example of validating admin access
-    if (rpc.connection.state.role !== 'admin') throw new Error('User must be an admin');
+const authenticatedActor = actor({
+  state: {
+    // Actor state...
+  },
+  
+  createConnectionState: (c) => {
+    // Authentication logic...
+    return {
+      userId: "user_123",
+      role: "admin"
+    };
+  },
+  
+  actions: {
+    exampleAdminCommand: (c) => {
+      // Example of validating admin access
+      if (c.connection.state.role !== 'admin') {
+        throw new Error('User must be an admin');
+      }
 
-    // ...
+      // Admin-only functionality...
+      return { success: true };
+    }
   }
-}
+});
 ```
 
 ## Integration Examples
@@ -68,27 +80,19 @@ export default class AuthenticatedActor extends Actor<State, ConnectionParams, C
 ### With API Server Authentication
 
 ```typescript
-import { Actor, type Rpc, type OnBeforeConnectOptions } from "actor-core";
+import { actor } from "actor-core";
 
-interface State {
-  // ...
-}
-
-interface ConnectionParams {
-  apiKey: string;
-}
-
-interface ConnectionState {
-  userId: string;
-}
-
-export default class APIAuthenticatedActor extends Actor<State, ConnectionParams, ConnectionState> {
-  async _onBeforeConnect(opts: OnBeforeConnectOptions<APIAuthenticatedActor>): Promise<ConnectionState> {
+const apiAuthenticatedActor = actor({
+  state: {
+    // Actor state...
+  },
+  
+  createConnectionState: async (c) => {
     // Validate API key with your server
     const response = await fetch('https://api.yourserver.com/validate', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${opts.parameters.apiKey}`
+        Authorization: `Bearer ${c.parameters.apiKey}`
       }
     });
 
@@ -101,39 +105,53 @@ export default class APIAuthenticatedActor extends Actor<State, ConnectionParams
     return {
       userId: user.id
     };
+  },
+  
+  actions: {
+    // Actor actions...
   }
-}
+});
 ```
 
-When authentication fails, throwing an error in `_onBeforeConnect` will prevent the connection from being established, and the client will receive the error message.
+When authentication fails, throwing an error in `createConnectionState` will prevent the connection from being established, and the client will receive the error message.
 
 ### With JWT Authentication
 
 ```typescript
-import { Actor, type OnBeforeConnectOptions } from "actor-core";
+import { actor } from "actor-core";
+import jwt from "jsonwebtoken";
 
-interface State {
-  // ...
-}
+const JWT_SECRET = process.env.JWT_SECRET;
 
-interface ConnectionParams {
-  jwt: string;
-}
-
-interface ConnectionState {
-  userId: string;
-  permissions: string[];
-}
-
-export default class JwtAuthenticatedActor extends Actor<State, ConnectionParams, ConnectionState> {
-  async _onBeforeConnect(opts: OnBeforeConnectOptions<JwtAuthenticatedActor>): Promise<ConnectionState> {
-    // Verify JWT token (throws error for invalid tokens)
-    const decoded = jwt.verify(opts.parameters.jwt, JWT_SECRET);
-
-    return {
-      userId: decoded.sub,
-      permissions: decoded.permissions
-    };
+const jwtAuthenticatedActor = actor({
+  state: {
+    // Actor state...
+  },
+  
+  createConnectionState: (c) => {
+    try {
+      // Verify JWT token
+      const decoded = jwt.verify(c.parameters.jwt, JWT_SECRET);
+      
+      return {
+        userId: decoded.sub,
+        permissions: decoded.permissions
+      };
+    } catch (error) {
+      throw new Error('Invalid or expired JWT token');
+    }
+  },
+  
+  actions: {
+    secureAction: (c, data) => {
+      // Check permissions before proceeding
+      if (!c.connection.state.permissions.includes('write')) {
+        throw new Error('Permission denied: requires write access');
+      }
+      
+      // Perform action with data...
+      return { success: true };
+    }
   }
-}
+});
 ```
