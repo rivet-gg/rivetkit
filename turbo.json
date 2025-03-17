@@ -16,6 +16,9 @@
     "dev": {
       // Both builds & checks types for this repo and all dependencies
       "dependsOn": ["build", "^check-types", "check-types"]
+    },
+    "test": {
+      "dependsOn": ["build", "^test"]
     }
   }
 }

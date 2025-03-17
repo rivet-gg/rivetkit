@@ -42,7 +42,7 @@
         "default": "./dist/common/log.cjs"
       }
     },
-    "./actor/errors": {
+    "./errors": {
       "import": {
         "types": "./dist/actor/errors.d.ts",
         "default": "./dist/actor/errors.js"

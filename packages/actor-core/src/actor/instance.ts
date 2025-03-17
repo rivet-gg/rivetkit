@@ -157,7 +157,7 @@ export class ActorInstance<S, CP, CS> {
 		// TODO: Exit process if this errors
 		logger().info("actor starting");
 		if (this.#config.onStart) {
-			const result = this.#config.onStart();
+			const result = this.#config.onStart(this.actorContext);
 			if (result instanceof Promise) {
 				await result;
 			}
@@ -303,7 +303,7 @@ export class ActorInstance<S, CP, CS> {
 				// Call onStateChange if it exists
 				if (this.#config.onStateChange && this.#ready) {
 					try {
-						this.#config.onStateChange(this.#persistRaw.s);
+						this.#config.onStateChange(this.actorContext, this.#persistRaw.s);
 					} catch (error) {
 						logger().error("error in `_onStateChange`", {
 							error: `${error}`,
@@ -353,7 +353,7 @@ export class ActorInstance<S, CP, CS> {
 			logger().info("actor creating");
 
 			if (this.#config.onCreate) {
-				await this.#config.onCreate();
+				await this.#config.onCreate(this.actorContext);
 			}
 
 			// Initialize actor state
@@ -363,7 +363,11 @@ export class ActorInstance<S, CP, CS> {
 
 				if ("createState" in this.#config) {
 					this.#config.createState;
-					stateData = await this.#config.createState();
+
+					// Convert state to undefined since state is not defined yet here
+					stateData = await this.#config.createState(
+						this.actorContext as unknown as ActorContext<undefined, CP, CS>,
+					);
 				} else if ("state" in this.#config) {
 					stateData = structuredClone(this.#config.state);
 				} else {
@@ -424,7 +428,7 @@ export class ActorInstance<S, CP, CS> {
 		this.inspector.onConnectionsChange(this.#connections);
 		if (this.#config.onDisconnect) {
 			try {
-				const result = this.#config.onDisconnect(conn);
+				const result = this.#config.onDisconnect(this.actorContext, conn);
 				if (result instanceof Promise) {
 					// Handle promise but don't await it to prevent blocking
 					result.catch((error) => {
@@ -456,13 +460,18 @@ export class ActorInstance<S, CP, CS> {
 		};
 
 		if (this.#config.onBeforeConnect) {
-			await this.#config.onBeforeConnect(onBeforeConnectOpts);
+			await this.#config.onBeforeConnect(
+				this.actorContext,
+				onBeforeConnectOpts,
+			);
 		}
 
 		if (this.#connectionStateEnabled) {
 			if ("createConnectionState" in this.#config) {
-				const dataOrPromise =
-					this.#config.createConnectionState(onBeforeConnectOpts);
+				const dataOrPromise = this.#config.createConnectionState(
+					this.actorContext,
+					onBeforeConnectOpts,
+				);
 				if (dataOrPromise instanceof Promise) {
 					connState = await deadline(dataOrPromise, PREPARE_CONNECT_TIMEOUT);
 				} else {
@@ -531,7 +540,7 @@ export class ActorInstance<S, CP, CS> {
 		const CONNECT_TIMEOUT = 5000; // 5 seconds
 		if (this.#config.onConnect) {
 			try {
-				const result = this.#config.onConnect(conn);
+				const result = this.#config.onConnect(this.actorContext, conn);
 				if (result instanceof Promise) {
 					deadline(result, CONNECT_TIMEOUT).catch((error) => {
 						logger().error("error in `onConnect`, closing socket", {
@@ -710,6 +719,7 @@ export class ActorInstance<S, CP, CS> {
 			if (this.#config.onBeforeActionResponse) {
 				try {
 					const processedOutput = this.#config.onBeforeActionResponse(
+						this.actorContext,
 						rpcName,
 						args,
 						output,
