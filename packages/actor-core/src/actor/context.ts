@@ -43,6 +43,14 @@ export class ActorContext<S, CP, CS> {
 	}
 
 	/**
+	 * Gets the actor name.
+	 */
+	get name(): string {
+		// @ts-ignore - Access protected method
+		return this.#actor.name;
+	}
+
+	/**
 	 * Gets the actor tags.
 	 */
 	get tags(): ActorTags {

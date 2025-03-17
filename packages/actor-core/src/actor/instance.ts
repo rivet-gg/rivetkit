@@ -755,6 +755,13 @@ export class ActorInstance<S, CP, CS> {
 	}
 
 	/**
+	 * Gets the name.
+	 */
+	get name(): string {
+		return this.#name;
+	}
+
+	/**
 	 * Gets the tags.
 	 */
 	get tags(): ActorTags {

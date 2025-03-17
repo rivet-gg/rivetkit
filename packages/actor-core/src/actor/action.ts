@@ -49,6 +49,13 @@ export class ActionContext<S, CP, CS> {
   get log(): Logger {
     return this.#actorContext.log;
   }
+
+  /**
+   * Gets the actor name.
+   */
+  get name(): string {
+    return this.#actorContext.name;
+  }
   
   /**
    * Gets the actor tags.

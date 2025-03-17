@@ -76,10 +76,10 @@ const teamChannel = await client.chatRoom.get({
 
 ## Actor Name
 
-The actor name (as defined in your app setup) is automatically included in the tags as the "name" tag. You can access it with:
+You can access the actor name with:
 
 ```typescript
-const actorName = c.tags['name'];
+const actorName = c.name;
 ```
 
 This is useful when you need to know which actor type is running, especially if you have generic utility functions that are shared between different actor implementations.
