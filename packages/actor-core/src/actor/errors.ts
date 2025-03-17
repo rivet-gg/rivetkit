@@ -167,7 +167,7 @@ export interface UserErrorOptions extends ErrorOptions {
 	/**
 	 * Additional metadata related to the error. Useful for understanding context about the error.
 	 */
-	metadata: unknown;
+	metadata?: unknown;
 }
 
 /** Error that can be safely returned to the user. */
