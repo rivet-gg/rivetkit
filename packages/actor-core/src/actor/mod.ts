@@ -11,10 +11,10 @@ export type { ActorTags } from "@/common/utils";
 export type { ActorDefinition } from "./definition";
 
 export function actor<
-	R extends Actions<S, CP, CS>,
-	S,
+	S = undefined,
 	CP = undefined,
 	CS = undefined,
+	R extends Actions<S, CP, CS> = {},
 >(input: ActorConfigInput<S, CP, CS, R>): ActorDefinition<R, S, CP, CS> {
 	const config = createActorConfigSchema<S, CP, CS>().parse(input);
 	return new ActorDefinition(config);

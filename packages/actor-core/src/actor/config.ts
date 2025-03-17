@@ -1,7 +1,7 @@
 import { Connection } from "./connection";
-import { ActionContext as ActionContext } from "./action";
+import { ActionContext } from "./action";
 import { z } from "zod";
-import { ActorDefinition } from "./definition";
+import { ActorContext } from "./context";
 
 /**
  * Schema for actor state configuration
@@ -65,23 +65,28 @@ export const createOnBeforeConnectOptionsSchema = <CP extends z.ZodTypeAny>(
 export const createActionSchema = <S, CP, CS>() =>
 	z.record(
 		z.string(),
-		z.custom<(ctx: ActionContext<S, CP, CS>, ...args: any[]) => any>(),
+		z.custom<(c: ActionContext<S, CP, CS>, ...args: any[]) => any>(),
 	);
 
 // Creates state config
 //
 // This must have only one or the other or else S will not be able to be inferred
-export const createStateSchema = <S>() =>
+export const createStateSchema = <S, CP, CS>() =>
 	z.union([
 		z.object({ state: z.custom<S>() }).strict(),
-		z.object({ createState: z.custom<() => S | Promise<S>>() }).strict(),
+		z
+			.object({
+				createState:
+					z.custom<(c: ActorContext<undefined, CP, CS>) => S | Promise<S>>(),
+			})
+			.strict(),
 		z.object({}).strict(),
 	]);
 
 // Creates connection state config
 //
 // This must have only one or the other or else S will not be able to be inferred
-export const createConnectionStateSchema = <CS, CP>() =>
+export const createConnectionStateSchema = <S, CP, CS>() =>
 	z.union([
 		z.object({ connectionState: z.custom<CS>() }).strict(),
 		z
@@ -89,6 +94,7 @@ export const createConnectionStateSchema = <CS, CP>() =>
 				createConnectionState:
 					z.custom<
 						(
+							c: ActorContext<S, CP, CS>,
 							opts: z.infer<
 								ReturnType<
 									typeof createOnBeforeConnectOptionsSchema<z.ZodType<CP>>
@@ -117,7 +123,9 @@ export const createActorConfigSchema = <
 			 * Use this hook to initialize your actor's state.
 			 * This is called before any other lifecycle hooks.
 			 */
-			onCreate: z.custom<() => void | Promise<void>>().optional(),
+			onCreate: z
+				.custom<(c: ActorContext<S, CP, CS>) => void | Promise<void>>()
+				.optional(),
 
 			/**
 			 * Called when the actor is started and ready to receive connections and action.
@@ -127,7 +135,9 @@ export const createActorConfigSchema = <
 			 *
 			 * @returns Void or a Promise that resolves when startup is complete
 			 */
-			onStart: z.custom<() => void | Promise<void>>().optional(),
+			onStart: z
+				.custom<(c: ActorContext<S, CP, CS>) => void | Promise<void>>()
+				.optional(),
 
 			/**
 			 * Called when the actor's state changes.
@@ -137,7 +147,9 @@ export const createActorConfigSchema = <
 			 *
 			 * @param newState The updated state
 			 */
-			onStateChange: z.custom<(newState: S) => void>().optional(),
+			onStateChange: z
+				.custom<(c: ActorContext<S, CP, CS>, newState: S) => void>()
+				.optional(),
 
 			/**
 			 * Called before a client connects to the actor.
@@ -152,6 +164,7 @@ export const createActorConfigSchema = <
 			onBeforeConnect: z
 				.custom<
 					(
+						c: ActorContext<S, CP, CS>,
 						opts: z.infer<
 							ReturnType<
 								typeof createOnBeforeConnectOptionsSchema<z.ZodType<CP>>
@@ -171,7 +184,12 @@ export const createActorConfigSchema = <
 			 * @returns Void or a Promise that resolves when connection handling is complete
 			 */
 			onConnect: z
-				.custom<(connection: Connection<S, CP, CS>) => void | Promise<void>>()
+				.custom<
+					(
+						c: ActorContext<S, CP, CS>,
+						connection: Connection<S, CP, CS>,
+					) => void | Promise<void>
+				>()
 				.optional(),
 
 			/**
@@ -184,7 +202,12 @@ export const createActorConfigSchema = <
 			 * @returns Void or a Promise that resolves when disconnect handling is complete
 			 */
 			onDisconnect: z
-				.custom<(connection: Connection<S, CP, CS>) => void | Promise<void>>()
+				.custom<
+					(
+						c: ActorContext<S, CP, CS>,
+						connection: Connection<S, CP, CS>,
+					) => void | Promise<void>
+				>()
 				.optional(),
 
 			/**
@@ -202,6 +225,7 @@ export const createActorConfigSchema = <
 			onBeforeActionResponse: z
 				.custom<
 					<Out>(
+						c: ActorContext<S, CP, CS>,
 						name: string,
 						args: unknown[],
 						output: Out,
@@ -216,8 +240,8 @@ export const createActorConfigSchema = <
 			options: OptionsSchema.default({}),
 		})
 		.strict()
-		.and(createStateSchema<S>())
-		.and(createConnectionStateSchema<CS, CP>());
+		.and(createStateSchema<S, CP, CS>())
+		.and(createConnectionStateSchema<S, CP, CS>());
 };
 
 /**
@@ -255,8 +279,8 @@ export type ActorConfigInput<
 	| "connectionState"
 	| "createConnectionState"
 > &
-	z.input<ReturnType<typeof createStateSchema<S>>> &
-	z.input<ReturnType<typeof createConnectionStateSchema<CS, CP>>> & {
+	z.input<ReturnType<typeof createStateSchema<S, CP, CS>>> &
+	z.input<ReturnType<typeof createConnectionStateSchema<S, CP, CS>>> & {
 		actions: R;
 	};
 
