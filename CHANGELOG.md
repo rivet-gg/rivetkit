@@ -1,5 +1,73 @@
 # Changelog
 
+## [0.7.1](https://github.com/rivet-gg/actor-core/compare/v0.7.0...v0.7.1) (2025-03-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* rename onInitialize -> onCreate ([#714](https://github.com/rivet-gg/actor-core/issues/714))
+* rename rpcs -> actions ([#711](https://github.com/rivet-gg/actor-core/issues/711))
+* expose functional interface for actors ([#710](https://github.com/rivet-gg/actor-core/issues/710))
+
+### Features
+
+* add client dispose method to clean up actor handles ([#686](https://github.com/rivet-gg/actor-core/issues/686)) ([ff1e64d](https://github.com/rivet-gg/actor-core/commit/ff1e64d952798f86cc4d67505a7fa2904749217b))
+* **cli:** add `--skip-manager` flag on deploy ([#708](https://github.com/rivet-gg/actor-core/issues/708)) ([f46776d](https://github.com/rivet-gg/actor-core/commit/f46776d21f4c669d8f1d134743889d3591f12a5d))
+* expose `name` in context ([#723](https://github.com/rivet-gg/actor-core/issues/723)) ([0fab6ec](https://github.com/rivet-gg/actor-core/commit/0fab6ec019a5a6befbe9824833791c492a87e2f7))
+* expose functional interface for actors ([#710](https://github.com/rivet-gg/actor-core/issues/710)) ([803133d](https://github.com/rivet-gg/actor-core/commit/803133d9f7404db5479bf92635eafc1c9f99acef))
+
+
+### Bug Fixes
+
+* **client:** fix fallback priority of websockets & eventsources ([#700](https://github.com/rivet-gg/actor-core/issues/700)) ([86550a0](https://github.com/rivet-gg/actor-core/commit/86550a0ca5838ab4cd0c5f3d4229f3031d037d10))
+* **client:** modify endpoint to start with `ws` and `wss` ([#690](https://github.com/rivet-gg/actor-core/issues/690)) ([8aed4ce](https://github.com/rivet-gg/actor-core/commit/8aed4ceba6724d85c091a7660e5addcd7308c5cd))
+* **cli:** escape combined command, allow npx to install pkg ([#695](https://github.com/rivet-gg/actor-core/issues/695)) ([0f173e6](https://github.com/rivet-gg/actor-core/commit/0f173e68c074236fd59437574b9c5f499db8d55d))
+* **cli:** force to use npx when calling @rivet-gg/cli ([#698](https://github.com/rivet-gg/actor-core/issues/698)) ([7d3d1d9](https://github.com/rivet-gg/actor-core/commit/7d3d1d99127d0373d29c33dedd16d3aeadf9e318))
+* correct "onwer" typo to "owner" in deploy command ([#694](https://github.com/rivet-gg/actor-core/issues/694)) ([cbc1255](https://github.com/rivet-gg/actor-core/commit/cbc1255ae73ce9be07bfc80e97dd61f868579769))
+* fix schedule logging schedule errors ([#709](https://github.com/rivet-gg/actor-core/issues/709)) ([f336561](https://github.com/rivet-gg/actor-core/commit/f336561e7427eb87ed4ee930d405cc571a2cd775))
+* implement schedule event saving functionality ([#687](https://github.com/rivet-gg/actor-core/issues/687)) ([59f78f3](https://github.com/rivet-gg/actor-core/commit/59f78f39a6cfd5d050d5359bbc224a6d7a2a3ea8))
+* make `UserErrorOptions.metadata` optional ([#724](https://github.com/rivet-gg/actor-core/issues/724)) ([32037c6](https://github.com/rivet-gg/actor-core/commit/32037c6493fa17b68f2d84bc5e1e57dc411e508a))
+* remove use of .disconnect in example ([382ddb8](https://github.com/rivet-gg/actor-core/commit/382ddb84cb14f6d22edf55281da4b4c030bfeb44))
+* skip CORS for WebSocket routes ([#703](https://github.com/rivet-gg/actor-core/issues/703)) ([d51d618](https://github.com/rivet-gg/actor-core/commit/d51d618c7f40daeead28716194534ab944293fbd))
+* use app.notFound instead of app.all("*") for 404 handling ([#701](https://github.com/rivet-gg/actor-core/issues/701)) ([727dd28](https://github.com/rivet-gg/actor-core/commit/727dd280c84e0d09928f62d4b99531d58900f865))
+
+
+### Documentation
+
+* update docs for new changes ([#713](https://github.com/rivet-gg/actor-core/issues/713)) ([fa990dd](https://github.com/rivet-gg/actor-core/commit/fa990dd22fdfc7cefea8f140cbcd2fcf05025dea))
+
+
+### Chores
+
+* add explicit error handling for all hono routes ([#702](https://github.com/rivet-gg/actor-core/issues/702)) ([365de24](https://github.com/rivet-gg/actor-core/commit/365de24b75061eee931f473414c221286c6e0684))
+* add ws & eventsource as dev dependencies of actor-core so it can build ([1cdf9c4](https://github.com/rivet-gg/actor-core/commit/1cdf9c4351367a152224697029b047e5ef66518a))
+* changelog for 0.6.3 ([cf6d723](https://github.com/rivet-gg/actor-core/commit/cf6d723a081029e8241a643186d41a09701192bd))
+* fix grammar on index ([#689](https://github.com/rivet-gg/actor-core/issues/689)) ([dac5660](https://github.com/rivet-gg/actor-core/commit/dac566058490c28ad34511dcee77c962602c6a3e))
+* fix typo of "Actor Core" -&gt; "ActorCore" ([#707](https://github.com/rivet-gg/actor-core/issues/707)) ([d1e8be5](https://github.com/rivet-gg/actor-core/commit/d1e8be523fc75e1c55ad529bd85bc832a545b12a))
+* increase RPC timeout from 5s to 60s ([#705](https://github.com/rivet-gg/actor-core/issues/705)) ([ec6a478](https://github.com/rivet-gg/actor-core/commit/ec6a478e9ffff91028e8f2f718c79e65d3479354))
+* **main:** release 0.6.2 ([#693](https://github.com/rivet-gg/actor-core/issues/693)) ([73c3399](https://github.com/rivet-gg/actor-core/commit/73c3399a96a720ff5663ee359e686aa6e573737b))
+* **main:** release 0.6.3 ([#697](https://github.com/rivet-gg/actor-core/issues/697)) ([40fbcc1](https://github.com/rivet-gg/actor-core/commit/40fbcc11d115761f27a843f6cac816449fc61ceb))
+* **main:** release 0.7.0 ([#717](https://github.com/rivet-gg/actor-core/issues/717)) ([675d13c](https://github.com/rivet-gg/actor-core/commit/675d13c2852a3c0b811fef51ac9dd4b8b47cd6be))
+* make order of generic params consistent in `ActorConfig` ([#725](https://github.com/rivet-gg/actor-core/issues/725)) ([6ea34e5](https://github.com/rivet-gg/actor-core/commit/6ea34e517505113abb40fa7677900bdebe99163e))
+* manually define generic actor config types with hybrid zod validation ([#729](https://github.com/rivet-gg/actor-core/issues/729)) ([a72eab8](https://github.com/rivet-gg/actor-core/commit/a72eab8b372faeccf8884265a2fc1b276584a9f1))
+* **memory:** explicitly pass global state to memory driver ([#688](https://github.com/rivet-gg/actor-core/issues/688)) ([542bd1c](https://github.com/rivet-gg/actor-core/commit/542bd1c22b5d8844410bd9d3ae970162a6b481f2))
+* move auth to root level of sidebar ([#720](https://github.com/rivet-gg/actor-core/issues/720)) ([0b8beb7](https://github.com/rivet-gg/actor-core/commit/0b8beb7f120a12f36a6524d015abbbfc080c6c33))
+* pass `ActorContext` to all `on*` events ([#727](https://github.com/rivet-gg/actor-core/issues/727)) ([586fb11](https://github.com/rivet-gg/actor-core/commit/586fb110b6ad4b2f51e6600c350c17587217e062))
+* release 0.6.2 ([4361f9e](https://github.com/rivet-gg/actor-core/commit/4361f9ea3bbd1da97f51b39772f4d9cc410cb86c))
+* release 0.6.3 ([e06db47](https://github.com/rivet-gg/actor-core/commit/e06db47aba656e47a721376e767dece5b0cd2934))
+* release 0.7.0 ([0a9b745](https://github.com/rivet-gg/actor-core/commit/0a9b745f966379ed324be2a354d91999cb65e1f1))
+* release 0.7.1 ([3fe4c3a](https://github.com/rivet-gg/actor-core/commit/3fe4c3a33fb5ed4b5d3509597ec38a97509ad897))
+* release version 0.6.2 ([677bda2](https://github.com/rivet-gg/actor-core/commit/677bda2f934ca2a26a1579aeefa871145ecaaecb))
+* release version 0.7.0 ([0fbc3da](https://github.com/rivet-gg/actor-core/commit/0fbc3da0430581cc47543d2904c8241fa38d4f0e))
+* rename onInitialize -&gt; onCreate ([#714](https://github.com/rivet-gg/actor-core/issues/714)) ([3b9b106](https://github.com/rivet-gg/actor-core/commit/3b9b1069d55352545291e4ea593b05cd0b8f89f5))
+* rename rpcs -&gt; actions ([#711](https://github.com/rivet-gg/actor-core/issues/711)) ([8957e56](https://github.com/rivet-gg/actor-core/commit/8957e560572e7594db03d9ea631bf32995a61bd0))
+* return server from nodejs `serve` ([#726](https://github.com/rivet-gg/actor-core/issues/726)) ([be84bda](https://github.com/rivet-gg/actor-core/commit/be84bda24e6e6df435abef44d82e5d7d893bde43))
+* show full subpath to value that cannot be serialized when setting invalid state ([#706](https://github.com/rivet-gg/actor-core/issues/706)) ([a666bc3](https://github.com/rivet-gg/actor-core/commit/a666bc37644966d7482f54370ab92c5b259136b9))
+* update changelog for 0.7.0 ([#715](https://github.com/rivet-gg/actor-core/issues/715)) ([dba8085](https://github.com/rivet-gg/actor-core/commit/dba808513f2fb42ebd84f0d1dd21b3798223fda1))
+* update changelog for 0.7.1 ([#731](https://github.com/rivet-gg/actor-core/issues/731)) ([f2e0cb3](https://github.com/rivet-gg/actor-core/commit/f2e0cb3b18131086765478812498e605d3be2ff8))
+* update lockfile ([7b61057](https://github.com/rivet-gg/actor-core/commit/7b6105796a2bbec69d75dbd0cae717b2e8fd7827))
+* update platforms to support `ActorCoreApp` ([#712](https://github.com/rivet-gg/actor-core/issues/712)) ([576a101](https://github.com/rivet-gg/actor-core/commit/576a101dcfcbe5c44ff771db1db64b275a68cf81))
+
 ## [0.7.0](https://github.com/rivet-gg/actor-core/compare/v0.6.3...v0.7.0) (2025-03-16)
 
 
