@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.7.2](https://github.com/rivet-gg/actor-core/compare/v0.7.1...v0.7.2) (2025-03-18)
+
+
+### ⚠ BREAKING CHANGES
+
+* rename all uses of "connection" -> "conn" and "parameter" -> "param" ([#733](https://github.com/rivet-gg/actor-core/issues/733))
+
+### Features
+
+* add `ActorContextOf` to get the context of an actor definition ([#734](https://github.com/rivet-gg/actor-core/issues/734)) ([d64c05d](https://github.com/rivet-gg/actor-core/commit/d64c05df12b10a0d94c341b62719bb091fc75225))
+* add `vars` for storing ephemeral data ([#738](https://github.com/rivet-gg/actor-core/issues/738)) ([a93fe86](https://github.com/rivet-gg/actor-core/commit/a93fe8646097b861b7245ab055d986463639b7b9))
+* expose `ActionContextOf` ([#740](https://github.com/rivet-gg/actor-core/issues/740)) ([97c161c](https://github.com/rivet-gg/actor-core/commit/97c161c21b47f5f336c88eb5d75b506d300c2d1d))
+
+
+### Chores
+
+* add actor-core type tests ([#737](https://github.com/rivet-gg/actor-core/issues/737)) ([88e5dca](https://github.com/rivet-gg/actor-core/commit/88e5dca697c99dc245426fca66f9979c6a16d0e2))
+* release 0.7.2 ([265f2e2](https://github.com/rivet-gg/actor-core/commit/265f2e20dc7a33130b69968a8409562f6dffe17e))
+* release version 0.7.2 ([aae7497](https://github.com/rivet-gg/actor-core/commit/aae7497713dab75c90344f2949764873b49b1c47))
+* rename all uses of "connection" -&gt; "conn" and "parameter" -> "param" ([#733](https://github.com/rivet-gg/actor-core/issues/733)) ([2095fdf](https://github.com/rivet-gg/actor-core/commit/2095fdfae0bfabf4ebbe35f69404e0a29210d1ed))
+
 ## [0.7.1](https://github.com/rivet-gg/actor-core/compare/v0.7.0...v0.7.1) (2025-03-17)
 
 
