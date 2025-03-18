@@ -47,6 +47,7 @@
     "@types/react": "^18.3",
     "@types/semver": "^7.5.8",
     "@types/which": "^3.0.4",
+    "actor-core": "workspace:*",
     "commander": "^13.1.0",
     "execa": "^9.5.2",
     "ink": "^5.1.0",

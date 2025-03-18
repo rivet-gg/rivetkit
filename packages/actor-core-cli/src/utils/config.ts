@@ -3,10 +3,11 @@ import path from "node:path";
 import { bundleRequire } from "bundle-require";
 import JoyCon from "joycon";
 import z from "zod";
+import { ActorCoreApp } from "actor-core";
 
 const ActorCoreConfig = z.object({
+	app: z.custom<ActorCoreApp<any>>(),
 	cwd: z.string(),
-	actors: z.record(z.function()),
 });
 
 const loadJson = async (filepath: string) => {
@@ -65,7 +66,6 @@ export async function requireConfig(cwd: string) {
 
 export async function validateConfig(cwd: string) {
 	const config = await requireConfig(cwd);
-
 	return await ActorCoreConfig.parseAsync({
 		...config.data,
 		cwd: path.dirname(config.path),

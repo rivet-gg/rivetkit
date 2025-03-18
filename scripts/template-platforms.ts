@@ -36,6 +36,7 @@ async function main() {
 					example.slug,
 					"--platform",
 					platform,
+					"--actor-core-version", "workspace:*",
 					"--skip-install",
 				],
 				{

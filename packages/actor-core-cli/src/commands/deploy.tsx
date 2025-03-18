@@ -61,7 +61,7 @@ export const deploy = new Command()
 							}
 						});
 
-						const platformOptions = await resolvePlatformSpecificOptions(
+						const platformOptions = resolvePlatformSpecificOptions(
 							platform as Platform,
 							{
 								files: {},
@@ -191,7 +191,7 @@ export const deploy = new Command()
 						);
 
 						const output =
-							await exec`${cli} publish manager --env ${envName} --access=private ${entrypoint}`;
+							await exec`${cli} publish manager --env ${envName} --tags access=private ${entrypoint}`;
 						if (output.exitCode !== 0) {
 							throw ctx.error("Failed to deploy ActorCore.", {
 								hint: "Check the logs above for more information.",
@@ -291,9 +291,9 @@ export const deploy = new Command()
 					});
 				}
 
-				for (const [idx, actorName] of Object.keys(config.actors).entries()) {
+				for (const [idx, actorName] of Object.keys(config.app.config.actors).entries()) {
 					yield* ctx.task(
-						`Deploy & upload "${actorName}" build (${idx + 1}/${Object.keys(config.actors).length
+						`Deploy & upload "${actorName}" build (${idx + 1}/${Object.keys(config.app.config.actors).length
 						})`,
 						async function* (ctx) {
 							yield fs.mkdir(path.join(cwd, ".actorcore"), {
@@ -315,7 +315,7 @@ export const deploy = new Command()
 							);
 
 							const output =
-								await exec`${cli} publish --access=public --env ${envName} ${actorName} ${entrypoint}`;
+								await exec`${cli} publish --env ${envName} --tags access=public ${actorName} ${entrypoint}`;
 
 							if (output.exitCode !== 0) {
 								throw ctx.error("Failed to deploy & upload actors.", {
@@ -341,7 +341,7 @@ export const deploy = new Command()
 				const managerEndpoint = manager
 					? createActorEndpoint(manager.network)
 					: undefined;
-				const actorName = Object.keys(config.actors)[0];
+				const actorName = Object.keys(config.app.config.actors)[0];
 				const hub = endpoint.includes("localhost")
 					? `${endpoint}/ui`
 					: "https://hub.rivet.gg";
@@ -368,13 +368,11 @@ export const deploy = new Command()
 
 									<Box flexDirection="column" marginX={2}>
 										<Text>
-											{dedent`const client = new Client("${managerEndpoint}");`}
+											{dedent`const client = createClient("${managerEndpoint}");`}
 										</Text>
 
 										<Text>
-											{dedent`const actor = await client.get({
-								name: "${actorName}",
-							});`}
+											{dedent`const ${actorName} = await client.${actorName}.get();`}
 										</Text>
 									</Box>
 								</>

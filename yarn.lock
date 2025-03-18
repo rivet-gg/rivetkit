@@ -5,7 +5,7 @@ __metadata:
   version: 8
   cacheKey: 10c0
 
-"@actor-core/bun@workspace:packages/platforms/bun":
+"@actor-core/bun@workspace:*, @actor-core/bun@workspace:packages/platforms/bun":
   version: 0.0.0-use.local
   resolution: "@actor-core/bun@workspace:packages/platforms/bun"
   dependencies:
@@ -36,6 +36,7 @@ __metadata:
     "@types/react": "npm:^18.3"
     "@types/semver": "npm:^7.5.8"
     "@types/which": "npm:^3.0.4"
+    actor-core: "workspace:*"
     bundle-require: "npm:^5.1.0"
     cfonts: "npm:^3.3.0"
     commander: "npm:^13.1.0"
@@ -64,7 +65,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@actor-core/cloudflare-workers@workspace:packages/platforms/cloudflare-workers":
+"@actor-core/cloudflare-workers@workspace:*, @actor-core/cloudflare-workers@workspace:packages/platforms/cloudflare-workers":
   version: 0.0.0-use.local
   resolution: "@actor-core/cloudflare-workers@workspace:packages/platforms/cloudflare-workers"
   dependencies:
@@ -80,6 +81,18 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@actor-core/memory@npm:0.7.0":
+  version: 0.7.0
+  resolution: "@actor-core/memory@npm:0.7.0"
+  dependencies:
+    "@types/node": "npm:^22.13.1"
+    hono: "npm:^4.7.0"
+  peerDependencies:
+    actor-core: 0.7.0
+  checksum: 10c0/c5652a374df06c3c555d2836cc1f9f4c362302dfb8ba3cf04f9804de1c142880b4210f6a702235a02f917fe07c439de84ebac1c94c8fd55c48754bb87950a26a
+  languageName: node
+  linkType: hard
+
 "@actor-core/memory@workspace:*, @actor-core/memory@workspace:packages/drivers/memory":
   version: 0.0.0-use.local
   resolution: "@actor-core/memory@workspace:packages/drivers/memory"
@@ -94,7 +107,21 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@actor-core/nodejs@workspace:packages/platforms/nodejs":
+"@actor-core/nodejs@npm:0.7.0":
+  version: 0.7.0
+  resolution: "@actor-core/nodejs@npm:0.7.0"
+  dependencies:
+    "@actor-core/memory": "npm:0.7.0"
+    "@hono/node-server": "npm:^1.13.8"
+    "@hono/node-ws": "npm:^1.0.8"
+    zod: "npm:^3.24.2"
+  peerDependencies:
+    actor-core: 0.7.0
+  checksum: 10c0/6b0991109018bc6d31b397c17f87ab6a9a2ab81498d6828c6d040f53802e8f0b01ec53210a592a25b1005c0a3eec04a848c33533016a9dfe324c7f86fddc6903
+  languageName: node
+  linkType: hard
+
+"@actor-core/nodejs@workspace:*, @actor-core/nodejs@workspace:packages/platforms/nodejs":
   version: 0.0.0-use.local
   resolution: "@actor-core/nodejs@workspace:packages/platforms/nodejs"
   dependencies:
@@ -128,7 +155,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@actor-core/rivet@workspace:packages/platforms/rivet":
+"@actor-core/rivet@workspace:*, @actor-core/rivet@workspace:packages/platforms/rivet":
   version: 0.0.0-use.local
   resolution: "@actor-core/rivet@workspace:packages/platforms/rivet"
   dependencies:
@@ -2698,6 +2725,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/bun@npm:^1.2.4":
+  version: 1.2.5
+  resolution: "@types/bun@npm:1.2.5"
+  dependencies:
+    bun-types: "npm:1.2.5"
+  checksum: 10c0/228fbaee32c91353696740361e7ab4b3650906d85e10d3d8ea0c8b2669e529b756e67f444609ca98ee400a5774c3cedfa611ca2b51d7d8db37f5c1db42d654cd
+  languageName: node
+  linkType: hard
+
 "@types/connect@npm:3.4.38":
   version: 3.4.38
   resolution: "@types/connect@npm:3.4.38"
@@ -2711,6 +2747,13 @@ __metadata:
   version: 2.0.0
   resolution: "@types/deno@npm:2.0.0"
   checksum: 10c0/90efbb2744df823434e5f9d34e635ad96b0379637b03a5c0dba38cf314ec8074e676d6e46b880a7b9d412b4960ed6a7934995af42b7e1d1a02b3a140dff9780d
+  languageName: node
+  linkType: hard
+
+"@types/deno@npm:^2.2.0":
+  version: 2.2.0
+  resolution: "@types/deno@npm:2.2.0"
+  checksum: 10c0/cb45bbffe66a3008224a509c6bcb338921cc68b9045363f77ba5d84650d879b8fd4c810db24369a93fbce4a8e2855808bb141c0447feb47d911a7512ba374bde
   languageName: node
   linkType: hard
 
@@ -3676,6 +3719,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"bun-types@npm:1.2.5":
+  version: 1.2.5
+  resolution: "bun-types@npm:1.2.5"
+  dependencies:
+    "@types/node": "npm:*"
+    "@types/ws": "npm:~8.5.10"
+  checksum: 10c0/ef3c3d673def40b2461b8eba6b4f7f5bcd7430590ab576d45748279642945bd4298497893ff26efd040def1739e658f67908a7257f6af5368bdd4ca2331b30b9
+  languageName: node
+  linkType: hard
+
 "bundle-require@npm:^5.1.0":
   version: 5.1.0
   resolution: "bundle-require@npm:5.1.0"
@@ -3846,10 +3899,80 @@ __metadata:
   languageName: node
   linkType: hard
 
+"chat-room-bun@workspace:templates/chat-room-bun":
+  version: 0.0.0-use.local
+  resolution: "chat-room-bun@workspace:templates/chat-room-bun"
+  dependencies:
+    "@actor-core/bun": "workspace:*"
+    "@types/bun": "npm:^1.2.4"
+    "@types/node": "npm:^22.13.9"
+    "@types/prompts": "npm:^2"
+    actor-core: "workspace:*"
+    prompts: "npm:^2.4.2"
+    typescript: "npm:^5.5.2"
+  languageName: unknown
+  linkType: soft
+
+"chat-room-cloudflare-workers@workspace:templates/chat-room-cloudflare-workers":
+  version: 0.0.0-use.local
+  resolution: "chat-room-cloudflare-workers@workspace:templates/chat-room-cloudflare-workers"
+  dependencies:
+    "@actor-core/cloudflare-workers": "workspace:*"
+    "@cloudflare/workers-types": "npm:^4.20250129.0"
+    "@types/node": "npm:^22.13.9"
+    "@types/prompts": "npm:^2"
+    actor-core: "workspace:*"
+    prompts: "npm:^2.4.2"
+    typescript: "npm:^5.5.2"
+    wrangler: "npm:^3.101.0"
+  languageName: unknown
+  linkType: soft
+
+"chat-room-nodejs@workspace:templates/chat-room-nodejs":
+  version: 0.0.0-use.local
+  resolution: "chat-room-nodejs@workspace:templates/chat-room-nodejs"
+  dependencies:
+    "@actor-core/nodejs": "workspace:*"
+    "@types/node": "npm:^22.13.9"
+    "@types/prompts": "npm:^2"
+    actor-core: "workspace:*"
+    prompts: "npm:^2.4.2"
+    typescript: "npm:^5.5.2"
+  languageName: unknown
+  linkType: soft
+
+"chat-room-rivet@workspace:templates/chat-room-rivet":
+  version: 0.0.0-use.local
+  resolution: "chat-room-rivet@workspace:templates/chat-room-rivet"
+  dependencies:
+    "@actor-core/cli": "workspace:*"
+    "@actor-core/rivet": "workspace:*"
+    "@types/deno": "npm:^2.2.0"
+    "@types/node": "npm:^22.13.9"
+    "@types/prompts": "npm:^2"
+    actor-core: "workspace:*"
+    prompts: "npm:^2.4.2"
+    typescript: "npm:^5.5.2"
+  languageName: unknown
+  linkType: soft
+
 "chat-room@workspace:examples/chat-room":
   version: 0.0.0-use.local
   resolution: "chat-room@workspace:examples/chat-room"
   dependencies:
+    "@types/node": "npm:^22.13.9"
+    "@types/prompts": "npm:^2"
+    actor-core: "workspace:*"
+    prompts: "npm:^2.4.2"
+    typescript: "npm:^5.5.2"
+  languageName: unknown
+  linkType: soft
+
+"chat-simple-nodejs@workspace:templates/chat-simple-nodejs":
+  version: 0.0.0-use.local
+  resolution: "chat-simple-nodejs@workspace:templates/chat-simple-nodejs"
+  dependencies:
+    "@actor-core/nodejs": "npm:0.7.0"
     "@types/node": "npm:^22.13.9"
     "@types/prompts": "npm:^2"
     actor-core: "workspace:*"
@@ -4090,6 +4213,55 @@ __metadata:
   checksum: 10c0/90a0e40abbddfd7618f8ccd63a74d88deea94e77d0e8dbbea059fa7ebebb8fbb4e2909667fe26f3a467073de1a542ebe6ae4c73a73745ac5833786759cd906c9
   languageName: node
   linkType: hard
+
+"counter-bun@workspace:templates/counter-bun":
+  version: 0.0.0-use.local
+  resolution: "counter-bun@workspace:templates/counter-bun"
+  dependencies:
+    "@actor-core/bun": "workspace:*"
+    "@types/bun": "npm:^1.2.4"
+    "@types/node": "npm:^22.13.9"
+    actor-core: "workspace:*"
+    typescript: "npm:^5.7.3"
+  languageName: unknown
+  linkType: soft
+
+"counter-cloudflare-workers@workspace:templates/counter-cloudflare-workers":
+  version: 0.0.0-use.local
+  resolution: "counter-cloudflare-workers@workspace:templates/counter-cloudflare-workers"
+  dependencies:
+    "@actor-core/cloudflare-workers": "workspace:*"
+    "@cloudflare/workers-types": "npm:^4.20250129.0"
+    "@types/node": "npm:^22.13.9"
+    actor-core: "workspace:*"
+    typescript: "npm:^5.7.3"
+    wrangler: "npm:^3.101.0"
+  languageName: unknown
+  linkType: soft
+
+"counter-nodejs@workspace:templates/counter-nodejs":
+  version: 0.0.0-use.local
+  resolution: "counter-nodejs@workspace:templates/counter-nodejs"
+  dependencies:
+    "@actor-core/nodejs": "workspace:*"
+    "@types/node": "npm:^22.13.9"
+    actor-core: "workspace:*"
+    typescript: "npm:^5.7.3"
+  languageName: unknown
+  linkType: soft
+
+"counter-rivet@workspace:templates/counter-rivet":
+  version: 0.0.0-use.local
+  resolution: "counter-rivet@workspace:templates/counter-rivet"
+  dependencies:
+    "@actor-core/cli": "workspace:*"
+    "@actor-core/rivet": "workspace:*"
+    "@types/deno": "npm:^2.2.0"
+    "@types/node": "npm:^22.13.9"
+    actor-core: "workspace:*"
+    typescript: "npm:^5.7.3"
+  languageName: unknown
+  linkType: soft
 
 "counter@workspace:examples/counter":
   version: 0.0.0-use.local
