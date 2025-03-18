@@ -278,6 +278,28 @@ const temporaryRoom = actor({
 
 This action is permanent and cannot be reverted.
 
+## Using `ActorContext` Type Externally
+
+When extracting logic from lifecycle hooks or actions into external functions, you'll often need to define the type of the context parameter. ActorCore provides helper types that make it easy to extract and pass these context types to external functions.
+
+```typescript
+import { actor, ActorContextOf } from "actor-core";
+
+const myActor = actor({
+  state: { count: 0 },
+  
+  // Use external function in lifecycle hook
+  onStart: (c) => logActorStarted(c)
+});
+
+// Simple external function with typed context
+function logActorStarted(c: ActorContextOf<typeof myActor>) {
+  console.log(`Actor started with count: ${c.state.count}`);
+}
+```
+
+See [Helper Types](/concepts/types) for more details on using `ActorContextOf`.
+
 ## Full Example
 
 ```typescript

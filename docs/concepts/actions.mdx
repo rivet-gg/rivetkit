@@ -225,3 +225,31 @@ const counter = actor({
 ## Authentication
 
 By default, clients can call all actions on an actor without restriction. Make sure to implement authentication if needed. Documentation on authentication is available [here](/concepts/authentication).
+
+## Using `ActionContext` Type Externally
+
+When writing complex logic for actions, you may want to extract parts of your implementation into separate helper functions. When doing this, you'll need a way to properly type the context parameter.
+
+ActorCore provides the `ActionContextOf` utility type for exactly this purpose:
+
+```typescript
+import { actor, ActionContextOf } from "actor-core";
+
+const counter = actor({
+  state: { count: 0 },
+  
+  actions: {
+    increment: (c) => {
+      return incrementCount(c);
+    }
+  }
+});
+
+// Simple helper function with typed context
+function incrementCount(c: ActionContextOf<typeof counter>) {
+  c.state.count += 1;
+  return c.state.count;
+}
+```
+
+See [Helper Types](/concepts/types) for more details on using `ActionContextOf` and other type utilities.

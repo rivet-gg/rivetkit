@@ -76,6 +76,7 @@
                   {
                     "group": "Advanced",
                     "pages": [
+                      "concepts/types",
                       "concepts/topology"
                     ]
                   }
