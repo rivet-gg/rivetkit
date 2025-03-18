@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.7.3](https://github.com/rivet-gg/actor-core/compare/v0.7.2...v0.7.3) (2025-03-18)
+
+
+### Bug Fixes
+
+* **actor-core:** make invariant a required dependency ([#747](https://github.com/rivet-gg/actor-core/issues/747)) ([ed893c0](https://github.com/rivet-gg/actor-core/commit/ed893c0eefd94c7758659bf16b98d8dded3f2c9a))
+* **cli:** update rivet to use new schema ([#748](https://github.com/rivet-gg/actor-core/issues/748)) ([8bd2fb6](https://github.com/rivet-gg/actor-core/commit/8bd2fb63125a00894738454e19e2c0bd576f59ef))
+* **cloudflare-workers:** fix accepting empty schema ([#749](https://github.com/rivet-gg/actor-core/issues/749)) ([c05e97d](https://github.com/rivet-gg/actor-core/commit/c05e97d88d2ece987578b8fbb718268324326c2c))
+
+
+### Documentation
+
+* document context types and ephemeral `c.vars` ([#743](https://github.com/rivet-gg/actor-core/issues/743)) ([88ee0a8](https://github.com/rivet-gg/actor-core/commit/88ee0a8e3497ce71da43c86c798e4958202ad48d))
+
+
+### Chores
+
+* release 0.7.3 ([c275c38](https://github.com/rivet-gg/actor-core/commit/c275c381793f6b38e1f92c335fa95a1b11e676e2))
+* release version 0.7.3 ([f269653](https://github.com/rivet-gg/actor-core/commit/f269653b489c7acb993fb9f6c1fbec4d241f675e))
+* remove templates from workspace ([4770c79](https://github.com/rivet-gg/actor-core/commit/4770c791a90cac225fbefb1b983bd1d2f952355e))
+
 ## [0.7.2](https://github.com/rivet-gg/actor-core/compare/v0.7.1...v0.7.2) (2025-03-18)
 
 
