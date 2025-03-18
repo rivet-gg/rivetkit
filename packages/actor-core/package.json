@@ -134,6 +134,7 @@
   "dependencies": {
     "cbor-x": "^1.6.0",
     "hono": "^4.7.0",
+    "invariant": "^2.2.4",
     "on-change": "^5.0.1",
     "p-retry": "^6.2.1",
     "zod": "^3.24.1"
@@ -143,7 +144,6 @@
     "@types/node": "^22.13.1",
     "@types/ws": "^8",
     "eventsource": "^3.0.5",
-    "invariant": "^2.2.4",
     "tsup": "^8.4.0",
     "typescript": "^5.7.3",
     "vitest": "^3.0.9",
