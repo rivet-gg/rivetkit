@@ -137,8 +137,8 @@ const PLATFORMS = {
 				},
 				scripts: {
 					deploy: "wrangler deploy",
-					dev: "wrangler dev",
-					start: "wrangler dev",
+					dev: "wrangler dev --port 6420",
+					start: "wrangler dev --port 6420",
 					"cf-typegen": "wrangler types",
 					...pkgJson.scripts,
 				},
