@@ -8,6 +8,9 @@ export type {
 	GetWithIdOptions,
 	QueryOptions,
 	Region,
+	ExtractActorsFromApp,
+	ExtractAppFromClient,
+	ClientRaw,
 } from "./client";
 export type { ActorHandle } from "./handle";
 export { ActorHandleRaw } from "./handle";
@@ -24,3 +27,7 @@ export {
 	NoSupportedTransport,
 	ActionError,
 } from "@/client/errors";
+export {
+	AnyActorDefinition,
+	ActorDefinition,
+} from "@/actor/definition";

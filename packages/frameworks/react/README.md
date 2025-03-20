@@ -24,37 +24,35 @@ bun add @actor-core/react
 ## Quick Start
 
 ```tsx
-import {
-	useActor,
-	useActorEvent,
-	ActorCoreClientProvider,
-} from "@actor-core/react";
-import { Client } from "actor-core/client";
-import type CounterActor from "../actors/my-counter-actor";
+import { createClient } from "actor-core/client";
+import { createReactActorCore } from "@actor-core/react";
+import type { App } from "../counter/src/index";
+import React, { useState } from "react";
 
 // Create a client
-const client = new Client("http://your-actor-core-server.com");
+const client = createClient<App>("http://your-actor-core-server.com");
 
-function App() {
+// Create React hooks for your actors
+const { useActor, useActorEvent } = createReactActorCore(client);
+
+function ReactApp() {
 	return (
-		// Provide the client to your App
-		<ActorCoreClientProvider client={client}>
+		<>
 			<Counter />
-			<Logs />
-		</ActorCoreClientProvider>
+		</>
 	);
 }
 
 function Counter() {
 	// Get or create an actor
-	const [{ actor }] = useActor<CounterActor>({ name: "counter" });
+	const [{ actor }] = useActor("counter");
 
 	return (
 		<div>
-			<p>Current: {actor?.state.count}</p>
+			<CounterValue actor={actor} />
 			<button
 				type="button"
-				onClick={() => actor?.increment()}
+				onClick={() => actor?.increment(1)}
 				disabled={!actor}
 			>
 				Increment
@@ -63,17 +61,16 @@ function Counter() {
 	);
 }
 
-function Logs() {
-	// Get or create an actor
-	const [{ actor }] = useActor<CounterActor>({ name: "counter" });
+function CounterValue({ actor }) {
+	const [count, setCount] = useState(0);
 
 	// Listen to events
-	useActorEvent({actor, event: "newCount"}, (...args) => {
-		console.log("Received new count event", args);
+	useActorEvent({ actor, event: "newCount" }, (newCount) => {
+		setCount(newCount);
 	});
 
-	return null;
+	return count;
 }
 
-render(<App />, document.getElementById("root"));
+render(<ReactApp />, document.getElementById("root"));
 ```

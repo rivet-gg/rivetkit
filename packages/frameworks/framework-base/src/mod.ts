@@ -1,4 +1,11 @@
-import type { ActorHandle, Client as ActorClient } from "actor-core/client";
+import type {
+	ActorHandle,
+	ActorAccessor,
+	AnyActorDefinition,
+	ExtractAppFromClient,
+	ExtractActorsFromApp,
+	ClientRaw,
+} from "actor-core/client";
 
 /**
  * Shallow compare objects.
@@ -28,28 +35,32 @@ export function shallowEqualObjects<
 }
 
 namespace State {
-	export type Value<A> =
+	export type Value<AD extends AnyActorDefinition> =
 		| { state: "init"; actor: undefined; isLoading: false }
 		| { state: "creating"; actor: undefined; isLoading: true }
-		| { state: "created"; actor: ActorHandle<A>; isLoading: false }
+		| { state: "created"; actor: ActorHandle<AD>; isLoading: false }
 		| { state: "error"; error: unknown; actor: undefined; isLoading: false };
 
-	export const INIT = <A>(): Value<A> => ({
+	export const INIT = <AD extends AnyActorDefinition>(): Value<AD> => ({
 		state: "init",
 		actor: undefined,
 		isLoading: false,
 	});
-	export const CREATING = <A>(): Value<A> => ({
+	export const CREATING = <AD extends AnyActorDefinition>(): Value<AD> => ({
 		state: "creating",
 		actor: undefined,
 		isLoading: true,
 	});
-	export const CREATED = <A>(actor: ActorHandle<A>): Value<A> => ({
+	export const CREATED = <AD extends AnyActorDefinition>(
+		actor: ActorHandle<AD>,
+	): Value<AD> => ({
 		state: "created",
 		actor,
 		isLoading: false,
 	});
-	export const ERRORED = <A>(error: unknown): Value<A> => ({
+	export const ERRORED = <AD extends AnyActorDefinition>(
+		error: unknown,
+	): Value<AD> => ({
 		state: "error",
 		actor: undefined,
 		error,
@@ -57,22 +68,34 @@ namespace State {
 	});
 }
 
-export class ActorManager<A = unknown> {
-	#client: ActorClient;
-	#options: Parameters<ActorClient["get"]>;
+export class ActorManager<
+	C extends ClientRaw,
+	App extends ExtractAppFromClient<C>,
+	Registry extends ExtractActorsFromApp<App>,
+	ActorName extends keyof Registry,
+	AD extends Registry[ActorName],
+> {
+	#client: C;
+	#name: Exclude<ActorName, symbol | number>;
+	#options: Parameters<ActorAccessor<AD>["get"]>;
 
 	#listeners: (() => void)[] = [];
 
-	#state: State.Value<A> = State.INIT();
+	#state: State.Value<AD> = State.INIT();
 
-	#createPromise: Promise<ActorHandle<A>> | null = null;
+	#createPromise: Promise<ActorHandle<AD>> | null = null;
 
-	constructor(client: ActorClient, options: Parameters<ActorClient["get"]>) {
+	constructor(
+		client: C,
+		name: Exclude<ActorName, symbol | number>,
+		options: Parameters<ActorAccessor<AD>["get"]>,
+	) {
 		this.#client = client;
+		this.#name = name;
 		this.#options = options;
 	}
 
-	setOptions(options: Parameters<ActorClient["get"]>) {
+	setOptions(options: Parameters<ActorAccessor<AD>["get"]>) {
 		if (shallowEqualObjects(options, this.#options)) {
 			if (!this.#state.actor) {
 				this.create();
@@ -95,7 +118,7 @@ export class ActorManager<A = unknown> {
 		this.#state = { ...State.CREATING() };
 		this.#update();
 		try {
-			this.#createPromise = this.#client.get<A>(...this.#options);
+			this.#createPromise = this.#client.get(this.#name, ...this.#options);
 			const actor = await this.#createPromise;
 			this.#state = { ...State.CREATED(actor) };
 			this.#createPromise = null;

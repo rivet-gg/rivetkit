@@ -1,92 +1,75 @@
 "use client";
-import type { ActorHandle, Client } from "actor-core/client";
+import type {
+	ActorAccessor,
+	ActorHandle,
+	ExtractAppFromClient,
+	ExtractActorsFromApp,
+	ClientRaw,
+} from "actor-core/client";
 import { ActorManager } from "@actor-core/framework-base";
 import {
-	createContext,
 	useCallback,
-	useContext,
 	useEffect,
 	useRef,
 	useState,
 	useSyncExternalStore,
-	type ReactNode,
 } from "react";
 
-const ActorCoreClientContext = createContext<Client | null>(null);
+export function createReactActorCore<Client extends ClientRaw>(client: Client) {
+	type App = ExtractAppFromClient<Client>;
+	type Registry = ExtractActorsFromApp<App>;
+	return {
+		useActor: function useActor<
+			N extends keyof Registry,
+			AD extends Registry[N],
+		>(
+			name: Exclude<N, symbol | number>,
+			...options: Parameters<ActorAccessor<AD>["get"]>
+		) {
+			const [manager] = useState(
+				() =>
+					new ActorManager<Client, App, Registry, N, AD>(client, name, options),
+			);
 
-interface ActorCoreClientProviderProps {
-	client: Client;
-	children: ReactNode;
-}
+			const state = useSyncExternalStore(
+				useCallback(
+					(onUpdate) => {
+						return manager.subscribe(onUpdate);
+					},
+					[manager],
+				),
+				() => manager.getState(),
+				() => manager.getState(),
+			);
 
-export function ActorCoreClientProvider({
-	client,
-	children,
-}: ActorCoreClientProviderProps) {
-	return (
-		<ActorCoreClientContext.Provider value={client}>
-			{children}
-		</ActorCoreClientContext.Provider>
-	);
-}
+			useEffect(() => {
+				manager.setOptions(options);
+			}, [options, manager]);
 
-export function useActorCoreClient() {
-	const client = useContext(ActorCoreClientContext);
-	if (client === null) {
-		throw new Error(
-			"useActorCoreClient must be used within an ActorCoreClientProvider",
-		);
-	}
-	return client;
-}
+			return [state] as const;
+		},
+		useActorEvent<N extends keyof Registry, AD extends Registry[N]>(
+			opts: { actor: ActorHandle<AD> | undefined; event: string },
+			cb: (...args: unknown[]) => void,
+		) {
+			const ref = useRef(cb);
 
-export function useActor<A = unknown>(...options: Parameters<Client["get"]>) {
-	const client = useActorCoreClient();
+			useEffect(() => {
+				ref.current = cb;
+			}, [cb]);
 
-	const [manager] = useState(() => new ActorManager<A>(client, options));
+			useEffect(() => {
+				if (!opts.actor) {
+					return noop;
+				}
+				const unsub = opts.actor.on(opts.event, (...args) => {
+					ref.current(...args);
+				});
 
-	const state = useSyncExternalStore(
-		useCallback(
-			(onUpdate) => {
-				return manager.subscribe(onUpdate);
-			},
-			[manager],
-		),
-		() => manager.getState(),
-		() => manager.getState(),
-	);
-
-	useEffect(() => {
-		manager.setOptions(options);
-	}, [options, manager]);
-
-	return [state] as const;
-}
-
-export function useActorEvent<
-	A = unknown,
-	// biome-ignore lint/suspicious/noExplicitAny: we do not care about the shape of the args, for now
-	Args extends any[] = unknown[],
->(
-	opts: { actor: ActorHandle<A> | null; event: string },
-	cb: (...args: Args) => void,
-) {
-	const ref = useRef(cb);
-
-	useEffect(() => {
-		ref.current = cb;
-	}, [cb]);
-
-	useEffect(() => {
-		if (!opts.actor) {
-			return noop;
-		}
-		const unsub = opts.actor.on(opts.event, (...args: Args) => {
-			ref.current(...args);
-		});
-
-		return unsub;
-	}, [opts.actor, opts.event]);
+				return unsub;
+			}, [opts.actor, opts.event]);
+		},
+	};
 }
 
 function noop() {

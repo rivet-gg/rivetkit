@@ -14,7 +14,7 @@ jobs:
       - run: yarn build
       - run: yarn install # re-install to detect CLIs
       # create examples
-      - run: ./node_modules/.bin/create-actor --platform nodejs --template chat-simple templates/chat-simple
+      - run: ./node_modules/.bin/create-actor --platform nodejs --template chat-room templates/chat-room
       - run: ./node_modules/.bin/create-actor --platform nodejs --template counter templates/counter
       # TODO: Add --compact once we publish them to npm
       - run: yarn dlx pkg-pr-new publish 'packages/**/platforms/*' 'packages/*' 'packages/frameworks/*' --template './templates/*' --packageManager yarn

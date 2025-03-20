@@ -18,11 +18,15 @@ import { logger } from "./log";
 import { importWebSocket } from "@/common/websocket";
 import { importEventSource } from "@/common/eventsource";
 import { ActorCoreApp } from "@/mod";
-import { ActorDefinition, AnyActorDefinition } from "@/actor/definition";
+import type { AnyActorDefinition } from "@/actor/definition";
 
 /** Extract the actor registry from the app definition. */
 export type ExtractActorsFromApp<A extends ActorCoreApp<any>> =
 	A extends ActorCoreApp<infer Actors> ? Actors : never;
+
+/** Extract the app definition from the client. */
+export type ExtractAppFromClient<C extends Client<ActorCoreApp<{}>>> =
+	C extends Client<infer A> ? A : never;
 
 /**
  * Represents an actor accessor that provides methods to interact with a specific actor.

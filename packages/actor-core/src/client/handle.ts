@@ -7,10 +7,7 @@ import { assertUnreachable } from "@/common/utils";
 import * as cbor from "cbor-x";
 import * as errors from "./errors";
 import { logger } from "./log";
-import {
-	type WebSocketMessage as ConnMessage,
-	messageLength,
-} from "./utils";
+import { type WebSocketMessage as ConnMessage, messageLength } from "./utils";
 import { ACTOR_HANDLES_SYMBOL, ClientRaw, DynamicImports } from "./client";
 import { ActorDefinition, AnyActorDefinition } from "@/actor/definition";
 import pRetry from "p-retry";
@@ -37,9 +34,7 @@ interface SendOpts {
 	ephemeral: boolean;
 }
 
-export type ConnTransport =
-	| { websocket: WebSocket }
-	| { sse: EventSource };
+export type ConnTransport = { websocket: WebSocket } | { sse: EventSource };
 
 export const CONNECT_SYMBOL = Symbol("connect");
 
@@ -724,11 +719,15 @@ enc
 	}
 }
 
-type ExtractActorDefinitionRpcs<AD extends AnyActorDefinition> = AD extends ActorDefinition<any, any, any, any, infer R> ? R : never;
+type ExtractActorDefinitionRpcs<AD extends AnyActorDefinition> =
+	AD extends ActorDefinition<any, any, any, any, infer R> ? R : never;
 
-type ActorDefinitionRpcs<AD extends AnyActorDefinition> = 
-{
-	[K in keyof ExtractActorDefinitionRpcs<AD>]: ExtractActorDefinitionRpcs<AD>[K] extends (...args: infer Args) => infer Return ? ActorRPCFunction<Args, Return> : never;
+type ActorDefinitionRpcs<AD extends AnyActorDefinition> = {
+	[K in keyof ExtractActorDefinitionRpcs<AD>]: ExtractActorDefinitionRpcs<AD>[K] extends (
+		...args: infer Args
+	) => infer Return
+		? ActorRPCFunction<Args, Return>
+		: never;
 };
 
 /**
@@ -747,7 +746,8 @@ type ActorDefinitionRpcs<AD extends AnyActorDefinition> =
  * @see {@link ActorHandleRaw}
  */
 
-export type ActorHandle<AD extends AnyActorDefinition> = ActorHandleRaw & ActorDefinitionRpcs<AD>;
+export type ActorHandle<AD extends AnyActorDefinition> = ActorHandleRaw &
+	ActorDefinitionRpcs<AD>;
 
 //{
 //	[K in keyof A as K extends string ? K extends `_${string}` ? never : K : K]: A[K] extends (...args: infer Args) => infer Return ? ActorRPCFunction<Args, Return> : never;
@@ -764,8 +764,7 @@ export type ActorHandle<AD extends AnyActorDefinition> = ActorHandleRaw & ActorD
 
 export type ActorRPCFunction<
 	Args extends Array<unknown> = unknown[],
-	Response = unknown
+	Response = unknown,
 > = (
 	...args: Args extends [unknown, ...infer Rest] ? Rest : Args
 ) => Promise<Response>;
-
