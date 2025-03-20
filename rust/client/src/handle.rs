@@ -10,6 +10,7 @@ use serde_json::Value;
 use crate::drivers::{DriverHandle, DriverStopReason, TransportKind};
 use crate::encoding::EncodingKind;
 use crate::{backoff::Backoff, protocol::*};
+use tracing::debug;
 
 use super::protocol;
 
@@ -127,7 +128,7 @@ impl ActorHandleInner {
         let task_end_reason = loop {
             tokio::select! {
                 reason = &mut task_end_reason => {
-                    println!("Connection closed: {:?}", reason);
+                    debug!("Connection closed: {:?}", reason);
                     
                     break reason;
                 },
@@ -182,12 +183,12 @@ impl ActorHandleInner {
 
         tokio::spawn(async move {
             'keepalive: loop {
-                println!("Attempting to reconnect");
+                debug!("Attempting to reconnect");
                 let mut backoff = Backoff::new(Duration::from_secs(1), Duration::from_secs(30));
                 let mut retry_attempt = 0;
                 'retry: loop {
                     retry_attempt += 1;
-                    println!("Establish conn: attempt={}, timeout={:?}", retry_attempt, backoff.delay());
+                    debug!("Establish conn: attempt={}, timeout={:?}", retry_attempt, backoff.delay());
                     let attempt = handle.try_connect().await;
 
                     if handle.is_disconnecting() {
@@ -215,7 +216,7 @@ impl ActorHandleInner {
     }
 
     async fn on_open(self: &Arc<Self>, init: &protocol::Init) {
-        println!("Connected to server: {:?}", init);
+        debug!("Connected to server: {:?}", init);
         
         for (event_name, _) in self.event_subscriptions.lock().await.iter() {
             self.send_subscription(event_name.clone(), true).await;
@@ -240,11 +241,11 @@ impl ActorHandleInner {
                 let id = ro.i;
                 let mut in_flight_rpcs = self.in_flight_rpcs.lock().await;
                 let Some(tx) = in_flight_rpcs.remove(&id) else {
-                    println!("Unexpected response: rpc id not found");
+                    debug!("Unexpected response: rpc id not found");
                     return;
                 };
                 if let Err(e) = tx.send(Ok(ro.clone())) {
-                    eprintln!("{:?}", e);
+                    debug!("{:?}", e);
                     return;
                 }
             }, 
@@ -252,11 +253,11 @@ impl ActorHandleInner {
                 let id = re.i;
                 let mut in_flight_rpcs = self.in_flight_rpcs.lock().await;
                 let Some(tx) = in_flight_rpcs.remove(&id) else {
-                    println!("Unexpected response: rpc id not found");
+                    debug!("Unexpected response: rpc id not found");
                     return;
                 };
                 if let Err(e) = tx.send(Err(re.clone())) {
-                    eprintln!("{:?}", e);
+                    debug!("{:?}", e);
                     return;
                 }
             },
@@ -269,7 +270,7 @@ impl ActorHandleInner {
                 }
             },
             protocol::ToClientBody::EventError { er } => {
-                eprintln!("Event error: {:?}", er);
+                debug!("Event error: {:?}", er);
             },
         }
     }

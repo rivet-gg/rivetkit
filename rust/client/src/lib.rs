@@ -14,9 +14,14 @@ mod tests {
     use super::*;
     use serde_json::json;
     use tokio::signal;
+    use tracing::Level;
+    use tracing_subscriber::fmt;
     
     #[tokio::test]
     async fn basic() {
+        fmt()
+            .with_max_level(Level::DEBUG)
+            .init();
         const ENDPOINT: &str = "http://localhost:6420";
 
         let client = client::Client::new(

@@ -7,6 +7,7 @@ use tokio::task::JoinHandle;
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 use anyhow::{Result, Context};
+use tracing::debug;
 
 use crate::encoding::EncodingKind;
 use crate::protocol::{ToClient, ToServer};
@@ -55,20 +56,20 @@ async fn start(
             msg = out_rx.recv() => {
                 // If the sender is dropped, break the loop
                 let Some(msg) = msg else {
-                    println!("Sender dropped");
+                    debug!("Sender dropped");
                     return DriverStopReason::UserAborted;
                 };
 
                 let msg = match serialize(&msg) {
                     Ok(msg) => msg,
                     Err(e) => {
-                        eprintln!("Failed to serialize message: {:?}", e);
+                        debug!("Failed to serialize message: {:?}", e);
                         continue;
                     }
                 };
 
                 if let Err(e) = ws_sink.send(msg).await {
-                    eprintln!("Failed to send message: {:?}", e);
+                    debug!("Failed to send message: {:?}", e);
                     continue;
                 }
             },
@@ -83,26 +84,26 @@ async fn start(
                     Ok(msg) => match msg {
                         Message::Text(_) | Message::Binary(_) => {
                             let Ok(msg) = deserialize(&msg) else {
-                                eprintln!("Failed to parse message, {:?}", msg);
+                                debug!("Failed to parse message: {:?}", msg);
                                 continue;
                             };
 
                             if let Err(e) = in_tx.send(Arc::new(msg)).await {
-                                eprintln!("Failed to send text message: {}", e);
+                                debug!("Failed to send text message: {}", e);
                                 // failure to send means user dropped incoming receiver
                                 return DriverStopReason::UserAborted;
                             }
                         },
                         Message::Close(_) => {
-                            eprintln!("Close message");
+                            debug!("Close message");
                             return DriverStopReason::ServerDisconnect;
                         },
                         _ => {
-                            eprintln!("Invalid message type");
+                            debug!("Invalid message type received");
                         }
                     }
                     Err(e) => {
-                        eprintln!("WebSocket error: {}", e);
+                        debug!("WebSocket error: {}", e);
                         return DriverStopReason::ServerError;
                     }
                 }

@@ -6,6 +6,7 @@ use tokio::sync::mpsc;
 use anyhow::{Context, Result};
 use base64::prelude::*;
 use tokio::task::JoinHandle;
+use tracing::debug;
 
 use crate::encoding::EncodingKind;
 use crate::protocol::{ToClient, ToServer, ToClientBody};
@@ -59,7 +60,7 @@ async fn start(
     let conn = match do_handshake(&mut stream, &deserialize, &in_tx).await {
         Ok(conn) => conn,
         Err(reason) => {
-            eprintln!("Failed to connect: {:?}", reason);
+            debug!("Failed to connect: {:?}", reason);
             return reason;
         }
     };
@@ -74,7 +75,7 @@ async fn start(
                 let msg = match serialize(&msg) {
                     Ok(msg) => msg,
                     Err(e) => {
-                        eprintln!("Failed to serialize {:?} {:?}", msg, e);
+                        debug!("Failed to serialize {:?} {:?}", msg, e);
                         continue;
                     }
                 };
@@ -86,43 +87,56 @@ async fn start(
                 );
             
                 // Handle response
-                let _resp = reqwest::Client::new()
+                let resp = reqwest::Client::new()
                     .post(request_url)
                     .body(msg)
                     .send()
                     .await;
 
-                // println!("Response: {:?}", resp.ok().unwrap().text().await.unwrap());
+                match resp {
+                    Ok(resp) => {
+                        if !resp.status().is_success() {
+                            debug!("Failed to send message: {:?}", resp);
+                        }
+
+                        if let Ok(t) = resp.text().await {
+                            debug!("Response: {:?}", t);
+                        }
+                    },
+                    Err(e) => {
+                        debug!("Failed to send message: {:?}", e);
+                    }
+                }
             },
             // Handle sse incoming
             msg = stream.next() => {
                 let Some(msg) = msg else {
-                    println!("Receiver dropped");
+                    debug!("Receiver dropped");
                     return DriverStopReason::ServerDisconnect;
                 };
 
                 match msg {
                     Ok(msg) => match msg {
-                        SSE::Comment(comment) => eprintln!("Comment: {}", comment),
-                        SSE::Connected(_) => eprintln!("warning: received sse connection past-handshake"),
+                        SSE::Comment(comment) => debug!("Sse comment: {}", comment),
+                        SSE::Connected(_) => debug!("warning: received sse connection past-handshake"),
                         SSE::Event(event) => {
                             // println!("POST INIT event coming in: {:?}", event.data);
                             let msg = match deserialize(&event.data) {
                                 Ok(msg) => msg,
                                 Err(e) => {
-                                    eprintln!("Failed to deserialize {:?} {:?}", event, e);
+                                    debug!("Failed to deserialize {:?} {:?}", event, e);
                                     continue;
                                 }
                             };
 
                             if let Err(e) = in_tx.send(Arc::new(msg)).await {
-                                eprintln!("Receiver in_rx dropped {:?}", e);
+                                debug!("Receiver in_rx dropped {:?}", e);
                                 return DriverStopReason::UserAborted;
                             }
                         },
                     }
                     Err(e) => {
-                        eprintln!("Sse error: {}", e);
+                        debug!("Sse error: {}", e);
                         return DriverStopReason::ServerError;
                     }
                 }
@@ -142,19 +156,19 @@ async fn do_handshake(
             // Handle sse incoming
             msg = stream.next() => {
                 let Some(msg) = msg else {
-                    println!("Receiver dropped");
+                    debug!("Receiver dropped");
                     return Err(DriverStopReason::ServerDisconnect);
                 };
 
                 match msg {
                     Ok(msg) => match msg {
-                        SSE::Comment(comment) => eprintln!("Comment: {}", comment),
-                        SSE::Connected(_) => eprintln!("Connected Sse"),
+                        SSE::Comment(comment) => debug!("Sse comment {:?}", comment),
+                        SSE::Connected(_) => debug!("Connected Sse"),
                         SSE::Event(event) => {
                             let msg = match deserialize(&event.data) {
                                 Ok(msg) => msg,
                                 Err(e) => {
-                                    eprintln!("Failed to deserialize {:?} {:?}", event, e);
+                                    debug!("Failed to deserialize {:?} {:?}", event, e);
                                     continue;
                                 }
                             };
@@ -162,7 +176,7 @@ async fn do_handshake(
                             let msg = Arc::new(msg);
 
                             if let Err(e) = in_tx.send(msg.clone()).await {
-                                eprintln!("Receiver in_rx dropped {:?}", e);
+                                debug!("Receiver in_rx dropped {:?}", e);
                                 return Err(DriverStopReason::UserAborted);
                             }
 
