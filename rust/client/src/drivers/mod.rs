@@ -9,7 +9,7 @@ use crate::{encoding::EncodingKind, protocol};
 pub mod ws;
 pub mod sse;
 
-const MAX_CONN_PARAMS_SIZE: usize = 1024;
+const MAX_CONN_PARAMS_SIZE: usize = 4096;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DriverStopReason {

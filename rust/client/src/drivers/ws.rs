@@ -5,8 +5,8 @@ use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tokio_tungstenite::tungstenite::Message;
-use anyhow::{Result, Context};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
+use anyhow::{Result, Context};
 
 use crate::encoding::EncodingKind;
 use crate::protocol::{ToClient, ToServer};
