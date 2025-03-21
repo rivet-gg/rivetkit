@@ -1,11 +1,11 @@
-use futures_util::FutureExt;
 use anyhow::Result;
+use futures_util::FutureExt;
+use serde_json::Value;
 use std::ops::Deref;
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::time::Duration;
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{oneshot, watch, Mutex};
-use serde_json::Value;
 
 use crate::drivers::{DriverHandle, DriverStopReason, TransportKind};
 use crate::encoding::EncodingKind;
@@ -18,7 +18,7 @@ type RpcResponse = Result<RpcResponseOk, RpcResponseError>;
 type EventCallback = dyn Fn(&Vec<Value>) + Send + Sync;
 
 struct SendMsgOpts {
-    ephemeral: bool
+    ephemeral: bool,
 }
 
 impl Default for SendMsgOpts {
@@ -50,14 +50,9 @@ pub struct ActorHandleInner {
     msg_queue: Mutex<Vec<Arc<protocol::ToServer>>>,
 
     rpc_counter: AtomicI64,
-    in_flight_rpcs: Mutex<HashMap<
-        i64,
-        oneshot::Sender<RpcResponse>
-    >>,
+    in_flight_rpcs: Mutex<HashMap<i64, oneshot::Sender<RpcResponse>>>,
 
-    event_subscriptions: Mutex<HashMap<
-        String, Vec<Box<EventCallback>>
-    >>,
+    event_subscriptions: Mutex<HashMap<String, Vec<Box<EventCallback>>>>,
 
     dc_watch: WatchPair,
     disconnection_rx: Mutex<Option<oneshot::Receiver<()>>>,
@@ -68,7 +63,7 @@ impl ActorHandleInner {
         endpoint: String,
         transport_kind: TransportKind,
         encoding_kind: EncodingKind,
-        parameters: Option<Value>
+        parameters: Option<Value>,
     ) -> Result<ActorHandle> {
         Ok(Arc::new(Self {
             endpoint: endpoint.clone(),
@@ -88,18 +83,20 @@ impl ActorHandleInner {
     fn is_disconnecting(self: &Arc<Self>) -> bool {
         *self.dc_watch.1.borrow() == true
     }
-    
+
     async fn try_connect(self: &Arc<Self>) -> ConnectionAttempt {
-        let (driver, mut recver, task) = match self.transport_kind.connect(
-            self.endpoint.clone(), self.encoding_kind, &self.parameters
-        ).await {
+        let (driver, mut recver, task) = match self
+            .transport_kind
+            .connect(self.endpoint.clone(), self.encoding_kind, &self.parameters)
+            .await
+        {
             Ok(a) => a,
             Err(_) => {
                 // Either from immediate disconnect (local device connection refused)
                 // or from error like invalid URL
                 return ConnectionAttempt {
                     did_open: false,
-                    _task_end_reason: DriverStopReason::TaskError
+                    _task_end_reason: DriverStopReason::TaskError,
                 };
             }
         };
@@ -109,15 +106,13 @@ impl ActorHandleInner {
             *my_driver = Some(driver);
         }
 
-        let mut task_end_reason = task.map(|res| {
-            match res {
-                Ok(a) => a,
-                Err(task_err) => {
-                    if task_err.is_cancelled() {
-                        DriverStopReason::UserAborted
-                    } else {
-                        DriverStopReason::TaskError
-                    }
+        let mut task_end_reason = task.map(|res| match res {
+            Ok(a) => a,
+            Err(task_err) => {
+                if task_err.is_cancelled() {
+                    DriverStopReason::UserAborted
+                } else {
+                    DriverStopReason::TaskError
                 }
             }
         });
@@ -129,7 +124,7 @@ impl ActorHandleInner {
             tokio::select! {
                 reason = &mut task_end_reason => {
                     debug!("Connection closed: {:?}", reason);
-                    
+
                     break reason;
                 },
                 msg = recver.recv() => {
@@ -161,7 +156,7 @@ impl ActorHandleInner {
 
         ConnectionAttempt {
             did_open: did_connection_open,
-            _task_end_reason: task_end_reason
+            _task_end_reason: task_end_reason,
         }
     }
 
@@ -188,7 +183,11 @@ impl ActorHandleInner {
                 let mut retry_attempt = 0;
                 'retry: loop {
                     retry_attempt += 1;
-                    debug!("Establish conn: attempt={}, timeout={:?}", retry_attempt, backoff.delay());
+                    debug!(
+                        "Establish conn: attempt={}, timeout={:?}",
+                        retry_attempt,
+                        backoff.delay()
+                    );
                     let attempt = handle.try_connect().await;
 
                     if handle.is_disconnecting() {
@@ -217,7 +216,7 @@ impl ActorHandleInner {
 
     async fn on_open(self: &Arc<Self>, init: &protocol::Init) {
         debug!("Connected to server: {:?}", init);
-        
+
         for (event_name, _) in self.event_subscriptions.lock().await.iter() {
             self.send_subscription(event_name.clone(), true).await;
         }
@@ -225,7 +224,7 @@ impl ActorHandleInner {
         // Flush message queue
         for msg in self.msg_queue.lock().await.drain(..) {
             // If its in the queue, it isn't ephemeral, so we pass
-            // default SendMsgOpts 
+            // default SendMsgOpts
             self.send_msg(msg, SendMsgOpts::default()).await;
         }
     }
@@ -236,7 +235,7 @@ impl ActorHandleInner {
         match body {
             protocol::ToClientBody::Init { i: init } => {
                 self.on_open(init).await;
-            },
+            }
             protocol::ToClientBody::ResponseOk { ro } => {
                 let id = ro.i;
                 let mut in_flight_rpcs = self.in_flight_rpcs.lock().await;
@@ -248,7 +247,7 @@ impl ActorHandleInner {
                     debug!("{:?}", e);
                     return;
                 }
-            }, 
+            }
             protocol::ToClientBody::ResponseError { re } => {
                 let id = re.i;
                 let mut in_flight_rpcs = self.in_flight_rpcs.lock().await;
@@ -260,7 +259,7 @@ impl ActorHandleInner {
                     debug!("{:?}", e);
                     return;
                 }
-            },
+            }
             protocol::ToClientBody::EventMessage { ev } => {
                 let listeners = self.event_subscriptions.lock().await;
                 if let Some(callbacks) = listeners.get(&ev.n) {
@@ -268,16 +267,14 @@ impl ActorHandleInner {
                         cb(&ev.a);
                     }
                 }
-            },
+            }
             protocol::ToClientBody::EventError { er } => {
                 debug!("Event error: {:?}", er);
-            },
+            }
         }
     }
 
     async fn send_msg(self: &Arc<Self>, msg: Arc<protocol::ToServer>, opts: SendMsgOpts) {
-        
-
         let guard = self.driver.lock().await;
 
         'send_immediately: {
@@ -291,33 +288,34 @@ impl ActorHandleInner {
 
             return;
         }
-        
+
         // Otherwise queue
         if opts.ephemeral == false {
-            self.msg_queue.lock()
-                .await
-                .push(msg.clone());
+            self.msg_queue.lock().await.push(msg.clone());
         }
 
         return;
     }
 
-    pub async fn rpc(self: &Arc<Self>, method: &str, params: Vec<Value>) -> Result<Value> {
-        let id: i64 = self.rpc_counter
-            .fetch_add(1, Ordering::SeqCst);
+    pub async fn action(self: &Arc<Self>, method: &str, params: Vec<Value>) -> Result<Value> {
+        let id: i64 = self.rpc_counter.fetch_add(1, Ordering::SeqCst);
 
         let (tx, rx) = oneshot::channel();
         self.in_flight_rpcs.lock().await.insert(id, tx);
 
-        self.send_msg(Arc::new(protocol::ToServer {
-            b: protocol::ToServerBody::RpcRequest {
-                rr: protocol::RpcRequest {
-                    i: id,
-                    n: method.to_string(),
-                    a: params,
-                }
-            }
-        }), SendMsgOpts::default()).await;
+        self.send_msg(
+            Arc::new(protocol::ToServer {
+                b: protocol::ToServerBody::RpcRequest {
+                    rr: protocol::RpcRequest {
+                        i: id,
+                        n: method.to_string(),
+                        a: params,
+                    },
+                },
+            }),
+            SendMsgOpts::default(),
+        )
+        .await;
 
         // TODO: Support reconnection
         let Ok(res) = rx.await else {
@@ -329,27 +327,37 @@ impl ActorHandleInner {
             Ok(ok) => Ok(ok.o),
             Err(err) => {
                 let metadata = err.md.unwrap_or(Value::Null);
-                
+
                 Err(anyhow::anyhow!(
-                    "RPC Error({}): {:?}, {:#}", 
-                    err.c, err.m, metadata
+                    "RPC Error({}): {:?}, {:#}",
+                    err.c,
+                    err.m,
+                    metadata
                 ))
             }
         }
     }
 
     async fn send_subscription(self: &Arc<Self>, event_name: String, subscribe: bool) {
-        self.send_msg(Arc::new(protocol::ToServer {
-            b: protocol::ToServerBody::SubscriptionRequest {
-                sr: protocol::SubscriptionRequest {
-                    e: event_name,
-                    s: subscribe
-                }
-            }
-        }), SendMsgOpts { ephemeral: true }).await;
+        self.send_msg(
+            Arc::new(protocol::ToServer {
+                b: protocol::ToServerBody::SubscriptionRequest {
+                    sr: protocol::SubscriptionRequest {
+                        e: event_name,
+                        s: subscribe,
+                    },
+                },
+            }),
+            SendMsgOpts { ephemeral: true },
+        )
+        .await;
     }
 
-    async fn add_event_subscription(self: &Arc<Self>, event_name: String, callback: Box<EventCallback>) {
+    async fn add_event_subscription(
+        self: &Arc<Self>,
+        event_name: String,
+        callback: Box<EventCallback>,
+    ) {
         // TODO: Support for once
         let mut listeners = self.event_subscriptions.lock().await;
 
@@ -367,12 +375,10 @@ impl ActorHandleInner {
 
     pub async fn on_event<F>(self: &Arc<Self>, event_name: &str, callback: F)
     where
-        F: Fn(&Vec<Value>) + Send + Sync + 'static
+        F: Fn(&Vec<Value>) + Send + Sync + 'static,
     {
-        self.add_event_subscription(
-            event_name.to_string(),
-            Box::new(callback)
-        ).await
+        self.add_event_subscription(event_name.to_string(), Box::new(callback))
+            .await
     }
 
     pub async fn disconnect(self: &Arc<Self>) {
@@ -395,4 +401,3 @@ impl ActorHandleInner {
         rx.await.ok();
     }
 }
-

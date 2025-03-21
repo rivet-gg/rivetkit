@@ -5,11 +5,11 @@ use crate::drivers::TransportKind;
 use crate::encoding::EncodingKind;
 use crate::handle::{ActorHandle, ActorHandleInner};
 
-type ActorTags = Vec::<(String, String)>;
+type ActorTags = Vec<(String, String)>;
 
 pub struct CreateRequestMetadata {
-	pub tags: ActorTags,
-	pub region: Option<String>
+    pub tags: ActorTags,
+    pub region: Option<String>,
 }
 
 pub struct PartialCreateRequestMetadata {
@@ -17,16 +17,13 @@ pub struct PartialCreateRequestMetadata {
     pub region: Option<String>,
 }
 
-
 pub struct GetWithIdOptions {
     pub params: Option<serde_json::Value>,
 }
 
 impl Default for GetWithIdOptions {
     fn default() -> Self {
-        Self {
-            params: None,
-        }
+        Self { params: None }
     }
 }
 
@@ -60,11 +57,10 @@ impl Default for CreateOptions {
             create: CreateRequestMetadata {
                 tags: vec![],
                 region: None,
-            }
+            },
         }
     }
 }
-
 
 pub struct Client {
     manager_endpoint: String,
@@ -81,22 +77,18 @@ impl Client {
         Self {
             manager_endpoint,
             encoding_kind,
-            transport_kind
+            transport_kind,
         }
     }
 
     async fn post_manager_endpoint(&self, path: &str, body: Value) -> Result<Value> {
         let client = reqwest::Client::new();
-        let req = client.post(
-            format!("{}{}", self.manager_endpoint, path)
-        );
+        let req = client.post(format!("{}{}", self.manager_endpoint, path));
         let req = req.header("Content-Type", "application/json");
-        let req = req.body(
-            serde_json::to_string(&body)?
-        );
+        let req = req.body(serde_json::to_string(&body)?);
         let res = req.send().await?;
         let body = res.text().await?;
-        
+
         let body: Value = serde_json::from_str(&body)?;
 
         Ok(body)
@@ -105,9 +97,7 @@ impl Client {
     #[allow(dead_code)]
     async fn get_manager_endpoint(&self, path: &str) -> Result<Value> {
         let client = reqwest::Client::new();
-        let req = client.get(
-            format!("{}{}", self.manager_endpoint, path)
-        );
+        let req = client.get(format!("{}{}", self.manager_endpoint, path));
         let res = req.send().await?;
         let body = res.text().await?;
         let body: Value = serde_json::from_str(&body)?;
@@ -115,65 +105,79 @@ impl Client {
         Ok(body)
     }
 
-    pub async fn get(
-        &self,
-        name: &str,
-        opts: GetOptions
-    ) -> Result<ActorHandle> {
-        // TODO: opts
-        // TODO: Make sure `name` tag is present
-        let mut tag_map = serde_json::Map::new();
-    
-        for (key, value) in opts.tags.unwrap_or(vec![]) {
-            tag_map.insert(key, Value::String(value));
-        }
-
-        // TODO: Struct or something, this is messy trying to skip Option::None
-        let mut req_body = serde_json::Map::new();
-        req_body.insert("name".to_string(), Value::String(name.to_string()));
-        req_body.insert("tags".to_string(), Value::Object(tag_map));
-        if let Some(create) = opts.create {
-            let mut create_map = serde_json::Map::new();
-            if let Some(tags) = create.tags {
-                let mut tag_map = serde_json::Map::new();
-                for (key, value) in tags {
-                    tag_map.insert(key, Value::String(value));
+    pub async fn get(&self, name: &str, opts: GetOptions) -> Result<ActorHandle> {
+        // Convert tags to a map for JSON
+        let tags_map: serde_json::Map<String, Value> = opts.tags
+            .unwrap_or_default()
+            .into_iter()
+            .map(|(k, v)| (k, json!(v)))
+            .collect();
+            
+        // Build create object if no_create is false
+        let create = if !opts.no_create.unwrap_or(false) {
+            // Start with create options if provided
+            if let Some(create_opts) = &opts.create {
+                // Build tags map - use create.tags if provided, otherwise fall back to query tags
+                let create_tags = if let Some(tags) = &create_opts.tags {
+                    tags.iter()
+                        .map(|(k, v)| (k.clone(), json!(v.clone())))
+                        .collect()
+                } else {
+                    tags_map.clone()
+                };
+                
+                // Build create object with name, tags, and optional region
+                let mut create_obj = json!({
+                    "name": name,
+                    "tags": create_tags
+                });
+                
+                if let Some(region) = &create_opts.region {
+                    create_obj["region"] = json!(region.clone());
                 }
-                create_map.insert("tags".to_string(), Value::Object(tag_map));
+                
+                Some(create_obj)
+            } else {
+                // Create with just the name and query tags
+                Some(json!({
+                    "name": name,
+                    "tags": tags_map
+                }))
             }
-            if let Some(region) = create.region {
-                create_map.insert("region".to_string(), Value::String(region));
-            }
-            req_body.insert("create".to_string(), Value::Object(create_map));
-        }
-
+        } else {
+            None
+        };
+        
+        // Build the request body
         let body = json!({
             "query": {
-                "getOrCreateForTags": req_body
-            },
+                "getOrCreateForTags": {
+                    "name": name,
+                    "tags": tags_map,
+                    "create": create
+                }
+            }
         });
         let res_json = self.post_manager_endpoint("/manager/actors", body).await?;
         let Some(endpoint) = res_json["endpoint"].as_str() else {
-            return Err(anyhow::anyhow!("No endpoint returned. Request failed? {:?}", res_json));
+            return Err(anyhow::anyhow!(
+                "No endpoint returned. Request failed? {:?}",
+                res_json
+            ));
         };
 
         let handle = ActorHandleInner::new(
             endpoint.to_string(),
             self.transport_kind,
             self.encoding_kind,
-            opts.params
+            opts.params,
         )?;
         handle.start_connection().await;
 
         Ok(handle)
     }
 
-
-    pub async fn get_with_id(
-        &self,
-        actor_id: &str,
-        opts: GetWithIdOptions
-    ) -> Result<ActorHandle> {
+    pub async fn get_with_id(&self, actor_id: &str, opts: GetWithIdOptions) -> Result<ActorHandle> {
         let body = json!({
             "query": {
                 "getForId": {
@@ -183,36 +187,35 @@ impl Client {
         });
         let res_json = self.post_manager_endpoint("/manager/actors", body).await?;
         let Some(endpoint) = res_json["endpoint"].as_str() else {
-            return Err(anyhow::anyhow!("No endpoint returned. Request failed? {:?}", res_json));
+            return Err(anyhow::anyhow!(
+                "No endpoint returned. Request failed? {:?}",
+                res_json
+            ));
         };
-    
+
         let handle = ActorHandleInner::new(
             endpoint.to_string(),
             self.transport_kind,
             self.encoding_kind,
-            opts.params
+            opts.params,
         )?;
         handle.start_connection().await;
-    
+
         Ok(handle)
     }
-    
-    pub async fn create(
-        &self,
-        name: &str,
-        opts: CreateOptions
-    ) -> Result<ActorHandle> {
+
+    pub async fn create(&self, name: &str, opts: CreateOptions) -> Result<ActorHandle> {
         let mut tag_map = serde_json::Map::new();
-    
+
         for (key, value) in opts.create.tags {
-            tag_map.insert(key, Value::String(value));
+            tag_map.insert(key, json!(value));
         }
-    
+
         let mut req_body = serde_json::Map::new();
-        req_body.insert("name".to_string(), Value::String(name.to_string()));
-        req_body.insert("tags".to_string(), Value::Object(tag_map));
+        req_body.insert("name".to_string(), json!(name.to_string()));
+        req_body.insert("tags".to_string(), json!(tag_map));
         if let Some(region) = opts.create.region {
-            req_body.insert("region".to_string(), Value::String(region));
+            req_body.insert("region".to_string(), json!(region));
         }
 
         let body = json!({
@@ -222,17 +225,20 @@ impl Client {
         });
         let res_json = self.post_manager_endpoint("/manager/actors", body).await?;
         let Some(endpoint) = res_json["endpoint"].as_str() else {
-            return Err(anyhow::anyhow!("No endpoint returned. Request failed? {:?}", res_json));
+            return Err(anyhow::anyhow!(
+                "No endpoint returned. Request failed? {:?}",
+                res_json
+            ));
         };
-    
+
         let handle = ActorHandleInner::new(
             endpoint.to_string(),
             self.transport_kind,
             self.encoding_kind,
-            opts.params
+            opts.params,
         )?;
         handle.start_connection().await;
-    
+
         Ok(handle)
-    } 
+    }
 }

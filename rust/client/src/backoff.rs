@@ -9,7 +9,7 @@ impl Backoff {
     pub fn new(initial: Duration, max_delay: Duration) -> Self {
         Self {
             max_delay,
-            delay: initial
+            delay: initial,
         }
     }
 

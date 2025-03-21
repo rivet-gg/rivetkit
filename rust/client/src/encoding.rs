@@ -5,21 +5,21 @@ use crate::protocol::ToServer;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EncodingKind {
     Json,
-    Cbor
+    Cbor,
 }
 
 impl EncodingKind {
     pub fn as_str(&self) -> &str {
         match self {
             EncodingKind::Json => "json",
-            EncodingKind::Cbor => "cbor"
+            EncodingKind::Cbor => "cbor",
         }
     }
 
     pub fn get_default_serializer(&self) -> fn(&ToServer) -> Result<Vec<u8>> {
         match self {
             EncodingKind::Json => json_serialize,
-            EncodingKind::Cbor => cbor_serialize
+            EncodingKind::Cbor => cbor_serialize,
         }
     }
 }

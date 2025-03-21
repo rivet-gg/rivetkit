@@ -1,25 +1,36 @@
-use std::sync::Arc;
+use anyhow::{Context, Result};
 use futures_util::{SinkExt, StreamExt};
 use serde_json::Value;
+use std::sync::Arc;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
-use anyhow::{Result, Context};
 use tracing::debug;
 
 use crate::encoding::EncodingKind;
 use crate::protocol::{ToClient, ToServer};
 
-use super::{build_conn_url, DriverHandle, DriverStopReason, MessageToClient, MessageToServer, TransportKind};
+use super::{
+    build_conn_url, DriverHandle, DriverStopReason, MessageToClient, MessageToServer, TransportKind,
+};
 
-pub(crate) async fn connect(endpoint: String, encoding_kind: EncodingKind, parameters: &Option<Value>) -> Result<(
+pub(crate) async fn connect(
+    endpoint: String,
+    encoding_kind: EncodingKind,
+    parameters: &Option<Value>,
+) -> Result<(
     DriverHandle,
     mpsc::Receiver<MessageToClient>,
-    JoinHandle<DriverStopReason>
+    JoinHandle<DriverStopReason>,
 )> {
-    let url = build_conn_url(&endpoint, &TransportKind::WebSocket, encoding_kind, parameters)?;
+    let url = build_conn_url(
+        &endpoint,
+        &TransportKind::WebSocket,
+        encoding_kind,
+        parameters,
+    )?;
 
     let (ws, _res) = tokio_tungstenite::connect_async(url)
         .await
@@ -27,29 +38,24 @@ pub(crate) async fn connect(endpoint: String, encoding_kind: EncodingKind, param
 
     let (in_tx, in_rx) = mpsc::channel::<MessageToClient>(32);
     let (out_tx, out_rx) = mpsc::channel::<MessageToServer>(32);
-    let task = tokio::spawn(start(
-        ws,
-        encoding_kind,
-        in_tx,
-        out_rx
-    ));
+    let task = tokio::spawn(start(ws, encoding_kind, in_tx, out_rx));
 
     let handle = DriverHandle::new(out_tx, task.abort_handle());
 
     Ok((handle, in_rx, task))
 }
-    
+
 async fn start(
     ws: WebSocketStream<MaybeTlsStream<TcpStream>>,
     encoding_kind: EncodingKind,
     in_tx: mpsc::Sender<MessageToClient>,
     mut out_rx: mpsc::Receiver<MessageToServer>,
 ) -> DriverStopReason {
-    let (mut ws_sink, mut ws_stream) = ws.split(); 
+    let (mut ws_sink, mut ws_stream) = ws.split();
 
     let serialize = get_msg_serializer(encoding_kind);
     let deserialize = get_msg_deserializer(encoding_kind);
-    
+
     loop {
         tokio::select! {
             // Dispatch ws outgoing queue
@@ -115,14 +121,14 @@ async fn start(
 fn get_msg_deserializer(encoding_kind: EncodingKind) -> fn(&Message) -> Result<ToClient> {
     match encoding_kind {
         EncodingKind::Json => json_msg_deserialize,
-        EncodingKind::Cbor => cbor_msg_deserialize
+        EncodingKind::Cbor => cbor_msg_deserialize,
     }
 }
 
 fn get_msg_serializer(encoding_kind: EncodingKind) -> fn(&ToServer) -> Result<Message> {
     match encoding_kind {
         EncodingKind::Json => json_msg_serialize,
-        EncodingKind::Cbor => cbor_msg_serialize
+        EncodingKind::Cbor => cbor_msg_serialize,
     }
 }
 
@@ -130,7 +136,7 @@ fn json_msg_deserialize(value: &Message) -> Result<ToClient> {
     match value {
         Message::Text(text) => Ok(serde_json::from_str(text)?),
         Message::Binary(bin) => Ok(serde_json::from_slice(bin)?),
-        _ => Err(anyhow::anyhow!("Invalid message type"))
+        _ => Err(anyhow::anyhow!("Invalid message type")),
     }
 }
 
@@ -138,18 +144,14 @@ fn cbor_msg_deserialize(value: &Message) -> Result<ToClient> {
     match value {
         Message::Binary(bin) => Ok(serde_cbor::from_slice(bin)?),
         Message::Text(text) => Ok(serde_cbor::from_slice(text.as_bytes())?),
-        _ => Err(anyhow::anyhow!("Invalid message type"))
+        _ => Err(anyhow::anyhow!("Invalid message type")),
     }
 }
 
 fn json_msg_serialize(value: &ToServer) -> Result<Message> {
-    Ok(Message::Text(
-        serde_json::to_string(value)?.into()
-    ))
+    Ok(Message::Text(serde_json::to_string(value)?.into()))
 }
 
 fn cbor_msg_serialize(value: &ToServer) -> Result<Message> {
-    Ok(Message::Binary(
-        serde_cbor::to_vec(value)?.into()
-    ))
+    Ok(Message::Binary(serde_cbor::to_vec(value)?.into()))
 }

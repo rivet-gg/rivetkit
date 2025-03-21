@@ -1,7 +1,7 @@
 import { setup } from "actor-core";
 import counter from "./counter";
 
-const app = setup({
+export const app = setup({
 	actors: { counter },
 });
 

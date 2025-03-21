@@ -1,17 +1,19 @@
-use std::sync::Arc;
+use anyhow::{Context, Result};
+use base64::prelude::*;
 use eventsource_client::{BoxStream, Client, ClientBuilder, ReconnectOptionsBuilder, SSE};
 use futures_util::StreamExt;
 use serde_json::Value;
+use std::sync::Arc;
 use tokio::sync::mpsc;
-use anyhow::{Context, Result};
-use base64::prelude::*;
 use tokio::task::JoinHandle;
 use tracing::debug;
 
 use crate::encoding::EncodingKind;
-use crate::protocol::{ToClient, ToServer, ToClientBody};
+use crate::protocol::{ToClient, ToClientBody, ToServer};
 
-use super::{build_conn_url, DriverHandle, DriverStopReason, MessageToClient, MessageToServer, TransportKind};
+use super::{
+    build_conn_url, DriverHandle, DriverStopReason, MessageToClient, MessageToServer, TransportKind,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct ConnectionDetails {
@@ -19,10 +21,14 @@ struct ConnectionDetails {
     token: String,
 }
 
-pub(crate) async fn connect(endpoint: String, encoding_kind: EncodingKind, parameters: &Option<Value>) -> Result<(
+pub(crate) async fn connect(
+    endpoint: String,
+    encoding_kind: EncodingKind,
+    parameters: &Option<Value>,
+) -> Result<(
     DriverHandle,
     mpsc::Receiver<MessageToClient>,
-    JoinHandle<DriverStopReason>
+    JoinHandle<DriverStopReason>,
 )> {
     let url = build_conn_url(&endpoint, &TransportKind::Sse, encoding_kind, parameters)?;
 
@@ -33,13 +39,7 @@ pub(crate) async fn connect(endpoint: String, encoding_kind: EncodingKind, param
     let (in_tx, in_rx) = mpsc::channel::<MessageToClient>(32);
     let (out_tx, out_rx) = mpsc::channel::<MessageToServer>(32);
 
-    let task = tokio::spawn(start(
-        client,
-        endpoint,
-        encoding_kind,
-        in_tx,
-        out_rx
-    ));
+    let task = tokio::spawn(start(client, endpoint, encoding_kind, in_tx, out_rx));
 
     let handle = DriverHandle::new(out_tx, task.abort_handle());
     Ok((handle, in_rx, task))
@@ -50,7 +50,7 @@ async fn start(
     endpoint: String,
     encoding_kind: EncodingKind,
     in_tx: mpsc::Sender<MessageToClient>,
-    mut out_rx: mpsc::Receiver<MessageToServer>
+    mut out_rx: mpsc::Receiver<MessageToServer>,
 ) -> DriverStopReason {
     let serialize = get_serializer(encoding_kind);
     let deserialize = get_deserializer(encoding_kind);
@@ -82,10 +82,10 @@ async fn start(
 
                 // Add connection ID and token to the request URL
                 let request_url = format!(
-                    "{}/connections/{}/message?encoding={}&connectionToken={}", 
+                    "{}/connections/{}/message?encoding={}&connectionToken={}",
                     endpoint, conn.id, encoding_kind.as_str(), urlencoding::encode(&conn.token)
                 );
-            
+
                 // Handle response
                 let resp = reqwest::Client::new()
                     .post(request_url)
@@ -148,9 +148,8 @@ async fn start(
 async fn do_handshake(
     stream: &mut BoxStream<eventsource_client::Result<SSE>>,
     deserialize: &impl Fn(&str) -> Result<ToClient>,
-    in_tx: &mpsc::Sender<MessageToClient>
+    in_tx: &mpsc::Sender<MessageToClient>,
 ) -> Result<ConnectionDetails, DriverStopReason> {
-
     loop {
         tokio::select! {
             // Handle sse incoming
@@ -205,7 +204,6 @@ async fn do_handshake(
     }
 }
 
-
 fn get_serializer(encoding_kind: EncodingKind) -> impl Fn(&ToServer) -> Result<Vec<u8>> {
     encoding_kind.get_default_serializer()
 }
@@ -213,7 +211,7 @@ fn get_serializer(encoding_kind: EncodingKind) -> impl Fn(&ToServer) -> Result<V
 fn get_deserializer(encoding_kind: EncodingKind) -> impl Fn(&str) -> Result<ToClient> {
     match encoding_kind {
         EncodingKind::Json => json_deserialize,
-        EncodingKind::Cbor => cbor_deserialize
+        EncodingKind::Cbor => cbor_deserialize,
     }
 }
 
@@ -224,7 +222,9 @@ fn json_deserialize(value: &str) -> Result<ToClient> {
 }
 
 fn cbor_deserialize(msg: &str) -> Result<ToClient> {
-    let msg = BASE64_STANDARD.decode(msg.as_bytes()).context("base64 failure:")?;
+    let msg = BASE64_STANDARD
+        .decode(msg.as_bytes())
+        .context("base64 failure:")?;
     let msg = serde_cbor::from_slice::<ToClient>(&msg).context("serde failure:")?;
 
     Ok(msg)
