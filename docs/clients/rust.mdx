@@ -1,0 +1,67 @@
+---
+title: Rust
+icon: rust
+---
+
+The ActorCore Rust client provides a way to connect to and interact with actors from Rust applications.
+
+## Installation
+
+Install the `actor-core-client` package with:
+
+```sh
+cargo add actor-core-client serde-json
+```
+
+Make sure you have [Tokio](https://tokio.rs/) set up as your async runtime.
+
+## Connecting to an Actor
+
+```rust
+use actor_core_client::{Client, GetOptions, TransportKind, EncodingKind};
+use serde_json::json;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Create a client with connection address and configuration
+    let client = Client::new(
+        "http://localhost:6420".to_string(),  // Connection address
+        TransportKind::WebSocket,             // Transport type
+        EncodingKind::Cbor,                   // Encoding format
+    );
+    
+    // Connect to an actor
+    let tags = vec![
+        ("id".to_string(), "counter-1".to_string()),
+    ];
+    
+    let options = GetOptions {
+        tags: Some(tags),
+        params: None,
+        no_create: None,
+        create: None,
+    };
+    
+    let counter = client.get("counter", options)
+        .await?;
+    
+    // Call an action on the actor
+    let result = counter.action("increment", vec![json!(5)])
+        .await?;
+    let new_count = result.as_i64().unwrap();
+    println!("New count: {}", new_count);
+    
+    // Listen for events
+    counter.on_event("newCount", move |args| {
+        let count = args[0].as_i64().unwrap();
+        println!("Count updated: {}", count);
+    }).await;
+    
+    Ok(())
+}
+```
+
+## Next Steps
+
+See the [Interacting with Actors](/concepts/interacting-with-actors) documentation for information on how to use the client.
+

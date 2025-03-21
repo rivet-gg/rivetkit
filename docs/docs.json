@@ -85,6 +85,13 @@
             ]
           },
           {
+            "group": "Clients",
+            "pages": [
+              "clients/javascript",
+              "clients/rust"
+            ]
+          },
+          {
             "group": "Configurations",
             "pages": [
               {

@@ -1,0 +1,55 @@
+---
+title: JavaScript
+icon: js
+---
+
+The ActorCore JavaScript client allows you to connect to and interact with actors from browser and Node.js applications.
+
+## Installation
+
+Install the ActorCore client package:
+
+<CodeGroup>
+```sh npm
+npm add actor-core
+```
+
+```sh pnpm
+pnpm add actor-core
+```
+
+```sh yarn
+yarn add actor-core
+```
+
+```sh bun
+bun add actor-core
+```
+</CodeGroup>
+
+## Connecting to an Actor
+
+```typescript
+import { createClient } from "actor-core/client";
+import type { App } from "./app";  // Import type of ActorCore app for end-to-end type safety
+
+// Create a client with the connection address
+const client = createClient<App>("http://localhost:6420");
+
+// Connect to an actor
+const counter = await client.counter.get({ id: "counter-1" });
+
+// Listen for events
+counter.on("newCount", (count) => {
+	console.log(`Count updated: ${count}`);
+});
+
+// Call an action on the actor
+const newCount = await counter.increment(5);
+console.log(`New count: ${newCount}`);
+```
+
+## Next Steps
+
+See the [Interacting with Actors](/concepts/interacting-with-actors) documentation for information on how to use the client.
+

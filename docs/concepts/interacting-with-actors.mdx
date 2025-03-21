@@ -7,15 +7,28 @@ This guide covers how to connect to and interact with actors from client applica
 
 ## Setting Up the Client
 
-With the new API, the first step is to create a client by importing the app type for type safety:
+The first step is to create a client that will connect to your actor service:
 
-```typescript
+<CodeGroup>
+```typescript TypeScript
 import { createClient } from "actor-core/client";
 import type { App } from "../src/index";
 
 // Create a client with the connection address and app type
 const client = createClient<App>(/* CONNECTION ADDRESS */);
 ```
+
+```rust Rust
+use actor_core_client::{Client, TransportKind, EncodingKind};
+
+// Create a client with connection address and configuration
+let client = Client::new(
+    "http://localhost:6420".to_string(),  // Connection address
+    TransportKind::WebSocket,             // Transport (WebSocket or SSE)
+    EncodingKind::Cbor,                   // Encoding (Json or Cbor)
+);
+```
+</CodeGroup>
 
 <Tip>See the setup guide for your platform for details on how to get the connection address.</Tip>
 
@@ -27,7 +40,8 @@ ActorCore provides several methods to connect to actors:
 
 The most common way to connect is with `get()`, which finds an existing actor matching the provided tags or creates a new one:
 
-```typescript
+<CodeGroup>
+```typescript TypeScript
 // Connect to a chat room for the "general" channel
 const room = await client.chatRoom.get({
   name: "chat_room",
@@ -38,11 +52,38 @@ const room = await client.chatRoom.get({
 await room.sendMessage("Alice", "Hello everyone!");
 ```
 
+```rust Rust
+use actor_core_client::GetOptions;
+use serde_json::json;
+
+// Connect to a chat room for the "general" channel
+let tags = vec![
+    ("name".to_string(), "chat_room".to_string()),
+    ("channel".to_string(), "general".to_string()),
+];
+
+let mut options = GetOptions {
+    tags: Some(tags),
+    ..Default::default()
+};
+
+let room = client.get("chatRoom", options)
+    .await
+    .expect("Failed to connect to chat room");
+
+// Now you can call methods on the actor
+room.action("sendMessage", vec![json!("Alice"), json!("Hello everyone!")])
+    .await
+    .expect("Failed to send message");
+```
+</CodeGroup>
+
 ### `create(opts)` - Explicitly Create New
 
 When you specifically want to create a new actor instance:
 
-```typescript
+<CodeGroup>
+```typescript TypeScript
 // Create a new document actor
 const doc = await client.myDocument.create({
   create: {
@@ -56,17 +97,67 @@ const doc = await client.myDocument.create({
 await doc.initializeDocument("My New Document");
 ```
 
+```rust Rust
+use actor_core_client::{CreateOptions};
+use actor_core_client::client::CreateRequestMetadata;
+use serde_json::json;
+
+// Create a new document actor
+let tags = vec![
+    ("name".to_string(), "my_document".to_string()),
+    ("docId".to_string(), "123".to_string()),
+];
+
+let create_options = CreateOptions {
+    params: None,
+    create: CreateRequestMetadata {
+        tags,
+        region: None,
+    },
+};
+
+let doc = client.create("myDocument", create_options)
+    .await
+    .expect("Failed to create document");
+
+// Initialize the document
+doc.action("initializeDocument", vec![json!("My New Document")])
+    .await
+    .expect("Failed to initialize document");
+```
+</CodeGroup>
+
 ### `getWithId(id, opts)` - Connect by ID
 
 Connect to an actor using its internal ID:
 
-```typescript
+<CodeGroup>
+```typescript TypeScript
 // Connect to a specific actor by its ID
 const myActorId = "55425f42-82f8-451f-82c1-6227c83c9372";
 const doc = await client.myDocument.getWithId(myActorId);
 
 await doc.updateContent("Updated content");
 ```
+
+```rust Rust
+use actor_core_client::GetWithIdOptions;
+
+// Connect to a specific actor by its ID
+let my_actor_id = "55425f42-82f8-451f-82c1-6227c83c9372";
+let options = GetWithIdOptions {
+    params: None,
+};
+let doc = client.get_with_id("myDocument", my_actor_id, options)
+    .await
+    .expect("Failed to connect to document");
+
+// Update content
+doc.action("updateContent", vec![json!("Updated content")])
+    .await
+    .expect("Failed to update document");
+```
+</CodeGroup>
 
 <Note>
 It's usually better to use tags for discovery rather than directly using actor IDs.
@@ -76,7 +167,8 @@ It's usually better to use tags for discovery rather than directly using actor I
 
 Once connected, calling actor actions are straightforward:
 
-```typescript
+<CodeGroup>
+```typescript TypeScript
 // Call an action
 const result = await mathUtils.multiplyByTwo(5);
 console.log(result); // 10
@@ -92,6 +184,32 @@ await gameRoom.updateSettings({
 });
 ```
 
+```rust Rust
+use serde_json::json;
+
+// Call an action
+let result = math_utils.action("multiplyByTwo", vec![json!(5)])
+    .await
+    .expect("Failed to call multiplyByTwo");
+println!("Result: {}", result.as_i64().unwrap()); // 10
+
+// Call an action with multiple parameters
+chat_room.action("sendMessage", vec![json!("Alice"), json!("Hello everyone!")])
+    .await
+    .expect("Failed to send message");
+
+// Call an action with an object parameter
+let settings = json!({
+    "maxPlayers": 10,
+    "timeLimit": 300,
+    "gameMode": "capture-the-flag"
+});
+game_room.action("updateSettings", vec![settings])
+    .await
+    .expect("Failed to update settings");
+```
+</CodeGroup>
+
 <Note>
 All actor action calls are asynchronous and require `await`, even if the actor's action is not async.
 </Note>
@@ -104,7 +222,8 @@ Actors can send realtime updates to clients using events:
 
 To listen for events that will happen repeatedly:
 
-```typescript
+<CodeGroup>
+```typescript TypeScript
 // Listen for new chat messages
 chatRoom.on("newMessage", ({ sender, text, timestamp }) => {
   console.log(`${sender}: ${text}`);
@@ -117,11 +236,34 @@ gameRoom.on("stateUpdate", (gameState) => {
 });
 ```
 
+```rust Rust
+use std::sync::Arc;
+
+// Listen for new chat messages
+chat_room.on_event("newMessage", move |args| {
+    let message = &args[0];
+    let sender = message["sender"].as_str().unwrap();
+    let text = message["text"].as_str().unwrap();
+    println!("{}: {}", sender, text);
+    // Update UI with message data
+}).await;
+
+// Listen for game state updates
+let game_ui = Arc::new(GameUI::new());
+let game_ui_clone = game_ui.clone();
+game_room.on_event("stateUpdate", move |args| {
+    let game_state = &args[0];
+    game_ui_clone.update(game_state);
+}).await;
+```
+</CodeGroup>
+
 ### `once(eventName, callback)` - One-time Listening
 
 For events you only need to hear once:
 
-```typescript
+<CodeGroup>
+```typescript TypeScript
 // Listen for when a request is approved
 actor.once("requestApproved", () => {
   showApprovalNotification();
@@ -129,13 +271,19 @@ actor.once("requestApproved", () => {
 });
 ```
 
+```rust Rust
+// `once` is not implemented in Rust
+```
+</CodeGroup>
+
 ## Connection Options
 
 ### Authentication and Connection Parameters
 
 Pass information with your connection using the `params` option:
 
-```typescript
+<CodeGroup>
+```typescript TypeScript
 const chatRoom = await client.chatRoom.get({ channel: "super-secret" }, {
   params: { 
     userId: "1234",
@@ -144,6 +292,33 @@ const chatRoom = await client.chatRoom.get({ channel: "super-secret" }, {
   }
 });
 ```
+
+```rust Rust
+use serde_json::json;
+use actor_core_client::GetOptions;
+
+let tags = vec![
+    ("channel".to_string(), "super-secret".to_string()),
+];
+
+let params = json!({
+    "userId": "1234",
+    "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "displayName": "Alice"
+});
+
+let options = GetOptions {
+    tags: Some(tags),
+    params: Some(params),
+    no_create: None,
+    create: None,
+};
+
+let chat_room = client.get("chatRoom", options)
+    .await
+    .expect("Failed to connect to chat room");
+```
+</CodeGroup>
 
 The actor can access these parameters in the `onBeforeConnect` or `createConnState` hook:
 
@@ -189,7 +364,8 @@ try {
 
 ## Client Options
 
-```typescript
+<CodeGroup>
+```typescript TypeScript
 // Example with all client options
 const client = createClient<App>(
   "https://actors.example.com",
@@ -202,6 +378,20 @@ const client = createClient<App>(
   }
 );
 ```
+
+```rust Rust
+use actor_core_client::{Client, TransportKind, EncodingKind};
+
+// Create client with specific options
+let client = Client::new(
+    "https://actors.example.com".to_string(),
+    TransportKind::WebSocket,  // or TransportKind::Sse
+    EncodingKind::Cbor,        // or EncodingKind::Json
+);
+
+// Rust does not support accepting multiple transports
+```
+</CodeGroup>
 
 ### `encoding`
 
@@ -283,13 +473,24 @@ The client connection is automatically cleaned up when it goes out of scope.
 
 If you need to explicitly disconnect:
 
-```typescript
+<CodeGroup>
+```typescript TypeScript
 // Disconnect from the actor
 await actor.dispose();
 
 // Disconnect the entire client
 await client.dispose();
 ```
+
+```rust Rust
+// Disconnect from the actor
+actor.disconnect().await;
+
+// The client will be cleaned up automatically when it goes out of scope
+// Or explicitly drop it with:
+drop(client);
+```
+</CodeGroup>
 
 ## Offline and Auto-Reconnection
 
