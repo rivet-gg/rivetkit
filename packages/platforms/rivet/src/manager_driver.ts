@@ -15,6 +15,8 @@ type RivetActor = any;
 // biome-ignore lint/suspicious/noExplicitAny: will add api types later
 type RivetBuild = any;
 
+const RESERVED_TAGS = ["name", "access", "framework", "framework-version"];
+
 export interface ActorState {
 	tags: ActorTags;
 	destroyedAt?: number;
@@ -126,9 +128,9 @@ export class RivetManagerDriver implements ManagerDriver {
 		if (!build) throw new Error("Build not found with tags or is private");
 
 		// HACK: We don't allow overriding name on Rivet since that's a special property that's used for the actor name
-		if ("name" in tags || "access" in tags) {
+		if (RESERVED_TAGS.some((tag) => tag in tags)) {
 			throw new Error(
-				"Cannot use property 'name' or 'access' in actor tags. These are reserved.",
+				`Cannot use property ${RESERVED_TAGS.join(", ")} in actor tags. These are reserved.`,
 			);
 		}
 

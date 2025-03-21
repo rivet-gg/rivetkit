@@ -9,7 +9,6 @@ import which from "which";
 import { MIN_RIVET_CLI_VERSION } from "../constants";
 import { VERSION } from "../macros" with { type: "macro" };
 import {
-	cmd,
 	type Platform,
 	resolvePlatformSpecificOptions,
 	validateConfig,
@@ -31,6 +30,7 @@ export const deploy = new Command()
 	)
 	.addArgument(new Argument("[path]", "Location of the project").default("./"))
 	.addOption(new Option("--skip-manager", "Skip deploying ActorCore manager"))
+	.addOption(new Option("--env <env>", "Specify environment to deploy to"))
 	.addOption(new Option("-v [version]", "Specify version of actor-core"))
 	.addHelpText(
 		"afterAll",
@@ -72,14 +72,14 @@ export const deploy = new Command()
 						const cli = yield* ctx.task(
 							"Locale rivet-cli",
 							async function* (ctx) {
-								let cliLocation = await which("rivet-cli", { nothrow: true });
+								let cliLocation = process.env.RIVET_CLI_PATH || null;
+
+								if (!cliLocation) {
+									cliLocation = await which("rivet-cli", { nothrow: true });
+								}
 
 								if (!cliLocation) {
 									cliLocation = await which("rivet", { nothrow: true });
-								}
-
-								if (process.env.RIVET_CLI_PATH) {
-									cliLocation = process.env.RIVET_CLI_PATH;
 								}
 
 								if (cliLocation) {
@@ -142,9 +142,9 @@ export const deploy = new Command()
 						const { stdout: accessToken } =
 							await exec`${cli} metadata access-token`;
 
-						const envName = yield* ctx.task(
-							"Select environment",
-							async function* () {
+						const envName =
+							opts.env ??
+							(yield* ctx.task("Select environment", async function* () {
 								const { stdout } = await exec`${cli} env ls --json`;
 								const envs = JSON.parse(stdout);
 								return yield* ctx.prompt("Select environment", {
@@ -156,8 +156,7 @@ export const deploy = new Command()
 										}),
 									),
 								});
-							},
-						);
+							}));
 
 						const { stdout: projectName } =
 							await exec`${cli} metadata project-name-id`;
@@ -291,9 +290,12 @@ export const deploy = new Command()
 					});
 				}
 
-				for (const [idx, actorName] of Object.keys(config.app.config.actors).entries()) {
+				for (const [idx, actorName] of Object.keys(
+					config.app.config.actors,
+				).entries()) {
 					yield* ctx.task(
-						`Deploy & upload "${actorName}" build (${idx + 1}/${Object.keys(config.app.config.actors).length
+						`Deploy & upload "${actorName}" build (${idx + 1}/${
+							Object.keys(config.app.config.actors).length
 						})`,
 						async function* (ctx) {
 							yield fs.mkdir(path.join(cwd, ".actorcore"), {
@@ -314,8 +316,20 @@ export const deploy = new Command()
 								`,
 							);
 
+							const actorTags = {
+								access: "public",
+								framework: "actor-core",
+								"framework-version": VERSION,
+							};
+
+							const tagsArray = Object.entries(actorTags)
+								.map(([key, value]) => `${key}=${value}`)
+								.join(",");
+
 							const output =
-								await exec`${cli} publish --env ${envName} --tags access=public ${actorName} ${entrypoint}`;
+								await exec`${cli} publish --env=${envName} --tags=${tagsArray} ${actorName} ${entrypoint}`;
+
+							console.log(output.command);
 
 							if (output.exitCode !== 0) {
 								throw ctx.error("Failed to deploy & upload actors.", {
@@ -357,9 +371,7 @@ export const deploy = new Command()
 									<Text>▸ ActorCore Manager:</Text>
 
 									<Box flexDirection="column" marginX={2}>
-										<Text>
-											Manager deployment was skipped.
-										</Text>
+										<Text>Manager deployment was skipped.</Text>
 									</Box>
 								</>
 							) : managerEndpoint ? (
