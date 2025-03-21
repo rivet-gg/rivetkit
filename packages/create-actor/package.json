@@ -7,7 +7,7 @@
     "directory": "packages/create-actor"
   },
   "type": "module",
-  "version": "0.7.3",
+  "version": "0.7.4",
   "bin": {
     "ca": "dist/cli.js",
     "cac": "dist/cli.js",

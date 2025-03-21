@@ -5,10 +5,12 @@ async function main() {
 	// Update version
 	const version = getVersionFromArgs();
 	await bumpPackageVersions(version);
+	await updateRustClientVersion(version);
 
 	// IMPORTANT: Do this after bumping the version
 	// Check & build
 	await runTypeCheck();
+	await runRustCheck();
 	await runBuild();
 
 	// Commit
@@ -18,6 +20,7 @@ async function main() {
 	const publicPackages = await getPublicPackages();
 	validatePackages(publicPackages);
 	await publishPackages(publicPackages, version);
+	await publishRustClient(version);
 }
 
 async function runTypeCheck() {
@@ -40,6 +43,71 @@ async function runBuild() {
 		console.log(chalk.green("✅ Build finished"));
 	} catch (err) {
 		console.error(chalk.red("❌ Build failed"));
+		process.exit(1);
+	}
+}
+
+async function updateRustClientVersion(version: string) {
+	console.log(chalk.blue(`Updating Rust client version to ${version}...`));
+	const cargoTomlPath = "clients/rust/Cargo.toml";
+	
+	try {
+		// Replace version in Cargo.toml
+		await $`sed -i.bak -e 's/^version = ".*"/version = "${version}"/' ${cargoTomlPath}`;
+		await $`rm ${cargoTomlPath}.bak`;
+		console.log(chalk.green("✅ Updated Rust client version"));
+	} catch (err) {
+		console.error(chalk.red("❌ Failed to update Rust client version"), err);
+		process.exit(1);
+	}
+}
+
+async function runRustCheck() {
+	console.log(chalk.blue("Running cargo check for Rust client..."));
+	try {
+		await $`cd clients/rust && cargo check`;
+		console.log(chalk.green("✅ Rust client check passed"));
+	} catch (err) {
+		console.error(chalk.red("❌ Rust client check failed"), err);
+		process.exit(1);
+	}
+}
+
+async function publishRustClient(version: string) {
+	console.log(chalk.blue("Publishing Rust client..."));
+	
+	try {
+		// First check if we need to update the publish flag in Cargo.toml
+		const cargoTomlPath = "clients/rust/Cargo.toml";
+		const { stdout: cargoToml } = await $`cat ${cargoTomlPath}`;
+		
+		// Check if publish = false is set and update it if needed
+		if (cargoToml.includes("publish = false")) {
+			await $`sed -i.bak -e 's/publish = false/publish = true/' ${cargoTomlPath}`;
+			await $`rm ${cargoTomlPath}.bak`;
+			console.log(chalk.blue("Updated publish flag in Cargo.toml"));
+		}
+		
+		// Check if package already exists
+		const { exitCode } = await $({
+			nothrow: true,
+		})`cargo search actor-core-client --limit 1 | grep "actor-core-client = \\"${version}\\""`;
+		
+		if (exitCode === 0) {
+			console.log(
+				chalk.yellow(
+					`! Rust package actor-core-client@${version} already published, skipping`
+				)
+			);
+			return;
+		}
+		
+		// Publish the crate
+		await $({ stdio: "inherit" })`cd clients/rust && cargo publish`;
+		
+		console.log(chalk.green("✅ Published Rust client"));
+	} catch (err) {
+		console.error(chalk.red("❌ Failed to publish Rust client"), err);
 		process.exit(1);
 	}
 }
