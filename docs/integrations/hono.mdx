@@ -32,7 +32,8 @@ Each platform has specific requirements for integrating Hono with ActorCore.
 ### Cloudflare Workers
 
 ```typescript
-import { setup, createRouter } from "@actor-core/cloudflare-workers";
+import { createRouter } from "@actor-core/cloudflare-workers";
+import { setup } from "actor-core";
 import { Hono } from "hono";
 import counter from "./counter";
 
