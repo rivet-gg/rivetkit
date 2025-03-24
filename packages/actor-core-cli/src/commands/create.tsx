@@ -30,7 +30,12 @@ export const create = new Command()
 			"Specify which platform to use",
 		).choices(Object.keys(PLATFORM_NAMES)),
 	)
-	.addOption(new Option("--actor-core-version [version]", "Specify version of actor-core"))
+	.addOption(
+		new Option(
+			"--actor-core-version [version]",
+			"Specify version of actor-core",
+		),
+	)
 	.addOption(new Option("--package-name [name]", "Name of the NPM package"))
 	.addOption(new Option("--skip-install", "Skip installing dependencies"))
 	.action(action);
@@ -41,7 +46,7 @@ export async function action(
 		platform?: string;
 		template?: string;
 		actorCoreVersion?: string;
-		packageName?: string,
+		packageName?: string;
 		skipInstall?: boolean;
 	} = {},
 ) {
@@ -52,9 +57,6 @@ export async function action(
 				type: "text",
 				defaultValue: "./",
 				validate: (input) => {
-					if (path.isAbsolute(input)) {
-						return "Please provide a relative path";
-					}
 					const parsed = path.parse(input);
 					const isValidPathRegex = /^\.*?([a-zA-Z0-9_-]{0,}\/)*[a-zA-Z0-9_-]+$/;
 					const isValidPath = (path: string) =>

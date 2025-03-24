@@ -266,7 +266,7 @@ const PACKAGE_MANAGERS = {
 	},
 	pnpm: {
 		cmds: {
-			install: ["pnpm", []],
+			install: ["pnpm", ["install"]],
 			run: ["pnpm", []],
 			exec: ["pnpx", []],
 		},
