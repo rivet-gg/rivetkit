@@ -35,7 +35,7 @@
   "dependencies": {
     "@sentry/profiling-node": "^9.3.0",
     "bundle-require": "^5.1.0",
-    "cfonts": "^3.3.0",
+    "esbuild": "^0.25.1",
     "yoga-wasm-web": "0.3.3"
   },
   "devDependencies": {
