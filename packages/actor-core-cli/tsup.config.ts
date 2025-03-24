@@ -20,7 +20,12 @@ export default defineConfig({
 	shims: true,
 	dts: true,
 	sourcemap: true,
-	external: ["yoga-wasm-web", "@sentry/profiling-node", "bundle-require"],
+	external: [
+		"yoga-wasm-web",
+		"@sentry/profiling-node",
+		"bundle-require",
+		"esbuild",
+	],
 	define: {
 		"process.env.DEV": JSON.stringify(false),
 		"process.env.NODE_ENV": JSON.stringify("production"),

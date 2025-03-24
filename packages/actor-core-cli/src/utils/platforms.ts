@@ -112,13 +112,6 @@ const PLATFORMS = {
 				},
 			});
 
-			files["actor-core.config.ts"] = dedent`
-				import type { Config } from "@actor-core/rivet";
-				import { app } from "./src/index.ts";
-
-				export default { app } satisfies Config;
-			`;
-
 			return {
 				files,
 			};
@@ -172,7 +165,8 @@ const PLATFORMS = {
 					enabled: true,
 				},
 			});
-			files["src/index.ts"] = `import { createHandler } from "@actor-core/cloudflare-workers";
+			files["src/index.ts"] =
+				`import { createHandler } from "@actor-core/cloudflare-workers";
 ${files["src/index.ts"]}
 
 const { handler, ActorHandler } = createHandler(app);

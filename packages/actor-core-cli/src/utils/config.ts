@@ -3,54 +3,44 @@ import path from "node:path";
 import { bundleRequire } from "bundle-require";
 import JoyCon from "joycon";
 import z from "zod";
-import { ActorCoreApp } from "actor-core";
+import type { ActorCoreApp } from "actor-core";
 
 const ActorCoreConfig = z.object({
+	// biome-ignore lint/suspicious/noExplicitAny: we need to use any here because we don't know the type of the app
 	app: z.custom<ActorCoreApp<any>>(),
 	cwd: z.string(),
 });
-
-const loadJson = async (filepath: string) => {
-	return JSON.parse(await fs.promises.readFile(filepath, "utf8"));
-};
 
 export async function loadConfig(
 	cwd: string,
 ): Promise<{ path: string; data: z.infer<typeof ActorCoreConfig> } | null> {
 	const configJoycon = new JoyCon();
+
 	const configPath = await configJoycon.resolve({
 		files: [
-			"actor-core.config.ts",
-			"actor-core.config.cts",
-			"actor-core.config.mts",
-			"actor-core.config.js",
-			"actor-core.config.cjs",
-			"actor-core.config.mjs",
+			"src/index.ts",
+			"src/index.tsx",
+			"src/index..mts",
+			"src/index.js",
+			"src/index.cjs",
+			"src/index.mjs",
 		],
 		cwd,
 		stopDir: path.parse(cwd).root,
-		packageKey: "actor-core",
 	});
 
 	if (configPath) {
-		if (configPath.endsWith(".json")) {
-			let data = await loadJson(configPath);
-			if (configPath.endsWith("package.json")) {
-				data = data["actor-core"];
-			}
-			if (data) {
-				return { path: configPath, data };
-			}
-			return null;
+		try {
+			const config = await bundleRequire({
+				filepath: configPath,
+			});
+			return {
+				path: configPath,
+				data: config.mod.default || config.mod,
+			};
+		} catch (error) {
+			throw { isBundleError: true, details: error };
 		}
-
-		const config = await bundleRequire({
-			filepath: configPath,
-		});
-		return {
-			path: configPath,
-			data: config.mod["actor-core"] || config.mod.default || config.mod,
-		};
 	}
 
 	return null;
@@ -59,7 +49,7 @@ export async function loadConfig(
 export async function requireConfig(cwd: string) {
 	const config = await loadConfig(cwd);
 	if (!config || !config.data) {
-		throw new Error("Config not found");
+		throw { isNotFoundError: true };
 	}
 	return config;
 }
@@ -71,3 +61,18 @@ export async function validateConfig(cwd: string) {
 		cwd: path.dirname(config.path),
 	});
 }
+
+export const isNotFoundError = (
+	error: unknown,
+): error is { isNotFoundError: true } => {
+	return z.object({ isNotFoundError: z.literal(true) }).safeParse(error)
+		.success;
+};
+
+export const isBundleError = (
+	error: unknown,
+): error is { isBundleError: true; details: unknown } => {
+	return z
+		.object({ isBundleError: z.literal(true), details: z.any() })
+		.safeParse(error).success;
+};

@@ -8,11 +8,7 @@ import semver from "semver";
 import which from "which";
 import { MIN_RIVET_CLI_VERSION } from "../constants";
 import { VERSION } from "../macros" with { type: "macro" };
-import {
-	type Platform,
-	resolvePlatformSpecificOptions,
-	validateConfig,
-} from "../utils/mod";
+import { isBundleError, isNotFoundError, validateConfig } from "../utils/mod";
 import { workflow } from "../workflow";
 import { z } from "zod";
 import { RivetClient } from "@rivet-gg/api";
@@ -54,20 +50,32 @@ export const deploy = new Command()
 							try {
 								return await validateConfig(cwd);
 							} catch (error) {
-								console.error(error);
-								throw ctx.error("Could not configuration file.", {
-									hint: "Make sure you're running this command in the directory with actor-core.config.js file.",
-								});
+								const indexFile = path.relative(
+									process.cwd(),
+									path.join(cwd, "src", "index.ts"),
+								);
+								if (isBundleError(error)) {
+									throw ctx.error(
+										`Could not parse Actors index file (${indexFile})\n${error.details}`,
+										{
+											hint: "Please make sure that the file exists and does not have any syntax errors.",
+										},
+									);
+								} else if (isNotFoundError(error)) {
+									throw ctx.error(
+										`Could not find Actors index file (${indexFile})`,
+										{
+											hint: "Please make sure that the file exists and not empty.",
+										},
+									);
+								} else {
+									console.error(error);
+									throw ctx.error("Failed to validate config.", {
+										hint: "Please check the logs above for more information.",
+									});
+								}
 							}
 						});
-
-						const platformOptions = resolvePlatformSpecificOptions(
-							platform as Platform,
-							{
-								files: {},
-								version: opts.version || VERSION,
-							},
-						);
 
 						const cli = yield* ctx.task(
 							"Locale rivet-cli",
@@ -184,8 +192,8 @@ export const deploy = new Command()
 							entrypoint,
 							dedent`
 									import { createManagerHandler } from "@actor-core/rivet";
-									import config from "../actor-core.config.ts";
-									export default createManagerHandler(config);
+									import { app } from "../src/index.ts";
+									export default createManagerHandler({ app });
 								`,
 						);
 
@@ -311,8 +319,8 @@ export const deploy = new Command()
 								entrypoint,
 								dedent`
 									import { createActorHandler } from "@actor-core/rivet";
-									import config from "../actor-core.config.ts";
-									export default createActorHandler(config);
+									import { app } from "../src/index.ts";
+									export default createActorHandler({ app });
 								`,
 							);
 
@@ -328,8 +336,6 @@ export const deploy = new Command()
 
 							const output =
 								await exec`${cli} publish --env=${envName} --tags=${tagsArray} ${actorName} ${entrypoint}`;
-
-							console.log(output.command);
 
 							if (output.exitCode !== 0) {
 								throw ctx.error("Failed to deploy & upload actors.", {

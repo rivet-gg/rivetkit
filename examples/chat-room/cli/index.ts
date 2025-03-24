@@ -1,10 +1,10 @@
 import { createClient, type Encoding } from "actor-core/client";
-import type { App } from "../src/chat-room";
+import type { App } from "../src/index";
 import prompts from "prompts";
 
 async function main() {
 	const { encoding, username, room } = await initPrompt();
-	
+
 	// Create type-aware client
 	const client = createClient<App>("http://localhost:6420", {
 		encoding,
@@ -13,7 +13,7 @@ async function main() {
 	// connect to chat room - now accessed via property
 	// can still pass parameters like room
 	const chatRoom = await client.chatRoom.get({
-		room,
+		params: { room },
 	});
 
 	// fetch history
@@ -43,7 +43,7 @@ async function main() {
 		await chatRoom.sendMessage(username, message);
 	}
 
-	await chatRoom.disconnect();
+	await chatRoom.dispose();
 }
 
 async function initPrompt(): Promise<{
