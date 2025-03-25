@@ -1,5 +1,10 @@
 import { ActorDriver, KvKey, KvValue, AnyActorInstance } from "actor-core/driver-helpers";
 
+export interface ActorDriverContext {
+	ctx: DurableObjectState;
+	env: unknown;
+}
+
 export class CloudflareWorkersActorDriver implements ActorDriver {
 	#doCtx: DurableObjectState;
 	#env: unknown;
@@ -9,7 +14,7 @@ export class CloudflareWorkersActorDriver implements ActorDriver {
 		this.#env = env;
 	}
 
-	get context(): unknown {
+	get context(): ActorDriverContext {
 		return { ctx: this.#doCtx, env: this.#env };
 	}
 

@@ -1,6 +1,10 @@
 import type { ActorContext } from "@rivet-gg/actor-core";
 import type { ActorDriver, KvKey, KvValue, AnyActorInstance } from "actor-core/driver-helpers";
 
+export interface ActorDriverContext {
+	ctx: ActorContext;
+}
+
 export class RivetActorDriver implements ActorDriver {
 	#ctx: ActorContext;
 
@@ -8,7 +12,7 @@ export class RivetActorDriver implements ActorDriver {
 		this.#ctx = ctx;
 	}
 
-	get context(): unknown {
+	get context(): ActorDriverContext {
 		return { ctx: this.#ctx };
 	}
 

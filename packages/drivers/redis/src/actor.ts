@@ -3,6 +3,10 @@ import type Redis from "ioredis";
 import { KEYS } from "./keys";
 import { AnyActorInstance } from "actor-core/driver-helpers";
 
+export interface ActorDriverContext {
+    redis: Redis;
+}
+
 export class RedisActorDriver implements ActorDriver {
     #redis: Redis;
 
@@ -10,7 +14,7 @@ export class RedisActorDriver implements ActorDriver {
         this.#redis = redis;
     }
 
-    get context(): unknown {
+    get context(): ActorDriverContext {
         return { redis: this.#redis };
     }
 
