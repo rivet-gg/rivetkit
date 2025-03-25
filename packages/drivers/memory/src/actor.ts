@@ -9,7 +9,7 @@ export class MemoryActorDriver implements ActorDriver {
 	}
 
 	get context(): unknown {
-		return this.#state;
+		return { state: this.#state };
 	}
 
 	async kvGet(actorId: string, key: KvKey): Promise<KvValue | undefined> {

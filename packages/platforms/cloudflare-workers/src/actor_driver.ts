@@ -2,13 +2,15 @@ import { ActorDriver, KvKey, KvValue, AnyActorInstance } from "actor-core/driver
 
 export class CloudflareWorkersActorDriver implements ActorDriver {
 	#doCtx: DurableObjectState;
+	#env: unknown;
 
-	constructor(ctx: DurableObjectState) {
+	constructor(ctx: DurableObjectState, env: unknown) {
 		this.#doCtx = ctx;
+		this.#env = env;
 	}
 
 	get context(): unknown {
-		return this.#doCtx;
+		return { ctx: this.#doCtx, env: this.#env };
 	}
 
 	async kvGet(_actorId: string, key: KvKey): Promise<KvValue | undefined> {

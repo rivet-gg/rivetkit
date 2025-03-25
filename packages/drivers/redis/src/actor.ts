@@ -11,7 +11,7 @@ export class RedisActorDriver implements ActorDriver {
     }
 
     get context(): unknown {
-        return this.#redis
+        return { redis: this.#redis };
     }
 
     async kvGet(actorId: string, key: KvKey): Promise<KvValue | undefined> {
