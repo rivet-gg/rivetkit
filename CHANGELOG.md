@@ -1,5 +1,62 @@
 # Changelog
 
+## [0.7.5](https://github.com/rivet-gg/actor-core/compare/v0.7.3...v0.7.5) (2025-03-25)
+
+
+### Features
+
+* add ability to access driver context ([#781](https://github.com/rivet-gg/actor-core/issues/781)) ([c86720a](https://github.com/rivet-gg/actor-core/commit/c86720a952173bb53c3fb9cf21c57a978ccacbb0))
+* bring actor client up to spec ([#752](https://github.com/rivet-gg/actor-core/issues/752)) ([d2a5d7e](https://github.com/rivet-gg/actor-core/commit/d2a5d7e16d11ac2e5a47d0a92eafc28b71001d03))
+* dynamic driver format ([#672](https://github.com/rivet-gg/actor-core/issues/672)) ([09e6fe1](https://github.com/rivet-gg/actor-core/commit/09e6fe145a221518981a0ab68b5a7f5cd49bca98))
+* react integration ([#674](https://github.com/rivet-gg/actor-core/issues/674)) ([de66bf9](https://github.com/rivet-gg/actor-core/commit/de66bf9ad909487210b4dc2c80edf1ab13f1e015))
+* **rivet:** add "framework" tag ([#754](https://github.com/rivet-gg/actor-core/issues/754)) ([412d4cc](https://github.com/rivet-gg/actor-core/commit/412d4cccf7d30d910b7a1345067fbaf5b89d10bc))
+* **rust:** setup rs actor handle basics ([#639](https://github.com/rivet-gg/actor-core/issues/639)) ([79f9429](https://github.com/rivet-gg/actor-core/commit/79f94290266fcbb0e6ec36c5428ee290cefe63b5))
+
+
+### Bug Fixes
+
+* **cli:** add `tsx` package to CLI examples ([#772](https://github.com/rivet-gg/actor-core/issues/772)) ([ffd46df](https://github.com/rivet-gg/actor-core/commit/ffd46dfb62f008e4da986dabda47062fbaa73fa8))
+* **cli:** bump minimal rivet version ([#777](https://github.com/rivet-gg/actor-core/issues/777)) ([7a4ca74](https://github.com/rivet-gg/actor-core/commit/7a4ca7417813070ee654da1ff140cf83b4ba31ff))
+* **cli:** fix pnpm create command ([#778](https://github.com/rivet-gg/actor-core/issues/778)) ([ea21e77](https://github.com/rivet-gg/actor-core/commit/ea21e77561a0bd8378667c8ae46c02d24d0e2dfb))
+* **cli:** fix yarn create ([#776](https://github.com/rivet-gg/actor-core/issues/776)) ([f826681](https://github.com/rivet-gg/actor-core/commit/f826681455fce77f7b2ab8626000e1e818deee6a))
+
+
+### Documentation
+
+* add changelog ([#763](https://github.com/rivet-gg/actor-core/issues/763)) ([df647b1](https://github.com/rivet-gg/actor-core/commit/df647b1f1b2d82e40bcc204048cf6901b8e039b6))
+* change Cloudflare Workers -&gt; Cloudflare Durable Objects ([#766](https://github.com/rivet-gg/actor-core/issues/766)) ([78b244d](https://github.com/rivet-gg/actor-core/commit/78b244d8751ec4db4f747db1652974f4db122c61))
+* clean up changelog formatting ([#764](https://github.com/rivet-gg/actor-core/issues/764)) ([22fc429](https://github.com/rivet-gg/actor-core/commit/22fc429ddc58e91655a3a4dc73ffc60338132911))
+* rename Cloudflare Durable Objects -&gt; Durable Objects ([#770](https://github.com/rivet-gg/actor-core/issues/770)) ([a9a5cfa](https://github.com/rivet-gg/actor-core/commit/a9a5cfa5b91aff73889bbbee965d52221f89c2c7))
+* rename platform page Cloudflare Workers -&gt; Cloudflare Durable Objects ([#768](https://github.com/rivet-gg/actor-core/issues/768)) ([1a7b629](https://github.com/rivet-gg/actor-core/commit/1a7b629e7d782443eacfa39fe6f3a055ae306704))
+
+
+### Code Refactoring
+
+* **cli:** remove actor-core.config file ([#775](https://github.com/rivet-gg/actor-core/issues/775)) ([8c1bb2f](https://github.com/rivet-gg/actor-core/commit/8c1bb2fa543fd0722ed1a559b29fccf3c4570c95))
+* **react:** update types ([#751](https://github.com/rivet-gg/actor-core/issues/751)) ([822818d](https://github.com/rivet-gg/actor-core/commit/822818dbd673015b976f99c53ec6a3ef62935fc2))
+
+
+### Continuous Integration
+
+* add rust test ([#758](https://github.com/rivet-gg/actor-core/issues/758)) ([f3f73fd](https://github.com/rivet-gg/actor-core/commit/f3f73fdb50429429591eb430bdda2558e743ce2a))
+
+
+### Chores
+
+* add actor-core test ([#755](https://github.com/rivet-gg/actor-core/issues/755)) ([362d713](https://github.com/rivet-gg/actor-core/commit/362d7137b35d9436342d8e445e1c6af8e28a8749))
+* add docs on rust client ([#757](https://github.com/rivet-gg/actor-core/issues/757)) ([2ffeb95](https://github.com/rivet-gg/actor-core/commit/2ffeb952cf89282175c999e081c2dd9e0e5c7bf3))
+* add e2e test for rust client ([#756](https://github.com/rivet-gg/actor-core/issues/756)) ([4057e1b](https://github.com/rivet-gg/actor-core/commit/4057e1b0f1bd05b9b361068fbf7b35f3698b0cb9))
+* add tracing logs ([#753](https://github.com/rivet-gg/actor-core/issues/753)) ([ec2febd](https://github.com/rivet-gg/actor-core/commit/ec2febd2cceecd5067539c45deb5c2b312179414))
+* disable cursor example ([#785](https://github.com/rivet-gg/actor-core/issues/785)) ([8cf2a70](https://github.com/rivet-gg/actor-core/commit/8cf2a70665427ecb4c6ca27f2267e57c2fc60631))
+* move rust/client/ -&gt; clients/rust/ ([#759](https://github.com/rivet-gg/actor-core/issues/759)) ([5eabc17](https://github.com/rivet-gg/actor-core/commit/5eabc179bbf32b97487d58c32a70bc4640fa1215))
+* release 0.7.4 ([5186163](https://github.com/rivet-gg/actor-core/commit/518616399219935ad5fb6a9c8ea7aebf92e63b7b))
+* release 0.7.4 ([5c9cba8](https://github.com/rivet-gg/actor-core/commit/5c9cba8da288bf8beab02316319dc32913521bd0))
+* release 0.7.4 ([1168fbb](https://github.com/rivet-gg/actor-core/commit/1168fbb4dfd19d10cd891f89c110eb5f9eb6b348))
+* release 0.7.5 ([8e39e76](https://github.com/rivet-gg/actor-core/commit/8e39e766e3f5c733c82e319e79f321891ce66350))
+* release version 0.7.4 ([014b4ca](https://github.com/rivet-gg/actor-core/commit/014b4caf1af3d49cea17dc7634aa79dfeb998d61))
+* release version 0.7.5 ([08dfe6f](https://github.com/rivet-gg/actor-core/commit/08dfe6f33a133e49a4356f2fe59b8a8857d54a5e))
+* update publish script ([#760](https://github.com/rivet-gg/actor-core/issues/760)) ([6c5165e](https://github.com/rivet-gg/actor-core/commit/6c5165e40d0d47e0b347de2d8c5b4e0ff57c627a))
+
 ## [0.7.3](https://github.com/rivet-gg/actor-core/compare/v0.7.2...v0.7.3) (2025-03-18)
 
 
