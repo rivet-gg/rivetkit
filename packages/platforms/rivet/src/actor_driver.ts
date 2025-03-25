@@ -8,6 +8,10 @@ export class RivetActorDriver implements ActorDriver {
 		this.#ctx = ctx;
 	}
 
+	get context(): unknown {
+		return this.#ctx;
+	}
+
 	async kvGet(_actorId: string, key: KvKey): Promise<KvValue | undefined> {
 		return await this.#ctx.kv.get(key);
 	}

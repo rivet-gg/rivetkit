@@ -10,6 +10,10 @@ export class RedisActorDriver implements ActorDriver {
         this.#redis = redis;
     }
 
+    get context(): unknown {
+        return this.#redis
+    }
+
     async kvGet(actorId: string, key: KvKey): Promise<KvValue | undefined> {
         const value = await this.#redis.get(this.#serializeKey(actorId, key));
         if (value !== null) return JSON.parse(value);

@@ -172,6 +172,7 @@ export class ActorInstance<S, CP, CS, V> {
 			if ("createVars" in this.#config) {
 				const dataOrPromise = this.#config.createVars(
 					this.actorContext as unknown as ActorContext<S, CP, CS, undefined>,
+					this.#actorDriver.context,
 				);
 				if (dataOrPromise instanceof Promise) {
 					vars = await deadline(dataOrPromise, CREATE_VARS_TIMEOUT);

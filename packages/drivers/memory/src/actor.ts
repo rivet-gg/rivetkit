@@ -8,6 +8,10 @@ export class MemoryActorDriver implements ActorDriver {
 		this.#state = state;
 	}
 
+	get context(): unknown {
+		return this.#state;
+	}
+
 	async kvGet(actorId: string, key: KvKey): Promise<KvValue | undefined> {
 		const serializedKey = this.#serializeKey(key);
 		const value = this.#state.getKv(actorId, serializedKey);

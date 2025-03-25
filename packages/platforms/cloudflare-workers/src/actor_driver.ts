@@ -7,6 +7,10 @@ export class CloudflareWorkersActorDriver implements ActorDriver {
 		this.#doCtx = ctx;
 	}
 
+	get context(): unknown {
+		return this.#doCtx;
+	}
+
 	async kvGet(_actorId: string, key: KvKey): Promise<KvValue | undefined> {
 		return await this.#doCtx.storage.get(this.#serializeKey(key));
 	}
