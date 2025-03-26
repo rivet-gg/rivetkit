@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "test": "vitest run"
   },
   "devDependencies": {
     "@types/node": "^22.13.9",
@@ -12,7 +13,8 @@
     "actor-core": "workspace:*",
     "prompts": "^2.4.2",
     "tsx": "^3.12.7",
-    "typescript": "^5.5.2"
+    "typescript": "^5.5.2",
+    "vitest": "^3.0.9"
   },
   "example": {
     "platforms": [

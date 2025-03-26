@@ -8,6 +8,9 @@ const counter = actor({
 			c.broadcast("newCount", c.state.count);
 			return c.state.count;
 		},
+		getCount: (c) => {
+			return c.state.count;
+		},
 	},
 });
 
