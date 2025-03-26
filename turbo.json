@@ -10,7 +10,7 @@
       "outputs": ["dist/**"]
     },
     "check-types": {
-      "inputs": ["src/**", "tsconfig.json", "tsup.config.ts", "package.json"],
+      "inputs": ["src/**", "tests/**", "tsconfig.json", "tsup.config.ts", "package.json"],
       "dependsOn": ["^build"]
     },
     "dev": {

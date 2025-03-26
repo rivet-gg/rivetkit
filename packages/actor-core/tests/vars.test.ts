@@ -7,7 +7,8 @@ describe("Actor Vars", () => {
 		test("should provide access to static vars", async () => {
 			// Define actor with static vars
 			const varActor = actor({
-				//state: { value: 0 },
+				state: { value: 0 },
+				connState: { hello: "world" },
 				vars: { counter: 42, name: "test-actor" },
 				actions: {
 					getVars: (c) => {
@@ -40,7 +41,8 @@ describe("Actor Vars", () => {
 		test("should deep clone static vars between actor instances", async () => {
 			// Define actor with nested object in vars
 			const nestedVarActor = actor({
-				//state: { value: 0 },
+				state: { value: 0 },
+				connState: { hello: "world" },
 				vars: {
 					counter: 42,
 					nested: {
@@ -95,7 +97,8 @@ describe("Actor Vars", () => {
 		test("should support dynamic vars creation", async () => {
 			// Define actor with createVars function
 			const dynamicVarActor = actor({
-				//state: { count: 0 },
+				state: { value: 0 },
+				connState: { hello: "world" },
 				createVars: () => {
 					return {
 						random: Math.random(),
@@ -130,7 +133,8 @@ describe("Actor Vars", () => {
 		test("should create different vars for different instances", async () => {
 			// Define actor with createVars function that generates unique values
 			const uniqueVarActor = actor({
-				//state: { value: 0 },
+				state: { value: 0 },
+				connState: { hello: "world" },
 				createVars: () => {
 					return {
 						id: Math.floor(Math.random() * 1000000),
@@ -178,7 +182,8 @@ describe("Actor Vars", () => {
 			}
 
 			const driverCtxActor = actor({
-				//state: { value: 0 },
+				state: { value: 0 },
+				connState: { hello: "world" },
 				createVars: (c, driverCtx: any): DriverVars => {
 					// In test environment, we get a context with a state property
 					return {

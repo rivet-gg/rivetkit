@@ -81,7 +81,7 @@ export interface OnConnectOptions<CP> {
 // This must have only one or the other or else S will not be able to be inferred
 type CreateState<S, CP, CS, V> =
 	| { state: S }
-	| { createState: (c: ActorContext<undefined, CP, CS, V>) => S | Promise<S> }
+	| { createState: (c: ActorContext<undefined, undefined, undefined, undefined>) => S | Promise<S> }
 	| Record<never, never>;
 
 // Creates connection state config
@@ -91,7 +91,7 @@ type CreateConnState<S, CP, CS, V> =
 	| { connState: CS }
 	| {
 			createConnState: (
-				c: ActorContext<S, CP, CS, V>,
+				c: ActorContext<undefined, undefined, undefined, undefined>,
 				opts: OnConnectOptions<CP>,
 			) => CS | Promise<CS>;
 	  }
@@ -114,7 +114,7 @@ type CreateVars<S, CP, CS, V> =
 			/**
 			 * @experimental
 			 */
-			createVars: (c: ActorContext<S, CP, CS, undefined>, driverCtx: unknown) => V | Promise<V>;
+			createVars: (c: ActorContext<undefined, undefined, undefined, undefined>, driverCtx: unknown) => V | Promise<V>;
 	  }
 	| Record<never, never>;
 

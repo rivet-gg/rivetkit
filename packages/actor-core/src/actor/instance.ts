@@ -171,7 +171,7 @@ export class ActorInstance<S, CP, CS, V> {
 			let vars: V | undefined = undefined;
 			if ("createVars" in this.#config) {
 				const dataOrPromise = this.#config.createVars(
-					this.actorContext as unknown as ActorContext<S, CP, CS, undefined>,
+					this.actorContext as unknown as ActorContext<undefined, undefined, undefined, undefined>,
 					this.#actorDriver.context,
 				);
 				if (dataOrPromise instanceof Promise) {
@@ -406,7 +406,7 @@ export class ActorInstance<S, CP, CS, V> {
 
 					// Convert state to undefined since state is not defined yet here
 					stateData = await this.#config.createState(
-						this.actorContext as unknown as ActorContext<undefined, CP, CS, V>,
+						this.actorContext as unknown as ActorContext<undefined, undefined, undefined, undefined>,
 					);
 				} else if ("state" in this.#config) {
 					stateData = structuredClone(this.#config.state);
@@ -509,7 +509,7 @@ export class ActorInstance<S, CP, CS, V> {
 		if (this.#connStateEnabled) {
 			if ("createConnState" in this.#config) {
 				const dataOrPromise = this.#config.createConnState(
-					this.actorContext,
+					this.actorContext as unknown as ActorContext<undefined, undefined, undefined, undefined>,
 					onBeforeConnectOpts,
 				);
 				if (dataOrPromise instanceof Promise) {
