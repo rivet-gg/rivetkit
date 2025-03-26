@@ -23,7 +23,7 @@
     "check-types": "tsc --noEmit"
   },
   "peerDependencies": {
-    "actor-core": "workspace:*"
+    "actor-core": "*"
   },
   "devDependencies": {
     "actor-core": "workspace:*",

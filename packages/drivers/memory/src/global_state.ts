@@ -50,7 +50,7 @@ export class MemoryGlobalState {
 	 * Put a value into KV store
 	 */
 	putKv(actorId: string, serializedKey: string, value: string): void {
-		let actor = this.#actors.get(actorId);
+		const actor = this.#actors.get(actorId);
 		if (!actor) {
 			throw new Error(`Actor does not exist for ID: ${actorId}`);
 		}
@@ -102,5 +102,12 @@ export class MemoryGlobalState {
 	 */
 	hasActor(actorId: string): boolean {
 		return this.#actors.has(actorId);
+	}
+
+	/**
+	 * Get all actors
+	 */
+	getAllActors(): ActorState[] {
+		return Array.from(this.#actors.values());
 	}
 }

@@ -6,12 +6,12 @@ import * as errors from "@/actor/errors";
 import * as events from "node:events";
 import { publishMessageToLeader } from "./node/message";
 import type { RelayConn } from "./conn/mod";
-import type { Hono } from "hono";
+import { Hono } from "hono";
 import { createActorRouter } from "@/actor/router";
-import { Manager } from "@/manager/manager";
 import { handleRouteError, handleRouteNotFound } from "@/common/router";
-import { DriverConfig } from "@/driver-helpers/config";
-import { AppConfig } from "@/app/config";
+import type { DriverConfig } from "@/driver-helpers/config";
+import type { AppConfig } from "@/app/config";
+import { createManagerRouter } from "@/manager/router";
 
 export interface GlobalState {
 	nodeId: string;
@@ -28,7 +28,8 @@ export class CoordinateTopology {
 
 	constructor(appConfig: AppConfig, driverConfig: DriverConfig) {
 		if (!driverConfig.drivers) throw new Error("config.drivers not defined.");
-		const { actor: actorDriver, coordinate: CoordinateDriver } = driverConfig.drivers;
+		const { actor: actorDriver, coordinate: CoordinateDriver } =
+			driverConfig.drivers;
 		if (!actorDriver) throw new Error("config.drivers.actor not defined.");
 		if (!CoordinateDriver)
 			throw new Error("config.drivers.coordinate not defined.");
@@ -47,14 +48,22 @@ export class CoordinateTopology {
 		const node = new Node(CoordinateDriver, globalState);
 		node.start();
 
-		const manager = new Manager(appConfig, driverConfig);
+		// Build app
+		const app = new Hono();
 
-		// Build router
-		const app = manager.router;
+		const upgradeWebSocket = driverConfig.getUpgradeWebSocket?.(app);
+
+		// Build manager router
+		const managerRouter = createManagerRouter(appConfig, driverConfig, {
+			upgradeWebSocket,
+			onConnectInspector: () => {
+				throw new errors.Unsupported("inspect");
+			},
+		});
 
 		// Forward requests to actor
 		const actorRouter = createActorRouter(appConfig, driverConfig, {
-			upgradeWebSocket: driverConfig.getUpgradeWebSocket?.(app),
+			upgradeWebSocket,
 			onConnectWebSocket: async (opts) => {
 				const actorId = opts.req.param("actorId");
 				if (!actorId) throw new errors.InternalError("Missing actor ID");
@@ -113,6 +122,7 @@ export class CoordinateTopology {
 			},
 		});
 
+		app.route("/", managerRouter);
 		app.route("/actors/:actorId", actorRouter);
 
 		app.notFound(handleRouteNotFound);

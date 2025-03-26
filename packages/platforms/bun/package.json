@@ -26,8 +26,8 @@
     "check-types": "tsc --noEmit"
   },
   "peerDependencies": {
-    "@actor-core/memory": "workspace:*",
-    "actor-core": "workspace:*"
+    "@actor-core/memory": "*",
+    "actor-core": "*"
   },
   "devDependencies": {
     "@actor-core/memory": "workspace:*",

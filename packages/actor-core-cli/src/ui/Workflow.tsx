@@ -9,7 +9,7 @@ import {
 import { ExecaError } from "execa";
 import { Box, Text, type TextProps } from "ink";
 import Spinner from "ink-spinner";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import stripAnsi from "strip-ansi";
 import { type WorkflowAction, WorkflowError } from "../workflow";
 
@@ -63,6 +63,7 @@ function Tasks({
 	interactive?: boolean;
 }) {
 	const currentTasks = tasks.filter((task) => task.meta.parent === parent);
+
 	if (currentTasks.length === 0) {
 		return null;
 	}
@@ -70,15 +71,15 @@ function Tasks({
 		<Box flexDirection="column">
 			{currentTasks.map((task) => (
 				<Box
-					key={task.meta.name}
+					key={task.meta.id}
 					flexDirection="column"
 					marginLeft={parent && parentOpts?.showLabel !== false ? 2 : 0}
 				>
 					<Task task={task} parent={parent} interactive={interactive} />
-					{"status" in task && task.status === "done" ? null : (
+					{"status" in task && task.status === "done" && interactive ? null : (
 						<Tasks
 							tasks={tasks}
-							parent={task.meta.name}
+							parent={task.meta.id}
 							parentOpts={task.meta.opts}
 							interactive={interactive}
 						/>
@@ -171,7 +172,11 @@ export function Task({
 			<>
 				{task.meta.opts?.showLabel === false &&
 				task.status !== "error" ? null : (
-					<Status value={task.status} interactive={interactive}>
+					<Status
+						value={task.status}
+						interactive={interactive}
+						done={task.meta.opts?.success}
+					>
 						{task.meta.name}
 					</Status>
 				)}
@@ -209,10 +214,12 @@ export function Status({
 	value,
 	children,
 	interactive,
+	done = <Text dimColor> (Done)</Text>,
 	...rest
 }: TextProps & {
 	value: WorkflowAction.Progress["status"];
 	interactive?: boolean;
+	done?: ReactNode;
 }) {
 	return (
 		<Text {...rest}>
@@ -229,7 +236,7 @@ export function Status({
 			</Text>{" "}
 			{children}
 			{value === "running" && !interactive ? <Text>…</Text> : null}
-			{value === "done" ? <Text dimColor> (Done)</Text> : null}
+			{value === "done" ? done : null}
 		</Text>
 	);
 }
@@ -307,7 +314,7 @@ export function Logs({ logs }: { logs: WorkflowAction.Log[] }) {
 				if (log.type === "warn") {
 					return (
 						<Text key={i} color="yellow">
-							<Text>⚠️ </Text>
+							<Text>⚠︎ </Text>
 							{log.message}
 						</Text>
 					);

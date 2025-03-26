@@ -1,13 +1,11 @@
 import type { AnyActorInstance } from "@/actor/instance";
-import type { Hono } from "hono";
+import { Hono } from "hono";
 import {
-	AnyConn,
-	type Conn,
+	type AnyConn,
 	generateConnId,
 	generateConnToken,
 } from "@/actor/connection";
 import { createActorRouter } from "@/actor/router";
-import { Manager } from "@/manager/manager";
 import { logger } from "./log";
 import * as errors from "@/actor/errors";
 import {
@@ -21,8 +19,11 @@ import {
 	type GenericWebSocketDriverState,
 } from "../common/generic-conn-driver";
 import { ActionContext } from "@/actor/action";
-import { DriverConfig } from "@/driver-helpers/config";
-import { AppConfig } from "@/app/config";
+import type { DriverConfig } from "@/driver-helpers/config";
+import type { AppConfig } from "@/app/config";
+import { createManagerRouter } from "@/manager/router";
+import type { ActorInspectorConnection } from "@/inspector/actor";
+import type { ManagerInspectorConnection } from "@/inspector/manager";
 
 class ActorHandler {
 	/** Will be undefined if not yet loaded. */
@@ -55,7 +56,7 @@ export class StandaloneTopology {
 		let handler = this.#actors.get(actorId);
 		if (handler) {
 			if (handler.actorPromise) await handler.actorPromise.promise;
-			if (!handler.actor) throw new Error("Acotr should be loaded");
+			if (!handler.actor) throw new Error("Actor should be loaded");
 			return { handler, actor: handler.actor };
 		}
 
@@ -118,15 +119,43 @@ export class StandaloneTopology {
 		if (!driverConfig.drivers?.actor)
 			throw new Error("config.drivers.actor not defined.");
 
-		// Create manager
-		const manager = new Manager(appConfig, driverConfig);
-
 		// Build router
-		const app = manager.router;
+		const app = new Hono();
+
+		const upgradeWebSocket = driverConfig.getUpgradeWebSocket?.(app);
+
+		// Build manager router
+		const managerRouter = createManagerRouter(appConfig, driverConfig, {
+			upgradeWebSocket,
+			onConnectInspector: async () => {
+				const inspector = driverConfig.drivers?.manager?.inspector;
+				if (!inspector) throw new errors.Unsupported("inspector");
+
+				let conn: ManagerInspectorConnection | undefined;
+				return {
+					onOpen: async (ws) => {
+						conn = inspector.createConnection(ws);
+					},
+					onMessage: async (message) => {
+						if (!conn) {
+							logger().warn("`conn` does not exist");
+							return;
+						}
+
+						inspector.processMessage(conn, message);
+					},
+					onClose: async () => {
+						if (conn) {
+							inspector.removeConnection(conn);
+						}
+					},
+				};
+			},
+		});
 
 		// Build actor router
 		const actorRouter = createActorRouter(appConfig, driverConfig, {
-			upgradeWebSocket: driverConfig.getUpgradeWebSocket?.(app),
+			upgradeWebSocket,
 			onConnectWebSocket: async ({ req, encoding, params: connParams }) => {
 				const actorId = req.param("actorId");
 				if (!actorId) throw new errors.InternalError("Missing actor ID");
@@ -217,10 +246,7 @@ export class StandaloneTopology {
 					const { actor } = await this.#getActor(actorId);
 
 					// Create conn
-					const connState = await actor.prepareConn(
-						connParams,
-						req.raw,
-					);
+					const connState = await actor.prepareConn(connParams, req.raw);
 					conn = await actor.createConn(
 						generateConnId(),
 						generateConnToken(),
@@ -262,11 +288,35 @@ export class StandaloneTopology {
 				// Process message
 				await actor.processMessage(message, conn);
 			},
-			onConnectInspector: async () => {
-				throw new errors.Unsupported("inspect");
+			onConnectInspector: async ({ req }) => {
+				const actorId = req.param("actorId");
+				if (!actorId) throw new errors.InternalError("Missing actor ID");
+
+				const { actor } = await this.#getActor(actorId);
+
+				let conn: ActorInspectorConnection | undefined;
+				return {
+					onOpen: async (ws) => {
+						conn = actor.inspector.createConnection(ws);
+					},
+					onMessage: async (message) => {
+						if (!conn) {
+							logger().warn("`conn` does not exist");
+							return;
+						}
+
+						actor.inspector.processMessage(conn, message);
+					},
+					onClose: async () => {
+						if (conn) {
+							actor.inspector.removeConnection(conn);
+						}
+					},
+				};
 			},
 		});
 
+		app.route("/", managerRouter);
 		// Mount the actor router
 		app.route("/actors/:actorId", actorRouter);
 

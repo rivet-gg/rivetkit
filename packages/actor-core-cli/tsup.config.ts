@@ -31,6 +31,7 @@ export default defineConfig({
 		"process.env.NODE_ENV": JSON.stringify("production"),
 		"process.env.SENTRY_DSN": JSON.stringify(process.env.SENTRY_DSN || ""),
 	},
+	ignoreWatch: ["./tsup.config.bundled*"],
 	banner(ctx) {
 		return { js: `#!/usr/bin/env node${createRequireSnippet}` };
 	},

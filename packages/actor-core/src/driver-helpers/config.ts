@@ -10,9 +10,10 @@ import type {
 	Context as HonoContext,
 	Handler as HonoHandler,
 } from "hono";
-import { CoordinateDriver } from "@/topologies/coordinate/driver";
-import { ManagerDriver } from "@/manager/driver";
-import { ActorDriver } from "@/actor/driver";
+import type { CoordinateDriver } from "@/topologies/coordinate/driver";
+import type { ManagerDriver } from "@/manager/driver";
+import type { ActorDriver } from "@/actor/driver";
+import type { InspectorConnHandler } from "@/inspector/common";
 
 export const TopologySchema = z.enum(["standalone", "partition", "coordinate"]);
 export type Topology = z.infer<typeof TopologySchema>;

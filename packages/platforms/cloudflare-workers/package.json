@@ -26,7 +26,7 @@
     "check-types": "tsc --noEmit"
   },
   "peerDependencies": {
-    "actor-core": "workspace:*"
+    "actor-core": "*"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250129.0",

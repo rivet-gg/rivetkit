@@ -8,7 +8,6 @@ import semver from "semver";
 import which from "which";
 import { MIN_RIVET_CLI_VERSION } from "../constants";
 import { VERSION } from "../macros" with { type: "macro" };
-import { isBundleError, isNotFoundError, validateConfig } from "../utils/mod";
 import { workflow } from "../workflow";
 import { z } from "zod";
 import { RivetClient } from "@rivet-gg/api";
@@ -17,6 +16,7 @@ import {
 	createRivetApi,
 	getServiceToken,
 } from "../utils/rivet-api";
+import { validateConfigTask } from "../workflows/validate-config";
 
 export const deploy = new Command()
 	.name("deploy")
@@ -46,36 +46,7 @@ export const deploy = new Command()
 				const { config, cli } = yield* ctx.task(
 					"Prepare",
 					async function* (ctx) {
-						const config = yield* ctx.task("Validate config", async () => {
-							try {
-								return await validateConfig(cwd);
-							} catch (error) {
-								const indexFile = path.relative(
-									process.cwd(),
-									path.join(cwd, "src", "index.ts"),
-								);
-								if (isBundleError(error)) {
-									throw ctx.error(
-										`Could not parse Actors index file (${indexFile})\n${error.details}`,
-										{
-											hint: "Please make sure that the file exists and does not have any syntax errors.",
-										},
-									);
-								} else if (isNotFoundError(error)) {
-									throw ctx.error(
-										`Could not find Actors index file (${indexFile})`,
-										{
-											hint: "Please make sure that the file exists and not empty.",
-										},
-									);
-								} else {
-									console.error(error);
-									throw ctx.error("Failed to validate config.", {
-										hint: "Please check the logs above for more information.",
-									});
-								}
-							}
-						});
+						const config = yield* validateConfigTask(ctx, cwd);
 
 						const cli = yield* ctx.task(
 							"Locale rivet-cli",
@@ -92,7 +63,7 @@ export const deploy = new Command()
 
 								if (cliLocation) {
 									// check version
-									const { stdout } = yield* ctx.$`${cliLocation} --version`;
+									const { stdout } = yield* exec`${cliLocation} --version`;
 									const semVersion = semver.coerce(
 										stdout.split("\n")[2].split(" ")[1].trim(),
 									);
@@ -152,7 +123,7 @@ export const deploy = new Command()
 
 						const envName =
 							opts.env ??
-							(yield* ctx.task("Select environment", async function* () {
+							(yield* ctx.task("Select environment", async function* (ctx) {
 								const { stdout } = await exec`${cli} env ls --json`;
 								const envs = JSON.parse(stdout);
 								return yield* ctx.prompt("Select environment", {
