@@ -15,7 +15,7 @@ import { Schedule } from "./schedule";
 import { KEYS } from "./keys";
 import type * as wsToServer from "@/actor/protocol/message/to-server";
 import { CachedSerializer } from "./protocol/serde";
-import { Inspector } from "@/actor/inspect";
+import { ActorInspector } from "@/inspector/actor";
 import { ActorContext } from "./context";
 import invariant from "invariant";
 
@@ -123,7 +123,7 @@ export class ActorInstance<S, CP, CS, V> {
 	 * Inspector for the actor.
 	 * @internal
 	 */
-	inspector!: Inspector;
+	inspector!: ActorInspector;
 
 	get id() {
 		return this.#actorId;
@@ -156,7 +156,7 @@ export class ActorInstance<S, CP, CS, V> {
 		this.#tags = tags;
 		this.#region = region;
 		this.#schedule = new Schedule(this, actorDriver);
-		this.inspector = new Inspector(this);
+		this.inspector = new ActorInspector(this);
 
 		// Initialize server
 		//

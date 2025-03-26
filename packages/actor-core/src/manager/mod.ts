@@ -1,2 +1,2 @@
 export { ManagerDriver } from "./driver";
-export { Manager } from "./manager";
+export { createManagerRouter } from "./router";

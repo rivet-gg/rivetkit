@@ -7,11 +7,24 @@ import type {
 	ManagerDriver,
 } from "actor-core/driver-helpers";
 import type { MemoryGlobalState } from "./global_state";
+import { ManagerInspector } from "actor-core/inspector";
+import type { ActorCoreApp } from "actor-core";
 
 export class MemoryManagerDriver implements ManagerDriver {
 	#state: MemoryGlobalState;
 
-	constructor(state: MemoryGlobalState) {
+	/**
+	 * @internal
+	 */
+	inspector: ManagerInspector = new ManagerInspector(this, {
+		getAllActors: () => this.#state.getAllActors(),
+		getAllTypesOfActors: () => Object.keys(this.app.config.actors),
+	});
+
+	constructor(
+		private readonly app: ActorCoreApp<any>,
+		state: MemoryGlobalState,
+	) {
 		this.#state = state;
 	}
 
@@ -63,6 +76,9 @@ export class MemoryManagerDriver implements ManagerDriver {
 	}: CreateActorInput): Promise<CreateActorOutput> {
 		const actorId = crypto.randomUUID();
 		this.#state.createActor(actorId, name, tags);
+
+		this.inspector.onActorsChange(this.#state.getAllActors());
+
 		return {
 			endpoint: buildActorEndpoint(baseUrl, actorId),
 		};

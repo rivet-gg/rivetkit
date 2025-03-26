@@ -12,6 +12,7 @@ interface WorkflowResult {
 }
 
 interface TaskMetadata {
+	id: string;
 	name: string;
 	parent: string | null;
 	opts?: TaskOptions;
@@ -34,7 +35,7 @@ export namespace WorkflowAction {
 	export const progress = (
 		meta: TaskMetadata,
 		status: "running" | "done" | "error",
-		res: { error?: unknown; result?: unknown } = {},
+		res: { error?: unknown; result?: unknown } & TaskOptions = {},
 	): Progress => ({
 		status,
 		meta,
@@ -162,11 +163,12 @@ type UserFnReturnType =
 			| Promise<GenericReturnValue>
 	  >;
 
-interface Context {
+export interface Context {
 	wait: (ms: number) => Promise<undefined>;
 	task: <T extends UserFnReturnType>(
 		name: string,
 		taskFn: (toolbox: Context) => T,
+		opts?: TaskOptions,
 	) => AsyncGenerator<
 		WorkflowAction.All,
 		T extends AsyncGenerator<
@@ -205,6 +207,13 @@ interface Context {
 
 interface TaskOptions {
 	showLabel?: boolean;
+	success?: ReactNode;
+}
+
+let TASK_ID = 0;
+
+function getTaskId() {
+	return String(TASK_ID++);
 }
 
 export function workflow(
@@ -222,17 +231,18 @@ export function workflow(
 		taskFn: (ctx: Context) => T,
 		opts: TaskOptions = {},
 	): AsyncGenerator<WorkflowAction.All, T> {
-		const p = WorkflowAction.progress.bind(null, { ...meta, name, opts });
+		const id = getTaskId();
+		const p = WorkflowAction.progress.bind(null, { ...meta, id, name, opts });
 		yield p("running");
 		try {
-			const output = taskFn(createContext({ ...meta, name, opts }));
+			const output = taskFn(createContext({ ...meta, id, name, opts }));
 			if (output instanceof Promise) {
 				const result = await output;
-				yield p("done", { result });
+				yield p("done", { result, ...opts });
 				return result;
 			}
 			const result = yield* output;
-			yield p("done", { result });
+			yield p("done", { result, ...opts });
 			return result;
 		} catch (error) {
 			yield p("error", { error });
@@ -247,7 +257,8 @@ export function workflow(
 				new Promise<undefined>((resolve) => setTimeout(resolve, ms)),
 			task: runner.bind(null, {
 				...meta,
-				parent: meta.name,
+				parent: meta.id,
+				id: "",
 				name: "",
 			}) as Context["task"],
 			render(children: React.ReactNode) {
@@ -285,7 +296,7 @@ export function workflow(
 					withResolvers<WorkflowAction.Prompt.Answer<T>>();
 
 				yield WorkflowAction.prompt<T>(
-					{ ...meta, parent: meta.name, name: question },
+					{ ...meta, id: meta.id, name: question },
 					question,
 					{
 						answer: null,
@@ -297,7 +308,7 @@ export function workflow(
 				const result = await promise;
 
 				yield WorkflowAction.prompt<T>(
-					{ ...meta, parent: meta.name, name: question },
+					{ ...meta, id: meta.id, name: question },
 					question,
 					{
 						answer: result,
@@ -324,13 +335,14 @@ export function workflow(
 	> {
 		// task <> parent
 		const parentMap = new Map<string, string>();
+		const id = getTaskId();
 		try {
 			yield WorkflowAction.progress(
-				{ name: title, parent: null, opts },
+				{ id, name: title, parent: null, opts },
 				"running",
 			);
 			for await (const task of workflowFn(
-				createContext({ name: title, parent: null }),
+				createContext({ id, name: title, parent: id }),
 			)) {
 				if (!task || typeof task !== "object") {
 					continue;
@@ -338,14 +350,14 @@ export function workflow(
 
 				if ("__taskProgress" in task) {
 					const parent = task.meta?.parent || title;
-					parentMap.set(task.meta.name, parent);
+					parentMap.set(task.meta.id, parent);
 					// Propagate errors up the tree
 					if (task.status === "error") {
-						let parentTask = parentMap.get(task.meta.name);
+						let parentTask = parentMap.get(id);
 						while (parentTask) {
 							const grandParent = parentMap.get(parentTask);
 							yield WorkflowAction.progress(
-								{ name: parentTask, parent: grandParent || null },
+								{ id, name: parentTask, parent: grandParent || null },
 								"error",
 							);
 							parentTask = grandParent;
@@ -364,13 +376,13 @@ export function workflow(
 			}
 
 			yield WorkflowAction.progress(
-				{ name: title, parent: null, opts },
+				{ name: title, parent: null, opts, id },
 				"done",
 			);
 			return { success: true };
 		} catch (error) {
 			yield WorkflowAction.progress(
-				{ name: title, parent: null, opts },
+				{ name: title, parent: null, opts, id },
 				"error",
 				{
 					error,
@@ -383,10 +395,11 @@ export function workflow(
 	return {
 		title,
 		async render() {
+			const interactive = !process.env.CI;
 			renderUtils = render(
 				<Box flexDirection="column">
 					<Intro />
-					<WorkflowDetails tasks={[]} interactive />
+					<WorkflowDetails tasks={[]} interactive={interactive} />
 				</Box>,
 			);
 
@@ -406,8 +419,8 @@ export function workflow(
 					continue;
 				}
 
-				const index = tasks.findIndex((t) => t.meta.name === task.meta.name);
-				if (index === -1) {
+				const index = tasks.findIndex((t) => t.meta.id === task.meta.id);
+				if (index === -1 || !interactive) {
 					tasks.push(task);
 				} else {
 					tasks[index] = { ...tasks[index], ...task };
@@ -416,10 +429,16 @@ export function workflow(
 				renderUtils.rerender(
 					<Box flexDirection="column">
 						<Intro />
-						<WorkflowDetails tasks={tasks} interactive />
+						<WorkflowDetails tasks={tasks} interactive={interactive} />
 						<Logs logs={logs} />
 					</Box>,
 				);
+
+				if ("__taskProgress" in task && task.status === "error") {
+					renderUtils.unmount();
+					process.exit(1);
+					break;
+				}
 			}
 
 			for (const hook of hooks.afterAll) {

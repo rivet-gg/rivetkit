@@ -1,5 +1,5 @@
 import { PACKAGE_JSON } from "./macros" with { type: "macro" };
-import { create, deploy, program } from "./mod";
+import { create, deploy, dev, program } from "./mod";
 
 export default program
 	.name(PACKAGE_JSON.name)
@@ -7,4 +7,5 @@ export default program
 	.description(PACKAGE_JSON.description)
 	.addCommand(deploy)
 	.addCommand(create)
+	.addCommand(dev)
 	.parse();

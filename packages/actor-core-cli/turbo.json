@@ -5,6 +5,10 @@
     "build": {
       "inputs": ["src/**", "./tsup.config.ts"],
       "outputs": ["dist/**"]
+    },
+    "dev": {
+      "inputs": ["src/**", "./tsup.config.ts"],
+      "outputs": ["dist/**"]
     }
   }
 }

@@ -33,9 +33,12 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
+    "@actor-core/nodejs": "workspace:^",
     "@sentry/profiling-node": "^9.3.0",
     "bundle-require": "^5.1.0",
+    "chokidar": "^4.0.3",
     "esbuild": "^0.25.1",
+    "open": "^10.1.0",
     "yoga-wasm-web": "0.3.3"
   },
   "devDependencies": {

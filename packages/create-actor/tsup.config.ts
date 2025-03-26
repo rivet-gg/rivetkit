@@ -11,6 +11,7 @@ export default defineConfig({
 	shims: true,
 	dts: false,
 	sourcemap: true,
+	ignoreWatch: ["./tsup.config.bundled*"],
 	esbuildPlugins: [
 		// @ts-ignore
 		Macros(),

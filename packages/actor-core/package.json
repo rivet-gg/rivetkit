@@ -102,16 +102,6 @@
         "default": "./dist/cli/mod.cjs"
       }
     },
-    "./protocol/inspector": {
-      "import": {
-        "types": "./dist/actor/protocol/inspector/mod.d.ts",
-        "default": "./dist/actor/protocol/inspector/mod.js"
-      },
-      "require": {
-        "types": "./dist/actor/protocol/inspector/mod.d.cts",
-        "default": "./dist/actor/protocol/inspector/mod.cjs"
-      }
-    },
     "./protocol/http": {
       "import": {
         "types": "./dist/actor/protocol/http/rpc.d.ts",
@@ -131,11 +121,42 @@
         "types": "./dist/test/mod.d.cts",
         "default": "./dist/test/mod.cjs"
       }
+    },
+    "./inspector": {
+      "import": {
+        "types": "./dist/inspector/mod.d.ts",
+        "default": "./dist/inspector/mod.js"
+      },
+      "require": {
+        "types": "./dist/inspector/mod.d.cts",
+        "default": "./dist/inspector/mod.cjs"
+      }
+    },
+    "./inspector/protocol/actor": {
+      "import": {
+        "types": "./dist/inspector/protocol/actor/mod.d.ts",
+        "default": "./dist/inspector/protocol/actor/mod.js"
+      },
+      "require": {
+        "types": "./dist/inspector/protocol/actor/mod.d.cts",
+        "default": "./dist/inspector/protocol/actor/mod.cjs"
+      }
+    },
+    "./inspector/protocol/manager": {
+      "import": {
+        "types": "./dist/inspector/protocol/manager/mod.d.ts",
+        "default": "./dist/inspector/protocol/manager/mod.js"
+      },
+      "require": {
+        "types": "./dist/inspector/protocol/manager/mod.d.cts",
+        "default": "./dist/inspector/protocol/manager/mod.cjs"
+      }
     }
   },
   "sideEffects": false,
   "scripts": {
-    "build": "tsup src/mod.ts src/client/mod.ts src/common/log.ts src/actor/errors.ts src/topologies/coordinate/mod.ts src/topologies/partition/mod.ts src/utils.ts src/driver-helpers/mod.ts src/cli/mod.ts src/actor/protocol/inspector/mod.ts src/actor/protocol/http/rpc.ts src/test/mod.ts",
+    "dev": "yarn build --watch",
+    "build": "tsup src/mod.ts src/client/mod.ts src/common/log.ts src/actor/errors.ts src/topologies/coordinate/mod.ts src/topologies/partition/mod.ts src/utils.ts src/driver-helpers/mod.ts src/cli/mod.ts src/actor/protocol/inspector/mod.ts src/actor/protocol/http/rpc.ts src/test/mod.ts src/inspector/protocol/actor/mod.ts src/inspector/protocol/manager/mod.ts src/inspector/mod.ts",
     "check-types": "tsc --noEmit",
     "boop": "tsc --outDir dist/test -d",
     "test": "vitest run",

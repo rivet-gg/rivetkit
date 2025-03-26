@@ -35,10 +35,16 @@ export function createActorHandler(inputConfig: InputConfig): RivetHandler {
 				driverConfig.getUpgradeWebSocket = () => upgradeWebSocket;
 			}
 
+			driverConfig.app.config.inspector = {
+				enabled: true,
+				// TODO: Add permission check
+				onRequest: async () => true,
+			};
+
 			// Create actor topology
 			driverConfig.topology = driverConfig.topology ?? "partition";
 			const actorTopology = new PartitionTopologyActor(
-				inputConfig.app.config,
+				driverConfig.app.config,
 				driverConfig,
 			);
 

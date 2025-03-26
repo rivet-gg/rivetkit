@@ -3,6 +3,7 @@
 import { z } from "zod";
 import type { cors } from "hono/cors";
 import { ActorDefinition, AnyActorDefinition } from "@/actor/definition";
+import { InspectorConfigSchema } from "@/inspector/config";
 
 // Define CORS options schema
 type CorsOptions = NonNullable<Parameters<typeof cors>[0]>;
@@ -41,7 +42,10 @@ export const ActorPeerConfigSchema = z.object({
 });
 export type ActorPeerConfig = z.infer<typeof ActorPeerConfigSchema>;
 
-export const ActorsSchema = z.record(z.string(), z.custom<ActorDefinition<any, any, any, any, any>>())
+export const ActorsSchema = z.record(
+	z.string(),
+	z.custom<ActorDefinition<any, any, any, any, any>>(),
+);
 export type Actors = z.infer<typeof ActorsSchema>;
 
 /** Base config used for the actor config across all platforms. */
@@ -61,6 +65,12 @@ export const AppConfigSchema = z.object({
 
 	/** Peer configuration for coordinated topology. */
 	actorPeer: ActorPeerConfigSchema.optional().default({}),
+
+	/** Inspector configuration. */
+	inspector: InspectorConfigSchema.optional().default({ enabled: false }),
 });
 export type AppConfig = z.infer<typeof AppConfigSchema>;
-export type AppConfigInput<A extends Actors> = Omit<z.input<typeof AppConfigSchema>, "actors"> & { actors: A};
+export type AppConfigInput<A extends Actors> = Omit<
+	z.input<typeof AppConfigSchema>,
+	"actors"
+> & { actors: A };

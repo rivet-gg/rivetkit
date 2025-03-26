@@ -1,21 +1,23 @@
-import { Handler, Hono, Context as HonoContext, HonoRequest } from "hono";
-import { ContentfulStatusCode } from "hono/utils/http-status";
-import type { UpgradeWebSocket, WSContext, WSEvents } from "hono/ws";
+import { Hono, type HonoRequest } from "hono";
+import type { UpgradeWebSocket, WSContext } from "hono/ws";
 import * as errors from "./errors";
 import { logger } from "./log";
 import { type Encoding, EncodingSchema } from "@/actor/protocol/serde";
 import { parseMessage } from "@/actor/protocol/message/mod";
 import * as protoHttpRpc from "@/actor/protocol/http/rpc";
-import * as messageToServer from "@/actor/protocol/message/to-server";
+import type * as messageToServer from "@/actor/protocol/message/to-server";
 import type { InputData } from "@/actor/protocol/serde";
-import { SSEStreamingApi, streamSSE } from "hono/streaming";
+import { type SSEStreamingApi, streamSSE } from "hono/streaming";
 import { cors } from "hono/cors";
 import { assertUnreachable } from "./utils";
-import { createInspectorRouter, InspectorConnHandler } from "./inspect";
 import { handleRouteError, handleRouteNotFound } from "@/common/router";
 import { deconstructError } from "@/common/utils";
-import { DriverConfig } from "@/driver-helpers/config";
-import { AppConfig } from "@/app/config";
+import type { DriverConfig } from "@/driver-helpers/config";
+import type { AppConfig } from "@/app/config";
+import {
+	type ActorInspectorConnHandler,
+	createActorInspectorRouter,
+} from "@/inspector/actor";
 
 export interface ConnectWebSocketOpts {
 	req: HonoRequest;
@@ -68,7 +70,7 @@ export interface ActorRouterHandler {
 	onConnectSse(opts: ConnectSseOpts): Promise<ConnectSseOutput>;
 	onRpc(opts: RpcOpts): Promise<RpcOutput>;
 	onConnMessage(opts: ConnsMessageOpts): Promise<void>;
-	onConnectInspector?: InspectorConnHandler;
+	onConnectInspector?: ActorInspectorConnHandler;
 }
 
 /**
@@ -116,7 +118,11 @@ export function createActorRouter(
 						throw new Error("onConnectWebSocket is not implemented");
 
 					const encoding = getRequestEncoding(c.req);
-					const parameters = getRequestConnParams(c.req, appConfig, driverConfig);
+					const parameters = getRequestConnParams(
+						c.req,
+						appConfig,
+						driverConfig,
+					);
 
 					const wsHandler = await handler.onConnectWebSocket({
 						req: c.req,
@@ -354,10 +360,16 @@ export function createActorRouter(
 		}
 	});
 
-	app.route(
-		"/inspect",
-		createInspectorRouter(handler.upgradeWebSocket, handler.onConnectInspector),
-	);
+	if (appConfig.inspector.enabled) {
+		app.route(
+			"/inspect",
+			createActorInspectorRouter(
+				handler.upgradeWebSocket,
+				handler.onConnectInspector,
+				appConfig.inspector,
+			),
+		);
+	}
 
 	app.notFound(handleRouteNotFound);
 	app.onError(handleRouteError);

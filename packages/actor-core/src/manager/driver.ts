@@ -1,12 +1,15 @@
-import { ActorTags } from "@/common/utils";
+import type { ActorTags } from "@/common/utils";
+import type { ManagerInspector } from "@/inspector/manager";
 import type { Env, Context as HonoContext } from "hono";
-
 
 export interface ManagerDriver {
 	getForId(input: GetForIdInput): Promise<GetActorOutput | undefined>;
 	getWithTags(input: GetWithTagsInput): Promise<GetActorOutput | undefined>;
 	createActor(input: CreateActorInput): Promise<CreateActorOutput>;
-}export interface GetForIdInput<E extends Env = any> {
+
+	inspector?: ManagerInspector;
+}
+export interface GetForIdInput<E extends Env = any> {
 	c?: HonoContext<E>;
 	baseUrl: string;
 	actorId: string;
@@ -37,4 +40,3 @@ export interface CreateActorInput<E extends Env = any> {
 export interface CreateActorOutput {
 	endpoint: string;
 }
-

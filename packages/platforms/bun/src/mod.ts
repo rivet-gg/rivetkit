@@ -6,11 +6,18 @@ import { logger } from "./log";
 import { createBunWebSocket } from "hono/bun";
 import type { Hono } from "hono";
 import { ActorCoreApp, StandaloneTopology } from "actor-core";
-import { MemoryGlobalState, MemoryManagerDriver, MemoryActorDriver } from "@actor-core/memory";
+import {
+	MemoryGlobalState,
+	MemoryManagerDriver,
+	MemoryActorDriver,
+} from "@actor-core/memory";
 
 export { InputConfig as Config } from "./config";
 
-export function createRouter(app: ActorCoreApp<any>, inputConfig?: InputConfig): {
+export function createRouter(
+	app: ActorCoreApp<any>,
+	inputConfig?: InputConfig,
+): {
 	router: Hono;
 	webSocketHandler: WebSocketHandler;
 } {
@@ -30,7 +37,7 @@ export function createRouter(app: ActorCoreApp<any>, inputConfig?: InputConfig):
 	if (!config.drivers.manager || !config.drivers.actor) {
 		const memoryState = new MemoryGlobalState();
 		if (!config.drivers.manager) {
-			config.drivers.manager = new MemoryManagerDriver(memoryState);
+			config.drivers.manager = new MemoryManagerDriver(app, memoryState);
 		}
 		if (!config.drivers.actor) {
 			config.drivers.actor = new MemoryActorDriver(memoryState);
@@ -44,14 +51,17 @@ export function createRouter(app: ActorCoreApp<any>, inputConfig?: InputConfig):
 	} else if (config.topology === "partition") {
 		throw new Error("Bun only supports standalone & coordinate topology.");
 	} else if (config.topology === "coordinate") {
-		const topology = new CoordinateTopology(app.config,config);
+		const topology = new CoordinateTopology(app.config, config);
 		return { router: topology.router, webSocketHandler };
 	} else {
 		assertUnreachable(config.topology);
 	}
 }
 
-export function createHandler(app: ActorCoreApp<any>, inputConfig?: InputConfig): Serve {
+export function createHandler(
+	app: ActorCoreApp<any>,
+	inputConfig?: InputConfig,
+): Serve {
 	const config = ConfigSchema.parse(inputConfig);
 
 	const { router, webSocketHandler } = createRouter(app, config);
@@ -64,7 +74,10 @@ export function createHandler(app: ActorCoreApp<any>, inputConfig?: InputConfig)
 	};
 }
 
-export function serve(app: ActorCoreApp<any>, inputConfig: InputConfig): Server {
+export function serve(
+	app: ActorCoreApp<any>,
+	inputConfig: InputConfig,
+): Server {
 	const config = ConfigSchema.parse(inputConfig);
 
 	const handler = createHandler(app, config);

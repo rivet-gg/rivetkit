@@ -35,6 +35,11 @@ export function createManagerHandler(inputConfig: InputConfig): RivetHandler {
 				environment: ctx.metadata.environment.slug,
 			};
 
+			// Force disable inspector
+			driverConfig.app.config.inspector = {
+				enabled: false,
+			};
+
 			// Setup manager driver
 			if (!driverConfig.drivers) driverConfig.drivers = {};
 			if (!driverConfig.drivers.manager) {
@@ -43,7 +48,10 @@ export function createManagerHandler(inputConfig: InputConfig): RivetHandler {
 
 			// Create manager topology
 			driverConfig.topology = driverConfig.topology ?? "partition";
-			const managerTopology = new PartitionTopologyManager(driverConfig.app.config, driverConfig);
+			const managerTopology = new PartitionTopologyManager(
+				driverConfig.app.config,
+				driverConfig,
+			);
 
 			const app = managerTopology.router;
 
