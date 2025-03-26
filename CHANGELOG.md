@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.7.6](https://github.com/rivet-gg/actor-core/compare/v0.7.5...v0.7.6) (2025-03-26)
+
+
+### Features
+
+* add `actor-core/test` ([#790](https://github.com/rivet-gg/actor-core/issues/790)) ([bf5e675](https://github.com/rivet-gg/actor-core/commit/bf5e6754982a286fd41bdbb7c86d45d0d55df47f))
+
+
+### Bug Fixes
+
+* fix combining `CreateState` and `CreateVars` causing `V` to be `unknown` ([#794](https://github.com/rivet-gg/actor-core/issues/794)) ([61bc9ad](https://github.com/rivet-gg/actor-core/commit/61bc9ad07e1acdf950adf57346115169a2075209))
+
+
+### Documentation
+
+* 0.7.5 changelog ([12db6e4](https://github.com/rivet-gg/actor-core/commit/12db6e4204d64dfa933cbfd0714655ef0c74cdaa))
+* document createVars & driver-specific values ([#787](https://github.com/rivet-gg/actor-core/issues/787)) ([14c2829](https://github.com/rivet-gg/actor-core/commit/14c282916ec96022c96d2da9eef83340f3d67360))
+* fix localhost link ([991fc99](https://github.com/rivet-gg/actor-core/commit/991fc99d584d6fa12d175d5017f4a094de9e9eb0))
+
+
+### Continuous Integration
+
+* add turborepo cache ([#792](https://github.com/rivet-gg/actor-core/issues/792)) ([169260a](https://github.com/rivet-gg/actor-core/commit/169260a92ff471dad8927d9c3d782869acdbb35d))
+* add yarn cache ([#791](https://github.com/rivet-gg/actor-core/issues/791)) ([d65d1fa](https://github.com/rivet-gg/actor-core/commit/d65d1fa49171508bfbc19b7dead785bc6e982419))
+
+
+### Chores
+
+* release 0.7.6 ([d996b39](https://github.com/rivet-gg/actor-core/commit/d996b39f1152b70a994c524bb8bc17c878de57c3))
+* release version 0.7.6 ([3c2c0d1](https://github.com/rivet-gg/actor-core/commit/3c2c0d1a9a30b206ca48e179b26a943db0a5fa3a))
+
 ## [0.7.5](https://github.com/rivet-gg/actor-core/compare/v0.7.3...v0.7.5) (2025-03-25)
 
 
