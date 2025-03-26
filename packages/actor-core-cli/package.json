@@ -29,7 +29,7 @@
   "scripts": {
     "build": "tsup",
     "dev": "yarn build --watch",
-    "test": "vitest",
+    "test": "vitest run",
     "check-types": "tsc --noEmit"
   },
   "dependencies": {

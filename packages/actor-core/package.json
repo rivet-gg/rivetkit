@@ -121,11 +121,21 @@
         "types": "./dist/actor/protocol/http/rpc.d.cts",
         "default": "./dist/actor/protocol/http/rpc.cjs"
       }
+    },
+    "./test": {
+      "import": {
+        "types": "./dist/test/mod.d.ts",
+        "default": "./dist/test/mod.js"
+      },
+      "require": {
+        "types": "./dist/test/mod.d.cts",
+        "default": "./dist/test/mod.cjs"
+      }
     }
   },
   "sideEffects": false,
   "scripts": {
-    "build": "tsup src/mod.ts src/client/mod.ts src/common/log.ts src/actor/errors.ts src/topologies/coordinate/mod.ts src/topologies/partition/mod.ts src/utils.ts src/driver-helpers/mod.ts src/cli/mod.ts src/actor/protocol/inspector/mod.ts src/actor/protocol/http/rpc.ts",
+    "build": "tsup src/mod.ts src/client/mod.ts src/common/log.ts src/actor/errors.ts src/topologies/coordinate/mod.ts src/topologies/partition/mod.ts src/utils.ts src/driver-helpers/mod.ts src/cli/mod.ts src/actor/protocol/inspector/mod.ts src/actor/protocol/http/rpc.ts src/test/mod.ts",
     "check-types": "tsc --noEmit",
     "boop": "tsc --outDir dist/test -d",
     "test": "vitest run",

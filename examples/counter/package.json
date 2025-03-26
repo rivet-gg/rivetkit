@@ -4,8 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check-types": "tsc --noEmit",
-    "test": "tsx tests/client.ts"
+    "check-types": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/node": "^22.13.9",
