@@ -11,14 +11,36 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+
+      # Setup Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '22.14'
-      - run: corepack enable
+          # Note: We're not using the built-in cache here because we need to use corepack
+      
+      - name: Setup Corepack
+        run: corepack enable
+      
+      - id: yarn-cache-dir-path
+        name: Get yarn cache directory path
+        run: echo "dir=$(yarn config get cacheFolder)" >> $GITHUB_OUTPUT
+      
+      - name: Cache Yarn dependencies
+        uses: actions/cache@v3
+        id: yarn-cache
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+      
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install
+        
       - name: Run actor-core tests
         run: yarn test
+
       # - name: Install Rust
       #   uses: dtolnay/rust-toolchain@stable
       # - name: Run Rust client tests
