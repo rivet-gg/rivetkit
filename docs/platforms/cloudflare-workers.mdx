@@ -189,6 +189,31 @@ If you already have a Cloudflare Workers project and want to add ActorCore, you 
 	</Step>
 </Steps>
 
+## Accessing Cloudflare Context And Bindings
+
+[Cloudflare-specific `DurableObjectState`](https://developers.cloudflare.com/durable-objects/api/state/) and environment bindings can be accessed from `createVars`.
+
+```typescript
+import { actor } from "actor-core";
+
+const myActor = actor({
+  // Load Cloudflare-specific variables
+  createVars: (c, cloudflare) => ({
+	ctx: cloudflare.ctx,
+	env: cloudflare.env,
+  }),
+  actions: {
+	foo: async (c) => {
+	  // Access DurableObjectState
+	  await c.vars.ctx.storage.get("foo");
+
+	  // Access bindings
+	  await c.vars.env.MY_BUCKET.put(key, "foo");
+	},
+  }
+});
+```
+
 ## Available Regions
 
 See available regions [here](https://developers.cloudflare.com/durable-objects/reference/data-location/#supported-locations-1).

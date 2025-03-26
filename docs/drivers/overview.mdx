@@ -9,6 +9,10 @@ Drivers in ActorCore the infrastructure layer between your actor code and the un
 
 <DriverNote />
 
+## Accessing Driver Context
+
+Drivers expose a custom driver context for functionality specific to the given driver. This can be accessed as a parameter to `createVars` then later accessed with `c.vars`. Read more about the [`createVars` lifecycle hook](/concepts/lifecycle).
+
 ## Available Drivers
 
 Choose a driver based on your deployment needs - [Memory](/drivers/memory) for development, [Rivet](/drivers/rivet) or [Cloudflare Workers](/drivers/cloudflare-workers) for production environments, and [Redis](/drivers/redis) for specialized self-hosted scenarios.

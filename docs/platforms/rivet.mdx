@@ -92,6 +92,28 @@ import CreateActorCli from '/snippets/create-actor-cli.mdx';
 	</Step>
 </Steps>
 
+## Accessing Rivet Context
+
+[Rivet's `ActorContext`](https://rivet.gg/docs/javascript-runtime#the-actor-context-object) can be accessed from `createVars`.
+
+```typescript
+import { actor } from "actor-core";
+
+const myActor = actor({
+  // Load Rivet-specific variables
+  createVars: (c, rivet) => ({
+	rivet: rivet.ctx,
+  }),
+  actions: {
+	foo: async (c) => {
+	  // Access ActorContext
+	  c.log.info(`Region: ${c.vars.rivet.metadata.region.name}`);
+	  await c.vars.rivet.kv.get("foo");
+	},
+  }
+});
+```
+
 ## Available Regions
 
 Rivet supports deploying your actors to multiple regions automatically. You can specify region preferences in your Rivet project settings in the Rivet Hub.

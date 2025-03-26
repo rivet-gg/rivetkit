@@ -13,6 +13,51 @@ Actor lifecycle hooks are defined as functions in the actor configuration.
 
 The `createState` function or `state` constant defines the initial state of the actor (see [state documentation](/concepts/state)). The `createState` function is called only once when the actor is first created.
 
+### `createVars` and `vars`
+
+The `createVars` function or `vars` constant defines ephemeral variables for the actor (see [state documentation](/concepts/state)). These variables are not persisted and are useful for storing runtime-only objects or temporary data.
+
+The `createVars` function can also receive driver-specific context as its second parameter, allowing access to driver capabilities like Rivet KV or Cloudflare Durable Object storage.
+
+```typescript
+import { actor } from "actor-core";
+
+// Using vars constant
+const counter1 = actor({
+  state: { count: 0 },
+  vars: { lastAccessTime: 0 },
+  actions: { /* ... */ }
+});
+
+// Using createVars function
+const counter2 = actor({
+  state: { count: 0 },
+  createVars: () => {
+    // Initialize with non-serializable objects
+    return { 
+      lastAccessTime: Date.now(),
+      emitter: createNanoEvents() 
+    };
+  },
+  actions: { /* ... */ }
+});
+
+// Access driver-specific context
+const exampleActor = actor({
+  state: { count: 0 },
+  // Access driver context in createVars
+  createVars: (c, rivet) => ({
+    ctx: rivet.ctx,
+  }),
+  actions: {
+    doSomething: (c) => {
+      // Use driver-specific context
+      console.log(`Region: ${c.vars.rivet.metadata.region.name}`);
+    }
+  }
+});
+```
+
 ### `onCreate`
 
 The `onCreate` hook is called at the same time as `createState`, but unlike `createState`, it doesn't return any value. Use this hook for initialization logic that doesn't affect the initial state.
