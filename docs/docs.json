@@ -28,7 +28,7 @@
         "href": "https://github.com/rivet-gg/actor-core/discussions"
       }
     ],
-    "primary" : {
+    "primary": {
       "type": "github",
       "href": "https://github.com/rivet-gg/actor-core"
     }
@@ -37,9 +37,7 @@
     "tabs": [
       {
         "tab": "Home",
-        "pages": [
-          "introduction"
-        ]
+        "pages": ["introduction"]
       },
       {
         "tab": "Documentation",
@@ -76,10 +74,7 @@
                   "concepts/external-sql",
                   {
                     "group": "Advanced",
-                    "pages": [
-                      "concepts/types",
-                      "concepts/topology"
-                    ]
+                    "pages": ["concepts/types", "concepts/topology"]
                   }
                 ]
               }
@@ -87,19 +82,14 @@
           },
           {
             "group": "Clients",
-            "pages": [
-              "clients/javascript",
-              "clients/rust"
-            ]
+            "pages": ["clients/javascript", "clients/rust"]
           },
           {
             "group": "Configurations",
             "pages": [
               {
                 "group": "Integrations",
-                "pages": [
-                  "integrations/hono"
-                ]
+                "pages": ["integrations/hono"]
               },
               {
                 "group": "Drivers",
@@ -139,9 +129,7 @@
         "pages": [
           {
             "group": "Changelog",
-            "pages": [
-              "changelog/overview"
-            ]
+            "pages": ["changelog/overview"]
           }
         ]
       }

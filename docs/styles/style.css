@@ -1,0 +1,150 @@
+/* ActorCore custom styles */
+
+.landing-root {
+  max-width: 72rem;
+  margin-left: auto;
+  margin-right: auto;
+  padding-top: 10rem;
+  padding-bottom: 3rem;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .landing-root {
+    padding-top: 5rem;
+    padding-bottom: 3rem;
+    padding-left: 6rem;
+    padding-right: 6rem;
+  }
+}
+
+.inline-icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: middle;
+  object-fit: contain;
+  margin-left: 0.2em;
+}
+
+.platform-link {
+  color: white;
+  font-weight: 500;
+}
+
+.no-break {
+  white-space: nowrap;
+}
+
+.button {
+  color: white;
+  padding: 0.5rem 1.25rem;
+  border-radius: 10px;
+  display: block;
+  white-space: nowrap;
+}
+
+.button-orange {
+  background: #ff4f00;
+}
+
+.buttons-container {
+  display: flex;
+  margin-top: 2rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.copy-command-container {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: hsl(0, 0%, 60%);
+  display: flex;
+  align-items: center;
+  cursor: copy;
+  position: relative;
+}
+
+/* Copy command styled as a button */
+.copy-command-button {
+  margin: 0;
+  margin-right: 0.75rem;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.copy-command-button .copy-command-text {
+  background: hsl(0, 0%, 15%);
+  border-radius: 10px;
+  padding: 0.5rem 1.25rem;
+  color: white;
+}
+
+.copy-command-button .icon-container {
+  margin-left: 0.75rem;
+}
+
+.copy-command-button .copy-icon svg,
+.copy-command-button .check-icon svg {
+  color: hsl(0, 0%, 40%);
+}
+
+.icon-container {
+  position: relative;
+  width: 1em;
+  height: 1em;
+  margin-left: 0.1em;
+  margin-top: -1px; /* Subtle adjustment to align with text */
+  vertical-align: middle;
+}
+
+.copy-command-container .icon-container {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.copy-command-container:hover .icon-container {
+  opacity: 1;
+}
+
+.copy-command-container .icon-container .copy-icon,
+.copy-command-container .icon-container .check-icon {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.2s ease;
+}
+
+.copy-command-container .icon-container .copy-icon {
+  opacity: 1;
+}
+
+.copy-command-container .icon-container .check-icon {
+  opacity: 0;
+}
+
+/* Class for showing the check icon */
+.copy-command-container .icon-container.copied .copy-icon {
+  opacity: 0;
+}
+
+.copy-command-container .icon-container.copied .check-icon {
+  opacity: 1;
+}
+
+.copy-command-text {
+  position: relative;
+  padding: 0.25rem 0.5rem;
+  font-family: monospace;
+  display: inline-block;
+}
+
+[data-page="/"] #header,
+[data-page="/introduction"] #header {
+  display: none;
+}
