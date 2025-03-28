@@ -130,79 +130,334 @@ mode: custom
 	<h2>Everything you need to build realtime, stateful backends</h2>
 	<p>ActorCore provides a solid foundation with the features you'd expect for modern apps.</p>
 
-  <table style={{ marginLeft: "auto", marginRight: "auto", width: "max-content" }}>
-    <thead>
-      <tr>
-        <th>Feature</th>
-        <th>ActorCore</th>
-        <th>Vanilla Durable Objects</th>
-        <th>Socket.io</th>
-        <th>Redis</th>
-        <th>AWS Lambda</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>In-Memory State</td>
-        <td><Icon icon="check" iconType="solid" /></td>
-        <td><Icon icon="check" iconType="solid" /></td>
-        <td><Icon icon="check" iconType="solid" /></td>
-        <td><Icon icon="check" iconType="solid" /></td>
-        <td></td>
-      </tr>
-      <tr>
-        <td>Persisted State</td>
-        <td><Icon icon="check" iconType="solid" /></td>
-        <td><Icon icon="check" iconType="solid" /></td>
-        <td></td>
-        <td></td>
-        <td></td>
-      </tr>
-      <tr>
-        <td>Actions</td>
-        <td><Icon icon="check" iconType="solid" /></td>
-        <td><Icon icon="check" iconType="solid" /></td>
-        <td><Icon icon="check" iconType="solid" /></td>
-        <td></td>
-        <td><Icon icon="check" iconType="solid" /></td>
-      </tr>
-      <tr>
-        <td>Events (Pub/Sub)</td>
-        <td><Icon icon="check" iconType="solid" /></td>
-        <td><Icon icon="minus" color="gray" iconType="solid" /></td>
-        <td><Icon icon="check" iconType="solid" /></td>
-        <td><Icon icon="check" iconType="solid" /></td>
-        <td></td>
-      </tr>
-      <tr>
-        <td>Scheduling</td>
-        <td><Icon icon="check" iconType="solid" /></td>
-        <td><Icon icon="minus" color="gray" iconType="solid" /></td>
-        <td></td>
-        <td></td>
-        <td><Icon icon="minus" color="gray" iconType="solid" /></td>
-      </tr>
-      <tr>
-        <td>Edge Computing</td>
-        <td><Icon icon="check" iconType="solid" />¹</td>
-        <td><Icon icon="check" iconType="solid" /></td>
-        <td></td>
-        <td></td>
-        <td><Icon icon="check" iconType="solid" /></td>
-      </tr>
-      <tr>
-        <td>No Vendor Lock</td>
-        <td><Icon icon="check" iconType="solid" /></td>
-        <td></td>
-        <td><Icon icon="check" iconType="solid" /></td>
-        <td><Icon icon="check" iconType="solid" /></td>
-        <td></td>
-      </tr>
-    </tbody>
-  </table>
+  <div style={{ marginTop: "36px", marginBottom: "36px" }}>
+    <table className="comparison-table">
+      <thead>
+        <tr>
+          <th>Feature</th>
+          <th>
+            <img src="/images/platforms/actor-core.svg" alt="ActorCore" className="platform-logo" />
+            ActorCore
+          </th>
+          <th>
+            <img src="/images/platforms/cloudflare-workers.svg" alt="Durable Objects" className="platform-logo" />
+            Durable Objects
+          </th>
+          <th>
+            <img src="/images/platforms/socketio.svg" alt="Socket.io" className="platform-logo" />
+            Socket.io
+          </th>
+          <th>
+            <img src="/images/platforms/redis.svg" alt="Redis" className="platform-logo" />
+            Redis
+          </th>
+          <th>
+            <img src="/images/platforms/aws-lambda.svg" alt="AWS Lambda" className="platform-logo" />
+            AWS Lambda
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <div className="feature-wrapper">
+              <div className="feature-header">
+                <div className="feature-title">
+                  <Icon icon="database" iconType="solid" style={{ color: "#ff4f00" }} />
+                  In-Memory State
+                </div>
+              </div>
+              <div className="feature-description">Fast access to in-memory data without complex caching</div>
+            </div>
+          </td>
+          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
+          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
+          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
+          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
+          <td><div className="icon-container none"></div></td>
+          <td className="mobile-only">
+            <div className="mobile-platforms">
+              <div className="platform-card">
+                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
+                <span className="platform-name">ActorCore</span>
+              </div>
+              <div className="platform-card">
+                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
+                <span className="platform-name">Durable Objects</span>
+              </div>
+              <div className="platform-card">
+                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
+                <span className="platform-name">Socket.io</span>
+              </div>
+              <div className="platform-card">
+                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
+                <span className="platform-name">Redis</span>
+              </div>
+              <div className="platform-card">
+                <div className="icon-container none"></div>
+                <span className="platform-name">AWS Lambda</span>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div className="feature-wrapper">
+              <div className="feature-header">
+                <div className="feature-title">
+                  <Icon icon="hard-drive" iconType="solid" style={{ color: "#ff4f00" }} />
+                  Persisted State
+                </div>
+              </div>
+              <div className="feature-description">Built-in persistence that survives crashes and restarts</div>
+            </div>
+          </td>
+          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
+          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
+          <td><div className="icon-container none"></div></td>
+          <td><div className="icon-container none"></div></td>
+          <td><div className="icon-container none"></div></td>
+          <td className="mobile-only">
+            <div className="mobile-platforms">
+              <div className="platform-card">
+                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
+                <span className="platform-name">ActorCore</span>
+              </div>
+              <div className="platform-card">
+                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
+                <span className="platform-name">Durable Objects</span>
+              </div>
+              <div className="platform-card">
+                <div className="icon-container none"></div>
+                <span className="platform-name">Socket.io</span>
+              </div>
+              <div className="platform-card">
+                <div className="icon-container none"></div>
+                <span className="platform-name">Redis</span>
+              </div>
+              <div className="platform-card">
+                <div className="icon-container none"></div>
+                <span className="platform-name">AWS Lambda</span>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div className="feature-wrapper">
+              <div className="feature-header">
+                <div className="feature-title">
+                  <Icon icon="bolt" iconType="solid" style={{ color: "#ff4f00" }} />
+                  Actions
+                </div>
+              </div>
+              <div className="feature-description">Define and call functions that interact with your actors</div>
+            </div>
+          </td>
+          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
+          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
+          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
+          <td><div className="icon-container none"></div></td>
+          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
+          <td className="mobile-only">
+            <div className="mobile-platforms">
+              <div className="platform-card">
+                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
+                <span className="platform-name">ActorCore</span>
+              </div>
+              <div className="platform-card">
+                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
+                <span className="platform-name">Durable Objects</span>
+              </div>
+              <div className="platform-card">
+                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
+                <span className="platform-name">Socket.io</span>
+              </div>
+              <div className="platform-card">
+                <div className="icon-container none"></div>
+                <span className="platform-name">Redis</span>
+              </div>
+              <div className="platform-card">
+                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
+                <span className="platform-name">AWS Lambda</span>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div className="feature-wrapper">
+              <div className="feature-header">
+                <div className="feature-title">
+                  <Icon icon="tower-cell" iconType="solid" style={{ color: "#ff4f00" }} />
+                  Events (Pub/Sub)
+                </div>
+              </div>
+              <div className="feature-description">Real-time messaging with publish/subscribe patterns</div>
+            </div>
+          </td>
+          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
+          <td><div className="icon-container partial"><Icon icon="minus" iconType="solid" className="feature-icon" /></div></td>
+          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
+          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
+          <td><div className="icon-container none"></div></td>
+          <td className="mobile-only">
+            <div className="mobile-platforms">
+              <div className="platform-card">
+                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
+                <span className="platform-name">ActorCore</span>
+              </div>
+              <div className="platform-card">
+                <div className="icon-container partial"><Icon icon="minus" iconType="solid" className="feature-icon" /></div>
+                <span className="platform-name">Durable Objects</span>
+              </div>
+              <div className="platform-card">
+                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
+                <span className="platform-name">Socket.io</span>
+              </div>
+              <div className="platform-card">
+                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
+                <span className="platform-name">Redis</span>
+              </div>
+              <div className="platform-card">
+                <div className="icon-container none"></div>
+                <span className="platform-name">AWS Lambda</span>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div className="feature-wrapper">
+              <div className="feature-header">
+                <div className="feature-title">
+                  <Icon icon="clock" iconType="solid" style={{ color: "#ff4f00" }} />
+                  Scheduling
+                </div>
+              </div>
+              <div className="feature-description">Run tasks in the future without external schedulers</div>
+            </div>
+          </td>
+          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
+          <td><div className="icon-container partial"><Icon icon="minus" iconType="solid" className="feature-icon" /></div></td>
+          <td><div className="icon-container none"></div></td>
+          <td><div className="icon-container none"></div></td>
+          <td><div className="icon-container partial"><Icon icon="minus" iconType="solid" className="feature-icon" /></div></td>
+          <td className="mobile-only">
+            <div className="mobile-platforms">
+              <div className="platform-card">
+                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
+                <span className="platform-name">ActorCore</span>
+              </div>
+              <div className="platform-card">
+                <div className="icon-container partial"><Icon icon="minus" iconType="solid" className="feature-icon" /></div>
+                <span className="platform-name">Durable Objects</span>
+              </div>
+              <div className="platform-card">
+                <div className="icon-container none"></div>
+                <span className="platform-name">Socket.io</span>
+              </div>
+              <div className="platform-card">
+                <div className="icon-container none"></div>
+                <span className="platform-name">Redis</span>
+              </div>
+              <div className="platform-card">
+                <div className="icon-container partial"><Icon icon="minus" iconType="solid" className="feature-icon" /></div>
+                <span className="platform-name">AWS Lambda</span>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div className="feature-wrapper">
+              <div className="feature-header">
+                <div className="feature-title">
+                  <Icon icon="globe" iconType="solid" style={{ color: "#ff4f00" }} />
+                  Edge Computing
+                </div>
+              </div>
+              <div className="feature-description">Deploy globally for low-latency access from anywhere</div>
+            </div>
+          </td>
+          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>¹</td>
+          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
+          <td><div className="icon-container none"></div></td>
+          <td><div className="icon-container none"></div></td>
+          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
+          <td className="mobile-only">
+            <div className="mobile-platforms">
+              <div className="platform-card">
+                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
+                <span className="platform-name">ActorCore ¹</span>
+              </div>
+              <div className="platform-card">
+                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
+                <span className="platform-name">Durable Objects</span>
+              </div>
+              <div className="platform-card">
+                <div className="icon-container none"></div>
+                <span className="platform-name">Socket.io</span>
+              </div>
+              <div className="platform-card">
+                <div className="icon-container none"></div>
+                <span className="platform-name">Redis</span>
+              </div>
+              <div className="platform-card">
+                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
+                <span className="platform-name">AWS Lambda</span>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div className="feature-wrapper">
+              <div className="feature-header">
+                <div className="feature-title">
+                  <Icon icon="unlock" iconType="solid" style={{ color: "#ff4f00" }} />
+                  No Vendor Lock
+                </div>
+              </div>
+              <div className="feature-description">Run on multiple platforms without rewriting your app</div>
+            </div>
+          </td>
+          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
+          <td><div className="icon-container none"></div></td>
+          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
+          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
+          <td><div className="icon-container none"></div></td>
+          <td className="mobile-only">
+            <div className="mobile-platforms">
+              <div className="platform-card">
+                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
+                <span className="platform-name">ActorCore</span>
+              </div>
+              <div className="platform-card">
+                <div className="icon-container none"></div>
+                <span className="platform-name">Durable Objects</span>
+              </div>
+              <div className="platform-card">
+                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
+                <span className="platform-name">Socket.io</span>
+              </div>
+              <div className="platform-card">
+                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
+                <span className="platform-name">Redis</span>
+              </div>
+              <div className="platform-card">
+                <div className="icon-container none"></div>
+                <span className="platform-name">AWS Lambda</span>
+              </div>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 
-  <p class="text-center"><Icon icon="minus" color="gray" iconType="solid" /> = requires significant boilerplate code or external service</p>
-  <p class="text-center">¹ = on supported platforms</p>
+  <p><Icon icon="minus" iconType="solid" color="#FF4F00" /> = requires significant boilerplate code or external service</p>
+  <p>¹ = on supported platforms</p>
 </div>
 
 <div style={{ height: "96px" }} />

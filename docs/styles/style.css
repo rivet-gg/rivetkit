@@ -148,3 +148,253 @@
 [data-page="/introduction"] #header {
   display: none;
 }
+
+/* Comparison table styles */
+.comparison-table {
+  width: 100%;
+  max-width: 920px;
+  margin: 0 auto;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: #0f0f0f;
+  table-layout: fixed;
+}
+
+.comparison-table th {
+  background-color: #070606;
+  color: white;
+  text-align: center;
+  padding: 16px 10px;
+  font-weight: 500;
+  border-bottom: 1px solid #222;
+  width: 16.66%;
+}
+
+.comparison-table th:first-child {
+  text-align: left;
+  padding-left: 20px;
+  width: 33.33%;
+}
+
+.comparison-table td {
+  text-align: center;
+  padding: 14px 10px;
+  border-bottom: 1px solid #222;
+  vertical-align: center;
+  width: 16.66%;
+}
+
+.comparison-table td:first-child {
+  text-align: left;
+  padding-left: 20px;
+  padding-right: 20px;
+  color: white;
+  font-weight: 500;
+  padding-top: 16px;
+  padding-bottom: 16px;
+  width: 33.33%;
+  background-color: #070606 !important;
+}
+
+.comparison-table tr:last-child td {
+  border-bottom: none;
+}
+
+.feature-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.feature-header {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 6px;
+}
+
+.feature-title {
+  font-size: 1rem;
+  color: white;
+  font-weight: 500;
+  line-height: 1.5;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.comparison-table .feature-description {
+  font-size: 0.85rem;
+  color: #999;
+  font-weight: normal;
+  line-height: 1.4;
+  max-width: 240px;
+}
+
+/* Feature icons */
+.feature-icon {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+  color: white;
+}
+
+.comparison-table .icon-container {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  border-radius: 50%;
+}
+
+.comparison-table .check {
+  background-color: rgba(255, 79, 0, 0.2);
+  border: 1px solid rgba(255, 79, 0, 0.4);
+}
+
+.comparison-table .partial {
+  background-color: #1a1a1a;
+  border: 1px solid rgba(255, 79, 0, 0.4);
+}
+
+.comparison-table .none {
+  background-color: #1a1a1a;
+  border: 1px solid #222;
+}
+
+.platform-logo {
+  height: 20px;
+  width: auto;
+  display: block;
+  margin: 0 auto 8px auto;
+}
+
+.comparison-table th {
+  font-size: 0.9rem;
+  vertical-align: bottom;
+}
+
+.comparison-table tr td {
+  padding-top: 20px;
+  padding-bottom: 20px;
+  background-color: #0e0a0b;
+}
+
+.comparison-table tr:nth-child(odd) td {
+  background-color: #0c0a0a;
+}
+
+/* Mobile-only display logic */
+.mobile-only {
+  display: none;
+}
+
+@media (min-width: 801px) {
+  .mobile-only {
+    display: none !important;
+  }
+}
+
+/* Responsive table styles */
+@media (max-width: 800px) {
+  .mobile-only {
+    display: block;
+    padding: 0 !important;
+  }
+  
+  .comparison-table {
+    max-width: 100%;
+    border-radius: 8px;
+    display: block;
+  }
+  
+  .comparison-table thead {
+    display: none;
+  }
+  
+  .comparison-table tbody, 
+  .comparison-table tr {
+    display: block;
+    width: 100%;
+  }
+  
+  .comparison-table td {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: none;
+    background-color: transparent !important;
+  }
+  
+  .comparison-table td:not(:first-child):not(.mobile-only) {
+    display: none;
+  }
+  
+  .comparison-table td:first-child {
+    width: 100%;
+    padding: 16px 16px 0;
+    border-top: 1px solid #222;
+    border-bottom: none;
+    background-color: #070606 !important;
+  }
+  
+  .comparison-table tr:first-child td:first-child {
+    border-top: none;
+  }
+  
+  .feature-wrapper {
+    padding: 0;
+  }
+  
+  .feature-title {
+    font-size: 1.1rem;
+  }
+  
+  .comparison-table .feature-description {
+    max-width: 100%;
+    margin-top: 4px;
+    margin-bottom: 16px;
+  }
+  
+  /* Mobile platform cards layout */
+  .mobile-platforms {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    padding: 16px;
+    background-color: #0c0a0a;
+  }
+  
+  .platform-card {
+    background-color: #0e0a0b;
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .platform-name {
+    display: block;
+    font-size: 0.8rem;
+    color: #aaa;
+    margin-top: 6px;
+  }
+}
+
+.first-column-icon {
+  background-color: #ff4f00;
+  color: white;
+  min-width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  margin-right: 10px;
+  margin-top: 2px;
+}
