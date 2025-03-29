@@ -21,6 +21,9 @@ async function main() {
 	validatePackages(publicPackages);
 	await publishPackages(publicPackages, version);
 	await publishRustClient(version);
+	
+	// Create GitHub release
+	await createGitHubRelease(version);
 }
 
 async function runTypeCheck() {
@@ -210,7 +213,48 @@ async function publishPackages(publicPackages: any[], version: string) {
 	}
 
 	console.log(chalk.green(`✅ Published all packages at version ${version}`));
-	console.log(chalk.yellow("! Make sure to merge Release Please"));
+}
+
+async function createGitHubRelease(version: string) {
+	console.log(chalk.blue("Creating GitHub release..."));
+	
+	try {
+		// Get the current tag name (should be the tag created during the release process)
+		const { stdout: currentTag } = await $`git describe --tags --exact-match`;
+		const tagName = currentTag.trim();
+		
+		console.log(chalk.blue(`Looking for existing release for ${version}`));
+		
+		// Check if a release with this version name already exists
+		const { stdout: releaseJson } = await $`gh release list --json name,tagName`;
+		const releases = JSON.parse(releaseJson);
+		const existingRelease = releases.find((r: any) => r.name === version);
+		
+		if (existingRelease) {
+			console.log(chalk.blue(`Updating release ${version} to point to new tag ${tagName}`));
+			await $`gh release edit ${existingRelease.tagName} --tag ${tagName}`;
+		} else {
+			console.log(chalk.blue(`Creating new release ${version} pointing to tag ${tagName}`));
+			await $`gh release create ${tagName} --title ${version} --draft --generate-notes`;
+			
+			// Check if this is a pre-release (contains -rc. or similar)
+			if (version.includes("-")) {
+				await $`gh release edit ${tagName} --prerelease`;
+			}
+		}
+		
+		// Check if we have a dist directory with artifacts to upload
+		const { exitCode } = await $({ nothrow: true })`test -d dist`;
+		if (exitCode === 0) {
+			console.log(chalk.blue(`Uploading artifacts for tag ${tagName}`));
+			await $`gh release upload ${tagName} dist/* --clobber`;
+		}
+		
+		console.log(chalk.green("✅ GitHub release created/updated"));
+	} catch (err) {
+		console.error(chalk.red("❌ Failed to create GitHub release"), err);
+		console.warn(chalk.yellow("! You may need to create the release manually"));
+	}
 }
 
 async function publishPackage(pkg: any, version: string) {

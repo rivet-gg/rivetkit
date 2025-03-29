@@ -326,21 +326,17 @@ export function resolvePlatformSpecificOptions(
 		pkgJson.name = opts.packageName;
 	}
 
-	if (pkgJson.devDependencies) {
-		pkgJson.devDependencies["actor-core"] = opts.version;
+	// If local dev, then use workspace names
+	const isLocalDev = process.env._ACTOR_CORE_CLI_DEV_TEMPLATE === "1";
+
+	for (const name in pkgJson.devDependencies) {
+		if (name.includes("actor-core"))
+			pkgJson.devDependencies[name] = isLocalDev ? "workspace:*" : opts.version;
 	}
 
-	// If local dev, then use workspace names
-	if (process.env._ACTOR_CORE_CLI_DEV_TEMPLATE === "1") {
-		for (const name in pkgJson.devDependencies) {
-			if (name.includes("actor-core"))
-				pkgJson.devDependencies[name] = "workspace:*";
-		}
-
-		for (const name in pkgJson.dependencies) {
-			if (name.includes("actor-core"))
-				pkgJson.devDependencies[name] = "workspace:*";
-		}
+	for (const name in pkgJson.dependencies) {
+		if (name.includes("actor-core"))
+			pkgJson.devDependencies[name] = isLocalDev ? "workspace:*" : opts.version;
 	}
 
 	const configOpts = {

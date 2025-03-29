@@ -24,6 +24,10 @@
   "navbar": {
     "links": [
       {
+        "label": "Changelog",
+        "href": "https://github.com/rivet-gg/actor-core/releases"
+      },
+      {
         "label": "Discussions",
         "href": "https://github.com/rivet-gg/actor-core/discussions"
       }
@@ -49,6 +53,13 @@
               "platforms/cloudflare-workers",
               "platforms/bun",
               "platforms/nodejs"
+            ]
+          },
+          {
+            "group": "Frameworks",
+            "pages": [
+              "clients/javascript",
+              "clients/rust"
             ]
           },
           {
@@ -81,30 +92,6 @@
             ]
           },
           {
-            "group": "Clients",
-            "pages": ["clients/javascript", "clients/rust"]
-          },
-          {
-            "group": "Configurations",
-            "pages": [
-              {
-                "group": "Integrations",
-                "pages": ["integrations/hono"]
-              },
-              {
-                "group": "Drivers",
-                "pages": [
-                  "drivers/overview",
-                  "drivers/memory",
-                  "drivers/redis",
-                  "drivers/rivet",
-                  "drivers/cloudflare-workers",
-                  "drivers/build"
-                ]
-              }
-            ]
-          },
-          {
             "group": "Reference",
             "pages": [
               {
@@ -125,11 +112,25 @@
         ]
       },
       {
-        "tab": "Changelog",
+        "tab": "Integrations",
         "pages": [
+          "integrations/overview",
           {
-            "group": "Changelog",
-            "pages": ["changelog/overview"]
+            "group": "Integrations",
+            "pages": [
+              "integrations/hono"
+            ]
+          },
+          {
+            "group": "Drivers",
+            "pages": [
+              "drivers/overview",
+              "drivers/memory",
+              "drivers/redis",
+              "drivers/rivet",
+              "drivers/cloudflare-workers",
+              "drivers/build"
+            ]
           }
         ]
       }
@@ -150,6 +151,10 @@
     }
   },
   "redirects": [
+    {
+      "source": "/changelog/overview",
+      "destination": "https://github.com/rivet-gg/actor-core/releases"
+    },
     {
       "source": "/concepts/manage",
       "destination": "/concepts/interacting-with-actors"
