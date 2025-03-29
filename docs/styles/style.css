@@ -10,6 +10,13 @@
   padding-right: 1.5rem;
 }
 
+@media (max-width: 800px) {
+  .landing-root {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
 @media (min-width: 1024px) {
   .landing-root {
     padding-top: 5rem;
@@ -43,6 +50,7 @@
   border-radius: 10px;
   display: block;
   white-space: nowrap;
+  text-align: center;
 }
 
 .button-orange {
@@ -55,6 +63,37 @@
   margin-bottom: 1.5rem;
   flex-wrap: wrap;
   gap: 0.75rem;
+}
+
+/* Responsive button styles */
+@media (max-width: 600px) {
+  .buttons-container {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .buttons-container .button,
+  .buttons-container .copy-command-button {
+    width: 100%;
+  }
+  
+  .copy-command-button {
+    display: flex !important;
+    margin-right: 0 !important;
+  }
+  
+  .copy-command-button .copy-command-text {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  /* Make copy icon visible by default on mobile */
+  .copy-command-container .icon-container,
+  .buttons-container .copy-command-button .icon-container {
+    opacity: 1 !important;
+  }
 }
 
 .copy-command-container {
@@ -82,10 +121,12 @@
   border-radius: 10px;
   padding: 0.5rem 1.25rem;
   color: white;
+  min-width: 0;
 }
 
 .copy-command-button .icon-container {
   margin-left: 0.75rem;
+  flex-shrink: 0;
 }
 
 .copy-command-button .copy-icon svg,
@@ -135,6 +176,13 @@
 
 .copy-command-container .icon-container.copied .check-icon {
   opacity: 1;
+}
+
+/* Global small screen copy button visibility */
+@media (max-width: 768px) {
+  .icon-container {
+    opacity: 1 !important;
+  }
 }
 
 .copy-command-text {
