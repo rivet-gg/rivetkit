@@ -398,3 +398,12 @@
   margin-right: 10px;
   margin-top: 2px;
 }
+
+/* Style the code block */
+div:has(> pre) {
+  background: linear-gradient(
+    180deg,
+    rgba(15, 15, 15, 0) 0%,
+    rgba(255, 79, 0, 0.03) 100%
+  );
+}
