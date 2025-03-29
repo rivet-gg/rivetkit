@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 if (require.main !== module) {
 	throw new Error("This script must be run directly");
 }
@@ -50,7 +52,7 @@ console.log(colours.bg.red + " ".repeat(msg.length) + colours.reset);
 console.log();
 
 console.log(
-	`To get access to the ActorCore CLI, ${colours.fg.red}tsc${colours.reset}, from the command line either:\n`,
+	`To get access to the ActorCore CLI, ${colours.fg.red}@actor-core/cli${colours.reset}, from the command line either:\n`,
 );
 
 console.log(
