@@ -411,3 +411,7 @@ div:has(> pre) {
     rgba(255, 79, 0, 0.03) 100%
   );
 }
+
+.hero-code-block code.language-typescript {
+  padding-right: 0 !important;
+}
