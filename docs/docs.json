@@ -60,6 +60,7 @@
           {
             "group": "Frameworks",
             "pages": [
+              "frameworks/react",
               "clients/javascript",
               "clients/rust"
             ]

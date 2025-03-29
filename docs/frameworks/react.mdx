@@ -1,0 +1,245 @@
+---
+title: React
+icon: react
+---
+
+The ActorCore React framework provides a convenient way to use ActorCore in React applications with standard React patterns.
+
+## Installation
+
+Install the package:
+
+<CodeGroup>
+```sh npm
+npm add @actor-core/react
+```
+
+```sh pnpm
+pnpm add @actor-core/react
+```
+
+```sh yarn
+yarn add @actor-core/react
+```
+
+```sh bun
+bun add @actor-core/react
+```
+</CodeGroup>
+
+## Quick Start
+
+```tsx
+import { createClient } from "actor-core/client";
+import { createReactActorCore } from "@actor-core/react";
+import type { App } from "../counter/src/index";
+import React, { useState } from "react";
+
+// Create a client
+const client = createClient<App>("http://your-actor-core-server.com");
+
+// Create React hooks for your actors
+const { useActor, useActorEvent } = createReactActorCore(client);
+
+function ReactApp() {
+  return (
+    <>
+      <Counter />
+    </>
+  );
+}
+
+function Counter() {
+  // Get or create an actor
+  const [{ actor }] = useActor("counter");
+
+  return (
+    <div>
+      <CounterValue actor={actor} />
+      <button
+        type="button"
+        onClick={() => actor?.increment(1)}
+        disabled={!actor}
+      >
+        Increment
+      </button>
+    </div>
+  );
+}
+
+function CounterValue({ actor }) {
+  const [count, setCount] = useState(0);
+
+  // Listen to events
+  useActorEvent({ actor, event: "newCount" }, (newCount) => {
+    setCount(newCount);
+  });
+
+  return count;
+}
+
+render(<ReactApp />, document.getElementById("root"));
+```
+
+## API Reference
+
+The React integration leverages React's hooks system to provide an idiomatic way to interact with ActorCore in React applications.
+
+### `createReactActorCore`
+
+The main function that creates React hooks for interacting with ActorCore. It takes a client instance and returns hook functions.
+
+```tsx
+const { useActor, useActorEvent } = createReactActorCore(client);
+```
+
+#### Parameters
+
+- `client`: The ActorCore client created with `createClient`.
+
+#### Returns
+
+An object containing React hooks:
+- `useActor`: Hook for connecting to actors
+- `useActorEvent`: Hook for subscribing to actor events
+
+### `useActor`
+
+Hook that connects to an actor, creating it if necessary. It manages the actor connection and returns the actor handle.
+
+```tsx
+const [{ actor, error, isLoading, state }] = useActor(actorName, options);
+```
+
+#### Parameters
+
+- `actorName`: The name of the actor to connect to (string).
+- `options`: Optional connection options (same options as `client.actorName.get()`).
+  - `id`: String identifier for the actor instance.
+  - `tags`: Key-value pairs for actor identification.
+  - `params`: Parameters to pass during connection.
+  - `noCreate`: Boolean to prevent actor creation if it doesn't exist.
+
+#### Returns
+
+Returns an array with a single object containing:
+- `actor`: The actor handle if connected, or `undefined` if still connecting.
+- `error`: Any error that occurred during connection.
+- `isLoading`: Boolean indicating if the connection is in progress.
+- `state`: String representing the internal connection state ("init", "creating", "created", or "error").
+
+### `useActorEvent`
+
+Hook that subscribes to events from an actor.
+
+```tsx
+useActorEvent({ actor, event }, cb);
+```
+
+#### Parameters
+
+- `opts`: Object containing:
+  - `actor`: The actor handle from `useActor`, or undefined.
+  - `event`: The name of the event to subscribe to.
+- `cb`: Function called when the event is fired. The arguments passed to this function depend on the event type.
+
+#### Returns
+
+This hook doesn't return a value. The subscription is automatically managed by the hook lifecycle.
+
+## Example Usage
+
+### Basic Counter Example
+
+```tsx
+import { createClient } from "actor-core/client";
+import { createReactActorCore } from "@actor-core/react";
+import type { App } from "./app";
+import { useState } from "react";
+
+const client = createClient<App>("http://localhost:6420");
+const { useActor, useActorEvent } = createReactActorCore(client);
+
+function Counter() {
+  // Connect to a counter actor with ID "main-counter"
+  const [{ actor, isLoading }] = useActor("counter", { id: "main-counter" });
+  const [count, setCount] = useState(0);
+  
+  // Subscribe to counter updates
+  useActorEvent({ actor, event: "newCount" }, (newCount) => {
+    setCount(newCount);
+  });
+  
+  // Handle increment
+  const handleIncrement = async () => {
+    if (actor) {
+      await actor.increment(1);
+    }
+  };
+  
+  if (isLoading) return <div>Loading...</div>;
+  
+  return (
+    <div>
+      <p>Current count: {count}</p>
+      <button onClick={handleIncrement}>Increment</button>
+    </div>
+  );
+}
+```
+
+### Error Handling
+
+```tsx
+function Counter() {
+  const [{ actor, error, isLoading }] = useActor("counter", { id: "main-counter" });
+  
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
+  if (!actor) return <div>Actor not available</div>;
+  
+  return (
+    <div>
+      <button onClick={() => actor.increment(1)}>Increment</button>
+    </div>
+  );
+}
+```
+
+### Dynamic Actor Selection
+
+```tsx
+function CounterSelector() {
+  const [counterId, setCounterId] = useState("counter-1");
+  const [{ actor }] = useActor("counter", { id: counterId });
+  
+  return (
+    <div>
+      <select 
+        value={counterId} 
+        onChange={(e) => setCounterId(e.target.value)}
+      >
+        <option value="counter-1">Counter 1</option>
+        <option value="counter-2">Counter 2</option>
+        <option value="counter-3">Counter 3</option>
+      </select>
+      
+      {actor && <CounterDisplay actor={actor} />}
+    </div>
+  );
+}
+
+function CounterDisplay({ actor }) {
+  const [count, setCount] = useState(0);
+  
+  useActorEvent({ actor, event: "newCount" }, (newCount) => {
+    setCount(newCount);
+  });
+  
+  return <div>Count: {count}</div>;
+}
+```
+
+## Next Steps
+
+See the [Interacting with Actors](/concepts/interacting-with-actors) documentation for more information about the client API.
