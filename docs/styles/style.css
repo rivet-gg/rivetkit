@@ -364,7 +364,11 @@
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
     padding: 16px;
-    background-color: #0c0a0a;
+    background: linear-gradient(
+      180deg,
+      rgba(15, 15, 15, 0) 0%,
+      rgba(255, 79, 0, 0.03) 100%
+    );
   }
   
   .platform-card {
