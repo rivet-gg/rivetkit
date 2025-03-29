@@ -2,6 +2,9 @@
 import { $, chalk, argv } from "zx";
 
 async function main() {
+	// Clean the workspace first
+	await cleanWorkspace();
+	
 	// Update version
 	const version = getVersionFromArgs();
 	await bumpPackageVersions(version);
@@ -72,6 +75,17 @@ async function runRustCheck() {
 		console.log(chalk.green("✅ Rust client check passed"));
 	} catch (err) {
 		console.error(chalk.red("❌ Rust client check failed"), err);
+		process.exit(1);
+	}
+}
+
+async function cleanWorkspace() {
+	console.log(chalk.blue("Cleaning workspace..."));
+	try {
+		await $`git clean -fdx`;
+		console.log(chalk.green("✅ Workspace cleaned"));
+	} catch (err) {
+		console.error(chalk.red("❌ Failed to clean workspace"), err);
 		process.exit(1);
 	}
 }

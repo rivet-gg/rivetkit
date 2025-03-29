@@ -1,6 +1,6 @@
 [package]
 name = "actor-core-client"
-version = "0.7.6"
+version = "0.7.7"
 description = "Rust client for ActorCore - the Stateful Serverless Framework for building AI agents, realtime apps, and game servers"
 edition = "2021"
 authors = ["Rivet Gaming, LLC <developer@rivet.gg>"]

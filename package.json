@@ -8,9 +8,7 @@
     "packages/drivers/*",
     "packages/components/*",
     "packages/misc/*",
-    "packages/frameworks/*",
-    "examples/chat-room/",
-    "examples/counter/"
+    "packages/frameworks/*"
   ],
   "scripts": {
     "start": "npx turbo watch build",
