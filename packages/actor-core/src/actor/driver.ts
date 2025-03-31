@@ -14,6 +14,8 @@ export interface ActorDriver {
 
 	// Schedule
 	setAlarm(actor: AnyActorInstance, timestamp: number): Promise<void>;
+	getAlarm(actor: AnyActorInstance): Promise<number | null>;
+	deleteAlarm(actor: AnyActorInstance): Promise<void>;
 
 	// TODO:
 	//destroy(): Promise<void>;
