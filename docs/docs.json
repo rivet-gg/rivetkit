@@ -114,7 +114,18 @@
         ]
       },
       {
+<<<<<<< HEAD
         "tab": "Integrations",
+=======
+        "tab": "Examples",
+        "pages": [
+          "examples/Live-Cursors",
+          "examples/chat"
+        ]
+      },
+      {
+        "tab": "Changelog",
+>>>>>>> f2a76c1 (updated docs for examples)
         "pages": [
           "integrations/overview",
           {
