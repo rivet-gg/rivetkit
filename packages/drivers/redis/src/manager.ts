@@ -118,7 +118,7 @@ export class RedisManagerDriver implements ManagerDriver {
 			[KEYS.ACTOR.initialized(actorId)]: "1",
 			[KEYS.ACTOR.name(actorId)]: name,
 			[KEYS.ACTOR.tags(actorId)]: JSON.stringify(tags),
-			[`actor_tags:${JSON.stringify(tags)}:id`]: actorId,
+			[`actor_tags:${name}:${JSON.stringify(tags)}:id`]: actorId,
 		});
 
 		return {
