@@ -4231,6 +4231,20 @@ __metadata:
   languageName: node
   linkType: hard
 
+"content-security-policy-builder@npm:^2.3.0":
+  version: 2.3.0
+  resolution: "content-security-policy-builder@npm:2.3.0"
+  checksum: 10c0/ae49e89a48e56616428cfe3f95182fbee039eba53b6e70ea50d84cafff2f982ca1d28119b875f7c1310d1da1cd95a4167e4ab00b9d2aa13df0f3908572c5d3cb
+  languageName: node
+  linkType: hard
+
+"content-security-policy-parser@npm:^0.6.0":
+  version: 0.6.0
+  resolution: "content-security-policy-parser@npm:0.6.0"
+  checksum: 10c0/f494e69020e2320179eab47ad2cdafb09752ed63ca4fb5445071381e392d19edd110c0c3ec43f135d27c34b49dbab851b7fcf188dd2ba30cacd6e1107b15b674
+  languageName: node
+  linkType: hard
+
 "convert-source-map@npm:^2.0.0":
   version: 2.0.0
   resolution: "convert-source-map@npm:2.0.0"
@@ -4470,6 +4484,8 @@ __metadata:
   resolution: "docs-middleware@workspace:packages/misc/docs-middleware"
   dependencies:
     "@cloudflare/vitest-pool-workers": "npm:^0.6.4"
+    content-security-policy-builder: "npm:^2.3.0"
+    content-security-policy-parser: "npm:^0.6.0"
     typescript: "npm:^5.5.2"
     vitest: "npm:~2.1.9"
     wrangler: "npm:^3.101.0"

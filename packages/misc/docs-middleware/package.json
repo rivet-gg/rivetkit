@@ -13,5 +13,9 @@
 		"typescript": "^5.5.2",
 		"vitest": "~2.1.9",
 		"wrangler": "^3.101.0"
+	},
+	"dependencies": {
+		"content-security-policy-builder": "^2.3.0",
+		"content-security-policy-parser": "^0.6.0"
 	}
 }

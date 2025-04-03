@@ -4,7 +4,6 @@ import { assertUnreachable } from "actor-core/utils";
 import { CoordinateTopology } from "actor-core/topologies/coordinate";
 import { logger } from "./log";
 import type { Hono } from "hono";
-import { getRouterName, showRoutes } from "hono/dev";
 import { StandaloneTopology, type ActorCoreApp } from "actor-core";
 import {
 	MemoryGlobalState,
