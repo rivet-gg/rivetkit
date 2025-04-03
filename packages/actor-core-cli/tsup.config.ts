@@ -11,7 +11,7 @@ const __dirname = topLevelFileURLToPath(new topLevelURL(".", import.meta.url));
 `;
 
 export default defineConfig({
-	entry: ["src/mod.ts", "src/cli.ts"],
+	entry: ["src/mod.ts", "src/cli.ts", "src/server-entry.ts"],
 	platform: "node",
 	bundle: true,
 	format: "esm",

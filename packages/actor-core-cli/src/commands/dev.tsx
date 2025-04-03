@@ -3,11 +3,11 @@ import { Argument, Command, Option } from "commander";
 import { workflow } from "../workflow";
 
 import { validateConfigTask } from "../workflows/validate-config";
-import { serve } from "@actor-core/nodejs";
 import chokidar from "chokidar";
 import { Text } from "ink";
 import open from "open";
 import { withResolvers } from "../utils/mod";
+import { spawn } from "node:child_process";
 
 export const dev = new Command()
 	.name("dev")
@@ -35,8 +35,6 @@ export async function action(
 ) {
 	const cwd = path.join(process.cwd(), cmdPath);
 	await workflow("Run locally your ActorCore project", async function* (ctx) {
-		let server: ReturnType<typeof serve>;
-
 		if (opts.open) {
 			open(
 				process.env._ACTOR_CORE_CLI_DEV
@@ -51,26 +49,48 @@ export async function action(
 			ignored: (path) => path.includes("node_modules"),
 		});
 
+		function createServer() {
+			return spawn(
+				process.execPath,
+				[
+					path.join(
+						path.dirname(require.resolve("@actor-core/cli")),
+						"server-entry.js",
+					),
+				],
+				{ env: { ...process.env, PORT: opts.port }, cwd },
+			);
+		}
+
+		let server: ReturnType<typeof spawn> | undefined = undefined;
 		let lock: ReturnType<typeof withResolvers> = withResolvers();
 
-		watcher.on("all", async (event, path) => {
-			if (path.includes("node_modules") || path.includes("/.")) return;
-
-			server?.close();
+		function createLock() {
 			if (lock) {
 				lock.resolve(undefined);
-				lock = withResolvers();
 			}
+			lock = withResolvers();
+		}
+
+		watcher.on("all", async (_, path) => {
+			if (path.includes("node_modules") || path.includes("/.")) return;
+
+			server?.kill();
 		});
 
 		while (true) {
-			const config = yield* validateConfigTask(ctx, cwd);
-			config.app.config.inspector = {
-				enabled: true,
-			};
-			server = serve(config.app, {
-				port: Number.parseInt(opts.port || "6420", 10) || 6420,
+			yield* validateConfigTask(ctx, cwd);
+			server = createServer();
+			createLock();
+
+			server?.addListener("exit", () => {
+				lock.resolve(undefined);
 			});
+
+			server?.addListener("close", () => {
+				lock.resolve(undefined);
+			});
+
 			yield* ctx.task(
 				"Watching for changes...",
 				async () => {

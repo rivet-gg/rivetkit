@@ -257,8 +257,7 @@ export function workflow(
 				new Promise<undefined>((resolve) => setTimeout(resolve, ms)),
 			task: runner.bind(null, {
 				...meta,
-				parent: meta.id,
-				id: "",
+				parent: meta.parent,
 				name: "",
 			}) as Context["task"],
 			render(children: React.ReactNode) {
@@ -292,11 +291,12 @@ export function workflow(
 				WorkflowAction.Prompt.One<T>,
 				WorkflowAction.Prompt.Answer<T>
 			> {
+				const id = getTaskId();
 				const { promise, resolve, reject } =
 					withResolvers<WorkflowAction.Prompt.Answer<T>>();
 
 				yield WorkflowAction.prompt<T>(
-					{ ...meta, id: meta.id, name: question },
+					{ ...meta, id, name: question },
 					question,
 					{
 						answer: null,
@@ -308,7 +308,7 @@ export function workflow(
 				const result = await promise;
 
 				yield WorkflowAction.prompt<T>(
-					{ ...meta, id: meta.id, name: question },
+					{ ...meta, id, name: question },
 					question,
 					{
 						answer: result,
@@ -353,11 +353,15 @@ export function workflow(
 					parentMap.set(task.meta.id, parent);
 					// Propagate errors up the tree
 					if (task.status === "error") {
-						let parentTask = parentMap.get(id);
+						let parentTask = parentMap.get(task.meta.id);
 						while (parentTask) {
 							const grandParent = parentMap.get(parentTask);
 							yield WorkflowAction.progress(
-								{ id, name: parentTask, parent: grandParent || null },
+								{
+									id: parentTask,
+									name: parentTask,
+									parent: grandParent || null,
+								},
 								"error",
 							);
 							parentTask = grandParent;
