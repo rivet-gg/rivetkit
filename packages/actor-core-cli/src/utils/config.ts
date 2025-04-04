@@ -18,12 +18,12 @@ export async function loadConfig(
 
 	const configPath = await configJoycon.resolve({
 		files: [
-			"src/index.ts",
-			"src/index.tsx",
-			"src/index..mts",
-			"src/index.js",
-			"src/index.cjs",
-			"src/index.mjs",
+			"src/app.ts",
+			"src/app.tsx",
+			"src/app.mts",
+			"src/app.js",
+			"src/app.cjs",
+			"src/app.mjs",
 		],
 		cwd,
 		stopDir: path.parse(cwd).root,
