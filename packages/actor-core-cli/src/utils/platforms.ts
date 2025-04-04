@@ -165,14 +165,14 @@ const PLATFORMS = {
 					enabled: true,
 				},
 			});
-			files["src/index.ts"] =
-				`import { createHandler } from "@actor-core/cloudflare-workers";
-${files["src/index.ts"]}
-
-const { handler, ActorHandler } = createHandler(app);
-
-export { handler as default, ActorHandler };
-`;
+//			files["src/index.ts"] =
+//				`import { createHandler } from "@actor-core/cloudflare-workers";
+//${files["src/index.ts"]}
+//
+//const { handler, ActorHandler } = createHandler(app);
+//
+//export { handler as default, ActorHandler };
+//`;
 
 			return {
 				files,
@@ -220,10 +220,10 @@ export { handler as default, ActorHandler };
 				},
 			});
 
-			files["src/index.ts"] = `import { createHandler } from "@actor-core/bun"
-${files["src/index.ts"]}
-export default createHandler(app);
-`;
+//			files["src/index.ts"] = `import { createHandler } from "@actor-core/bun"
+//${files["src/index.ts"]}
+//export default createHandler(app);
+//`;
 
 			return { files };
 		},
@@ -244,10 +244,10 @@ export default createHandler(app);
 				},
 			});
 
-			files["src/index.ts"] = `import { serve } from "@actor-core/nodejs"
-${files["src/index.ts"]}
-serve(app);
-`;
+//			files["src/index.ts"] = `import { serve } from "@actor-core/nodejs"
+//${files["src/index.ts"]}
+//serve(app);
+//`;
 			return { files };
 		},
 	},
