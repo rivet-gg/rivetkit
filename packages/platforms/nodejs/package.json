@@ -26,16 +26,19 @@
     "check-types": "tsc --noEmit"
   },
   "peerDependencies": {
+    "@actor-core/file-system": "*",
+    "@actor-core/memory": "*",
     "actor-core": "*"
   },
   "devDependencies": {
+    "@actor-core/file-system": "workspace:*",
+    "@actor-core/memory": "workspace:*",
     "actor-core": "workspace:*",
     "hono": "^4.7.0",
     "tsup": "^8.4.0",
     "typescript": "^5.5.2"
   },
   "dependencies": {
-    "@actor-core/memory": "workspace:*",
     "@hono/node-server": "^1.13.8",
     "@hono/node-ws": "^1.0.8",
     "zod": "^3.24.2"

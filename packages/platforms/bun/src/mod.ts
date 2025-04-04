@@ -5,12 +5,13 @@ import { ConfigSchema, type InputConfig } from "./config";
 import { logger } from "./log";
 import { createBunWebSocket } from "hono/bun";
 import type { Hono } from "hono";
-import { ActorCoreApp, StandaloneTopology } from "actor-core";
+import { type ActorCoreApp, StandaloneTopology } from "actor-core";
 import {
 	MemoryGlobalState,
 	MemoryManagerDriver,
 	MemoryActorDriver,
 } from "@actor-core/memory";
+import { FileSystemActorDriver, FileSystemGlobalState, FileSystemManagerDriver } from "@actor-core/file-system";
 
 export { InputConfig as Config } from "./config";
 
@@ -35,12 +36,24 @@ export function createRouter(
 	// Configure default configuration
 	if (!config.topology) config.topology = "standalone";
 	if (!config.drivers.manager || !config.drivers.actor) {
-		const memoryState = new MemoryGlobalState();
-		if (!config.drivers.manager) {
-			config.drivers.manager = new MemoryManagerDriver(app, memoryState);
-		}
-		if (!config.drivers.actor) {
-			config.drivers.actor = new MemoryActorDriver(memoryState);
+		if (config.mode === "file-system") {
+			const fsState = new FileSystemGlobalState();
+			if (!config.drivers.manager) {
+				config.drivers.manager = new FileSystemManagerDriver(app, fsState);
+			}
+			if (!config.drivers.actor) {
+				config.drivers.actor = new FileSystemActorDriver(fsState);
+			}
+		} else if (config.mode === "memory") {
+			const memoryState = new MemoryGlobalState();
+			if (!config.drivers.manager) {
+				config.drivers.manager = new MemoryManagerDriver(app, memoryState);
+			}
+			if (!config.drivers.actor) {
+				config.drivers.actor = new MemoryActorDriver(memoryState);
+			}
+		} else {
+			assertUnreachable(config.mode);
 		}
 	}
 

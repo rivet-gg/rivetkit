@@ -26,10 +26,12 @@
     "check-types": "tsc --noEmit"
   },
   "peerDependencies": {
+    "@actor-core/file-system": "*",
     "@actor-core/memory": "*",
     "actor-core": "*"
   },
   "devDependencies": {
+    "@actor-core/file-system": "workspace:^",
     "@actor-core/memory": "workspace:*",
     "@types/bun": "^1.2.2",
     "actor-core": "workspace:*",

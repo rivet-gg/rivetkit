@@ -2,6 +2,7 @@ import { DriverConfigSchema } from "actor-core/driver-helpers";
 import { z } from "zod";
 
 export const ConfigSchema = DriverConfigSchema.extend({
+	mode: z.enum(["file-system", "memory"]).optional().default("file-system"),
 	hostname: z
 		.string()
 		.optional()

@@ -1,0 +1,40 @@
+{
+  "name": "@actor-core/file-system",
+  "version": "0.7.7",
+  "files": [
+    "src",
+    "dist",
+    "package.json"
+  ],
+  "type": "module",
+  "exports": {
+    "import": {
+      "types": "./dist/mod.d.ts",
+      "default": "./dist/mod.js"
+    },
+    "require": {
+      "types": "./dist/mod.d.cts",
+      "default": "./dist/mod.cjs"
+    }
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup src/mod.ts",
+    "check-types": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "actor-core": "*"
+  },
+  "devDependencies": {
+    "@types/invariant": "^2",
+    "@types/node": "^22.14.0",
+    "actor-core": "workspace:*",
+    "tsup": "^8.4.0",
+    "typescript": "^5.5.2"
+  },
+  "dependencies": {
+    "env-paths": "^3.0.0",
+    "hono": "^4.7.0",
+    "invariant": "^2.2.4"
+  }
+}
