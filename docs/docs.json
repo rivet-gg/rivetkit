@@ -46,6 +46,7 @@
       {
         "tab": "Documentation",
         "pages": [
+          "overview",
           {
             "group": "Get Started",
             "pages": [

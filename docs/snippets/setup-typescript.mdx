@@ -1,0 +1,23 @@
+Set up TypeScript:
+
+<CodeGroup>
+```sh npm
+npm install typescript @types/node tsx --save-dev
+npx tsc --init --target es2022 --module nodenext --moduleResolution nodenext --outDir dist
+```
+
+```sh pnpm
+pnpm add -D typescript @types/node tsx
+pnpm exec tsc --init --target es2022 --module nodenext --moduleResolution nodenext --outDir dist
+```
+
+```sh yarn
+yarn add -D typescript @types/node tsx
+yarn tsc --init --target es2022 --module nodenext --moduleResolution nodenext --outDir dist
+```
+
+```sh bun
+bun add -D typescript @types/node tsx
+bun tsc --init --target es2022 --module nodenext --moduleResolution nodenext --outDir dist
+```
+</CodeGroup>

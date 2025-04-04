@@ -1,197 +1,266 @@
 ---
-title: Durable Objects
+title: Cloudflare Workers
 ---
 
-import SetupActor from '/snippets/setup-actor.mdx';
 import SetupNextSteps from '/snippets/setup-next-steps.mdx';
 import MvpWarning from '/snippets/mvp-warning.mdx';
-import IntegrationExistingProjects from '/snippets/integration-existing-projects.mdx';
-import CreateActorCli from '/snippets/create-actor-cli.mdx';
-import CloudflareDeploy from "/snippets/cloudflare-deploy.mdx";
+import RunStudio from '/snippets/run-studio.mdx';
 
-The Cloudflare Durable Objects platform leverages Cloudflare Workers to run ActorCore.
+The Cloudflare Workers platform with Durable Objects provides a robust environment for running ActorCore at the edge.
 
 <Note>
-	ActorCore relies on features only available in the Workers Paid plan ([more info](https://developers.cloudflare.com/durable-objects/platform/pricing/)).
+  ActorCore relies on features only available in the Workers Paid plan ([more info](https://developers.cloudflare.com/durable-objects/platform/pricing/)).
 
-	To deploy hobby projects with ActorCore for free, try deploying to [Rivet](/platforms/rivet).
+  To deploy hobby projects with ActorCore for free, try deploying to [Rivet](/platforms/rivet).
 </Note>
 
 <MvpWarning />
 
-## Create New Project
+## Getting Started
+
+### Option 1: Start with Template
+
+Get started with a pre-configured project template:
+
+```sh
+npx create-actor@latest -p cloudflare-workers
+```
+
+This command will walk you through the rest of the steps.
+
+### Option 2: Start from Scratch
 
 <Steps>
-	<Step title="Create Project with CLI">
-		Run this command:
+  <Step title="Create a new Cloudflare Workers project">
+    Create a new Cloudflare Workers project with Wrangler:
+    
+    <CodeGroup>
+      ```sh npm
+      npm create cloudflare@latest -- my-actor-app --type=hello-world --lang=ts --no-deploy
+      cd my-actor-app
+      ```
+      
+      ```sh pnpm
+      pnpm create cloudflare@latest -- my-actor-app --type=hello-world --lang=ts --no-deploy
+      cd my-actor-app
+      ```
+      
+      ```sh yarn
+      yarn create cloudflare@latest -- my-actor-app --type=hello-world --lang=ts --no-deploy
+      cd my-actor-app
+      ```
+      
+      ```sh bun
+      bun create cloudflare@latest -- my-actor-app --type=hello-world --lang=ts --no-deploy
+      cd my-actor-app
+      ```
+    </CodeGroup>
 
-		<CreateActorCli />
+    Follow the prompts to set up a basic Worker project.
+  </Step>
 
-		Follow the prompts:
-		1. **Where would you like to create your project?** - Choose your project directory
-		2. **To which platform would you like to deploy?** - Select Cloudflare Workers
-		3. **Which template would you like to use?** - Select counter, or your template of choice
+  <Step title="Install ActorCore">
+    Install ActorCore and the Cloudflare Workers platform package:
+    
+    <CodeGroup>
+      ```sh npm
+      npm install actor-core @actor-core/cloudflare-workers
+      ```
+      
+      ```sh pnpm
+      pnpm add actor-core @actor-core/cloudflare-workers
+      ```
+      
+      ```sh yarn
+      yarn add actor-core @actor-core/cloudflare-workers
+      ```
+      
+      ```sh bun
+      bun add actor-core @actor-core/cloudflare-workers
+      ```
+    </CodeGroup>
+  </Step>
 
-		The CLI will set up your project and install all dependencies automatically.
-	</Step>
-	<Step title="Start Development Server">
-		Start your development server with:
+  <Step title="Define your actor">
+    Create a new file `src/app.ts` with your actor definition:
 
-		```sh
-		cd your-project
-		npm run dev
-		```
+    ```typescript src/app.ts
+    import { actor, setup } from "actor-core";
 
-		This will start your ActorCore server in development mode with Wrangler.
-	</Step>
-	<Step title="Test">
-		In a separate terminal, run the auto-generated test client:
+    // Create actor
+    const counter = actor({
+      state: { count: 0 },
+      actions: {
+        increment: (c, x: number) => {
+          c.state.count += x;
+          c.broadcast("newCount", c.state.count);
+          return c.state.count;
+        }
+      }
+    });
 
-		```sh
-		npx tsx scripts/connect.ts
-		# Outputs:
-		# Event: 5
-		# Action: 5
-		```
+    // Create the application
+    export const app = setup({
+      actors: { counter },
+      cors: { origin: "*" } // Configure CORS for your production domains in production
+    });
 
-		Run this again to see the state update.
-	</Step>
-	<Step title="Deploy">
-		<CloudflareDeploy />
-	</Step>
-</Steps>
+    // Export app type for client usage
+    export type App = typeof app;
+    ```
+  </Step>
 
-## Integrating With Existing Projects
+  <Step title="Create your server">
+    Update your `src/index.ts` file to use ActorCore with Cloudflare Workers:
 
-If you already have a Cloudflare Workers project and want to add ActorCore, you can follow these steps for manual integration. This approach gives you more control over how ActorCore fits into your existing Cloudflare Workers project.
+    ```typescript src/index.ts
+    import { createHandler } from "@actor-core/cloudflare-workers";
+    import { app } from "./app";
 
-<Steps>
-	<Step title="Install Packages">
-		<CodeGroup>
-			```sh npm
-			# Install ActorCore
-			npm add actor-core @actor-core/cloudflare-workers
-			```
+    // Create handlers for Cloudflare Workers
+    const { handler, ActorHandler } = createHandler(app);
 
-			```sh pnpm
-			# Install ActorCore
-			pnpm add actor-core @actor-core/cloudflare-workers
-			```
+    // Export the handlers for Cloudflare
+    export { handler as default, ActorHandler };
+    ```
 
-			```sh yarn
-			# Install ActorCore
-			yarn add actor-core @actor-core/cloudflare-workers
-			```
+    Then update your `wrangler.jsonc` configuration:
 
-			```sh bun
-			# Install ActorCore
-			bun add actor-core @actor-core/cloudflare-workers
-			```
-		</CodeGroup>
-	</Step>
-	<Step title="Create Actor">
-		Create a new file for your actor at `src/counter.ts`:
+    ```json wrangler.jsonc
+    {
+      "$schema": "node_modules/wrangler/config-schema.json",
+      "name": "my-actor-app",
+      "main": "src/index.ts",
+      "compatibility_date": "2025-04-04",
+      "observability": {
+        "enabled": true
+      },
+      "migrations": [
+        {
+          "tag": "v1",
+          "new_classes": ["ActorHandler"]
+        }
+      ],
+      "durable_objects": {
+        "bindings": [
+          {
+            "name": "ACTOR_DO",
+            "class_name": "ActorHandler"
+          }
+        ]
+      },
+      "kv_namespaces": [
+        {
+          "binding": "ACTOR_KV",
+          "id": "FILL_ME_IN_WHEN_YOU_DEPLOY"
+        }
+      ]
+    }
+    ```
+  </Step>
 
-		<SetupActor />
-	</Step>
-	<Step title="Configure Cloudflare">
-		Update both `src/index.ts` and `wrangler.json` to look like this:
+  <Step title="Start your development server">
+	<RunStudio />
 
-		<CodeGroup>
+	<Info>
+		**Need to run the server directly?**
 
-		```typescript src/index.ts
-		import { setup, createHandler } from "@actor-core/cloudflare-workers";
-		import { app } from "./app";
-
-		// Create handlers for Cloudflare Workers
-		const { handler, ActorHandler } = createHandler(app);
-
-		// Export the handlers for Cloudflare
-		export { handler as default, ActorHandler };
-		```
-
-		```json wrangler.json
-		{
-			"name": "my-project",
-			"main": "src/index.ts",
-			"compatibility_date": "2025-01-29",
-			"migrations": [
-				{
-					"new_classes": ["ActorHandler"],
-					"tag": "v1"
-				}
-			],
-			"durable_objects": {
-				"bindings": [
-				{
-					"class_name": "ActorHandler",
-					"name": "ACTOR_DO"
-				}
-				]
-			},
-			"kv_namespaces": [
-				{
-					"binding": "ACTOR_KV",
-					"id": "FILL_ME_IN_WHEN_YOU_DEPLOY"
-				}
-			]
-		}
-		```
-
-		</CodeGroup>
-
-		In `src/index.ts`, `handler` is used to handle HTTP requests made to the worker. `ActorHandler` is a Durable Object used to provide state for your actors.
-
-		<IntegrationExistingProjects />
-	</Step>
-	<Step title="Create Client & Test">
-		To start your development server, run:
+		Start the Wrangler development server:
 
 		```sh
 		npx wrangler dev
 		```
 
-		Now, write a file named `client.ts` with this:
+		Your server will be running at http://localhost:8787
+	</Info>
+  </Step>
 
-		```typescript client.ts
-		import { createClient } from "actor-core/client";
-		import type { App } from "./src/index";
+  <Step title="Connect to your actor">
+    Create a file named `client.ts` in your project root to connect to your actor:
 
-		async function main() {
-			const client = createClient<App>("http://localhost:8787");
+    ```typescript client.ts
+    import { createClient } from "actor-core/client";
+    import type { App } from "./src/app";
 
-			const counter = await client.counter.get();
+    async function main() {
+      const client = createClient<App>("http://localhost:8787");
 
-			counter.on("newCount", (count: number) => console.log("Event:", count));
+      const counter = await client.counter.get();
 
-			const out = await counter.increment(5);
-			console.log("Action:", out);
+      // Subscribe to events
+      counter.on("newCount", (count: number) => console.log("Event:", count));
 
-			await counter.dispose();
-		}
+      // Call an action
+      const out = await counter.increment(5);
+      console.log("Action:", out);
 
-		main();
-		```
+      // Clean up
+      await counter.dispose();
+    }
 
-		Run the file in a second terminal with:
+    main().catch(console.error);
+    ```
 
-		```sh
-		npx tsx client.ts
-		# Outputs:
-		# Event: 5
-		# Action: 5
-		```
-		
-		Run this again to see the state update.
-	</Step>
-	<Step title="Deploy">
-		<CloudflareDeploy />
-	</Step>
+    Run the client to test your actor:
+
+    ```sh
+    npx tsx client.ts
+    ```
+
+    You should see output like:
+    ```
+    Event: 5
+    Action: 5
+    ```
+
+    Run it again to see the state update.
+  </Step>
+
+  <Step title="Deploy to production">
+    1. Create a KV namespace for your actors:
+
+    ```sh
+    npx wrangler kv:namespace create ACTOR_KV
+    ```
+
+    2. Update your `wrangler.jsonc` with the KV namespace ID from the output:
+
+    ```jsonc
+    "kv_namespaces": [
+      {
+        "binding": "ACTOR_KV",
+        "id": "your-namespace-id-here"  // Replace with your actual ID
+      }
+    ]
+    ```
+
+    3. Deploy your project:
+
+    ```sh
+    npx wrangler deploy
+    ```
+
+    4. Update your client to connect to your deployed Workers endpoint:
+
+    ```typescript
+    const client = createClient<App>("https://my-actor-app.your-subdomain.workers.dev");
+    ```
+  </Step>
 </Steps>
+
+### Option 3: Integration with Existing Projects
+
+If you already have an existing application and want to mount ActorCore on a subpath, see our [Hono integration guide](/integrations/hono). Remember to specify the same path in `config.basePath` as where you mount the router.
+
+## CORS Configuration
+
+For security reasons, you should configure proper CORS settings in production. In the example above, we used `cors: { origin: "*" }` which allows requests from any domain.
+
+For production deployments, specify the exact domains that should be allowed to connect to your actors. Learn more in the [CORS documentation](/concepts/cors).
 
 ## Accessing Cloudflare Context And Bindings
 
-[Cloudflare-specific `DurableObjectState`](https://developers.cloudflare.com/durable-objects/api/state/) and environment bindings can be accessed from `createVars`.
+You can access Cloudflare-specific features like the [DurableObjectState](https://developers.cloudflare.com/durable-objects/api/state/) and environment bindings from your actor:
 
 ```typescript
 import { actor } from "actor-core";
@@ -199,17 +268,17 @@ import { actor } from "actor-core";
 const myActor = actor({
   // Load Cloudflare-specific variables
   createVars: (c, cloudflare) => ({
-	ctx: cloudflare.ctx,
-	env: cloudflare.env,
+    ctx: cloudflare.ctx,
+    env: cloudflare.env,
   }),
   actions: {
-	foo: async (c) => {
-	  // Access DurableObjectState
-	  await c.vars.ctx.storage.get("foo");
+    foo: async (c) => {
+      // Access DurableObjectState
+      await c.vars.ctx.storage.get("foo");
 
-	  // Access bindings
-	  await c.vars.env.MY_BUCKET.put(key, "foo");
-	},
+      // Access bindings
+      await c.vars.env.MY_BUCKET.put(key, "foo");
+    },
   }
 });
 ```

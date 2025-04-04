@@ -2,95 +2,209 @@
 title: Rivet
 ---
 
-import SetupActor from "/snippets/setup-actor.mdx";
 import SetupNextSteps from "/snippets/setup-next-steps.mdx";
 import MvpWarning from "/snippets/mvp-warning.mdx";
-import CreateActorCli from '/snippets/create-actor-cli.mdx';
+import RunStudio from "/snippets/run-studio.mdx";
+
+Rivet provides a fully managed cloud service for running ActorCore, with automatic scaling, global deployment, and built-in monitoring.
 
 <MvpWarning />
 
-## Create New Project
+## Getting Started
+
+### Option 1: Start with Template
+
+Get started with a pre-configured project template:
+
+<CodeGroup>
+  ```sh npm
+  npx create-actor@latest -p rivet
+  ```
+  
+  ```sh pnpm
+  pnpm dlx create-actor@latest -p rivet
+  ```
+  
+  ```sh yarn
+  yarn dlx create-actor@latest -p rivet
+  ```
+  
+  ```sh bun
+  bunx create-actor@latest -p rivet
+  ```
+</CodeGroup>
+
+This command will walk you through the rest of the steps.
+
+### Option 2: Start from Scratch
 
 <Steps>
-	<Step title="Create Project with CLI">
-		Run this command:
+  <Step title="Create a new Node.js project">
+    Create a new Node.js project:
+    
+    <CodeGroup>
+      ```sh npm
+      mkdir my-actor-app
+      cd my-actor-app
+      npm init -y
+      npm pkg set type=module
+      ```
+      
+      ```sh pnpm
+      mkdir my-actor-app
+      cd my-actor-app
+      pnpm init
+      pnpm pkg set type=module
+      ```
+      
+      ```sh yarn
+      mkdir my-actor-app
+      cd my-actor-app
+      yarn init -y
+      yarn pkg set type=module
+      ```
+      
+      ```sh bun
+      mkdir my-actor-app
+      cd my-actor-app
+      bun init -y
+      ```
+    </CodeGroup>
+  </Step>
 
-		<CreateActorCli />
+  <Step title="Install ActorCore">
+    Install ActorCore and the Rivet platform package:
+    
+    <CodeGroup>
+      ```sh npm
+      npm install actor-core @actor-core/rivet
+      ```
+      
+      ```sh pnpm
+      pnpm add actor-core @actor-core/rivet
+      ```
+      
+      ```sh yarn
+      yarn add actor-core @actor-core/rivet
+      ```
+      
+      ```sh bun
+      bun add actor-core @actor-core/rivet
+      ```
+    </CodeGroup>
+  </Step>
 
-		Follow the prompts:
-		1. **Where would you like to create your project?** - Choose your project directory
-		2. **To which platform would you like to deploy?** - Select Rivet
-		3. **Which template would you like to use?** - Select counter, or your template of choice
+  <Step title="Define your actor">
+    Create a new `src` directory and a file `src/app.ts` with your actor definition:
 
-		The CLI will set up your project and install all dependencies automatically.
-	</Step>
-	<Step title="Deploy to Rivet">
-		Deploy your project to Rivet with:
+    ```typescript src/app.ts
+    import { actor, setup } from "actor-core";
 
-		```sh
-		cd your-project
-		npm run deploy
-		```
+    // Create actor
+    const counter = actor({
+      state: { count: 0 },
+      actions: {
+        increment: (c, x: number) => {
+          c.state.count += x;
+          c.broadcast("newCount", c.state.count);
+          return c.state.count;
+        }
+      }
+    });
 
-		This will prompt you to:
-		1. Login to Rivet and create a project
-		2. Select an environment
+    // Create the application
+    export const app = setup({
+      actors: { counter },
+      cors: { origin: "*" } // Configure CORS for your production domains in production
+    });
 
-		After successful deployment, you'll receive important URLs:
+    // Export app type for client usage
+    export type App = typeof app;
+    ```
+  </Step>
 
-		- **Actor Manager URL**: Used for client connections to your actors
-		- **Actors Dashboard**: Manage deployed actors and view their status 
-		- **Builds Dashboard**: Monitor build history and deployment logs
+  <Step title="Start your development server">
+    <RunStudio />
+  </Step>
 
-		Make sure to save your Actor Manager URL as you'll need it to connect from your client code.
-	</Step>
-	<Step title="Test">
-		Update `tests/client.ts` to use the deployed endpoint. Replace the local endpoint in client.ts with your Rivet deployment URL:
+  <Step title="Connect to your actor">
+    Create a file named `src/client.ts` to connect to your actor:
 
-		```typescript tests/client.ts
-		import { createClient } from "actor-core/client";
-		import type { App } from "../src/app";
+    ```typescript src/client.ts
+    import { createClient } from "actor-core/client";
+    import type { App } from "./app";
 
-		// Replace this URL with your Actor Manager URL from the deployment output
-		const client = createClient<App>("https://your-actor-manager-url-from-deployment.rivet.run:443");
-		
-		async function main() {
-			const counter = await client.counter.get();
-			
-			counter.on("newCount", (count: number) => console.log("Event:", count));
-			
-			const out = await counter.increment(5);
-			console.log("Action:", out);
-			
-			await counter.dispose();
-		}
-		
-		main();
-		```
+    async function main() {
+      // Replace with your endpoint URL after deployment
+      const client = createClient<App>("http://localhost:6420");
 
-		Then run the client:
+      const counter = await client.counter.get();
 
-		```sh
-		npx tsx scripts/connect.ts
-		# Outputs:
-		# Event: 5
-		# Action: 5
-		```
+      // Subscribe to events
+      counter.on("newCount", (count: number) => console.log("Event:", count));
 
-		Run this again to see the state update as the actor maintains its state between calls.
-	</Step>
-	<Step title="Monitor">
-		Monitor your actors, builds, and performance through the Rivet Hub using the links provided in the deployment output:
+      // Call an action
+      const out = await counter.increment(5);
+      console.log("Action:", out);
 
-		- **Actors**: View and manage your deployed actors
-		- **Builds**: Review build history and logs
-		- **Actor Manager**: Access the actor manager endpoint for direct connections
+      // Clean up
+      await counter.dispose();
+    }
 
-		Visit the [Rivet Dashboard](https://hub.rivet.gg) to view your project.
+    main().catch(console.error);
+    ```
 
-		![Dashboard](/media/platforms/rivet/dash.png)
-	</Step>
+    Run the client to test your actor:
+
+    ```sh
+    npx tsx src/client.ts
+    ```
+
+    You should see output like:
+    ```
+    Event: 5
+    Action: 5
+    ```
+
+    Run it again to see the state update.
+  </Step>
+
+  <Step title="Deploy to production">
+    Add deploy scripts to your `package.json`:
+
+    ```json
+    {
+      "scripts": {
+        "deploy": "actor-core deploy"
+      }
+    }
+    ```
+
+    Deploy your ActorCore application to Rivet:
+
+    ```sh
+    npm run deploy
+    ```
+
+    This will:
+    1. Prompt you to log in to Rivet if needed
+    2. Ask you to select or create a Rivet project
+    3. Build and deploy your application
+    4. Provide you with your new endpoint
+
+       Update your client code with the new endpoint URL and test your deployed application.
+  </Step>
 </Steps>
+
+### Option 3: Integration with Existing Projects
+
+If you already have an existing application and want to mount ActorCore on a subpath, see our [Hono integration guide](/integrations/hono). Remember to specify the same path in `config.basePath` as where you mount the router.
+
+## CORS Configuration
+
+For security reasons, you should configure proper CORS settings in production. In the example above, we used `cors: { origin: "*" }` which allows requests from any domain.
+
+For production deployments, specify the exact domains that should be allowed to connect to your actors. Learn more in the [CORS documentation](/concepts/cors).
 
 ## Accessing Rivet Context
 
@@ -102,14 +216,14 @@ import { actor } from "actor-core";
 const myActor = actor({
   // Load Rivet-specific variables
   createVars: (c, rivet) => ({
-	rivet: rivet.ctx,
+    rivet: rivet.ctx,
   }),
   actions: {
-	foo: async (c) => {
-	  // Access ActorContext
-	  c.log.info(`Region: ${c.vars.rivet.metadata.region.name}`);
-	  await c.vars.rivet.kv.get("foo");
-	},
+    foo: async (c) => {
+      // Access ActorContext
+      c.log.info(`Region: ${c.vars.rivet.metadata.region.name}`);
+      await c.vars.rivet.kv.get("foo");
+    },
   }
 });
 ```
