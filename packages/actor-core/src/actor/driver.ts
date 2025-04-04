@@ -11,7 +11,7 @@ export type KvValue = unknown;
 
 export interface ActorDriver {
 	//load(): Promise<LoadOutput>;
-	get context(): unknown;
+	getContext(actorId: string): unknown;
 
 	// HACK: Clean these up
 	kvGet(actorId: string, key: KvKey): Promise<KvValue | undefined>;

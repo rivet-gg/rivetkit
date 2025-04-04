@@ -12,7 +12,7 @@ export class RivetActorDriver implements ActorDriver {
 		this.#ctx = ctx;
 	}
 
-	get context(): ActorDriverContext {
+	getContext(_actorId: string): ActorDriverContext {
 		return { ctx: this.#ctx };
 	}
 

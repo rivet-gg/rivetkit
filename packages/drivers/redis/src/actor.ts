@@ -14,7 +14,7 @@ export class RedisActorDriver implements ActorDriver {
         this.#redis = redis;
     }
 
-    get context(): ActorDriverContext {
+    getContext(_actorId: string): ActorDriverContext {
         return { redis: this.#redis };
     }
 

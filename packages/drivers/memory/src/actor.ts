@@ -1,9 +1,7 @@
 import type { ActorDriver, KvKey, KvValue, AnyActorInstance } from "actor-core/driver-helpers";
 import type { MemoryGlobalState } from "./global_state";
 
-export interface ActorDriverContext {
-	state: MemoryGlobalState;
-}
+export type ActorDriverContext = Record<never, never>;
 
 export class MemoryActorDriver implements ActorDriver {
 	#state: MemoryGlobalState;
@@ -12,8 +10,8 @@ export class MemoryActorDriver implements ActorDriver {
 		this.#state = state;
 	}
 
-	get context(): ActorDriverContext {
-		return { state: this.#state };
+	getContext(_actorId: string): ActorDriverContext {
+		return {};
 	}
 
 	async kvGet(actorId: string, key: KvKey): Promise<KvValue | undefined> {

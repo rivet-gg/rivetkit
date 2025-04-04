@@ -1,9 +1,12 @@
-import type { ActorDriver, KvKey, KvValue, AnyActorInstance } from "@/driver-helpers/mod";
+import type {
+	ActorDriver,
+	KvKey,
+	KvValue,
+	AnyActorInstance,
+} from "@/driver-helpers/mod";
 import type { TestGlobalState } from "./global_state";
 
-export interface ActorDriverContext {
-	state: TestGlobalState;
-}
+export type ActorDriverContext = Record<never, never>;
 
 export class TestActorDriver implements ActorDriver {
 	#state: TestGlobalState;
@@ -12,8 +15,8 @@ export class TestActorDriver implements ActorDriver {
 		this.#state = state;
 	}
 
-	get context(): ActorDriverContext {
-		return { state: this.#state };
+	getContext(_actorId: string): ActorDriverContext {
+		return {};
 	}
 
 	async kvGet(actorId: string, key: KvKey): Promise<KvValue | undefined> {
