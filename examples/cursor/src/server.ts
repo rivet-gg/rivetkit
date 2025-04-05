@@ -1,6 +1,6 @@
 import { serve } from "@actor-core/nodejs";
 import { setupLogging } from "actor-core/log";
-import { app } from "./index";
+import { app } from "./app";
 
 setupLogging();
 

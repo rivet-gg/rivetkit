@@ -9,14 +9,16 @@
     "test": "vitest run"
   },
   "devDependencies": {
+    "@actor-core/cli": "workspace:*",
     "@types/node": "^22.13.9",
     "actor-core": "workspace:*",
-    "@actor-core/cli": "workspace:*",
     "tsx": "^3.12.7",
     "typescript": "^5.7.3",
     "vitest": "^3.0.9"
   },
   "example": {
-    "platforms": ["*"]
+    "platforms": [
+      "*"
+    ]
   }
 }

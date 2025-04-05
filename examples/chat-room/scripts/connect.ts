@@ -1,6 +1,6 @@
 /// <reference types="node" />
 import { createClient } from "actor-core/client";
-import type { App } from "../src/index";
+import type { App } from "../src/app";
 
 async function main() {
 	// Create type-aware client

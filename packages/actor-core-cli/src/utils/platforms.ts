@@ -123,6 +123,7 @@ const PLATFORMS = {
 			files["package.json"] = stringifyJson({
 				...pkgJson,
 				devDependencies: {
+					"@actor-core/cli": version,
 					"@actor-core/cloudflare-workers": version,
 					wrangler: "^3.101.0",
 					"@cloudflare/workers-types": "^4.20250129.0",
@@ -165,14 +166,15 @@ const PLATFORMS = {
 					enabled: true,
 				},
 			});
-//			files["src/index.ts"] =
-//				`import { createHandler } from "@actor-core/cloudflare-workers";
-//${files["src/index.ts"]}
-//
-//const { handler, ActorHandler } = createHandler(app);
-//
-//export { handler as default, ActorHandler };
-//`;
+			files["src/index.ts"] = `import { createHandler } from "@actor-core/cloudflare-workers";
+import { app } from "./app";
+
+// Create handlers for Cloudflare Workers
+const { handler, ActorHandler } = createHandler(app);
+
+// Export the handlers for Cloudflare
+export { handler as default, ActorHandler };
+`;
 
 			return {
 				files,
@@ -209,6 +211,7 @@ const PLATFORMS = {
 			files["package.json"] = stringifyJson({
 				...pkgJson,
 				devDependencies: {
+					"@actor-core/cli": version,
 					"@actor-core/bun": version,
 					"@types/bun": "^1.2.4",
 					...pkgJson.devDependencies,
@@ -220,10 +223,12 @@ const PLATFORMS = {
 				},
 			});
 
-//			files["src/index.ts"] = `import { createHandler } from "@actor-core/bun"
-//${files["src/index.ts"]}
-//export default createHandler(app);
-//`;
+			files["src/index.ts"] = `import { serve } from "@actor-core/bun";
+import { app } from "./app";
+
+// Start the server
+serve(app);
+`;
 
 			return { files };
 		},
@@ -233,6 +238,7 @@ const PLATFORMS = {
 			files["package.json"] = stringifyJson({
 				...pkgJson,
 				devDependencies: {
+					"@actor-core/cli": version,
 					"@actor-core/nodejs": version,
 					"@types/node": "^22.13.9",
 					...pkgJson.devDependencies,
@@ -244,10 +250,12 @@ const PLATFORMS = {
 				},
 			});
 
-//			files["src/index.ts"] = `import { serve } from "@actor-core/nodejs"
-//${files["src/index.ts"]}
-//serve(app);
-//`;
+			files["src/index.ts"] = `import { serve } from "@actor-core/nodejs";
+import { app } from "./app";
+
+// Start the server
+serve(app);
+`;
 			return { files };
 		},
 	},

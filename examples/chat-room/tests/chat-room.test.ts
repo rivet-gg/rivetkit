@@ -1,6 +1,6 @@
 import { test, expect } from "vitest";
 import { setupTest } from "actor-core/test";
-import { app } from "../src/index";
+import { app } from "../src/app";
 
 test("chat room should handle messages", async () => {
 	const { client } = await setupTest(app);

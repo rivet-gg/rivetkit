@@ -1,5 +1,5 @@
 import { createClient, type Encoding } from "actor-core/client";
-import type { App } from "../src/index";
+import type { App } from "../src/app";
 import prompts from "prompts";
 
 async function main() {

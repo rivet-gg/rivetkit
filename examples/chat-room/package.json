@@ -9,17 +9,19 @@
     "test": "vitest run"
   },
   "devDependencies": {
+    "@actor-core/cli": "workspace:*",
     "@types/node": "^22.13.9",
     "@types/prompts": "^2",
     "actor-core": "workspace:*",
-    "@actor-core/cli": "workspace:*",
     "prompts": "^2.4.2",
     "tsx": "^3.12.7",
     "typescript": "^5.5.2",
     "vitest": "^3.0.9"
   },
   "example": {
-    "platforms": ["*"],
+    "platforms": [
+      "*"
+    ],
     "actors": {
       "chat-room": "src/chat-room.ts"
     }
