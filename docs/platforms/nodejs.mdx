@@ -4,215 +4,68 @@ title: Node.js
 
 import SetupNextSteps from "/snippets/setup-next-steps.mdx";
 import MvpWarning from "/snippets/mvp-warning.mdx";
-import RunStudio from "/snippets/run-studio.mdx";
+import ExtraNotes from "/snippets/platform-extra-notes.mdx";
+import StepStartFramework from "/snippets/step-start-framework.mdx";
+import StepUpdateClient from "/snippets/step-update-client.mdx";
 
 Node.js provides a robust environment for running ActorCore, ideal for development and production deployments.
 
 <MvpWarning />
 
-## Getting Started
-
-### Option 1: Start with Template
-
-Get started with a pre-configured project template:
-
-<CodeGroup>
-  ```sh npm
-  npx create-actor@latest -p nodejs
-  ```
-  
-  ```sh pnpm
-  pnpm dlx create-actor@latest -p nodejs
-  ```
-  
-  ```sh yarn
-  yarn dlx create-actor@latest -p nodejs
-  ```
-  
-  ```sh bun
-  bunx create-actor@latest -p nodejs
-  ```
-</CodeGroup>
-
-This command will walk you through the rest of the steps.
-
-### Option 2: Start from Scratch
+## Deploy
 
 <Steps>
-  <Step title="Create a new Node.js project">
-    Create a new Node.js project:
+  <StepStartFramework />
+
+  <Step title="Install dependencies">
+    Install the Node.js platform package:
     
     <CodeGroup>
       ```sh npm
-      mkdir my-actor-app
-      cd my-actor-app
-      npm init -y
-      npm pkg set type=module
+      npm install @actor-core/nodejs
       ```
       
       ```sh pnpm
-      mkdir my-actor-app
-      cd my-actor-app
-      pnpm init
-      pnpm pkg set type=module
+      pnpm add @actor-core/nodejs
       ```
       
       ```sh yarn
-      mkdir my-actor-app
-      cd my-actor-app
-      yarn init -y
-      yarn pkg set type=module
+      yarn add @actor-core/nodejs
       ```
       
       ```sh bun
-      mkdir my-actor-app
-      cd my-actor-app
-      bun init -y
+      bun add @actor-core/nodejs
       ```
     </CodeGroup>
   </Step>
 
-  <Step title="Install ActorCore">
-    Install ActorCore and the Node.js platform package:
-    
-    <CodeGroup>
-      ```sh npm
-      npm install actor-core @actor-core/nodejs
-      ```
-      
-      ```sh pnpm
-      pnpm add actor-core @actor-core/nodejs
-      ```
-      
-      ```sh yarn
-      yarn add actor-core @actor-core/nodejs
-      ```
-      
-      ```sh bun
-      bun add actor-core @actor-core/nodejs
-      ```
-    </CodeGroup>
-  </Step>
-
-  <Step title="Define your actor">
-    Create a new `src` directory and a file `src/app.ts` with your actor definition:
-
-    ```typescript src/app.ts
-    import { actor, setup } from "actor-core";
-
-    // Create actor
-    const counter = actor({
-      state: { count: 0 },
-      actions: {
-        increment: (c, x: number) => {
-          c.state.count += x;
-          c.broadcast("newCount", c.state.count);
-          return c.state.count;
-        }
-      }
-    });
-
-    // Create the application
-    export const app = setup({
-      actors: { counter },
-      cors: { origin: "*" } // Configure CORS for your production domains in production
-    });
-
-    // Export app type for client usage
-    export type App = typeof app;
-    ```
-  </Step>
-
-  <Step title="Create your server">
-    Next, create a file `src/index.ts` to start your ActorCore server:
+  <Step title="Define your server">
+    Create a file `src/index.ts` to start your ActorCore server:
 
     ```typescript src/index.ts
     import { serve } from "@actor-core/nodejs";
     import { app } from "./app";
 
-    // Start the server with memory driver (default)
+    // Start the server with file-system driver (default)
     serve(app);
     ```
-  </Step>
-
-  <Step title="Start your development server">
-	<RunStudio />
-
-	<Info>
-		**Need to run the server directly?**
-
-		Start your development server:
-
-		```sh
-		npx tsx src/index.ts
-		```
-
-		Your server will be running at http://localhost:6420
-	</Info>
-  </Step>
-
-  <Step title="Connect to your actor">
-    Create a file named `src/client.ts` in your project to connect to your actor:
-
-    ```typescript src/client.ts
-    import { createClient } from "actor-core/client";
-    import type { App } from "./app";
-
-    async function main() {
-      const client = createClient<App>("http://localhost:6420");
-
-      const counter = await client.counter.get();
-
-      // Subscribe to events
-      counter.on("newCount", (count: number) => console.log("Event:", count));
-
-      // Call an action
-      const out = await counter.increment(5);
-      console.log("Action:", out);
-
-      // Clean up
-      await counter.dispose();
-    }
-
-    main().catch(console.error);
-    ```
-
-    Run the client to test your actor:
-
-    ```sh
-    npx tsx src/client.ts
-    ```
-
-    You should see output like:
-    ```
-    Event: 5
-    Action: 5
-    ```
-
-    Run it again to see the state update.
   </Step>
 
   <Step title="Deploy to production">
     Compile your TypeScript code and run the server:
 
     ```sh
-    npx tsc
-	node dist/index.js
+    npx -p typescript tsc
+    node dist/index.js
     ```
 
-    Deploy to any cloud provider.
+    Deploy to any cloud provider of your choice.
   </Step>
+
+  <StepUpdateClient />
 </Steps>
 
-### Option 3: Integration with Existing Projects
-
-If you already have an existing application and want to mount ActorCore on a subpath, see our [Hono integration guide](/integrations/hono). Remember to specify the same path in `config.basePath` as where you mount the router.
-
-## CORS Configuration
-
-For security reasons, you should configure proper CORS settings in production. In the example above, we used `cors: { origin: "*" }` which allows requests from any domain.
-
-For production deployments, specify the exact domains that should be allowed to connect to your actors. Learn more in the [CORS documentation](/concepts/cors).
+<ExtraNotes />
 
 
 ## Using Different Drivers
@@ -235,7 +88,5 @@ Node.js typically runs in a single region at a time. For multi-region deployment
 
 - [Rivet](/platforms/rivet) - Managed cloud service with global deployment
 - [Cloudflare Workers](/platforms/cloudflare-workers) - Edge computing with global distribution
-
-## Next Steps
 
 <SetupNextSteps />

@@ -50,18 +50,18 @@
           {
             "group": "Get Started",
             "pages": [
+              "frameworks/react",
+              "clients/javascript",
+              "clients/rust"
+            ]
+          },
+          {
+            "group": "Deploy",
+            "pages": [
               "platforms/rivet",
               "platforms/cloudflare-workers",
               "platforms/bun",
               "platforms/nodejs"
-            ]
-          },
-          {
-            "group": "Frameworks",
-            "pages": [
-              "frameworks/react",
-              "clients/javascript",
-              "clients/rust"
             ]
           },
           {

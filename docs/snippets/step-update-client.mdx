@@ -1,0 +1,15 @@
+<Step title="Update your client's endpoint">
+  Update your client to connect to your deployed app:
+
+  <CodeGroup>
+
+  ```typescript TypeScript
+  const client = createClient<App>(/* FILL ME IN */);
+  ```
+
+  ```rust Rust
+  let client = Client::new(/* FILL ME IN */, TransportKind::WebSocket, EncodingKind::Cbor);
+  ```
+
+  </CodeGroup>
+</Step>

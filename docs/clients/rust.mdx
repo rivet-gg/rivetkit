@@ -3,65 +3,99 @@ title: Rust
 icon: rust
 ---
 
+import MvpWarning from "/snippets/mvp-warning.mdx";
+import StepDefineActor from "/snippets/step-define-actor.mdx";
+import StepRunStudio from "/snippets/step-run-studio.mdx";
+import StepDeploy from "/snippets/step-deploy.mdx";
+import SetupNextSteps from "/snippets/setup-next-steps.mdx";
+
 The ActorCore Rust client provides a way to connect to and interact with actors from Rust applications.
 
-## Installation
+<MvpWarning />
 
-Install the `actor-core-client` package with:
+## Quickstart
 
-```sh
-cargo add actor-core-client serde-json
-```
-
-Make sure you have [Tokio](https://tokio.rs/) set up as your async runtime.
-
-## Connecting to an Actor
-
-```rust
-use actor_core_client::{Client, GetOptions, TransportKind, EncodingKind};
-use serde_json::json;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create a client with connection address and configuration
-    let client = Client::new(
-        "http://localhost:6420".to_string(),  // Connection address
-        TransportKind::WebSocket,             // Transport type
-        EncodingKind::Cbor,                   // Encoding format
-    );
+<Steps>
+  <Step title="Create a new Rust project">
+    Create a new Rust project:
     
-    // Connect to an actor
-    let tags = vec![
-        ("id".to_string(), "counter-1".to_string()),
-    ];
-    
-    let options = GetOptions {
-        tags: Some(tags),
-        params: None,
-        no_create: None,
-        create: None,
-    };
-    
-    let counter = client.get("counter", options)
-        .await?;
-    
-    // Call an action on the actor
-    let result = counter.action("increment", vec![json!(5)])
-        .await?;
-    let new_count = result.as_i64().unwrap();
-    println!("New count: {}", new_count);
-    
-    // Listen for events
-    counter.on_event("newCount", move |args| {
-        let count = args[0].as_i64().unwrap();
-        println!("Count updated: {}", count);
-    }).await;
-    
-    Ok(())
-}
-```
+    ```sh
+    cargo new my-app
+    cd my-app
+    ```
+  </Step>
 
-## Next Steps
+  <Step title="Add dependencies">
+    Add ActorCore client & related dependencies to your project:
+    
+    ```sh
+    cargo add actor-core-client
+    cargo add serde_json
+    cargo add tokio --features full
+    ```
+  </Step>
 
-See the [Interacting with Actors](/concepts/interacting-with-actors) documentation for information on how to use the client.
+  <StepDefineActor />
+
+  <Step title="Create your client">
+    Modify `src/main.rs` to connect to your actor:
+
+    ```rust src/main.rs
+    use actor_core_client::{Client, GetOptions, TransportKind, EncodingKind};
+    use serde_json::json;
+    use std::time::Duration;
+
+    #[tokio::main]
+    async fn main() -> Result<(), Box<dyn std::error::Error>> {
+        // Replace with your endpoint URL after deployment
+        let client = Client::new(
+            "http://localhost:6420".to_string(),
+            TransportKind::WebSocket,
+            EncodingKind::Cbor,
+        );
+        
+        // Get or create an actor instance
+        let options = GetOptions::default();
+        let counter = client.get("counter", options).await?;
+        
+        // Subscribe to events
+        counter.on_event("newCount", |args| {
+            let count = args[0].as_i64().unwrap();
+            println!("Event: {}", count);
+        }).await;
+        
+        // Call an action
+        let result = counter.action("increment", vec![json!(5)]).await?;
+        println!("Action: {}", result);
+        
+        // Wait to receive events
+        tokio::time::sleep(Duration::from_secs(1)).await;
+        
+        Ok(())
+    }
+    ```
+  </Step>
+
+  <StepRunStudio />
+
+  <Step title="Run your client">
+    In a separate terminal, run your client code:
+    
+    ```sh
+    cargo run
+    ```
+    
+    You should see output like:
+    ```
+    Event: 5
+    Action: 5
+    ```
+
+    Run it again to see the state update.
+  </Step>
+
+  <StepDeploy />
+</Steps>
+
+<SetupNextSteps />
 

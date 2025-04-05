@@ -2,189 +2,63 @@
 title: Rivet
 ---
 
-import SetupNextSteps from "/snippets/setup-next-steps.mdx";
 import MvpWarning from "/snippets/mvp-warning.mdx";
-import RunStudio from "/snippets/run-studio.mdx";
+import StepStartFramework from "/snippets/step-start-framework.mdx";
+import StepUpdateClient from "/snippets/step-update-client.mdx";
+import ExtraNotes from "/snippets/platform-extra-notes.mdx";
+import SetupNextSteps from "/snippets/setup-next-steps.mdx";
 
 Rivet provides a fully managed cloud service for running ActorCore, with automatic scaling, global deployment, and built-in monitoring.
 
 <MvpWarning />
 
-## Getting Started
-
-### Option 1: Start with Template
-
-Get started with a pre-configured project template:
-
-<CodeGroup>
-  ```sh npm
-  npx create-actor@latest -p rivet
-  ```
-  
-  ```sh pnpm
-  pnpm dlx create-actor@latest -p rivet
-  ```
-  
-  ```sh yarn
-  yarn dlx create-actor@latest -p rivet
-  ```
-  
-  ```sh bun
-  bunx create-actor@latest -p rivet
-  ```
-</CodeGroup>
-
-This command will walk you through the rest of the steps.
-
-### Option 2: Start from Scratch
+## Deploy
 
 <Steps>
-  <Step title="Create a new Node.js project">
-    Create a new Node.js project:
+  <StepStartFramework />
+
+  <Step title="Install dependencies">
+    Install the Rivet platform package:
     
     <CodeGroup>
       ```sh npm
-      mkdir my-actor-app
-      cd my-actor-app
-      npm init -y
-      npm pkg set type=module
+      npm install @actor-core/rivet
       ```
       
       ```sh pnpm
-      mkdir my-actor-app
-      cd my-actor-app
-      pnpm init
-      pnpm pkg set type=module
+      pnpm add @actor-core/rivet
       ```
       
       ```sh yarn
-      mkdir my-actor-app
-      cd my-actor-app
-      yarn init -y
-      yarn pkg set type=module
+      yarn add @actor-core/rivet
       ```
       
       ```sh bun
-      mkdir my-actor-app
-      cd my-actor-app
-      bun init -y
+      bun add @actor-core/rivet
       ```
     </CodeGroup>
-  </Step>
-
-  <Step title="Install ActorCore">
-    Install ActorCore and the Rivet platform package:
-    
-    <CodeGroup>
-      ```sh npm
-      npm install actor-core @actor-core/rivet
-      ```
-      
-      ```sh pnpm
-      pnpm add actor-core @actor-core/rivet
-      ```
-      
-      ```sh yarn
-      yarn add actor-core @actor-core/rivet
-      ```
-      
-      ```sh bun
-      bun add actor-core @actor-core/rivet
-      ```
-    </CodeGroup>
-  </Step>
-
-  <Step title="Define your actor">
-    Create a new `src` directory and a file `src/app.ts` with your actor definition:
-
-    ```typescript src/app.ts
-    import { actor, setup } from "actor-core";
-
-    // Create actor
-    const counter = actor({
-      state: { count: 0 },
-      actions: {
-        increment: (c, x: number) => {
-          c.state.count += x;
-          c.broadcast("newCount", c.state.count);
-          return c.state.count;
-        }
-      }
-    });
-
-    // Create the application
-    export const app = setup({
-      actors: { counter },
-      cors: { origin: "*" } // Configure CORS for your production domains in production
-    });
-
-    // Export app type for client usage
-    export type App = typeof app;
-    ```
-  </Step>
-
-  <Step title="Start your development server">
-    <RunStudio />
-  </Step>
-
-  <Step title="Connect to your actor">
-    Create a file named `src/client.ts` to connect to your actor:
-
-    ```typescript src/client.ts
-    import { createClient } from "actor-core/client";
-    import type { App } from "./app";
-
-    async function main() {
-      // Replace with your endpoint URL after deployment
-      const client = createClient<App>("http://localhost:6420");
-
-      const counter = await client.counter.get();
-
-      // Subscribe to events
-      counter.on("newCount", (count: number) => console.log("Event:", count));
-
-      // Call an action
-      const out = await counter.increment(5);
-      console.log("Action:", out);
-
-      // Clean up
-      await counter.dispose();
-    }
-
-    main().catch(console.error);
-    ```
-
-    Run the client to test your actor:
-
-    ```sh
-    npx tsx src/client.ts
-    ```
-
-    You should see output like:
-    ```
-    Event: 5
-    Action: 5
-    ```
-
-    Run it again to see the state update.
   </Step>
 
   <Step title="Deploy to production">
-    Add deploy scripts to your `package.json`:
-
-    ```json
-    {
-      "scripts": {
-        "deploy": "actor-core deploy"
-      }
-    }
-    ```
-
     Deploy your ActorCore application to Rivet:
 
-    ```sh
-    npm run deploy
-    ```
+	<CodeGroup>
+	```sh npm
+	npx @actor-core/cli@latest deploy rivet actors/app.ts
+	```
+
+	```sh pnpm
+	pnpm exec @actor-core/cli@latest deploy rivet actors/app.ts
+	```
+
+	```sh yarn
+	yarn @actor-core/cli@latest deploy rivet actors/app.ts
+	```
+
+	```sh bun
+	bunx @actor-core/cli@latest deploy rivet actors/app.ts
+	```
+	</CodeGroup>
 
     This will:
     1. Prompt you to log in to Rivet if needed
@@ -194,17 +68,11 @@ This command will walk you through the rest of the steps.
 
        Update your client code with the new endpoint URL and test your deployed application.
   </Step>
+
+  <StepUpdateClient />
 </Steps>
 
-### Option 3: Integration with Existing Projects
-
-If you already have an existing application and want to mount ActorCore on a subpath, see our [Hono integration guide](/integrations/hono). Remember to specify the same path in `config.basePath` as where you mount the router.
-
-## CORS Configuration
-
-For security reasons, you should configure proper CORS settings in production. In the example above, we used `cors: { origin: "*" }` which allows requests from any domain.
-
-For production deployments, specify the exact domains that should be allowed to connect to your actors. Learn more in the [CORS documentation](/concepts/cors).
+<ExtraNotes />
 
 ## Accessing Rivet Context
 
@@ -233,7 +101,5 @@ const myActor = actor({
 Rivet supports deploying your actors to multiple regions automatically. You can specify region preferences in your Rivet project settings in the Rivet Hub.
 
 See available regions [here](https://rivet.gg/docs/regions).
-
-## Next Steps
 
 <SetupNextSteps />

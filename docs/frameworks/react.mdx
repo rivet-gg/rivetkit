@@ -3,83 +3,143 @@ title: React
 icon: react
 ---
 
-The ActorCore React framework provides a convenient way to use ActorCore in React applications with standard React patterns.
+import MvpWarning from "/snippets/mvp-warning.mdx";
+import StepDefineActor from "/snippets/step-define-actor.mdx";
+import StepRunStudio from "/snippets/step-run-studio.mdx";
+import StepDeploy from "/snippets/step-deploy.mdx";
+import SetupNextSteps from "/snippets/setup-next-steps.mdx";
 
-## Installation
+Learn how to create realtime, stateful React applications with ActorCore's actor model.
 
-Install the package:
+<MvpWarning />
 
-<CodeGroup>
-```sh npm
-npm add @actor-core/react
-```
+## Quickstart
 
-```sh pnpm
-pnpm add @actor-core/react
-```
+<Steps>
+  <Step title="Create a new React project">
+    Create a new React project with TypeScript support:
+    
+    <CodeGroup>
+      ```sh npm
+      npm create vite@latest my-app -- --template react-ts
+      ```
+      
+      ```sh pnpm
+      pnpm create vite@latest my-app --template react-ts
+      ```
+      
+      ```sh yarn
+      yarn create vite my-app --template react-ts
+      ```
+      
+      ```sh bun
+      bunx create-vite@latest my-app --template react-ts
+      ```
+    </CodeGroup>
+  </Step>
 
-```sh yarn
-yarn add @actor-core/react
-```
+  <Step title="Install ActorCore packages">
+    Navigate to your React project and install the ActorCore client and React packages:
+    
+    <CodeGroup>
+      ```sh npm
+      cd my-app
+      npm install actor-core @actor-core/react
+      ```
+      
+      ```sh pnpm
+      cd my-app
+      pnpm add actor-core @actor-core/react
+      ```
+      
+      ```sh yarn
+      cd my-app
+      yarn add actor-core @actor-core/react
+      ```
+      
+      ```sh bun
+      cd my-app
+      bun add actor-core @actor-core/react
+      ```
+    </CodeGroup>
+  </Step>
 
-```sh bun
-bun add @actor-core/react
-```
-</CodeGroup>
+  <StepDefineActor />
 
-## Quick Start
+  <Step title="Build your React frontend">
+    Now modify your `src/App.tsx` file to connect to your ActorCore backend:
+      
+    ```tsx src/App.tsx
+    import { createClient } from "actor-core/client";
+    import { createReactActorCore } from "@actor-core/react";
+    import type { App } from "../actors/app";
+    import React, { useState } from "react";
 
-```tsx
-import { createClient } from "actor-core/client";
-import { createReactActorCore } from "@actor-core/react";
-import type { App } from "../counter/src/index";
-import React, { useState } from "react";
+    // Replace with your endpoint URL after deployment
+    const client = createClient<App>("http://localhost:6420");
+    const { useActor, useActorEvent } = createReactActorCore(client);
 
-// Create a client
-const client = createClient<App>("http://your-actor-core-server.com");
+    function App() {
+      // Connect to counter actor
+      const [{ actor }] = useActor("counter");
+      const [count, setCount] = useState(0);
+      
+      // Listen to count updates
+      useActorEvent({ actor, event: "newCount" }, (newCount) => {
+        setCount(newCount);
+      });
 
-// Create React hooks for your actors
-const { useActor, useActorEvent } = createReactActorCore(client);
+      return (
+        <div>
+          <p>Count: {count}</p>
+          <button 
+            onClick={() => actor?.increment(1)}
+            disabled={!actor}
+          >
+            Increment
+          </button>
+        </div>
+      );
+    }
 
-function ReactApp() {
-  return (
-    <>
-      <Counter />
-    </>
-  );
-}
+    // For Vite + React 18
+    import { createRoot } from 'react-dom/client';
+    const root = createRoot(document.getElementById('root')!);
+    root.render(<App />);
+    ```
+  </Step>
 
-function Counter() {
-  // Get or create an actor
-  const [{ actor }] = useActor("counter");
+  <StepRunStudio />
 
-  return (
-    <div>
-      <CounterValue actor={actor} />
-      <button
-        type="button"
-        onClick={() => actor?.increment(1)}
-        disabled={!actor}
-      >
-        Increment
-      </button>
-    </div>
-  );
-}
-
-function CounterValue({ actor }) {
-  const [count, setCount] = useState(0);
-
-  // Listen to events
-  useActorEvent({ actor, event: "newCount" }, (newCount) => {
-    setCount(newCount);
-  });
-
-  return count;
-}
-
-render(<ReactApp />, document.getElementById("root"));
-```
+  <Step title="Start your React app">
+    In a separate terminal, start your React app:
+    
+    <CodeGroup>
+      ```sh npm
+      cd my-app
+      npm run dev
+      ```
+      
+      ```sh pnpm
+      cd my-app
+      pnpm run dev
+      ```
+      
+      ```sh yarn
+      cd my-app
+      yarn dev
+      ```
+      
+      ```sh bun
+      cd my-app
+      bun run dev
+      ```
+    </CodeGroup>
+    
+    Your React app should now be running and connected to your ActorCore backend. Open your browser to the URL shown in the terminal (typically http://localhost:5173) to see your application.
+  </Step>
+  <StepDeploy />
+</Steps>
 
 ## API Reference
 
@@ -149,97 +209,35 @@ This hook doesn't return a value. The subscription is automatically managed by t
 
 ## Example Usage
 
-### Basic Counter Example
+### Simple Counter
 
 ```tsx
 import { createClient } from "actor-core/client";
 import { createReactActorCore } from "@actor-core/react";
-import type { App } from "./app";
+import type { App } from "../actors/app";
 import { useState } from "react";
 
+// Connect to ActorCore
 const client = createClient<App>("http://localhost:6420");
 const { useActor, useActorEvent } = createReactActorCore(client);
 
 function Counter() {
-  // Connect to a counter actor with ID "main-counter"
-  const [{ actor, isLoading }] = useActor("counter", { id: "main-counter" });
+  // Get actor and track count
+  const [{ actor }] = useActor("counter");
   const [count, setCount] = useState(0);
   
-  // Subscribe to counter updates
-  useActorEvent({ actor, event: "newCount" }, (newCount) => {
-    setCount(newCount);
-  });
-  
-  // Handle increment
-  const handleIncrement = async () => {
-    if (actor) {
-      await actor.increment(1);
-    }
-  };
-  
-  if (isLoading) return <div>Loading...</div>;
+  // Listen for count updates
+  useActorEvent({ actor, event: "newCount" }, setCount);
   
   return (
     <div>
-      <p>Current count: {count}</p>
-      <button onClick={handleIncrement}>Increment</button>
+      <p>Count: {count}</p>
+      <button onClick={() => actor?.increment(1)} disabled={!actor}>
+        Increment
+      </button>
     </div>
   );
 }
 ```
 
-### Error Handling
-
-```tsx
-function Counter() {
-  const [{ actor, error, isLoading }] = useActor("counter", { id: "main-counter" });
-  
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error.message}</div>;
-  if (!actor) return <div>Actor not available</div>;
-  
-  return (
-    <div>
-      <button onClick={() => actor.increment(1)}>Increment</button>
-    </div>
-  );
-}
-```
-
-### Dynamic Actor Selection
-
-```tsx
-function CounterSelector() {
-  const [counterId, setCounterId] = useState("counter-1");
-  const [{ actor }] = useActor("counter", { id: counterId });
-  
-  return (
-    <div>
-      <select 
-        value={counterId} 
-        onChange={(e) => setCounterId(e.target.value)}
-      >
-        <option value="counter-1">Counter 1</option>
-        <option value="counter-2">Counter 2</option>
-        <option value="counter-3">Counter 3</option>
-      </select>
-      
-      {actor && <CounterDisplay actor={actor} />}
-    </div>
-  );
-}
-
-function CounterDisplay({ actor }) {
-  const [count, setCount] = useState(0);
-  
-  useActorEvent({ actor, event: "newCount" }, (newCount) => {
-    setCount(newCount);
-  });
-  
-  return <div>Count: {count}</div>;
-}
-```
-
-## Next Steps
-
-See the [Interacting with Actors](/concepts/interacting-with-actors) documentation for more information about the client API.
+<SetupNextSteps />

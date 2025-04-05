@@ -1,10 +1,13 @@
 ---
-title: Cloudflare Workers
+title: Cloudflare Workers (Durable Objects)
+sidebarTitle: Durable Objects
 ---
 
 import SetupNextSteps from '/snippets/setup-next-steps.mdx';
 import MvpWarning from '/snippets/mvp-warning.mdx';
-import RunStudio from '/snippets/run-studio.mdx';
+import ExtraNotes from "/snippets/platform-extra-notes.mdx";
+import StepStartFramework from "/snippets/step-start-framework.mdx";
+import StepUpdateClient from "/snippets/step-update-client.mdx";
 
 The Cloudflare Workers platform with Durable Objects provides a robust environment for running ActorCore at the edge.
 
@@ -16,102 +19,35 @@ The Cloudflare Workers platform with Durable Objects provides a robust environme
 
 <MvpWarning />
 
-## Getting Started
-
-### Option 1: Start with Template
-
-Get started with a pre-configured project template:
-
-```sh
-npx create-actor@latest -p cloudflare-workers
-```
-
-This command will walk you through the rest of the steps.
-
-### Option 2: Start from Scratch
+## Deploy
 
 <Steps>
-  <Step title="Create a new Cloudflare Workers project">
-    Create a new Cloudflare Workers project with Wrangler:
+  <StepStartFramework />
+
+  <Step title="Install dependencies">
+    Install the Cloudflare Workers platform package:
     
     <CodeGroup>
       ```sh npm
-      npm create cloudflare@latest -- my-actor-app --type=hello-world --lang=ts --no-deploy
-      cd my-actor-app
+      npm install @actor-core/cloudflare-workers
       ```
       
       ```sh pnpm
-      pnpm create cloudflare@latest -- my-actor-app --type=hello-world --lang=ts --no-deploy
-      cd my-actor-app
+      pnpm add @actor-core/cloudflare-workers
       ```
       
       ```sh yarn
-      yarn create cloudflare@latest -- my-actor-app --type=hello-world --lang=ts --no-deploy
-      cd my-actor-app
+      yarn add @actor-core/cloudflare-workers
       ```
       
       ```sh bun
-      bun create cloudflare@latest -- my-actor-app --type=hello-world --lang=ts --no-deploy
-      cd my-actor-app
+      bun add @actor-core/cloudflare-workers
       ```
     </CodeGroup>
-
-    Follow the prompts to set up a basic Worker project.
-  </Step>
-
-  <Step title="Install ActorCore">
-    Install ActorCore and the Cloudflare Workers platform package:
-    
-    <CodeGroup>
-      ```sh npm
-      npm install actor-core @actor-core/cloudflare-workers
-      ```
-      
-      ```sh pnpm
-      pnpm add actor-core @actor-core/cloudflare-workers
-      ```
-      
-      ```sh yarn
-      yarn add actor-core @actor-core/cloudflare-workers
-      ```
-      
-      ```sh bun
-      bun add actor-core @actor-core/cloudflare-workers
-      ```
-    </CodeGroup>
-  </Step>
-
-  <Step title="Define your actor">
-    Create a new file `src/app.ts` with your actor definition:
-
-    ```typescript src/app.ts
-    import { actor, setup } from "actor-core";
-
-    // Create actor
-    const counter = actor({
-      state: { count: 0 },
-      actions: {
-        increment: (c, x: number) => {
-          c.state.count += x;
-          c.broadcast("newCount", c.state.count);
-          return c.state.count;
-        }
-      }
-    });
-
-    // Create the application
-    export const app = setup({
-      actors: { counter },
-      cors: { origin: "*" } // Configure CORS for your production domains in production
-    });
-
-    // Export app type for client usage
-    export type App = typeof app;
-    ```
   </Step>
 
   <Step title="Create your server">
-    Update your `src/index.ts` file to use ActorCore with Cloudflare Workers:
+    Create a file `src/index.ts` to handle Cloudflare Workers integration:
 
     ```typescript src/index.ts
     import { createHandler } from "@actor-core/cloudflare-workers";
@@ -123,13 +59,25 @@ This command will walk you through the rest of the steps.
     // Export the handlers for Cloudflare
     export { handler as default, ActorHandler };
     ```
+  </Step>
 
-    Then update your `wrangler.jsonc` configuration:
+  <Step title="Create KV namespace">
+    Create a KV namespace for your actors:
+
+    ```sh
+    npx wrangler kv:namespace create ACTOR_KV
+    ```
+
+    Take note of the KV namespace ID from the output, as you'll need it in the next step.
+  </Step>
+
+  <Step title="Configure Wrangler">
+    Create a `wrangler.jsonc` configuration and add your KV namespace ID from the previous step:
 
     ```json wrangler.jsonc
     {
       "$schema": "node_modules/wrangler/config-schema.json",
-      "name": "my-actor-app",
+      "name": "my-app",
       "main": "src/index.ts",
       "compatibility_date": "2025-04-04",
       "observability": {
@@ -152,111 +100,27 @@ This command will walk you through the rest of the steps.
       "kv_namespaces": [
         {
           "binding": "ACTOR_KV",
-          "id": "FILL_ME_IN_WHEN_YOU_DEPLOY"
+          "id": "your-namespace-id-here"  // Replace with your actual ID
         }
       ]
     }
     ```
   </Step>
 
-  <Step title="Start your development server">
-	<RunStudio />
-
-	<Info>
-		**Need to run the server directly?**
-
-		Start the Wrangler development server:
-
-		```sh
-		npx wrangler dev
-		```
-
-		Your server will be running at http://localhost:8787
-	</Info>
-  </Step>
-
-  <Step title="Connect to your actor">
-    Create a file named `client.ts` in your project root to connect to your actor:
-
-    ```typescript client.ts
-    import { createClient } from "actor-core/client";
-    import type { App } from "./src/app";
-
-    async function main() {
-      const client = createClient<App>("http://localhost:8787");
-
-      const counter = await client.counter.get();
-
-      // Subscribe to events
-      counter.on("newCount", (count: number) => console.log("Event:", count));
-
-      // Call an action
-      const out = await counter.increment(5);
-      console.log("Action:", out);
-
-      // Clean up
-      await counter.dispose();
-    }
-
-    main().catch(console.error);
-    ```
-
-    Run the client to test your actor:
-
-    ```sh
-    npx tsx client.ts
-    ```
-
-    You should see output like:
-    ```
-    Event: 5
-    Action: 5
-    ```
-
-    Run it again to see the state update.
-  </Step>
-
   <Step title="Deploy to production">
-    1. Create a KV namespace for your actors:
-
-    ```sh
-    npx wrangler kv:namespace create ACTOR_KV
-    ```
-
-    2. Update your `wrangler.jsonc` with the KV namespace ID from the output:
-
-    ```jsonc
-    "kv_namespaces": [
-      {
-        "binding": "ACTOR_KV",
-        "id": "your-namespace-id-here"  // Replace with your actual ID
-      }
-    ]
-    ```
-
-    3. Deploy your project:
+    Deploy your project to Cloudflare Workers:
 
     ```sh
     npx wrangler deploy
     ```
 
-    4. Update your client to connect to your deployed Workers endpoint:
-
-    ```typescript
-    const client = createClient<App>("https://my-actor-app.your-subdomain.workers.dev");
-    ```
+    Your ActorCore application will be available at your Cloudflare Workers URL.
   </Step>
+
+  <StepUpdateClient />
 </Steps>
 
-### Option 3: Integration with Existing Projects
-
-If you already have an existing application and want to mount ActorCore on a subpath, see our [Hono integration guide](/integrations/hono). Remember to specify the same path in `config.basePath` as where you mount the router.
-
-## CORS Configuration
-
-For security reasons, you should configure proper CORS settings in production. In the example above, we used `cors: { origin: "*" }` which allows requests from any domain.
-
-For production deployments, specify the exact domains that should be allowed to connect to your actors. Learn more in the [CORS documentation](/concepts/cors).
+<ExtraNotes />
 
 ## Accessing Cloudflare Context And Bindings
 
@@ -288,7 +152,5 @@ const myActor = actor({
 See available regions [here](https://developers.cloudflare.com/durable-objects/reference/data-location/#supported-locations-1).
 
 Cloudflare does not guarantee your code will run in the requested region.
-
-## Next Steps
 
 <SetupNextSteps />

@@ -1,0 +1,28 @@
+<Step title="Define your actor">
+  Create a file `actors/app.ts` in your project with your actor definition:
+
+  ```typescript actors/app.ts
+  import { actor, setup } from "actor-core";
+
+  // Create actor
+  const counter = actor({
+	state: { count: 0 },
+	actions: {
+	  increment: (c, x: number) => {
+		c.state.count += x;
+		c.broadcast("newCount", c.state.count);
+		return c.state.count;
+	  }
+	}
+  });
+
+  // Create the application
+  export const app = setup({
+	actors: { counter },
+	cors: { origin: "*" } // Configure CORS for your production domains in production
+  });
+
+  // Export app type for client usage
+  export type App = typeof app;
+  ```
+</Step>
