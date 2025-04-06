@@ -101,7 +101,7 @@ const PLATFORMS = {
 				...pkgJson,
 				scripts: {
 					...pkgJson.scripts,
-					deploy: "actor-core deploy rivet actors/app.ts",
+					deploy: "npx @actor-core/cli deploy rivet actors/app.ts",
 				},
 				devDependencies: {
 					"@actor-core/cli": version,
@@ -256,9 +256,12 @@ serve(app);
 		},
 	},
 	noop: {
-		modify: ({ files }) => {
-			// Do nothing
-			return { files };
+		modify: ({ files, pkgJson }) => {
+			files["package.json"] = stringifyJson(pkgJson);
+
+			return {
+				files,
+			};
 		},
 	},
 } satisfies Record<string, PlatformConfig>;

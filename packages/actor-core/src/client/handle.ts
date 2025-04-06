@@ -3,7 +3,7 @@ import type { Encoding } from "@/actor/protocol/serde";
 import type * as wsToClient from "@/actor/protocol/message/to-client";
 import type * as wsToServer from "@/actor/protocol/message/to-server";
 import { MAX_CONN_PARAMS_SIZE } from "@/common/network";
-import { assertUnreachable } from "@/common/utils";
+import { assertUnreachable, stringifyError } from "@/common/utils";
 import * as cbor from "cbor-x";
 import * as errors from "./errors";
 import { logger } from "./log";
@@ -186,7 +186,7 @@ enc
 			onFailedAttempt: (error) => {
 				logger().warn("failed to reconnect", {
 					attempt: error.attemptNumber,
-					error: `${error}`,
+					error: stringifyError(error),
 				});
 			},
 

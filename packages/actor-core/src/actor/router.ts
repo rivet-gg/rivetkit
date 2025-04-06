@@ -11,7 +11,7 @@ import { type SSEStreamingApi, streamSSE } from "hono/streaming";
 import { cors } from "hono/cors";
 import { assertUnreachable } from "./utils";
 import { handleRouteError, handleRouteNotFound } from "@/common/router";
-import { deconstructError } from "@/common/utils";
+import { deconstructError, stringifyError } from "@/common/utils";
 import type { DriverConfig } from "@/driver-helpers/config";
 import type { AppConfig } from "@/app/config";
 import {
@@ -186,7 +186,9 @@ export function createActorRouter(
 
 								// Actors don't need to know about this, since it's abstracted
 								// away
-								logger().warn("websocket error", { error: `${error}` });
+								logger().warn("websocket error", {
+									error: stringifyError(error),
+								});
 							} catch (error) {
 								deconstructError(error, logger(), { wsEvent: "error" });
 							}
@@ -238,7 +240,7 @@ export function createActorRouter(
 			async (error) => {
 				// Actors don't need to know about this, since it's abstracted
 				// away
-				logger().warn("sse error", { error: `${error}` });
+				logger().warn("sse error", { error: stringifyError(error) });
 			},
 		);
 	});
@@ -407,7 +409,7 @@ function getRequestConnParams(
 		return typeof paramsStr === "string" ? JSON.parse(paramsStr) : undefined;
 	} catch (error) {
 		logger().warn("malformed connection parameters", {
-			error: `${error}`,
+			error: stringifyError(error),
 		});
 		throw new errors.MalformedConnParams(error);
 	}

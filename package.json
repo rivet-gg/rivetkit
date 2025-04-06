@@ -9,7 +9,8 @@
     "packages/components/*",
     "packages/misc/*",
     "packages/frameworks/*",
-    "examples/*"
+    "examples/*",
+    "templates/*"
   ],
   "scripts": {
     "start": "npx turbo watch build",

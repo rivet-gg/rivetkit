@@ -158,3 +158,23 @@ export function deconstructError(
 
 	return { statusCode, code, message, metadata };
 }
+
+export function stringifyError(error: unknown): string {
+	if (error instanceof Error) {
+		if (process.env._ACTOR_CORE_ERROR_STACK === "1") {
+			return `${error.name}: ${error.message}${error.stack ? `\n${error.stack}` : ""}`;
+		} else {
+			return `${error.name}: ${error.message}`;
+		}
+	} else if (typeof error === "string") {
+		return error;
+	} else if (typeof error === "object" && error !== null) {
+		try {
+			return `${JSON.stringify(error)}`;
+		} catch {
+			return "[cannot stringify error]";
+		}
+	} else {
+		return `Unknown error: ${String(error)}`;
+	}
+}

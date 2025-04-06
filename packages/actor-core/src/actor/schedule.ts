@@ -2,6 +2,7 @@ import type { AnyActorInstance } from "./instance";
 import type { ActorDriver } from "./driver";
 import { KEYS } from "./keys";
 import { logger } from "./log";
+import { stringifyError } from "@/common/utils";
 
 interface ScheduleState {
 	// Sorted by timestamp asc
@@ -151,7 +152,7 @@ export class Schedule {
 			} catch (err) {
 				logger().error("failed to run scheduled event", {
 					fn: event.fn,
-					error: `${err}`,
+					error: stringifyError(err),
 				});
 
 				// Write internal error
@@ -159,7 +160,7 @@ export class Schedule {
 					this.#actor.id,
 					KEYS.SCHEDULE.alarmError(event.fn),
 					{
-						error: `${err}`,
+						error: stringifyError(err),
 						timestamp: now,
 					},
 				);

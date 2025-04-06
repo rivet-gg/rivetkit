@@ -1,6 +1,6 @@
 import type { PersistedConn } from "./connection";
 import type { Logger } from "@/common//log";
-import { type ActorTags, isJsonSerializable } from "@/common//utils";
+import { type ActorTags, isJsonSerializable, stringifyError } from "@/common//utils";
 import onChange from "on-change";
 import type { ActorConfig } from "./config";
 import { Conn, type ConnId } from "./connection";
@@ -346,7 +346,7 @@ export class ActorInstance<S, CP, CS, V> {
 						this.#config.onStateChange(this.actorContext, this.#persistRaw.s);
 					} catch (error) {
 						logger().error("error in `_onStateChange`", {
-							error: `${error}`,
+							error: stringifyError(error),
 						});
 					}
 				}
@@ -473,13 +473,13 @@ export class ActorInstance<S, CP, CS, V> {
 					// Handle promise but don't await it to prevent blocking
 					result.catch((error) => {
 						logger().error("error in `onDisconnect`", {
-							error: `${error}`,
+							error: stringifyError(error),
 						});
 					});
 				}
 			} catch (error) {
 				logger().error("error in `onDisconnect`", {
-					error: `${error}`,
+					error: stringifyError(error),
 				});
 			}
 		}
@@ -591,7 +591,7 @@ export class ActorInstance<S, CP, CS, V> {
 				}
 			} catch (error) {
 				logger().error("error in `onConnect`", {
-					error: `${error}`,
+					error: stringifyError(error),
 				});
 				conn?.disconnect("`onConnect` failed");
 			}
@@ -768,7 +768,7 @@ export class ActorInstance<S, CP, CS, V> {
 					}
 				} catch (error) {
 					logger().error("error in `onBeforeRpcResponse`", {
-						error: `${error}`,
+						error: stringifyError(error),
 					});
 				}
 			}
@@ -908,7 +908,7 @@ export class ActorInstance<S, CP, CS, V> {
 			})
 			.catch((error) => {
 				logger().error("background promise failed", {
-					error: `${error}`,
+					error: stringifyError(error),
 				});
 			});
 		this.#backgroundPromises.push(nonfailablePromise);
