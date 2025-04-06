@@ -1,0 +1,121 @@
+---
+title: File System
+---
+
+import DriverNote from '/snippets/driver-note.mdx';
+
+The File System Driver is a simple file-based implementation designed for development and testing environments. It stores all actor state in local files, providing persistence between application restarts.
+
+<DriverNote />
+
+<Warning>
+  The File System Driver is primarily intended for development and testing. For production environments, consider more robust options like Rivet or Cloudflare Workers.
+</Warning>
+
+## Compatibility
+
+| Platforms | Topologies |
+| --------- | ---------- |
+| <Icon icon="check" iconType="solid" /> Node.js | <Icon icon="check" iconType="solid" /> Standalone |
+| <Icon icon="check" iconType="solid" /> Bun     | <Icon icon="xmark" iconType="solid" color="gray" /> Partition  |
+| <Icon icon="xmark" iconType="solid" color="gray" /> Cloudflare Workers | <Icon icon="xmark" iconType="solid" color="gray" /> Coordinate |
+| <Icon icon="xmark" iconType="solid" color="gray" /> Rivet   |            |
+
+## Installation
+
+<Steps>
+  <Step>
+    Install the required packages:
+
+    <Tabs>
+      <Tab title="npm">
+        ```bash
+        npm install @actor-core/file-system @actor-core/nodejs
+        ```
+      </Tab>
+      <Tab title="yarn">
+        ```bash
+        yarn add @actor-core/file-system @actor-core/nodejs
+        ```
+      </Tab>
+      <Tab title="pnpm">
+        ```bash
+        pnpm add @actor-core/file-system @actor-core/nodejs
+        ```
+      </Tab>
+      <Tab title="bun">
+        ```bash
+        bun add @actor-core/file-system @actor-core/nodejs
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step>
+    Create a simple server using the File System driver:
+
+    ```typescript src/index.ts
+    import { serve } from "@actor-core/nodejs"
+    import { FileSystemManagerDriver, FileSystemActorDriver, FileSystemGlobalState } from "@actor-core/file-system";
+
+    const fsState = new FileSystemGlobalState();
+    serve(app, {
+      topology: "standalone",
+      drivers: {
+        manager: new FileSystemManagerDriver(app, fsState),
+        actor: new FileSystemActorDriver(fsState),
+      },
+    });
+    ```
+  </Step>
+
+  <Step>
+    Start your server:
+
+    <Tabs>
+      <Tab title="npm">
+        ```bash
+        npm run dev
+        ```
+      </Tab>
+      <Tab title="yarn">
+        ```bash
+        yarn dev
+        ```
+      </Tab>
+      <Tab title="pnpm">
+        ```bash
+        pnpm dev
+        ```
+      </Tab>
+      <Tab title="bun">
+        ```bash
+        bun dev
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+</Steps>
+
+## Features
+
+The File System driver provides several benefits for development:
+
+- **Persistence**: Actor state is stored in files and persists between application restarts
+- **Durability**: Data is written to disk, providing protection against process crashes
+- **Visibility**: State files can be inspected for debugging purposes
+- **No External Dependencies**: Doesn't require additional services like Redis
+
+## Limitations
+
+The File System driver has several limitations to be aware of:
+
+- **Single Machine**: Only works within a single machine - not suitable for distributed environments 
+- **Scalability**: Limited scalability beyond a single instance
+- **Coordination**: Limited support for coordinated topology
+- **Performance**: File I/O operations may be slower than in-memory alternatives
+
+<Tip>
+  For production environments or applications requiring distributed capabilities, consider using the [Rivet](/platforms/rivet) or [Cloudflare Workers](/platforms/cloudflare-workers) instead.
+</Tip>
+

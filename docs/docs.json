@@ -127,6 +127,7 @@
             "group": "Drivers",
             "pages": [
               "drivers/overview",
+              "drivers/file-system",
               "drivers/memory",
               "drivers/redis",
               "drivers/rivet",
