@@ -65,7 +65,6 @@ const PLATFORMS = {
 	// 		...pkgJson,
 	// 		scripts: {
 	// 			...pkgJson.scripts,
-	// 			dev: "next dev",
 	// 			build: "next build",
 	// 			start: "next start",
 	// 		},
@@ -131,7 +130,6 @@ const PLATFORMS = {
 				},
 				scripts: {
 					deploy: "wrangler deploy",
-					dev: "wrangler dev --port 6420",
 					start: "wrangler dev --port 6420",
 					"cf-typegen": "wrangler types",
 					...pkgJson.scripts,
@@ -191,7 +189,6 @@ export { handler as default, ActorHandler };
 	// 		},
 	// 		scripts: {
 	// 			start: "deno run --allow-net src/index.ts",
-	// 			dev: "deno run --allow-net --watch src/index.ts",
 	// 			...pkgJson.scripts,
 	// 		},
 	// 	});
@@ -218,7 +215,6 @@ export { handler as default, ActorHandler };
 					...pkgJson.devDependencies,
 				},
 				scripts: {
-					dev: "bun run --hot src/index.ts",
 					start: "bun run src/index.ts",
 					...pkgJson.scripts,
 				},
@@ -246,7 +242,6 @@ serve(app);
 				},
 				scripts: {
 					start: "npx tsx src/index.ts",
-					dev: "npx tsx watch src/index.ts",
 					...pkgJson.scripts,
 				},
 			});
