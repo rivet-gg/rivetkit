@@ -167,11 +167,16 @@ export const deploy = new Command()
 						});
 
 						const entrypoint = path.join(cwd, ".actorcore", "manager.js");
+						// Calculate relative path from entrypoint to appPath
+						const relativePath = path.relative(
+							path.dirname(entrypoint),
+							path.join(cwd, appPath)
+						);
 						yield fs.writeFile(
 							entrypoint,
 							dedent`
 									import { createManagerHandler } from "@actor-core/rivet";
-									import { app } from "../src/index.ts";
+									import { app } from "${relativePath}";
 									export default createManagerHandler({ app });
 								`,
 						);
@@ -294,11 +299,16 @@ export const deploy = new Command()
 								".actorcore",
 								`entrypoint-${actorName}.js`,
 							);
+							// Calculate relative path from entrypoint to appPath
+							const relativePath = path.relative(
+								path.dirname(entrypoint),
+								path.join(cwd, appPath)
+							);
 							yield fs.writeFile(
 								entrypoint,
 								dedent`
 									import { createActorHandler } from "@actor-core/rivet";
-									import { app } from "../src/index.ts";
+									import { app } from "${relativePath}";
 									export default createActorHandler({ app });
 								`,
 							);
@@ -391,7 +401,7 @@ export const deploy = new Command()
 								<Box marginX={2} gap={4}>
 									<Box flexDirection="column">
 										{!opts.skipManager && managerEndpoint ? (
-											<Text bold>ActorCore</Text>
+											<Text bold>Endpoint</Text>
 										) : null}
 										<Text bold>Builds</Text>
 										<Text bold>Actors</Text>
