@@ -166,7 +166,8 @@ const PLATFORMS = {
 					enabled: true,
 				},
 			});
-			files["src/index.ts"] = `import { createHandler } from "@actor-core/cloudflare-workers";
+			files["src/index.ts"] =
+				`import { createHandler } from "@actor-core/cloudflare-workers";
 import { app } from "../actors/app";
 
 // Create handlers for Cloudflare Workers
@@ -259,6 +260,12 @@ serve(app);
 			return { files };
 		},
 	},
+	noop: {
+		modify: ({ files }) => {
+			// Do nothing
+			return { files };
+		},
+	},
 } satisfies Record<string, PlatformConfig>;
 
 const PACKAGE_MANAGERS = {
@@ -304,6 +311,7 @@ export const PLATFORM_NAMES = {
 	"cloudflare-workers": "Cloudflare Workers",
 	bun: "Bun",
 	nodejs: "Node.js",
+	noop: "None (Decide Later)",
 	// supabase: "Supabase",
 	// vercel: "Vercel",
 	// deno: "Deno",
