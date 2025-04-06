@@ -167,7 +167,7 @@ const PLATFORMS = {
 				},
 			});
 			files["src/index.ts"] = `import { createHandler } from "@actor-core/cloudflare-workers";
-import { app } from "./app";
+import { app } from "../actors/app";
 
 // Create handlers for Cloudflare Workers
 const { handler, ActorHandler } = createHandler(app);
@@ -224,7 +224,7 @@ export { handler as default, ActorHandler };
 			});
 
 			files["src/index.ts"] = `import { serve } from "@actor-core/bun";
-import { app } from "./app";
+import { app } from "../actors/app";
 
 // Start the server
 serve(app);
@@ -251,7 +251,7 @@ serve(app);
 			});
 
 			files["src/index.ts"] = `import { serve } from "@actor-core/nodejs";
-import { app } from "./app";
+import { app } from "../actors/app";
 
 // Start the server
 serve(app);
