@@ -24,6 +24,7 @@ export const deploy = new Command()
 	.addArgument(
 		new Argument("<platform>", "The platform to deploy to").choices(["rivet"]),
 	)
+	.addArgument(new Argument("<path>", "Location of the app.ts file"))
 	.addOption(new Option("-r, --root [path]", "Location of the project").default("./"))
 	.addOption(new Option("-p, --path [path]", "Location of the app.ts file"))
 	.addOption(new Option("--skip-manager", "Skip deploying ActorCore manager"))
@@ -33,9 +34,8 @@ export const deploy = new Command()
 		"afterAll",
 		"\nMissing your favorite platform?\nLet us know! https://github.com/rivet-gg/actor-core/issues/new",
 	)
-	.action(async (platform, opts: {
+	.action(async (platform, appPath: string, opts: {
 		root: string;
-		path?: string;
 		port?: string;
 		skipManager: boolean,
 		env?: string,
@@ -54,7 +54,7 @@ export const deploy = new Command()
 				const { config, cli } = yield* ctx.task(
 					"Prepare",
 					async function* (ctx) {
-						const config = yield* validateConfigTask(ctx, cwd, opts.path);
+						const config = yield* validateConfigTask(ctx, cwd, appPath);
 
 						const cli = yield* ctx.task(
 							"Locale rivet-cli",

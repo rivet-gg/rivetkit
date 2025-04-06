@@ -2,7 +2,7 @@ import { validateConfig } from "./utils/config";
 import { serve } from "@actor-core/nodejs";
 
 async function run() {
-	const config = await validateConfig(process.cwd(), process.env.PATH);
+	const config = await validateConfig(process.cwd(), process.env.APP_PATH!);
 	config.app.config.inspector = {
 		enabled: true,
 	};

@@ -9,7 +9,7 @@ import type { Context } from "../workflow";
 export function validateConfigTask(
 	ctx: Context,
 	cwd: string,
-	appPath?: string,
+	appPath: string,
 ) {
 	return ctx.task("Build project", async () => {
 		try {

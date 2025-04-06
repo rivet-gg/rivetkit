@@ -1,7 +1,5 @@
-import fs from "node:fs";
 import path from "node:path";
 import { bundleRequire } from "bundle-require";
-import JoyCon from "joycon";
 import z from "zod";
 import type { ActorCoreApp } from "actor-core";
 
@@ -12,47 +10,23 @@ const ActorCoreConfig = z.object({
 });
 
 export async function loadConfig(
-	cwd: string,
-	appPath?: string,
+	_cwd: string,
+	appPath: string,
 ): Promise<{ path: string; data: z.infer<typeof ActorCoreConfig> } | null> {
-	const configJoycon = new JoyCon();
-
-	// Attempt to auto-resolve app path
-	let resolvedAppPath: string;
-	if (appPath) {
-		resolvedAppPath = appPath;
-	} else {
-		// Auto-resolve app path
-		const resolved = await configJoycon.resolve({
-			files: [
-				"src/app.ts",
-				"src/app.tsx",
-				"src/app.mts",
-				"src/app.js",
-				"src/app.cjs",
-				"src/app.mjs",
-			],
-			cwd,
-			stopDir: path.parse(cwd).root,
-		});
-		if (!resolved) return null;
-		resolvedAppPath = resolved;
-	}
-
 	try {
 		const config = await bundleRequire({
-			filepath: resolvedAppPath,
+			filepath: appPath,
 		});
 		return {
-			path: resolvedAppPath,
+			path: appPath,
 			data: config.mod.default || config.mod,
 		};
 	} catch (error) {
-		throw { isBundleError: true, path: resolvedAppPath, details: error };
+		throw { isBundleError: true, path: appPath, details: error };
 	}
 }
 
-export async function requireConfig(cwd: string, appPath?: string) {
+export async function requireConfig(cwd: string, appPath: string) {
 	const config = await loadConfig(cwd, appPath);
 	if (!config || !config.data) {
 		throw { isNotFoundError: true, cwd, appPath };
@@ -60,7 +34,7 @@ export async function requireConfig(cwd: string, appPath?: string) {
 	return config;
 }
 
-export async function validateConfig(cwd: string, appPath?: string) {
+export async function validateConfig(cwd: string, appPath: string) {
 	const config = await requireConfig(cwd, appPath);
 	return await ActorCoreConfig.parseAsync({
 		...config.data,

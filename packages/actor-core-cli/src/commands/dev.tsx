@@ -12,10 +12,10 @@ import { spawn } from "node:child_process";
 export const dev = new Command()
 	.name("dev")
 	.description("Run locally your ActorCore project.")
+	.addArgument(new Argument("<path>", "Location of the app.ts file"))
 	.addOption(
 		new Option("-r, --root [path]", "Location of the project").default("./"),
 	)
-	.addOption(new Option("-p, --path [path]", "Location of the app.ts file"))
 	.addOption(
 		new Option("--port [port]", "Specify which platform to use").default(
 			"6420",
@@ -29,9 +29,8 @@ export const dev = new Command()
 	.option("--no-open", "Do not open the browser with ActorCore Studio")
 	.action(action);
 
-export async function action(opts: {
+export async function action(appPath: string, opts: {
 	root: string;
-	path?: string;
 	port?: string;
 	open: boolean;
 }) {
@@ -61,7 +60,7 @@ export async function action(opts: {
 						"server-entry.js",
 					),
 				],
-				{ env: { ...process.env, PORT: opts.port, PATH: opts.path }, cwd },
+				{ env: { ...process.env, PORT: opts.port, APP_PATH: appPath }, cwd },
 			);
 		}
 
@@ -82,7 +81,7 @@ export async function action(opts: {
 		});
 
 		while (true) {
-			yield* validateConfigTask(ctx, cwd, opts.path);
+			yield* validateConfigTask(ctx, cwd, appPath);
 			server = createServer();
 			createLock();
 
