@@ -12,9 +12,12 @@ import { spawn } from "node:child_process";
 export const dev = new Command()
 	.name("dev")
 	.description("Run locally your ActorCore project.")
-	.addArgument(new Argument("[path]", "Location of the project"))
 	.addOption(
-		new Option("-p, --port [port]", "Specify which platform to use").default(
+		new Option("-r, --root [path]", "Location of the project").default("./"),
+	)
+	.addOption(new Option("-p, --path [path]", "Location of the app.ts file"))
+	.addOption(
+		new Option("--port [port]", "Specify which platform to use").default(
 			"6420",
 		),
 	)
@@ -26,15 +29,15 @@ export const dev = new Command()
 	.option("--no-open", "Do not open the browser with ActorCore Studio")
 	.action(action);
 
-export async function action(
-	cmdPath = ".",
-	opts: {
-		port?: string;
-		open?: boolean;
-	} = {},
-) {
-	const cwd = path.join(process.cwd(), cmdPath);
-	await workflow("Run locally your ActorCore project", async function* (ctx) {
+export async function action(opts: {
+	root: string;
+	path?: string;
+	port?: string;
+	open: boolean;
+}) {
+	const cwd = path.join(process.cwd(), opts.root);
+
+	await workflow("Run locally your ActorCore project", async function*(ctx) {
 		if (opts.open) {
 			open(
 				process.env._ACTOR_CORE_CLI_DEV
@@ -58,7 +61,7 @@ export async function action(
 						"server-entry.js",
 					),
 				],
-				{ env: { ...process.env, PORT: opts.port }, cwd },
+				{ env: { ...process.env, PORT: opts.port, PATH: opts.path }, cwd },
 			);
 		}
 
@@ -79,7 +82,7 @@ export async function action(
 		});
 
 		while (true) {
-			yield* validateConfigTask(ctx, cwd);
+			yield* validateConfigTask(ctx, cwd, opts.path);
 			server = createServer();
 			createLock();
 

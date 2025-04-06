@@ -13,49 +13,55 @@ const ActorCoreConfig = z.object({
 
 export async function loadConfig(
 	cwd: string,
+	appPath?: string,
 ): Promise<{ path: string; data: z.infer<typeof ActorCoreConfig> } | null> {
 	const configJoycon = new JoyCon();
 
-	const configPath = await configJoycon.resolve({
-		files: [
-			"src/app.ts",
-			"src/app.tsx",
-			"src/app.mts",
-			"src/app.js",
-			"src/app.cjs",
-			"src/app.mjs",
-		],
-		cwd,
-		stopDir: path.parse(cwd).root,
-	});
-
-	if (configPath) {
-		try {
-			const config = await bundleRequire({
-				filepath: configPath,
-			});
-			return {
-				path: configPath,
-				data: config.mod.default || config.mod,
-			};
-		} catch (error) {
-			throw { isBundleError: true, details: error };
-		}
+	// Attempt to auto-resolve app path
+	let resolvedAppPath: string;
+	if (appPath) {
+		resolvedAppPath = appPath;
+	} else {
+		// Auto-resolve app path
+		const resolved = await configJoycon.resolve({
+			files: [
+				"src/app.ts",
+				"src/app.tsx",
+				"src/app.mts",
+				"src/app.js",
+				"src/app.cjs",
+				"src/app.mjs",
+			],
+			cwd,
+			stopDir: path.parse(cwd).root,
+		});
+		if (!resolved) return null;
+		resolvedAppPath = resolved;
 	}
 
-	return null;
+	try {
+		const config = await bundleRequire({
+			filepath: resolvedAppPath,
+		});
+		return {
+			path: resolvedAppPath,
+			data: config.mod.default || config.mod,
+		};
+	} catch (error) {
+		throw { isBundleError: true, path: resolvedAppPath, details: error };
+	}
 }
 
-export async function requireConfig(cwd: string) {
-	const config = await loadConfig(cwd);
+export async function requireConfig(cwd: string, appPath?: string) {
+	const config = await loadConfig(cwd, appPath);
 	if (!config || !config.data) {
-		throw { isNotFoundError: true };
+		throw { isNotFoundError: true, cwd, appPath };
 	}
 	return config;
 }
 
-export async function validateConfig(cwd: string) {
-	const config = await requireConfig(cwd);
+export async function validateConfig(cwd: string, appPath?: string) {
+	const config = await requireConfig(cwd, appPath);
 	return await ActorCoreConfig.parseAsync({
 		...config.data,
 		cwd: path.dirname(config.path),
@@ -64,15 +70,24 @@ export async function validateConfig(cwd: string) {
 
 export const isNotFoundError = (
 	error: unknown,
-): error is { isNotFoundError: true } => {
-	return z.object({ isNotFoundError: z.literal(true) }).safeParse(error)
-		.success;
+): error is { isNotFoundError: true; cwd: string; path?: string } => {
+	return z
+		.object({
+			isNotFoundError: z.literal(true),
+			cwd: z.string(),
+			appPath: z.string().optional(),
+		})
+		.safeParse(error).success;
 };
 
 export const isBundleError = (
 	error: unknown,
-): error is { isBundleError: true; details: unknown } => {
+): error is { isBundleError: true; path: string; details: unknown } => {
 	return z
-		.object({ isBundleError: z.literal(true), details: z.any() })
+		.object({
+			isBundleError: z.literal(true),
+			path: z.string(),
+			details: z.any(),
+		})
 		.safeParse(error).success;
 };

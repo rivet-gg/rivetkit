@@ -24,7 +24,8 @@ export const deploy = new Command()
 	.addArgument(
 		new Argument("<platform>", "The platform to deploy to").choices(["rivet"]),
 	)
-	.addArgument(new Argument("[path]", "Location of the project").default("./"))
+	.addOption(new Option("-r, --root [path]", "Location of the project").default("./"))
+	.addOption(new Option("-p, --path [path]", "Location of the app.ts file"))
 	.addOption(new Option("--skip-manager", "Skip deploying ActorCore manager"))
 	.addOption(new Option("--env <env>", "Specify environment to deploy to"))
 	.addOption(new Option("-v [version]", "Specify version of actor-core"))
@@ -32,8 +33,15 @@ export const deploy = new Command()
 		"afterAll",
 		"\nMissing your favorite platform?\nLet us know! https://github.com/rivet-gg/actor-core/issues/new",
 	)
-	.action(async (platform, wd, opts) => {
-		const cwd = path.join(process.cwd(), wd);
+	.action(async (platform, opts: {
+		root: string;
+		path?: string;
+		port?: string;
+		skipManager: boolean,
+		env?: string,
+		version?: string,
+	}) => {
+		const cwd = path.join(process.cwd(), opts.root);
 
 		const exec = $({
 			cwd,
@@ -46,7 +54,7 @@ export const deploy = new Command()
 				const { config, cli } = yield* ctx.task(
 					"Prepare",
 					async function* (ctx) {
-						const config = yield* validateConfigTask(ctx, cwd);
+						const config = yield* validateConfigTask(ctx, cwd, opts.path);
 
 						const cli = yield* ctx.task(
 							"Locale rivet-cli",
