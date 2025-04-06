@@ -71,7 +71,7 @@ export const deploy = new Command()
 
 								if (cliLocation) {
 									// check version
-									const { stdout } = yield* exec`${cliLocation} --version`;
+									const { stdout } = await exec`${cliLocation} --version`;
 									const semVersion = semver.coerce(
 										stdout.split("\n")[2].split(" ")[1].trim(),
 									);
