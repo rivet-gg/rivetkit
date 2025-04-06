@@ -204,6 +204,7 @@ export async function action(
 						<Text>cd {wd}</Text>
 						<Text>{cmd(platformOptions.cmds.run)} dev</Text>
 					</Box>
+
 					{platformOptions.deployable ? (
 						<>
 							<Text>▸ To deploy, run</Text>
@@ -212,6 +213,14 @@ export async function action(
 							</Box>
 						</>
 					) : null}
+
+					<Text>▸ Integrate your client of choice</Text>
+					<Box flexDirection="column" marginX={3} marginY={1}>
+						<Text>React: <Text underline>https://actorcore.org/frameworks/react</Text></Text>
+						<Text>Node.js & Bun: <Text underline>https://actorcore.org/clients/javascript</Text></Text>
+						<Text>Rust: <Text underline>https://actorcore.org/clients/rust</Text></Text>
+					</Box>
+
 					<Text>▸ For more information, visit</Text>
 
 					<Box flexDirection="column" marginX={3} marginY={1}>
