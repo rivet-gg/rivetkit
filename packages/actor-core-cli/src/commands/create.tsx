@@ -197,10 +197,10 @@ export async function action(
 						))}
 					</Box>
 				)}
-				<Box flexDirection="column" marginTop={1} marginBottom={1}>
+				<Box flexDirection="column" marginTop={1} marginBottom={0}>
 					<Text>▸ To get started, run</Text>
 
-					<Box flexDirection="column" marginX={3} marginY={1}>
+					<Box flexDirection="column" marginX={2} marginY={1}>
 						<Text>cd {wd}</Text>
 						<Text>{cmd(platformOptions.cmds.run)} dev</Text>
 					</Box>
@@ -208,28 +208,31 @@ export async function action(
 					{platformOptions.deployable ? (
 						<>
 							<Text>▸ To deploy, run</Text>
-							<Box flexDirection="column" marginX={3} marginY={1}>
+							<Box flexDirection="column" marginX={2} marginY={1}>
 								<Text>{cmd(platformOptions.cmds.run)} deploy</Text>
 							</Box>
 						</>
 					) : null}
 
-					<Text>▸ Integrate your client of choice</Text>
-					<Box flexDirection="column" marginX={3} marginY={1}>
-						<Text>React: <Text underline>https://actorcore.org/frameworks/react</Text></Text>
-						<Text>Node.js & Bun: <Text underline>https://actorcore.org/clients/javascript</Text></Text>
-						<Text>Rust: <Text underline>https://actorcore.org/clients/rust</Text></Text>
-					</Box>
-
 					<Text>▸ Documentation</Text>
-
-					<Box flexDirection="column" marginX={3} marginY={1}>
-						<Text underline>https://actorcore.org/</Text>
+					<Box marginX={2} marginY={1} gap={4}>
+						<Box flexDirection="column">
+							<Text bold>Overview</Text>
+							<Text bold>React</Text>
+							<Text bold>Node.js & Bun</Text>
+							<Text bold>Rust</Text>
+						</Box>
+						<Box flexDirection="column">
+							<Text underline>https://actorcore.org/overview</Text>
+							<Text underline>https://actorcore.org/frameworks/react</Text>
+							<Text underline>https://actorcore.org/clients/javascript</Text>
+							<Text underline>https://actorcore.org/clients/rust</Text>
+						</Box>
 					</Box>
 
-					<Text>▸ Support ActorCore, give us a star</Text>
+					<Text>▸ Star ActorCore on GitHub</Text>
 
-					<Box flexDirection="column" marginX={3} marginY={1}>
+					<Box flexDirection="column" marginX={2} marginY={1}>
 						<Text underline>https://github.com/rivet-gg/actor-core</Text>
 					</Box>
 				</Box>
