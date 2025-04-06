@@ -102,7 +102,7 @@ const PLATFORMS = {
 				...pkgJson,
 				scripts: {
 					...pkgJson.scripts,
-					deploy: "actor-core deploy rivet",
+					deploy: "actor-core deploy rivet actors/app.ts",
 				},
 				devDependencies: {
 					"@actor-core/cli": version,

@@ -1,6 +1,6 @@
 /// <reference types="node" />
 import { createClient } from "actor-core/client";
-import type { App } from "../src/app";
+import type { App } from "../actors/app";
 
 async function main() {
 	const client = createClient<App>(process.env.ENDPOINT ?? "http://localhost:6420");

@@ -39,5 +39,5 @@
     /* Skip type checking all .d.ts files. */
     "skipLibCheck": true
   },
-  "include": ["src/**/*.ts", "tests/**/*.ts"]
+  "include": ["src/**/*.ts", "actors/**/*.ts", "tests/**/*.ts"]
 }

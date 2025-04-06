@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "npx @actor-core/cli@latest dev",
+    "dev": "npx @actor-core/cli@latest dev actors/app.ts",
     "check-types": "tsc --noEmit",
     "test": "vitest run"
   },
@@ -21,9 +21,6 @@
   "example": {
     "platforms": [
       "*"
-    ],
-    "actors": {
-      "chat-room": "src/chat-room.ts"
-    }
+    ]
   }
 }
