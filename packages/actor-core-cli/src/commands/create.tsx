@@ -221,10 +221,16 @@ export async function action(
 						<Text>Rust: <Text underline>https://actorcore.org/clients/rust</Text></Text>
 					</Box>
 
-					<Text>▸ For more information, visit</Text>
+					<Text>▸ Documentation</Text>
 
 					<Box flexDirection="column" marginX={3} marginY={1}>
 						<Text underline>https://actorcore.org/</Text>
+					</Box>
+
+					<Text>▸ Support ActorCore, give us a star</Text>
+
+					<Box flexDirection="column" marginX={3} marginY={1}>
+						<Text underline>https://github.com/rivet-gg/actor-core</Text>
 					</Box>
 				</Box>
 			</>,
