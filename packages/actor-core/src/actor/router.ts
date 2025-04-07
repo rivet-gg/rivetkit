@@ -169,11 +169,23 @@ export function createActorRouter(
 								ws.close(1011, code);
 							}
 						},
-						onClose: async (_evt) => {
+						onClose: async (event) => {
 							try {
 								await onOpenPromise;
 
-								logger().debug("websocket closed");
+								if (event.wasClean) {
+									logger().info("websocket closed", {
+										code: event.code,
+										reason: event.reason,
+										wasClean: event.wasClean,
+									});
+								} else {
+									logger().warn("websocket closed", {
+										code: event.code,
+										reason: event.reason,
+										wasClean: event.wasClean,
+									});
+								}
 
 								await wsHandler.onClose();
 							} catch (error) {
@@ -186,9 +198,7 @@ export function createActorRouter(
 
 								// Actors don't need to know about this, since it's abstracted
 								// away
-								logger().warn("websocket error", {
-									error: stringifyError(error),
-								});
+								logger().warn("websocket error");
 							} catch (error) {
 								deconstructError(error, logger(), { wsEvent: "error" });
 							}

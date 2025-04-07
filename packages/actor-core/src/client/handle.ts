@@ -382,11 +382,20 @@ enc
 		//
 		// These properties will be undefined
 		const closeEvent = event as CloseEvent;
-		logger().debug("socket closed", {
-			code: closeEvent.code,
-			reason: closeEvent.reason,
-			wasClean: closeEvent.wasClean,
-		});
+		console.log('close event', JSON.stringify(event));
+		if (closeEvent.wasClean) {
+			logger().info("socket closed", {
+				code: closeEvent.code,
+				reason: closeEvent.reason,
+				wasClean: closeEvent.wasClean,
+			});
+		} else {
+			logger().warn("socket closed", {
+				code: closeEvent.code,
+				reason: closeEvent.reason,
+				wasClean: closeEvent.wasClean,
+			});
+		}
 
 		this.#transport = undefined;
 
@@ -404,6 +413,8 @@ enc
 	/** Called by the onerror event from drivers. */
 	#handleOnError(event: Event) {
 		if (this.#disposed) return;
+
+		// More detailed information will be logged in onclose
 		logger().warn("socket error", { event });
 	}
 
