@@ -10,7 +10,7 @@ import { logger } from "./log";
 import { type WebSocketMessage as ConnMessage, messageLength } from "./utils";
 import { ACTOR_HANDLES_SYMBOL, ClientRaw, DynamicImports } from "./client";
 import { ActorDefinition, AnyActorDefinition } from "@/actor/definition";
-import pRetry from "p-retry";
+import pRetry, { AbortError } from "p-retry";
 
 interface RpcInFlight {
 	name: string;
@@ -178,21 +178,32 @@ enc
 		this.#connecting = true;
 
 		// Attempt to reconnect indefinitely
-		await pRetry(this.#connectAndWait.bind(this), {
-			forever: true,
-			minTimeout: 250,
-			maxTimeout: 30_000,
+		try {
+			await pRetry(this.#connectAndWait.bind(this), {
+				forever: true,
+				minTimeout: 250,
+				maxTimeout: 30_000,
 
-			onFailedAttempt: (error) => {
-				logger().warn("failed to reconnect", {
-					attempt: error.attemptNumber,
-					error: stringifyError(error),
-				});
-			},
+				onFailedAttempt: (error) => {
+					logger().warn("failed to reconnect", {
+						attempt: error.attemptNumber,
+						error: stringifyError(error),
+					});
+				},
 
-			// Cancel retry if aborted
-			signal: this.#abortController.signal,
-		});
+				// Cancel retry if aborted
+				signal: this.#abortController.signal,
+			});
+		} catch (err) {
+			if ((err as Error).name === "AbortError") {
+				// Ignore abortions
+				logger().info("connection retry aborted");
+				return;
+			} else {
+				// Unknown error
+				throw err;
+			}
+		}
 
 		this.#connecting = false;
 	}
@@ -382,7 +393,6 @@ enc
 		//
 		// These properties will be undefined
 		const closeEvent = event as CloseEvent;
-		console.log('close event', JSON.stringify(event));
 		if (closeEvent.wasClean) {
 			logger().info("socket closed", {
 				code: closeEvent.code,

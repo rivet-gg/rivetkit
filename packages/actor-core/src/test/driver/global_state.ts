@@ -10,8 +10,7 @@ export class ActorState {
 	name: string;
 	tags: ActorTags;
 
-	// KV store - maps serialized keys to serialized values
-	kvStore: Map<string, string> = new Map();
+	persistedData: unknown = undefined;
 
 	constructor(id: string, name: string, tags: ActorTags) {
 		this.id = id;
@@ -39,29 +38,12 @@ export class TestGlobalState {
 		return actor;
 	}
 
-	/**
-	 * Get a value from KV store
-	 */
-	getKv(actorId: string, serializedKey: string): string | undefined {
-		return this.#getActor(actorId).kvStore.get(serializedKey);
+	readPersistedData(actorId: string): unknown | undefined {
+		return this.#getActor(actorId).persistedData;
 	}
 
-	/**
-	 * Put a value into KV store
-	 */
-	putKv(actorId: string, serializedKey: string, value: string): void {
-		let actor = this.#actors.get(actorId);
-		if (!actor) {
-			throw new Error(`Actor does not exist for ID: ${actorId}`);
-		}
-		actor.kvStore.set(serializedKey, value);
-	}
-
-	/**
-	 * Delete a value from KV store
-	 */
-	deleteKv(actorId: string, serializedKey: string): void {
-		this.#getActor(actorId).kvStore.delete(serializedKey);
+	writePersistedData(actorId: string, data: unknown) {
+		this.#getActor(actorId).persistedData = data;
 	}
 
 	/**

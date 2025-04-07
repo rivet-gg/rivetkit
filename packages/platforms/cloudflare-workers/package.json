@@ -23,20 +23,26 @@
   "sideEffects": false,
   "scripts": {
     "build": "tsup src/mod.ts",
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "test": "vitest run tests"
   },
   "peerDependencies": {
     "actor-core": "*"
   },
   "devDependencies": {
+    "@actor-core/driver-test-suite": "workspace:*",
     "@cloudflare/workers-types": "^4.20250129.0",
+    "@types/invariant": "^2",
     "actor-core": "workspace:*",
+    "get-port": "^7.0.0",
     "tsup": "^8.4.0",
     "typescript": "^5.5.2",
+    "vitest": "^3.1.1",
     "wrangler": "^3.101.0"
   },
   "dependencies": {
     "hono": "^4.7.2",
+    "invariant": "^2.2.4",
     "zod": "^3.24.2"
   }
 }

@@ -1,6 +1,9 @@
-import type { PersistedConn } from "./connection";
 import type { Logger } from "@/common//log";
-import { type ActorTags, isJsonSerializable, stringifyError } from "@/common//utils";
+import {
+	type ActorTags,
+	isJsonSerializable,
+	stringifyError,
+} from "@/common//utils";
 import onChange from "on-change";
 import type { ActorConfig } from "./config";
 import { Conn, type ConnId } from "./connection";
@@ -9,15 +12,15 @@ import type { ConnDriver } from "./driver";
 import * as errors from "./errors";
 import { processMessage } from "./protocol/message/mod";
 import { instanceLogger, logger } from "./log";
-import { ActionContext } from "./action";
+import type { ActionContext } from "./action";
 import { Lock, deadline } from "./utils";
 import { Schedule } from "./schedule";
-import { KEYS } from "./keys";
 import type * as wsToServer from "@/actor/protocol/message/to-server";
 import { CachedSerializer } from "./protocol/serde";
 import { ActorInspector } from "@/inspector/actor";
 import { ActorContext } from "./context";
 import invariant from "invariant";
+import type { PersistedActor, PersistedConn, PersistedScheduleEvents } from "./persisted";
 
 /**
  * Options for the `_saveState` method.
@@ -71,14 +74,6 @@ export type ExtractActorConnState<A extends AnyActorInstance> =
 	>
 		? ConnState
 		: never;
-
-/** State object that gets automatically persisted to storage. */
-interface PersistedActor<S, CP, CS> {
-	// State
-	s: S;
-	// Connections
-	c: PersistedConn<CP, CS>[];
-}
 
 export class ActorInstance<S, CP, CS, V> {
 	// Shared actor context for this instance
@@ -155,7 +150,7 @@ export class ActorInstance<S, CP, CS, V> {
 		this.#name = name;
 		this.#tags = tags;
 		this.#region = region;
-		this.#schedule = new Schedule(this, actorDriver);
+		this.#schedule = new Schedule(this);
 		this.inspector = new ActorInspector(this);
 
 		// Initialize server
@@ -171,7 +166,12 @@ export class ActorInstance<S, CP, CS, V> {
 			let vars: V | undefined = undefined;
 			if ("createVars" in this.#config) {
 				const dataOrPromise = this.#config.createVars(
-					this.actorContext as unknown as ActorContext<undefined, undefined, undefined, undefined>,
+					this.actorContext as unknown as ActorContext<
+						undefined,
+						undefined,
+						undefined,
+						undefined
+					>,
 					this.#actorDriver.getContext(this.#actorId),
 				);
 				if (dataOrPromise instanceof Promise) {
@@ -200,8 +200,101 @@ export class ActorInstance<S, CP, CS, V> {
 		this.#ready = true;
 	}
 
+	async scheduleEvent(
+		timestamp: number,
+		fn: string,
+		args: unknown[],
+	): Promise<void> {
+		// Build event
+		const eventId = crypto.randomUUID();
+		const newEvent: PersistedScheduleEvents = {
+			e: eventId,
+			t: timestamp,
+			a: fn,
+			ar: args,
+		};
+
+		this.actorContext.log.info("scheduling event", { 
+			event: eventId, 
+			timestamp, 
+			action: fn 
+		});
+
+		// Insert event in to index
+		const insertIndex = this.#persist.e.findIndex((x) => x.t > newEvent.t);
+		if (insertIndex === -1) {
+			this.#persist.e.push(newEvent);
+		} else {
+			this.#persist.e.splice(insertIndex, 0, newEvent);
+		}
+
+		// Update alarm if:
+		// - this is the newest event (i.e. at beginning of array) or
+		// - this is the only event (i.e. the only event in the array)
+		if (insertIndex === 0 || this.#persist.e.length === 1) {
+			this.actorContext.log.info("setting alarm", { timestamp });
+			await this.#actorDriver.setAlarm(this, newEvent.t);
+		}
+	}
+
 	async onAlarm() {
-		await this.#schedule.__onAlarm();
+		const now = Date.now();
+		this.actorContext.log.debug("alarm triggered", { now, events: this.#persist.e.length });
+
+		// Remove events from schedule that we're about to run
+		const runIndex = this.#persist.e.findIndex((x) => x.t <= now);
+		if (runIndex === -1) {
+			this.actorContext.log.debug("no events to run", { now });
+			return;
+		}
+		const scheduleEvents = this.#persist.e.splice(0, runIndex + 1);
+		this.actorContext.log.debug("running events", { count: scheduleEvents.length });
+
+		// Set alarm for next event
+		if (this.#persist.e.length > 0) {
+			await this.#actorDriver.setAlarm(this, this.#persist.e[0].t);
+		}
+
+		// Iterate by event key in order to ensure we call the events in order
+		for (const event of scheduleEvents) {
+			try {
+				this.actorContext.log.info("running action for event", { 
+					event: event.e, 
+					timestamp: event.t, 
+					action: event.a, 
+					args: event.ar 
+				});
+				
+				// Look up function
+				const fn: unknown = this.#config.actions[event.a];
+				if (!fn) throw new Error(`Missing action for alarm ${event.a}`);
+				if (typeof fn !== "function")
+					throw new Error(
+						`Alarm function lookup for ${event.a} returned ${typeof fn}`,
+					);
+
+				// Call function
+				try {
+					await fn.call(undefined, this.actorContext, ...event.ar);
+				} catch (error) {
+					this.actorContext.log.error("error while running event", {
+						error: stringifyError(error),
+						event: event.e,
+						timestamp: event.t,
+						action: event.a,
+						args: event.ar,
+					});
+				}
+			} catch (error) {
+				this.actorContext.log.error("internal error while running event", {
+					error: stringifyError(error),
+					event: event.e,
+					timestamp: event.t,
+					action: event.a,
+					args: event.ar,
+				});
+			}
+		}
 	}
 
 	get stateEnabled() {
@@ -268,9 +361,8 @@ export class ActorInstance<S, CP, CS, V> {
 					this.#persistChanged = false;
 
 					// Write to KV
-					await this.#actorDriver.kvPut(
+					await this.#actorDriver.writePersistedData(
 						this.#actorId,
-						KEYS.STATE.DATA,
 						this.#persistRaw,
 					);
 
@@ -359,12 +451,11 @@ export class ActorInstance<S, CP, CS, V> {
 
 	async #initialize() {
 		// Read initial state
-		const [initialized, persistData] = (await this.#actorDriver.kvGetBatch(
+		const persistData = (await this.#actorDriver.readPersistedData(
 			this.#actorId,
-			[KEYS.STATE.INITIALIZED, KEYS.STATE.DATA],
-		)) as [boolean, PersistedActor<S, CP, CS>];
+		)) as PersistedActor<S, CP, CS>;
 
-		if (initialized) {
+		if (persistData !== undefined) {
 			logger().info("actor restoring", {
 				connections: persistData.c.length,
 			});
@@ -406,7 +497,12 @@ export class ActorInstance<S, CP, CS, V> {
 
 					// Convert state to undefined since state is not defined yet here
 					stateData = await this.#config.createState(
-						this.actorContext as unknown as ActorContext<undefined, undefined, undefined, undefined>,
+						this.actorContext as unknown as ActorContext<
+							undefined,
+							undefined,
+							undefined,
+							undefined
+						>,
 					);
 				} else if ("state" in this.#config) {
 					stateData = structuredClone(this.#config.state);
@@ -420,14 +516,12 @@ export class ActorInstance<S, CP, CS, V> {
 			const persist: PersistedActor<S, CP, CS> = {
 				s: stateData as S,
 				c: [],
+				e: [],
 			};
 
 			// Update state
 			logger().debug("writing state");
-			await this.#actorDriver.kvPutBatch(this.#actorId, [
-				[KEYS.STATE.INITIALIZED, true],
-				[KEYS.STATE.DATA, persist],
-			]);
+			await this.#actorDriver.writePersistedData(this.#actorId, persist);
 
 			this.#setPersist(persist);
 		}
@@ -509,7 +603,12 @@ export class ActorInstance<S, CP, CS, V> {
 		if (this.#connStateEnabled) {
 			if ("createConnState" in this.#config) {
 				const dataOrPromise = this.#config.createConnState(
-					this.actorContext as unknown as ActorContext<undefined, undefined, undefined, undefined>,
+					this.actorContext as unknown as ActorContext<
+						undefined,
+						undefined,
+						undefined,
+						undefined
+					>,
 					onBeforeConnectOpts,
 				);
 				if (dataOrPromise instanceof Promise) {
@@ -723,6 +822,8 @@ export class ActorInstance<S, CP, CS, V> {
 		rpcName: string,
 		args: unknown[],
 	): Promise<unknown> {
+		invariant(this.#ready, "exucuting rpc before ready");
+
 		// Prevent calling private or reserved methods
 		if (!(rpcName in this.#config.actions)) {
 			logger().warn("rpc does not exist", { rpcName });

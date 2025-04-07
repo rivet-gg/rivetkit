@@ -7,11 +7,9 @@ export const KEYS = {
 			node: (actorId: string) => `actor:${actorId}:lease:node`,
 		},
 		// KEY
-		name: (actorId: string) => `actor:${actorId}:name`,
+		metadata: (actorId: string) => `actor:${actorId}:metadata`,
 		// KEY
-		tags: (actorId: string) => `actor:${actorId}:tags`,
-		// KEY
-		kv: (actorId: string, key: string) => `actor:${actorId}:kv:${key}`,
+		persistedData: (actorId: string) => `actor:${actorId}:persisted_data`,
 	},
 };
 

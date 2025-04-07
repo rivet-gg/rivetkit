@@ -1,7 +1,5 @@
 import {
 	ActorDriver,
-	KvKey,
-	KvValue,
 	AnyActorInstance,
 } from "actor-core/driver-helpers";
 import invariant from "invariant";
@@ -52,46 +50,15 @@ export class CloudflareWorkersActorDriver implements ActorDriver {
 		return { ctx: state.ctx, env: state.env };
 	}
 
-	async kvGet(actorId: string, key: KvKey): Promise<KvValue | undefined> {
-		return await this.#getDOCtx(actorId).storage.get(this.#serializeKey(key));
+	async readPersistedData(actorId: string): Promise<unknown | undefined> {
+		return await this.#getDOCtx(actorId).storage.get("persisted_data");
 	}
 
-	async kvGetBatch(
-		actorId: string,
-		keys: KvKey[],
-	): Promise<(KvValue | undefined)[]> {
-		const resultMap = await this.#getDOCtx(actorId).storage.get(
-			keys.map(this.#serializeKey),
-		);
-		return keys.map((key) => resultMap.get(this.#serializeKey(key)));
-	}
-
-	async kvPut(actorId: string, key: KvKey, value: KvValue): Promise<void> {
-		await this.#getDOCtx(actorId).storage.put(this.#serializeKey(key), value);
-	}
-
-	async kvPutBatch(
-		actorId: string,
-		entries: [KvKey, KvValue][],
-	): Promise<void> {
-		await this.#getDOCtx(actorId).storage.put(
-			Object.fromEntries(entries.map(([k, v]) => [this.#serializeKey(k), v])),
-		);
-	}
-
-	async kvDelete(actorId: string, key: KvKey): Promise<void> {
-		await this.#getDOCtx(actorId).storage.delete(this.#serializeKey(key));
-	}
-
-	async kvDeleteBatch(actorId: string, keys: KvKey[]): Promise<void> {
-		await this.#getDOCtx(actorId).storage.delete(keys.map(this.#serializeKey));
+	async writePersistedData(actorId: string, data: unknown): Promise<void> {
+		await this.#getDOCtx(actorId).storage.put("persisted_data", data);
 	}
 
 	async setAlarm(actor: AnyActorInstance, timestamp: number): Promise<void> {
 		await this.#getDOCtx(actor.id).storage.setAlarm(timestamp);
-	}
-
-	#serializeKey(key: KvKey): string {
-		return JSON.stringify(key);
 	}
 }

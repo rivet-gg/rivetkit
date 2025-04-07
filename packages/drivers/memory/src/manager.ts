@@ -50,13 +50,24 @@ export class MemoryManagerDriver implements ManagerDriver {
 		name,
 		tags,
 	}: GetWithTagsInput): Promise<GetActorOutput | undefined> {
-		// TODO: Update tag search to use inverse tree
-		const serializedSearchTags = JSON.stringify(tags);
-		const actor = this.#state.findActor(
-			(actor) =>
-				actor.name === name &&
-				JSON.stringify(actor.tags) === serializedSearchTags,
-		);
+		// NOTE: This is a slow implementation that checks each actor individually.
+		// This can be optimized with an index in the future.
+
+		// Search through all actors to find a match
+		// Find actors with a superset of the queried tags
+		const actor = this.#state.findActor((actor) => {
+			if (actor.name !== name) return false;
+
+			for (const key in tags) {
+				const value = tags[key];
+
+				// If actor doesn't have this tag key, or values don't match, it's not a match
+				if (actor.tags[key] === undefined || actor.tags[key] !== value) {
+					return false;
+				}
+			}
+			return true;
+		});
 
 		if (actor) {
 			return {

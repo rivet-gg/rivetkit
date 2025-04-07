@@ -8,11 +8,7 @@ export {
 	CoordinateDriver,
 	StartActorAndAcquireLeaseOutput,
 } from "@/topologies/coordinate/driver";
-export {
-	ActorDriver,
-	KvKey,
-	KvValue,
-} from "@/actor/driver";
+export { ActorDriver } from "@/actor/driver";
 export {
 	ManagerDriver,
 	CreateActorInput,

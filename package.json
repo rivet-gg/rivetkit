@@ -17,6 +17,7 @@
     "dev": "npx turbo watch dev",
     "build": "npx turbo build",
     "test": "npx turbo test",
+    "test:watch": "npx turbo watch test",
     "check-types": "npx turbo check-types",
     "fmt": "yarn biome check --write .",
     "dev-docs": "cd docs && yarn dlx mintlify@latest dev",

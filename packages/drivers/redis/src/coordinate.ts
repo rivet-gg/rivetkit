@@ -92,7 +92,7 @@ export class RedisCoordinateDriver implements CoordinateDriver {
 		// Execute multi to get actor info and attempt to acquire lease in a single operation
 		const execRes = await this.#redis
 			.multi()
-			.mget([KEYS.ACTOR.initialized(actorId), KEYS.ACTOR.tags(actorId)])
+			.mget([KEYS.ACTOR.initialized(actorId), KEYS.ACTOR.metadata(actorId)])
 			.actorPeerAcquireLease(
 				KEYS.ACTOR.LEASE.node(actorId),
 				selfNodeId,
@@ -109,20 +109,21 @@ export class RedisCoordinateDriver implements CoordinateDriver {
 		if (mgetErr) throw new Error(`Redis MGET error: ${mgetErr}`);
 		if (leaseErr) throw new Error(`Redis acquire lease error: ${leaseErr}`);
 
-		const [initialized, tagsRaw] = mgetRes as [string | null, string | null];
+		const [initialized, metadataRaw] = mgetRes as [string | null, string | null];
 		const leaderNodeId = leaseRes as unknown as string;
 
 		if (!initialized) {
 			return { actor: undefined };
 		}
 
-		// Parse tags if present
-		if (!tagsRaw) throw new Error("Actor should have tags if initialized.");
-		let tags = JSON.parse(tagsRaw);
+		// Parse metadata if present
+		if (!metadataRaw) throw new Error("Actor should have metadata if initialized.");
+		const metadata = JSON.parse(metadataRaw);
 
 		return {
 			actor: {
-				tags,
+				name: metadata.name,
+				tags: metadata.tags,
 				leaderNodeId,
 			},
 		};

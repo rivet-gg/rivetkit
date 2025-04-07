@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import * as errors from "@/actor/errors";
-import { Logger } from "./log";
+import type { Logger } from "./log";
 
 export const ActorTagsSchema = z.record(z.string());
 

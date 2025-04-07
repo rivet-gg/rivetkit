@@ -8,6 +8,16 @@
   ],
   "type": "module",
   "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/mod.d.ts",
+        "default": "./dist/mod.js"
+      },
+      "require": {
+        "types": "./dist/mod.d.cts",
+        "default": "./dist/mod.cjs"
+      }
+    },
     "./actor": {
       "import": {
         "types": "./dist/actor.d.ts",
@@ -41,16 +51,20 @@
   },
   "sideEffects": false,
   "scripts": {
-    "build": "tsup src/actor.ts src/manager.ts src/coordinate.ts",
-    "check-types": "tsc --noEmit"
+    "build": "tsup src/actor.ts src/manager.ts src/coordinate.ts src/mod.ts",
+    "check-types": "tsc --noEmit",
+    "test": "vitest run"
   },
   "peerDependencies": {
     "actor-core": "workspace:*"
   },
   "devDependencies": {
+    "@actor-core/driver-test-suite": "workspace:*",
+    "@types/node": "^22.13.1",
     "actor-core": "workspace:*",
     "tsup": "^8.4.0",
-    "typescript": "^5.5.2"
+    "typescript": "^5.5.2",
+    "vitest": "^1.4.0"
   },
   "dependencies": {
     "@types/node": "^22.13.1",

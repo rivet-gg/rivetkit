@@ -1,7 +1,7 @@
 {
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
-    "types": ["deno"],
+    "types": ["deno", "node"],
     "paths": {
       "@/*": ["./src/*"]
     }

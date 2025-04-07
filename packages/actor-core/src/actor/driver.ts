@@ -5,21 +5,12 @@ import { AnyConn } from "./connection";
 
 export type ConnDrivers = Record<string, ConnDriver>;
 
-export type KvKey = unknown[];
-export type KvValue = unknown;
-
-
 export interface ActorDriver {
 	//load(): Promise<LoadOutput>;
 	getContext(actorId: string): unknown;
 
-	// HACK: Clean these up
-	kvGet(actorId: string, key: KvKey): Promise<KvValue | undefined>;
-	kvGetBatch(actorId: string, key: KvKey[]): Promise<(KvValue | undefined)[]>;
-	kvPut(actorId: string, key: KvKey, value: KvValue): Promise<void>;
-	kvPutBatch(actorId: string, key: [KvKey, KvValue][]): Promise<void>;
-	kvDelete(actorId: string, key: KvKey): Promise<void>;
-	kvDeleteBatch(actorId: string, key: KvKey[]): Promise<void>;
+	readPersistedData(actorId: string): Promise<unknown | undefined>;
+	writePersistedData(actorId: string, unknown: unknown): Promise<void>;
 
 	// Schedule
 	setAlarm(actor: AnyActorInstance, timestamp: number): Promise<void>;

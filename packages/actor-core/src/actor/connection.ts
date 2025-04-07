@@ -1,16 +1,10 @@
-import type {
-    ActorInstance,
-	AnyActorInstance,
-	ExtractActorConnParams,
-	ExtractActorConnState,
-} from "./instance";
+import type { ActorInstance } from "./instance";
 import * as errors from "./errors";
 import { generateSecureToken } from "./utils";
-import { CachedSerializer, Encoding } from "./protocol/serde";
-import { logger } from "./log";
-import { ConnDriver } from "./driver";
+import { CachedSerializer } from "./protocol/serde";
+import type { ConnDriver } from "./driver";
 import * as messageToClient from "@/actor/protocol/message/to-client";
-import { Actions } from "./config";
+import type { PersistedConn } from "./persisted";
 
 export function generateConnId(): string {
 	return crypto.randomUUID();
@@ -21,29 +15,6 @@ export function generateConnToken(): string {
 }
 
 export type ConnId = string;
-
-/** Object representing connection that gets persisted to storage. */
-export interface PersistedConn<CP, CS> {
-	// ID
-	i: string;
-	// Token
-	t: string;
-	// Connection driver
-	d: string;
-	// Connection driver state
-	ds: unknown;
-	// Parameters
-	p: CP;
-	// State
-	s: CS;
-	// Subscriptions
-	su: PersistedSub[];
-}
-
-export interface PersistedSub {
-	// Event name
-	n: string;
-}
 
 export type AnyConn = Conn<any, any, any, any>;
 

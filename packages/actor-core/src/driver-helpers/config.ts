@@ -13,7 +13,6 @@ import type {
 import type { CoordinateDriver } from "@/topologies/coordinate/driver";
 import type { ManagerDriver } from "@/manager/driver";
 import type { ActorDriver } from "@/actor/driver";
-import type { InspectorConnHandler } from "@/inspector/common";
 
 export const TopologySchema = z.enum(["standalone", "partition", "coordinate"]);
 export type Topology = z.infer<typeof TopologySchema>;

@@ -59,19 +59,31 @@ export class FileSystemManagerDriver implements ManagerDriver {
 		name,
 		tags,
 	}: GetWithTagsInput): Promise<GetActorOutput | undefined> {
-		try {
-			// Use the existing findActor method from global state
-			const actorId = this.#state.findActor(name, tags);
+		// NOTE: This is a slow implementation that checks each actor individually.
+		// This can be optimized with an index in the future.
 
-			if (actorId) {
-				return {
-					endpoint: buildActorEndpoint(baseUrl, actorId),
-					name,
-					tags,
-				};
+		// Search through all actors to find a match
+		// Find actors with a superset of the queried tags
+		const actor = this.#state.findActor((actor) => {
+			if (actor.name !== name) return false;
+
+			for (const key in tags) {
+				const value = tags[key];
+
+				// If actor doesn't have this tag key, or values don't match, it's not a match
+				if (actor.tags[key] === undefined || actor.tags[key] !== value) {
+					return false;
+				}
 			}
-		} catch (error) {
-			logger().error("failed to search for actors", { name, tags, error });
+			return true;
+		});
+
+		if (actor) {
+			return {
+				endpoint: buildActorEndpoint(baseUrl, actor.id),
+				name,
+				tags: actor.tags,
+			};
 		}
 
 		return undefined;

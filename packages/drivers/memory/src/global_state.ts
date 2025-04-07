@@ -10,8 +10,8 @@ export class ActorState {
 	name: string;
 	tags: ActorTags;
 
-	// KV store - maps serialized keys to serialized values
-	kvStore: Map<string, string> = new Map();
+	// Persisted data
+	persistedData: unknown = undefined;
 
 	constructor(id: string, name: string, tags: ActorTags) {
 		this.id = id;
@@ -24,13 +24,8 @@ export class ActorState {
  * Global state singleton for the memory driver
  */
 export class MemoryGlobalState {
-	// Single map for all actor state
 	#actors: Map<string, ActorState> = new Map();
 
-	/**
-	 * Get an actor by ID, throwing an error if it doesn't exist
-	 * @private
-	 */
 	#getActor(actorId: string): ActorState {
 		const actor = this.#actors.get(actorId);
 		if (!actor) {
@@ -39,34 +34,14 @@ export class MemoryGlobalState {
 		return actor;
 	}
 
-	/**
-	 * Get a value from KV store
-	 */
-	getKv(actorId: string, serializedKey: string): string | undefined {
-		return this.#getActor(actorId).kvStore.get(serializedKey);
+	readPersistedData(actorId: string): unknown | undefined {
+		return this.#getActor(actorId).persistedData;
 	}
 
-	/**
-	 * Put a value into KV store
-	 */
-	putKv(actorId: string, serializedKey: string, value: string): void {
-		const actor = this.#actors.get(actorId);
-		if (!actor) {
-			throw new Error(`Actor does not exist for ID: ${actorId}`);
-		}
-		actor.kvStore.set(serializedKey, value);
+	writePersistedData(actorId: string, data: unknown) {
+		this.#getActor(actorId).persistedData = data;
 	}
 
-	/**
-	 * Delete a value from KV store
-	 */
-	deleteKv(actorId: string, serializedKey: string): void {
-		this.#getActor(actorId).kvStore.delete(serializedKey);
-	}
-
-	/**
-	 * Create or update an actor
-	 */
 	createActor(actorId: string, name: string, tags: ActorTags): void {
 		// Create actor state if it doesn't exist
 		if (!this.#actors.has(actorId)) {
@@ -76,11 +51,6 @@ export class MemoryGlobalState {
 		}
 	}
 
-	/**
-	 * Find an actor by a filter function
-	 * @param filter A function that takes an ActorState and returns true if it matches the filter criteria
-	 * @returns The matching ActorState or undefined if no match is found
-	 */
 	findActor(filter: (actor: ActorState) => boolean): ActorState | undefined {
 		for (const actor of this.#actors.values()) {
 			if (filter(actor)) {
@@ -90,23 +60,10 @@ export class MemoryGlobalState {
 		return undefined;
 	}
 
-	/**
-	 * Get actor state
-	 */
 	getActor(actorId: string): ActorState | undefined {
 		return this.#actors.get(actorId);
 	}
 
-	/**
-	 * Check if an actor exists
-	 */
-	hasActor(actorId: string): boolean {
-		return this.#actors.has(actorId);
-	}
-
-	/**
-	 * Get all actors
-	 */
 	getAllActors(): ActorState[] {
 		return Array.from(this.#actors.values());
 	}

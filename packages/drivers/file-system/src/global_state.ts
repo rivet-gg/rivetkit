@@ -12,13 +12,23 @@ import {
 import invariant from "invariant";
 
 /**
- * Actor state object for caching
+ * Class representing an actor's state
  */
-export interface ActorState {
+export class ActorState {
+	// Basic actor information
+	initialized = true;
 	id: string;
 	name: string;
-	tags: Record<string, string>;
-	kvStore: Map<string, string>;
+	tags: ActorTags;
+
+	// Persisted data
+	persistedData: unknown = undefined;
+
+	constructor(id: string, name: string, tags: ActorTags) {
+		this.id = id;
+		this.name = name;
+		this.tags = tags;
+	}
 }
 
 /**
@@ -64,21 +74,13 @@ export class FileSystemGlobalState {
 						const stateData = fsSync.readFileSync(stateFilePath, "utf8");
 						const rawState = JSON.parse(stateData);
 						
-						// Convert kvData object to kvStore Map
-						const kvStore = new Map<string, string>();
-						if (rawState.kvData && typeof rawState.kvData === "object") {
-							for (const [key, value] of Object.entries(rawState.kvData)) {
-								kvStore.set(key, value as string);
-							}
-						}
-						
-						// Create actor state with Map-based kvStore
-						const state: ActorState = {
-							id: rawState.id,
-							name: rawState.name,
-							tags: rawState.tags,
-							kvStore,
-						};
+						// Create actor state with persistedData
+						const state = new ActorState(
+							rawState.id,
+							rawState.name,
+							rawState.tags
+						);
+						state.persistedData = rawState.persistedData;
 						
 						this.#stateCache.set(actorId, state);
 					} catch (error) {
@@ -120,27 +122,19 @@ export class FileSystemGlobalState {
 	}
 
 	/**
-	 * Get a value from KV store
+	 * Read persisted data for an actor
 	 */
-	getKv(actorId: string, serializedKey: string): string | undefined {
+	readPersistedData(actorId: string): unknown | undefined {
 		const state = this.loadActorState(actorId);
-		return state.kvStore.get(serializedKey);
+		return state.persistedData;
 	}
 
 	/**
-	 * Put a value into KV store
+	 * Write persisted data for an actor
 	 */
-	putKv(actorId: string, serializedKey: string, value: string): void {
+	writePersistedData(actorId: string, data: unknown): void {
 		const state = this.loadActorState(actorId);
-		state.kvStore.set(serializedKey, value);
-	}
-
-	/**
-	 * Delete a value from KV store
-	 */
-	deleteKv(actorId: string, serializedKey: string): void {
-		const state = this.loadActorState(actorId);
-		state.kvStore.delete(serializedKey);
+		state.persistedData = data;
 	}
 
 	/**
@@ -155,18 +149,12 @@ export class FileSystemGlobalState {
 		const stateFilePath = this.getStateFilePath(actorId);
 
 		try {
-			// Convert Map to plain object for serialization
-			const kvData: Record<string, string> = {};
-			for (const [key, value] of state.kvStore.entries()) {
-				kvData[key] = value;
-			}
-
 			// Create serializable object
 			const serializedState = {
 				id: state.id,
 				name: state.name,
 				tags: state.tags,
-				kvData
+				persistedData: state.persistedData
 			};
 
 			await fs.writeFile(stateFilePath, JSON.stringify(serializedState), "utf8");
@@ -210,12 +198,7 @@ export class FileSystemGlobalState {
 		await ensureDirectoryExists(actorDir);
 
 		// Create initial state
-		const newState: ActorState = {
-			id: actorId,
-			name,
-			tags,
-			kvStore: new Map(),
-		};
+		const newState = new ActorState(actorId, name, tags);
 
 		// Cache the state
 		this.#stateCache.set(actorId, newState);
@@ -225,21 +208,14 @@ export class FileSystemGlobalState {
 	}
 
 	/**
-	 * Find an actor by name and tags from the cache
+	 * Find an actor by filter function
 	 */
-	findActor(name: string, tags: ActorTags): string | undefined {
-		const serializedSearchTags = JSON.stringify(tags);
-
-		// Search through cached actors
-		for (const [actorId, state] of this.#stateCache.entries()) {
-			if (
-				state.name === name &&
-				JSON.stringify(state.tags) === serializedSearchTags
-			) {
-				return actorId;
+	findActor(filter: (actor: ActorState) => boolean): ActorState | undefined {
+		for (const actor of this.#stateCache.values()) {
+			if (filter(actor)) {
+				return actor;
 			}
 		}
-
 		return undefined;
 	}
 

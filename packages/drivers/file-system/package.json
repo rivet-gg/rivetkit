@@ -20,17 +20,20 @@
   "sideEffects": false,
   "scripts": {
     "build": "tsup src/mod.ts",
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "test": "vitest run"
   },
   "peerDependencies": {
     "actor-core": "*"
   },
   "devDependencies": {
+    "@actor-core/driver-test-suite": "workspace:*",
     "@types/invariant": "^2",
     "@types/node": "^22.14.0",
     "actor-core": "workspace:*",
     "tsup": "^8.4.0",
-    "typescript": "^5.5.2"
+    "typescript": "^5.5.2",
+    "vitest": "^3.1.1"
   },
   "dependencies": {
     "env-paths": "^3.0.0",
