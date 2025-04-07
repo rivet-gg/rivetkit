@@ -51,7 +51,7 @@ The Cloudflare Workers platform with Durable Objects provides a robust environme
 
     ```typescript src/index.ts
     import { createHandler } from "@actor-core/cloudflare-workers";
-    import { app } from "./app";
+    import { app } from "../actors/app";
 
     // Create handlers for Cloudflare Workers
     const { handler, ActorHandler } = createHandler(app);
