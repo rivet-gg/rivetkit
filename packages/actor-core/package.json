@@ -2,13 +2,7 @@
   "name": "actor-core",
   "version": "0.7.9",
   "license": "Apache-2.0",
-  "files": [
-    "dist",
-    "src",
-    "deno.json",
-    "bun.json",
-    "package.json"
-  ],
+  "files": ["dist", "src", "deno.json", "bun.json", "package.json"],
   "type": "module",
   "bin": "./dist/cli/mod.cjs",
   "exports": {
@@ -152,6 +146,9 @@
         "default": "./dist/inspector/protocol/manager/mod.cjs"
       }
     }
+  },
+  "engines": {
+    "node": ">=22.0.0"
   },
   "sideEffects": false,
   "scripts": {
