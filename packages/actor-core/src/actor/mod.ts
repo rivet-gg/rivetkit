@@ -1,5 +1,5 @@
 import {
-	ActorConfigInput,
+	type ActorConfigInput,
 	ActorConfigSchema,
 	type Actions,
 	type ActorConfig,

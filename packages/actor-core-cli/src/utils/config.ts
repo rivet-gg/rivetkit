@@ -1,11 +1,12 @@
 import path from "node:path";
 import { bundleRequire } from "bundle-require";
 import z from "zod";
-import type { ActorCoreApp } from "actor-core";
+import { type ActorCoreApp, AppConfigSchema } from "actor-core";
 
 const ActorCoreConfig = z.object({
-	// biome-ignore lint/suspicious/noExplicitAny: we need to use any here because we don't know the type of the app
-	app: z.custom<ActorCoreApp<any>>(),
+	app: z.custom<ActorCoreApp<any>>((val) => {
+		return AppConfigSchema.parse(val.config);
+	}),
 	cwd: z.string(),
 });
 

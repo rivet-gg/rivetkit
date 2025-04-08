@@ -5,6 +5,7 @@ import { Logs, WorkflowDetails } from "./ui/Workflow";
 import { withResolvers } from "./utils/mod";
 import type React from "react";
 import type { ReactNode } from "react";
+import type Stream from "node:stream";
 
 interface WorkflowResult {
 	success: boolean;
@@ -29,13 +30,18 @@ export namespace WorkflowAction {
 		meta: TaskMetadata;
 		result?: unknown;
 		error?: unknown;
+		streams?: Stream.Readable[];
 		__taskProgress: true;
 	}
 
 	export const progress = (
 		meta: TaskMetadata,
 		status: "running" | "done" | "error",
-		res: { error?: unknown; result?: unknown } & TaskOptions = {},
+		res: {
+			error?: unknown;
+			result?: unknown;
+			streams?: Stream.Readable[];
+		} & TaskOptions = {},
 	): Progress => ({
 		status,
 		meta,
@@ -179,6 +185,8 @@ export interface Context {
 			? G
 			: T
 	>;
+	attach: (...streams: (Stream.Readable | null)[]) => WorkflowAction.All;
+	changeLabel: (label: string) => void;
 	render: (children: React.ReactNode) => WorkflowAction.All;
 	error: (error: string, opts?: WorkflowErrorOpts) => WorkflowError;
 	warn: (message: ReactNode) => Generator<WorkflowAction.Log>;
@@ -251,7 +259,9 @@ export function workflow(
 		}
 	}
 
-	function createContext(meta: TaskMetadata): Context {
+	function createContext(
+		meta: TaskMetadata & { processTask: (task: WorkflowAction.All) => void },
+	): Context {
 		return {
 			wait: (ms: number) =>
 				new Promise<undefined>((resolve) => setTimeout(resolve, ms)),
@@ -271,6 +281,16 @@ export function workflow(
 						</Box>,
 					);
 				});
+			},
+			attach(...streams: (Stream.Readable | null)[]) {
+				return WorkflowAction.progress(meta, "running", {
+					streams: streams.filter((s) => s !== null) as Stream.Readable[],
+				});
+			},
+			changeLabel: (label: string) => {
+				meta.processTask(
+					WorkflowAction.progress({ ...meta, name: label }, "running"),
+				);
 			},
 			error(error, opts) {
 				return new WorkflowError(error, opts);
@@ -329,10 +349,9 @@ export function workflow(
 		};
 	}
 
-	async function* workflowRunner(): AsyncGenerator<
-		WorkflowAction.All,
-		WorkflowResult
-	> {
+	async function* workflowRunner(
+		processTask: (task: WorkflowAction.All) => void,
+	): AsyncGenerator<WorkflowAction.All, WorkflowResult> {
 		// task <> parent
 		const parentMap = new Map<string, string>();
 		const id = getTaskId();
@@ -342,7 +361,7 @@ export function workflow(
 				"running",
 			);
 			for await (const task of workflowFn(
-				createContext({ id, name: title, parent: id }),
+				createContext({ id, name: title, parent: id, processTask }),
 			)) {
 				if (!task || typeof task !== "object") {
 					continue;
@@ -412,14 +431,14 @@ export function workflow(
 			const logs: WorkflowAction.Log[] = [];
 			const tasks: WorkflowAction.Interface[] = [];
 
-			for await (const task of workflowRunner()) {
+			function processTask(task: WorkflowAction.All) {
 				if ("__taskLog" in task) {
 					logs.push(task);
-					continue;
+					return;
 				}
 				if ("__taskHook" in task) {
 					hooks[task.hook].push(task.fn);
-					continue;
+					return;
 				}
 
 				const index = tasks.findIndex((t) => t.meta.id === task.meta.id);
@@ -429,13 +448,17 @@ export function workflow(
 					tasks[index] = { ...tasks[index], ...task };
 				}
 
-				renderUtils.rerender(
+				renderUtils?.rerender(
 					<Box flexDirection="column">
 						<Intro />
 						<WorkflowDetails tasks={tasks} interactive={interactive} />
 						<Logs logs={logs} />
 					</Box>,
 				);
+			}
+
+			for await (const task of workflowRunner(processTask)) {
+				processTask(task);
 			}
 
 			for (const hook of hooks.afterAll) {

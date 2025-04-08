@@ -9,9 +9,10 @@ import {
 import { ExecaError } from "execa";
 import { Box, Text, type TextProps } from "ink";
 import Spinner from "ink-spinner";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import stripAnsi from "strip-ansi";
 import { type WorkflowAction, WorkflowError } from "../workflow";
+import type Stream from "node:stream";
 
 const customTheme = extendTheme(defaultTheme, {
 	components: {
@@ -204,9 +205,48 @@ export function Task({
 						)}
 					</Box>
 				) : null}
+				{task.streams ? <StreamBox streams={task.streams} /> : null}
 			</>
 		);
 	}
+}
+
+export function StreamBox({ streams }: { streams: Stream.Readable[] }) {
+	const [chunks, setChunks] = useState<string[]>([]);
+
+	useEffect(() => {
+		const handleChunk = (chunk: Buffer) => {
+			setChunks((old) => {
+				const lines = chunk
+					.toString()
+					.split(/\n/gm)
+					.flatMap((line) => line.split(/\\n/g))
+					.map((line) => stripAnsi(line));
+				return [...old, ...lines];
+			});
+		};
+		for (const stream of streams) {
+			stream.on("data", handleChunk);
+		}
+
+		return () => {
+			for (const stream of streams) {
+				stream.off("data", handleChunk);
+			}
+		};
+	}, [streams]);
+
+	return (
+		<Box flexDirection="column" marginLeft={2} overflow="visible">
+			{chunks.map((chunk, chunkIdx) => {
+				return (
+					<Text dimColor key={`${chunkIdx}`}>
+						{chunk.replaceAll("\n", "")}
+					</Text>
+				);
+			})}
+		</Box>
+	);
 }
 
 export function Status({
