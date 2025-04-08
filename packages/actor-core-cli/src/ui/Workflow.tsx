@@ -170,8 +170,7 @@ export function Task({
 	if ("__taskProgress" in task) {
 		return (
 			<>
-				{task.meta.opts?.showLabel === false &&
-				task.status !== "error" ? null : (
+				{task.meta.opts?.showLabel === false ? null : (
 					<Status
 						value={task.status}
 						interactive={interactive}

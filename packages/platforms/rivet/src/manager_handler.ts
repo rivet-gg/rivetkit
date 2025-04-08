@@ -40,6 +40,29 @@ export function createManagerHandler(inputConfig: InputConfig): RivetHandler {
 				enabled: false,
 			};
 
+			const corsConfig = driverConfig.app.config.cors;
+
+			// Enable CORS for Rivet domains
+			driverConfig.app.config.cors = {
+				...driverConfig.app.config.cors,
+				origin: (origin, c) => {
+					const isRivetOrigin =
+						origin.endsWith(".rivet.gg") || origin.includes("localhost:");
+					const configOrigin = corsConfig?.origin;
+
+					if (isRivetOrigin) {
+						return origin;
+					}
+					if (typeof configOrigin === "function") {
+						return configOrigin(origin, c);
+					}
+					if (typeof configOrigin === "string") {
+						return configOrigin;
+					}
+					return null;
+				},
+			};
+
 			// Setup manager driver
 			if (!driverConfig.drivers) driverConfig.drivers = {};
 			if (!driverConfig.drivers.manager) {

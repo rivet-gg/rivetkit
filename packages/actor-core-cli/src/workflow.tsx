@@ -13,7 +13,7 @@ interface WorkflowResult {
 
 interface TaskMetadata {
 	id: string;
-	name: string;
+	name?: string;
 	parent: string | null;
 	opts?: TaskOptions;
 }
@@ -257,7 +257,7 @@ export function workflow(
 				new Promise<undefined>((resolve) => setTimeout(resolve, ms)),
 			task: runner.bind(null, {
 				...meta,
-				parent: meta.parent,
+				parent: meta.id,
 				name: "",
 			}) as Context["task"],
 			render(children: React.ReactNode) {
@@ -296,7 +296,7 @@ export function workflow(
 					withResolvers<WorkflowAction.Prompt.Answer<T>>();
 
 				yield WorkflowAction.prompt<T>(
-					{ ...meta, id, name: question },
+					{ ...meta, parent: meta.id, id, name: question },
 					question,
 					{
 						answer: null,
@@ -308,7 +308,7 @@ export function workflow(
 				const result = await promise;
 
 				yield WorkflowAction.prompt<T>(
-					{ ...meta, id, name: question },
+					{ ...meta, parent: meta.id, id, name: question },
 					question,
 					{
 						answer: result,
@@ -349,7 +349,7 @@ export function workflow(
 				}
 
 				if ("__taskProgress" in task) {
-					const parent = task.meta?.parent || title;
+					const parent = task.meta?.parent || id;
 					parentMap.set(task.meta.id, parent);
 					// Propagate errors up the tree
 					if (task.status === "error") {
@@ -359,7 +359,6 @@ export function workflow(
 							yield WorkflowAction.progress(
 								{
 									id: parentTask,
-									name: parentTask,
 									parent: grandParent || null,
 								},
 								"error",
@@ -437,16 +436,20 @@ export function workflow(
 						<Logs logs={logs} />
 					</Box>,
 				);
-
-				if ("__taskProgress" in task && task.status === "error") {
-					renderUtils.unmount();
-					process.exit(1);
-					break;
-				}
 			}
 
 			for (const hook of hooks.afterAll) {
 				hook({ tasks, logs });
+			}
+
+			const hadError = tasks.some(
+				(task) => "__taskProgress" in task && task.status === "error",
+			);
+
+			if (hadError) {
+				await renderUtils.waitUntilExit();
+				renderUtils.unmount();
+				process.exit(1);
 			}
 		},
 	};

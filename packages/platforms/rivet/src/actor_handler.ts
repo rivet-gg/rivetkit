@@ -7,6 +7,7 @@ import type { RivetHandler } from "./util";
 import { PartitionTopologyActor } from "actor-core/topologies/partition";
 import { ConfigSchema, type InputConfig } from "./config";
 import { RivetActorDriver } from "./actor_driver";
+import { rivetRequest } from "./rivet_client";
 
 export function createActorHandler(inputConfig: InputConfig): RivetHandler {
 	const driverConfig = ConfigSchema.parse(inputConfig);
@@ -24,6 +25,9 @@ export function createActorHandler(inputConfig: InputConfig): RivetHandler {
 				throw "Invalid port";
 			}
 
+			const endpoint = Deno.env.get("RIVET_API_ENDPOINT");
+			if (!endpoint) throw new Error("missing RIVET_API_ENDPOINT");
+
 			// Setup actor driver
 			if (!driverConfig.drivers) driverConfig.drivers = {};
 			if (!driverConfig.drivers.actor) {
@@ -37,8 +41,48 @@ export function createActorHandler(inputConfig: InputConfig): RivetHandler {
 
 			driverConfig.app.config.inspector = {
 				enabled: true,
-				// TODO: Add permission check
-				onRequest: async () => true,
+				onRequest: async (c) => {
+					const url = new URL(c.req.url);
+					const token = url.searchParams.get("token");
+
+					if (!token) {
+						return false;
+					}
+
+					try {
+						const response = await rivetRequest<void, { agent: unknown }>(
+							{ endpoint, token },
+							"GET",
+							"/cloud/auth/inspect",
+						);
+						return "agent" in response;
+					} catch (e) {
+						return false;
+					}
+				},
+			};
+
+			const corsConfig = driverConfig.app.config.cors;
+
+			// Enable CORS for Rivet domains
+			driverConfig.app.config.cors = {
+				...driverConfig.app.config.cors,
+				origin: (origin, c) => {
+					const isRivetOrigin =
+						origin.endsWith(".rivet.gg") || origin.includes("localhost:");
+					const configOrigin = corsConfig?.origin;
+
+					if (isRivetOrigin) {
+						return origin;
+					}
+					if (typeof configOrigin === "function") {
+						return configOrigin(origin, c);
+					}
+					if (typeof configOrigin === "string") {
+						return configOrigin;
+					}
+					return null;
+				},
 			};
 
 			// Create actor topology
