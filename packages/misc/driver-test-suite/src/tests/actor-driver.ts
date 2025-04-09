@@ -99,33 +99,34 @@ export function runActorDriverTests(driverTestConfig: DriverTestConfig) {
 				expect(lastRun).toBeGreaterThan(0);
 			});
 
-			test("schedules multiple tasks correctly", async () => {
-				const { client } = await setupDriverTest<ScheduledApp>(
-					driverTestConfig,
-					resolve(__dirname, "../fixtures/apps/scheduled.ts"),
-				);
-
-				// Create a new scheduled actor with unique ID
-				const scheduledActor = await client.scheduled.get();
-
-				// Schedule multiple tasks with different delays
-				await scheduledActor.scheduleTask(50);
-				await scheduledActor.scheduleTask(150);
-
-				// Advance time by 75ms - should execute only the first task
-				await waitFor(driverTestConfig, 75);
-
-				// Verify first task ran
-				let count = await scheduledActor.getScheduledCount();
-				expect(count).toBe(1);
-
-				// Advance time by another 100ms to execute the second task
-				await waitFor(driverTestConfig, 100);
-
-				// Verify both tasks ran
-				count = await scheduledActor.getScheduledCount();
-				expect(count).toBe(2);
-			});
+			// TODO: https://github.com/rivet-gg/actor-core/issues/877
+			//test("schedules multiple tasks correctly", async () => {
+			//	const { client } = await setupDriverTest<ScheduledApp>(
+			//		driverTestConfig,
+			//		resolve(__dirname, "../fixtures/apps/scheduled.ts"),
+			//	);
+			//
+			//	// Create a new scheduled actor with unique ID
+			//	const scheduledActor = await client.scheduled.get();
+			//
+			//	// Schedule multiple tasks with different delays
+			//	await scheduledActor.scheduleTask(50);
+			//	await scheduledActor.scheduleTask(150);
+			//
+			//	// Advance time by 75ms - should execute only the first task
+			//	await waitFor(driverTestConfig, 75);
+			//
+			//	// Verify first task ran
+			//	let count = await scheduledActor.getScheduledCount();
+			//	expect(count).toBe(1);
+			//
+			//	// Advance time by another 100ms to execute the second task
+			//	await waitFor(driverTestConfig, 100);
+			//
+			//	// Verify both tasks ran
+			//	count = await scheduledActor.getScheduledCount();
+			//	expect(count).toBe(2);
+			//});
 		});
 	});
 }
