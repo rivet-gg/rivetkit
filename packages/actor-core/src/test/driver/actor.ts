@@ -1,7 +1,10 @@
 import type { ActorDriver, AnyActorInstance } from "@/driver-helpers/mod";
 import type { TestGlobalState } from "./global_state";
 
-export type ActorDriverContext = Record<never, never>;
+export interface ActorDriverContext {
+	// Used to test that the actor context works from tests
+	isTest: boolean;
+}
 
 export class TestActorDriver implements ActorDriver {
 	#state: TestGlobalState;
@@ -11,7 +14,9 @@ export class TestActorDriver implements ActorDriver {
 	}
 
 	getContext(_actorId: string): ActorDriverContext {
-		return {};
+		return {
+			isTest: true,
+		};
 	}
 
 	async readPersistedData(actorId: string): Promise<unknown | undefined> {
@@ -23,8 +28,9 @@ export class TestActorDriver implements ActorDriver {
 	}
 
 	async setAlarm(actor: AnyActorInstance, timestamp: number): Promise<void> {
+		const delay = Math.max(timestamp - Date.now(), 0);
 		setTimeout(() => {
 			actor.onAlarm();
-		}, timestamp - Date.now());
+		}, delay);
 	}
 }

@@ -7,11 +7,24 @@ import type {
 	ManagerDriver,
 } from "@/driver-helpers/mod";
 import type { TestGlobalState } from "./global_state";
+import { ManagerInspector } from "@/inspector/manager";
+import type { ActorCoreApp } from "@/app/mod";
 
 export class TestManagerDriver implements ManagerDriver {
 	#state: TestGlobalState;
 
-	constructor(state: TestGlobalState) {
+	/**
+	 * @internal
+	 */
+	inspector: ManagerInspector = new ManagerInspector(this, {
+		getAllActors: () => this.#state.getAllActors(),
+		getAllTypesOfActors: () => Object.keys(this.app.config.actors),
+	});
+
+	constructor(
+		private readonly app: ActorCoreApp<any>,
+		state: TestGlobalState,
+	) {
 		this.#state = state;
 	}
 
@@ -37,13 +50,24 @@ export class TestManagerDriver implements ManagerDriver {
 		name,
 		tags,
 	}: GetWithTagsInput): Promise<GetActorOutput | undefined> {
-		// TODO: Update tag search to use inverse tree
-		const serializedSearchTags = JSON.stringify(tags);
-		const actor = this.#state.findActor(
-			(actor) =>
-				actor.name === name &&
-				JSON.stringify(actor.tags) === serializedSearchTags,
-		);
+		// NOTE: This is a slow implementation that checks each actor individually.
+		// This can be optimized with an index in the future.
+
+		// Search through all actors to find a match
+		// Find actors with a superset of the queried tags
+		const actor = this.#state.findActor((actor) => {
+			if (actor.name !== name) return false;
+
+			for (const key in tags) {
+				const value = tags[key];
+
+				// If actor doesn't have this tag key, or values don't match, it's not a match
+				if (actor.tags[key] === undefined || actor.tags[key] !== value) {
+					return false;
+				}
+			}
+			return true;
+		});
 
 		if (actor) {
 			return {
@@ -63,6 +87,9 @@ export class TestManagerDriver implements ManagerDriver {
 	}: CreateActorInput): Promise<CreateActorOutput> {
 		const actorId = crypto.randomUUID();
 		this.#state.createActor(actorId, name, tags);
+
+		this.inspector.onActorsChange(this.#state.getAllActors());
+
 		return {
 			endpoint: buildActorEndpoint(baseUrl, actorId),
 		};

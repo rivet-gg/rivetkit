@@ -29,7 +29,7 @@ function createRouter(
 	if (!config.drivers.manager || !config.drivers.actor) {
 		const memoryState = new TestGlobalState();
 		if (!config.drivers.manager) {
-			config.drivers.manager = new TestManagerDriver(memoryState);
+			config.drivers.manager = new TestManagerDriver(app, memoryState);
 		}
 		if (!config.drivers.actor) {
 			config.drivers.actor = new TestActorDriver(memoryState);

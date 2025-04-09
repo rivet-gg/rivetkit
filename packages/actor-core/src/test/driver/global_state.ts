@@ -10,6 +10,7 @@ export class ActorState {
 	name: string;
 	tags: ActorTags;
 
+	// Persisted data
 	persistedData: unknown = undefined;
 
 	constructor(id: string, name: string, tags: ActorTags) {
@@ -20,16 +21,11 @@ export class ActorState {
 }
 
 /**
- * Global state singleton for the memory driver
+ * Global state singleton for the test driver
  */
 export class TestGlobalState {
-	// Single map for all actor state
 	#actors: Map<string, ActorState> = new Map();
 
-	/**
-	 * Get an actor by ID, throwing an error if it doesn't exist
-	 * @private
-	 */
 	#getActor(actorId: string): ActorState {
 		const actor = this.#actors.get(actorId);
 		if (!actor) {
@@ -46,9 +42,6 @@ export class TestGlobalState {
 		this.#getActor(actorId).persistedData = data;
 	}
 
-	/**
-	 * Create or update an actor
-	 */
 	createActor(actorId: string, name: string, tags: ActorTags): void {
 		// Create actor state if it doesn't exist
 		if (!this.#actors.has(actorId)) {
@@ -58,11 +51,6 @@ export class TestGlobalState {
 		}
 	}
 
-	/**
-	 * Find an actor by a filter function
-	 * @param filter A function that takes an ActorState and returns true if it matches the filter criteria
-	 * @returns The matching ActorState or undefined if no match is found
-	 */
 	findActor(filter: (actor: ActorState) => boolean): ActorState | undefined {
 		for (const actor of this.#actors.values()) {
 			if (filter(actor)) {
@@ -72,17 +60,11 @@ export class TestGlobalState {
 		return undefined;
 	}
 
-	/**
-	 * Get actor state
-	 */
 	getActor(actorId: string): ActorState | undefined {
 		return this.#actors.get(actorId);
 	}
 
-	/**
-	 * Check if an actor exists
-	 */
-	hasActor(actorId: string): boolean {
-		return this.#actors.has(actorId);
+	getAllActors(): ActorState[] {
+		return Array.from(this.#actors.values());
 	}
 }

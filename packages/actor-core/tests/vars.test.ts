@@ -177,8 +177,7 @@ describe("Actor Vars", () => {
 
 			// Define actor with createVars that uses driver context
 			interface DriverVars {
-				hasState: boolean;
-				driverName: string;
+				hasDriverCtx: boolean;
 			}
 
 			const driverCtxActor = actor({
@@ -187,8 +186,7 @@ describe("Actor Vars", () => {
 				createVars: (c, driverCtx: any): DriverVars => {
 					// In test environment, we get a context with a state property
 					return {
-						hasState: Boolean(driverCtx?.state),
-						driverName: "memory",
+						hasDriverCtx: driverCtx?.isTest,
 					};
 				},
 				actions: {
@@ -212,8 +210,7 @@ describe("Actor Vars", () => {
 			const vars = await instance.getVars();
 
 			// Verify we can access driver context
-			expect(vars.hasState).toBe(true);
-			expect(vars.driverName).toBe("memory");
+			expect(vars.hasDriverCtx).toBe(true);
 		});
 	});
 });
