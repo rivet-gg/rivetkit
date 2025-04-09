@@ -66,7 +66,7 @@
     "tsup": "^8.4.0",
     "typescript": "^5.8.2",
     "unplugin-macros": "^0.16.0",
-    "vitest": "^3.0.8",
+    "vitest": "^3.1.1",
     "which": "^5.0.0",
     "zod": "^3.24.2"
   }

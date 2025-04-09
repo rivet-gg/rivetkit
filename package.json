@@ -31,7 +31,7 @@
     "dedent": "^1.5.3",
     "lefthook": "^1.6.12",
     "turbo": "^2.0.1",
-    "vitest": "^3.0.9",
+    "vitest": "^3.1.1",
     "zx": "^8.3.2"
   },
   "resolutions": {

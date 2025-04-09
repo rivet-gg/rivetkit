@@ -31,6 +31,6 @@
     "actor-core": "workspace:*",
     "tsup": "^8.3.6",
     "typescript": "^5.5.2",
-    "vitest": "~2.1.9"
+    "vitest": "^3.1.1"
   }
 }
