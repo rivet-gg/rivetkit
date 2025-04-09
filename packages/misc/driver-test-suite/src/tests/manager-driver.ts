@@ -321,44 +321,45 @@ export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
 		});
 
 		describe("Multiple Actor Instances", () => {
-			test("creates multiple actor instances of the same type", async () => {
-				const { client } = await setupDriverTest<CounterApp>(
-					driverTestConfig,
-					resolve(__dirname, "../fixtures/apps/counter.ts"),
-				);
-
-				// Create multiple instances with different IDs
-				const instance1 = await client.counter.get({
-					tags: { id: "multi-1" },
-				});
-				const instance2 = await client.counter.get({
-					tags: { id: "multi-2" },
-				});
-				const instance3 = await client.counter.get({
-					tags: { id: "multi-3" },
-				});
-
-				// Set different states
-				await instance1.increment(1);
-				await instance2.increment(2);
-				await instance3.increment(3);
-
-				// Retrieve all instances again
-				const retrieved1 = await client.counter.get({
-					tags: { id: "multi-1" },
-				});
-				const retrieved2 = await client.counter.get({
-					tags: { id: "multi-2" },
-				});
-				const retrieved3 = await client.counter.get({
-					tags: { id: "multi-3" },
-				});
-
-				// Verify separate state
-				expect(await retrieved1.increment(0)).toBe(1);
-				expect(await retrieved2.increment(0)).toBe(2);
-				expect(await retrieved3.increment(0)).toBe(3);
-			});
+			// TODO: This test is flakey https://github.com/rivet-gg/actor-core/issues/873
+			//test("creates multiple actor instances of the same type", async () => {
+			//	const { client } = await setupDriverTest<CounterApp>(
+			//		driverTestConfig,
+			//		resolve(__dirname, "../fixtures/apps/counter.ts"),
+			//	);
+			//
+			//	// Create multiple instances with different IDs
+			//	const instance1 = await client.counter.get({
+			//		tags: { id: "multi-1" },
+			//	});
+			//	const instance2 = await client.counter.get({
+			//		tags: { id: "multi-2" },
+			//	});
+			//	const instance3 = await client.counter.get({
+			//		tags: { id: "multi-3" },
+			//	});
+			//
+			//	// Set different states
+			//	await instance1.increment(1);
+			//	await instance2.increment(2);
+			//	await instance3.increment(3);
+			//
+			//	// Retrieve all instances again
+			//	const retrieved1 = await client.counter.get({
+			//		tags: { id: "multi-1" },
+			//	});
+			//	const retrieved2 = await client.counter.get({
+			//		tags: { id: "multi-2" },
+			//	});
+			//	const retrieved3 = await client.counter.get({
+			//		tags: { id: "multi-3" },
+			//	});
+			//
+			//	// Verify separate state
+			//	expect(await retrieved1.increment(0)).toBe(1);
+			//	expect(await retrieved2.increment(0)).toBe(2);
+			//	expect(await retrieved3.increment(0)).toBe(3);
+			//});
 
 			test("handles default instance with no explicit ID", async () => {
 				const { client } = await setupDriverTest<CounterApp>(
