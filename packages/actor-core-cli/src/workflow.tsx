@@ -234,7 +234,7 @@ export function workflow(
 	let renderUtils: ReturnType<typeof render> | null = null;
 
 	async function* runner<T extends UserFnReturnType>(
-		meta: TaskMetadata,
+		meta: TaskMetadata & { processTask: (task: WorkflowAction.All) => void },
 		name: string,
 		taskFn: (ctx: Context) => T,
 		opts: TaskOptions = {},
@@ -243,7 +243,7 @@ export function workflow(
 		const p = WorkflowAction.progress.bind(null, { ...meta, id, name, opts });
 		yield p("running");
 		try {
-			const output = taskFn(createContext({ ...meta, id, name, opts }));
+			const output = taskFn(createContext({ ...meta, id, name, opts, processTask: meta.processTask }));
 			if (output instanceof Promise) {
 				const result = await output;
 				yield p("done", { result, ...opts });
