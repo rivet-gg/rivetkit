@@ -47,6 +47,10 @@ export class Logger {
 		console.log(formatter(record));
 	}
 
+	trace(message: string, ...args: unknown[]): void {
+		this.log(LogLevels.TRACE, message, ...args);
+	}
+
 	debug(message: string, ...args: unknown[]): void {
 		this.log(LogLevels.DEBUG, message, ...args);
 	}

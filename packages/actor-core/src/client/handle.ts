@@ -334,24 +334,43 @@ enc
 
 	/** Called by the onmessage event from drivers. */
 	async #handleOnMessage(event: MessageEvent<any>) {
+		logger().trace("received message", { 
+			dataType: typeof event.data, 
+			isBlob: event.data instanceof Blob,
+			isArrayBuffer: event.data instanceof ArrayBuffer
+		});
+
 		const response = (await this.#parse(event.data)) as wsToClient.ToClient;
+		logger().trace("parsed message", { 
+			response: JSON.stringify(response).substring(0, 100) + "..." 
+		});
 
 		if ("i" in response.b) {
 			// This is only called for SSE
 			this.#connectionId = response.b.i.ci;
 			this.#connectionToken = response.b.i.ct;
+			logger().trace("received init message", { 
+				connectionId: this.#connectionId 
+			});
 			this.#handleOnOpen();
 		} else if ("ro" in response.b) {
 			// RPC response OK
-
 			const { i: rpcId } = response.b.ro;
+			logger().trace("received RPC response", { 
+				rpcId, 
+				outputType: typeof response.b.ro.o
+			});
 
 			const inFlight = this.#takeRpcInFlight(rpcId);
+			logger().trace("resolving RPC promise", { 
+				rpcId, 
+				actionName: inFlight?.name 
+			});
 			inFlight.resolve(response.b.ro);
 		} else if ("re" in response.b) {
 			// RPC response error
-
 			const { i: rpcId, c: code, m: message, md: metadata } = response.b.re;
+			logger().trace("received RPC error", { rpcId, code, message });
 
 			const inFlight = this.#takeRpcInFlight(rpcId);
 
@@ -365,9 +384,14 @@ enc
 
 			inFlight.reject(new errors.ActionError(code, message, metadata));
 		} else if ("ev" in response.b) {
+			logger().trace("received event", { 
+				name: response.b.ev.n, 
+				argsCount: response.b.ev.a?.length 
+			});
 			this.#dispatchEvent(response.b.ev);
 		} else if ("er" in response.b) {
 			const { c: code, m: message, md: metadata } = response.b.er;
+			logger().trace("received error", { code, message });
 
 			logger().warn("actor error", {
 				code,

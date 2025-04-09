@@ -7,6 +7,10 @@ export default {
 			concurrent: true,
 		},
 		// Increase timeout
-		testTimeout: 30_000,
+		testTimeout: 5_000,
+		env: {
+			// Enable loggin
+			_LOG_LEVEL: "DEBUG"
+		}
 	},
 } satisfies ViteUserConfig;

@@ -26,6 +26,14 @@ export const ActorConfigSchema = z
 		createVars: z.function().optional(),
 		options: z
 			.object({
+				lifecycle: z
+					.object({
+						createVarsTimeout: z.number().positive().default(5000),
+						createConnStateTimeout: z.number().positive().default(5000),
+						onConnectTimeout: z.number().positive().default(5000),
+					})
+					.strict()
+					.default({}),
 				state: z
 					.object({
 						saveInterval: z.number().positive().default(10_000),
@@ -81,7 +89,11 @@ export interface OnConnectOptions<CP> {
 // This must have only one or the other or else S will not be able to be inferred
 type CreateState<S, CP, CS, V> =
 	| { state: S }
-	| { createState: (c: ActorContext<undefined, undefined, undefined, undefined>) => S | Promise<S> }
+	| {
+			createState: (
+				c: ActorContext<undefined, undefined, undefined, undefined>,
+			) => S | Promise<S>;
+	  }
 	| Record<never, never>;
 
 // Creates connection state config
@@ -114,7 +126,10 @@ type CreateVars<S, CP, CS, V> =
 			/**
 			 * @experimental
 			 */
-			createVars: (c: ActorContext<undefined, undefined, undefined, undefined>, driverCtx: unknown) => V | Promise<V>;
+			createVars: (
+				c: ActorContext<undefined, undefined, undefined, undefined>,
+				driverCtx: unknown,
+			) => V | Promise<V>;
 	  }
 	| Record<never, never>;
 

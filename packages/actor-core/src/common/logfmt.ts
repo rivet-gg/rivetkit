@@ -9,6 +9,7 @@ const LOG_LEVEL_COLORS: Record<number, string> = {
 	[LogLevels.WARN]: "\x1b[33m", // Yellow
 	[LogLevels.INFO]: "\x1b[32m", // Green
 	[LogLevels.DEBUG]: "\x1b[36m", // Cyan
+	[LogLevels.TRACE]: "\x1b[36m", // Cyan
 };
 
 const RESET_COLOR = "\x1b[0m";

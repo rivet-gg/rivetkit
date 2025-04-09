@@ -13,14 +13,18 @@ import * as errors from "./errors";
 import { processMessage } from "./protocol/message/mod";
 import { instanceLogger, logger } from "./log";
 import type { ActionContext } from "./action";
-import { Lock, deadline } from "./utils";
+import { DeadlineError, Lock, deadline } from "./utils";
 import { Schedule } from "./schedule";
 import type * as wsToServer from "@/actor/protocol/message/to-server";
 import { CachedSerializer } from "./protocol/serde";
 import { ActorInspector } from "@/inspector/actor";
 import { ActorContext } from "./context";
 import invariant from "invariant";
-import type { PersistedActor, PersistedConn, PersistedScheduleEvents } from "./persisted";
+import type {
+	PersistedActor,
+	PersistedConn,
+	PersistedScheduleEvents,
+} from "./persisted";
 
 /**
  * Options for the `_saveState` method.
@@ -160,9 +164,6 @@ export class ActorInstance<S, CP, CS, V> {
 
 		// TODO: Exit process if this errors
 		if (this.#varsEnabled) {
-			// TODO: Move to config
-			const CREATE_VARS_TIMEOUT = 5000; // 5 seconds
-
 			let vars: V | undefined = undefined;
 			if ("createVars" in this.#config) {
 				const dataOrPromise = this.#config.createVars(
@@ -175,7 +176,10 @@ export class ActorInstance<S, CP, CS, V> {
 					this.#actorDriver.getContext(this.#actorId),
 				);
 				if (dataOrPromise instanceof Promise) {
-					vars = await deadline(dataOrPromise, CREATE_VARS_TIMEOUT);
+					vars = await deadline(
+						dataOrPromise,
+						this.#config.options.lifecycle.createVarsTimeout,
+					);
 				} else {
 					vars = dataOrPromise;
 				}
@@ -214,10 +218,10 @@ export class ActorInstance<S, CP, CS, V> {
 			ar: args,
 		};
 
-		this.actorContext.log.info("scheduling event", { 
-			event: eventId, 
-			timestamp, 
-			action: fn 
+		this.actorContext.log.info("scheduling event", {
+			event: eventId,
+			timestamp,
+			action: fn,
 		});
 
 		// Insert event in to index
@@ -239,7 +243,10 @@ export class ActorInstance<S, CP, CS, V> {
 
 	async onAlarm() {
 		const now = Date.now();
-		this.actorContext.log.debug("alarm triggered", { now, events: this.#persist.e.length });
+		this.actorContext.log.debug("alarm triggered", {
+			now,
+			events: this.#persist.e.length,
+		});
 
 		// Remove events from schedule that we're about to run
 		const runIndex = this.#persist.e.findIndex((x) => x.t <= now);
@@ -248,7 +255,9 @@ export class ActorInstance<S, CP, CS, V> {
 			return;
 		}
 		const scheduleEvents = this.#persist.e.splice(0, runIndex + 1);
-		this.actorContext.log.debug("running events", { count: scheduleEvents.length });
+		this.actorContext.log.debug("running events", {
+			count: scheduleEvents.length,
+		});
 
 		// Set alarm for next event
 		if (this.#persist.e.length > 0) {
@@ -258,13 +267,13 @@ export class ActorInstance<S, CP, CS, V> {
 		// Iterate by event key in order to ensure we call the events in order
 		for (const event of scheduleEvents) {
 			try {
-				this.actorContext.log.info("running action for event", { 
-					event: event.e, 
-					timestamp: event.t, 
-					action: event.a, 
-					args: event.ar 
+				this.actorContext.log.info("running action for event", {
+					event: event.e,
+					timestamp: event.t,
+					action: event.a,
+					args: event.ar,
 				});
-				
+
 				// Look up function
 				const fn: unknown = this.#config.actions[event.a];
 				if (!fn) throw new Error(`Missing action for alarm ${event.a}`);
@@ -586,7 +595,6 @@ export class ActorInstance<S, CP, CS, V> {
 	): Promise<CS> {
 		// Authenticate connection
 		let connState: CS | undefined = undefined;
-		const PREPARE_CONNECT_TIMEOUT = 5000; // 5 seconds
 
 		const onBeforeConnectOpts = {
 			request,
@@ -612,7 +620,10 @@ export class ActorInstance<S, CP, CS, V> {
 					onBeforeConnectOpts,
 				);
 				if (dataOrPromise instanceof Promise) {
-					connState = await deadline(dataOrPromise, PREPARE_CONNECT_TIMEOUT);
+					connState = await deadline(
+						dataOrPromise,
+						this.#config.options.lifecycle.createConnStateTimeout,
+					);
 				} else {
 					connState = dataOrPromise;
 				}
@@ -676,12 +687,14 @@ export class ActorInstance<S, CP, CS, V> {
 		this.inspector.onConnChange(this.#connections);
 
 		// Handle connection
-		const CONNECT_TIMEOUT = 5000; // 5 seconds
 		if (this.#config.onConnect) {
 			try {
 				const result = this.#config.onConnect(this.actorContext, conn);
 				if (result instanceof Promise) {
-					deadline(result, CONNECT_TIMEOUT).catch((error) => {
+					deadline(
+						result,
+						this.#config.options.lifecycle.onConnectTimeout,
+					).catch((error) => {
 						logger().error("error in `onConnect`, closing socket", {
 							error,
 						});
@@ -842,13 +855,22 @@ export class ActorInstance<S, CP, CS, V> {
 		// TODO: Manually call abortable for better error handling
 		// Call the function on this object with those arguments
 		try {
+			// Log when we start executing the action
+			logger().debug("executing action", { actionName: rpcName, args });
+
 			const outputOrPromise = rpcFunction.call(undefined, ctx, ...args);
 			let output: unknown;
 			if (outputOrPromise instanceof Promise) {
+				// Log that we're waiting for an async action
+				logger().debug("awaiting async action", { actionName: rpcName });
+
 				output = await deadline(
 					outputOrPromise,
 					this.#config.options.action.timeout,
 				);
+
+				// Log that async action completed
+				logger().debug("async action completed", { actionName: rpcName });
 			} else {
 				output = outputOrPromise;
 			}
@@ -863,7 +885,13 @@ export class ActorInstance<S, CP, CS, V> {
 						output,
 					);
 					if (processedOutput instanceof Promise) {
+						logger().debug("awaiting onBeforeActionResponse", {
+							actionName: rpcName,
+						});
 						output = await processedOutput;
+						logger().debug("onBeforeActionResponse completed", {
+							actionName: rpcName,
+						});
 					} else {
 						output = processedOutput;
 					}
@@ -874,11 +902,22 @@ export class ActorInstance<S, CP, CS, V> {
 				}
 			}
 
+			// Log the output before returning
+			logger().debug("action completed", {
+				actionName: rpcName,
+				outputType: typeof output,
+				isPromise: output instanceof Promise,
+			});
+
 			return output;
 		} catch (error) {
-			if (error instanceof DOMException && error.name === "TimeoutError") {
+			if (error instanceof DeadlineError) {
 				throw new errors.ActionTimedOut();
 			}
+			logger().error("action error", {
+				actionName: rpcName,
+				error: stringifyError(error),
+			});
 			throw error;
 		} finally {
 			this.#savePersistThrottled();

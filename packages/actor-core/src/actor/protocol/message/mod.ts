@@ -101,9 +101,22 @@ export async function processMessage<S, CP, CS, V>(
 			rpcId = id;
 			rpcName = name;
 
+			logger().debug("processing RPC request", { id, name, argsCount: args.length });
+			
 			const ctx = new ActionContext<S, CP, CS, V>(actor.actorContext, conn);
+			
+			// Process the RPC request and wait for the result
+			// This will wait for async actions to complete
 			const output = await handler.onExecuteRpc(ctx, name, args);
+			
+			logger().debug("sending RPC response", { 
+				id, 
+				name, 
+				outputType: typeof output, 
+				isPromise: output instanceof Promise 
+			});
 
+			// Send the response back to the client
 			conn._sendMessage(
 				new CachedSerializer<wsToClient.ToClient>({
 					b: {
@@ -114,6 +127,8 @@ export async function processMessage<S, CP, CS, V>(
 					},
 				}),
 			);
+			
+			logger().debug("RPC response sent", { id, name });
 		} else if ("sr" in message.b) {
 			// Subscription request
 
@@ -125,12 +140,15 @@ export async function processMessage<S, CP, CS, V>(
 			}
 
 			const { e: eventName, s: subscribe } = message.b.sr;
+			logger().debug("processing subscription request", { eventName, subscribe });
 
 			if (subscribe) {
 				await handler.onSubscribe(eventName, conn);
 			} else {
 				await handler.onUnsubscribe(eventName, conn);
 			}
+			
+			logger().debug("subscription request completed", { eventName, subscribe });
 		} else {
 			assertUnreachable(message.b);
 		}
@@ -139,6 +157,13 @@ export async function processMessage<S, CP, CS, V>(
 			connectionId: conn.id,
 			rpcId,
 			rpcName,
+		});
+
+		logger().debug("sending error response", {
+			rpcId,
+			rpcName,
+			code,
+			message
 		});
 
 		// Build response
@@ -168,5 +193,7 @@ export async function processMessage<S, CP, CS, V>(
 				}),
 			);
 		}
+		
+		logger().debug("error response sent", { rpcId, rpcName });
 	}
 }

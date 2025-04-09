@@ -33,6 +33,12 @@ export const throttle = <
 	};
 };
 
+export class DeadlineError extends Error {
+	constructor() {
+		super("Promise did not complete before deadline.")
+	}
+}
+
 export function deadline<T>(promise: Promise<T>, timeout: number): Promise<T> {
 	const controller = new AbortController();
 	const signal = controller.signal;
@@ -44,7 +50,7 @@ export function deadline<T>(promise: Promise<T>, timeout: number): Promise<T> {
 		promise,
 		new Promise<T>((_, reject) => {
 			signal.addEventListener("abort", () =>
-				reject(new Error("Operation timed out")),
+				reject(new DeadlineError()),
 			);
 		}),
 	]).finally(() => {
