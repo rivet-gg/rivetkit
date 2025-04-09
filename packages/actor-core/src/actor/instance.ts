@@ -200,6 +200,11 @@ export class ActorInstance<S, CP, CS, V> {
 			}
 		}
 
+		// Set alarm for next scheduled event if any exist after finishing initiation sequence
+		if (this.#persist.e.length > 0) {
+			await this.#actorDriver.setAlarm(this, this.#persist.e[0].t);
+		}
+
 		logger().info("actor ready");
 		this.#ready = true;
 	}
