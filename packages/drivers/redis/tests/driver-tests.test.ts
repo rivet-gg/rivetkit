@@ -8,7 +8,7 @@ import Redis from "ioredis";
 import { promisify } from "node:util";
 import { exec as execCallback } from "node:child_process";
 import { expect, test } from "vitest";
-import getPort from "get-port";
+import { getPort } from "actor-core/test";
 
 const exec = promisify(execCallback);
 

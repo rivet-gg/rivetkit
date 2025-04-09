@@ -4,18 +4,19 @@ import path from "node:path";
 import os from "node:os";
 import { spawn, exec } from "node:child_process";
 import crypto from "node:crypto";
-import getPort from "get-port";
 import { promisify } from "node:util";
+import { getPort } from "actor-core/test";
 
 const execPromise = promisify(exec);
 
 // Bypass createTestRuntime by providing an endpoint directly
 runDriverTests({
-	useRealTimers: true, 
+	useRealTimers: true,
 	HACK_skipCleanupNet: true,
 	async start(appPath: string) {
 		// Get an available port
 		const port = await getPort();
+		const inspectorPort = await getPort();
 
 		// Create a temporary directory for the test
 		const uuid = crypto.randomUUID();
@@ -29,7 +30,7 @@ runDriverTests({
 			version: "1.0.0",
 			type: "module",
 			scripts: {
-				start: `wrangler@4.8.0 dev --port ${port} --local`,
+				start: `wrangler dev --port ${port} --inspector-port ${inspectorPort} --local`,
 			},
 			dependencies: {
 				wrangler: "4.8.0",
@@ -110,14 +111,10 @@ export { handler as default, ActorHandler };
 		await fs.writeFile(path.join(srcDir, "index.ts"), indexContent);
 
 		// Start wrangler dev
-		const wranglerProcess = spawn(
-			"npx",
-			["wrangler@4.8.0", "dev", "--port", port.toString(), "--local"],
-			{
-				cwd: tmpDir,
-				stdio: "pipe",
-			},
-		);
+		const wranglerProcess = spawn("yarn", ["start"], {
+			cwd: tmpDir,
+			stdio: "pipe",
+		});
 
 		// Wait for wrangler to start
 		await new Promise<void>((resolve, reject) => {

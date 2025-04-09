@@ -35,7 +35,6 @@
     "@types/node": "^22.13.1",
     "actor-core": "workspace:*",
     "bundle-require": "^5.1.0",
-    "get-port": "^7.0.0",
     "vitest": "^3.1.1"
   }
 }

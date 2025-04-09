@@ -4,7 +4,7 @@ import { setupTest } from "@/test/mod";
 
 describe("Actor Vars", () => {
 	describe("Static vars", () => {
-		test("should provide access to static vars", async () => {
+		test("should provide access to static vars", async (c) => {
 			// Define actor with static vars
 			const varActor = actor({
 				state: { value: 0 },
@@ -24,7 +24,7 @@ describe("Actor Vars", () => {
 				actors: { varActor },
 			});
 
-			const { client } = await setupTest<typeof app>(app);
+			const { client } = await setupTest<typeof app>(c, app);
 			const instance = await client.varActor.get();
 
 			// Test accessing vars
@@ -38,7 +38,7 @@ describe("Actor Vars", () => {
 	});
 
 	describe("Deep cloning of static vars", () => {
-		test("should deep clone static vars between actor instances", async () => {
+		test("should deep clone static vars between actor instances", async (c) => {
 			// Define actor with nested object in vars
 			const nestedVarActor = actor({
 				state: { value: 0 },
@@ -69,7 +69,7 @@ describe("Actor Vars", () => {
 				actors: { nestedVarActor },
 			});
 
-			const { client } = await setupTest<typeof app>(app);
+			const { client } = await setupTest<typeof app>(c, app);
 
 			// Create two separate instances
 			const instance1 = await client.nestedVarActor.get({
@@ -94,7 +94,7 @@ describe("Actor Vars", () => {
 	});
 
 	describe("createVars", () => {
-		test("should support dynamic vars creation", async () => {
+		test("should support dynamic vars creation", async (c) => {
 			// Define actor with createVars function
 			const dynamicVarActor = actor({
 				state: { value: 0 },
@@ -116,7 +116,7 @@ describe("Actor Vars", () => {
 				actors: { dynamicVarActor },
 			});
 
-			const { client } = await setupTest<typeof app>(app);
+			const { client } = await setupTest<typeof app>(c, app);
 
 			// Create an instance
 			const instance = await client.dynamicVarActor.get();
@@ -130,7 +130,7 @@ describe("Actor Vars", () => {
 			expect(vars.computed).toMatch(/^Actor-\d+$/);
 		});
 
-		test("should create different vars for different instances", async () => {
+		test("should create different vars for different instances", async (c) => {
 			// Define actor with createVars function that generates unique values
 			const uniqueVarActor = actor({
 				state: { value: 0 },
@@ -151,7 +151,7 @@ describe("Actor Vars", () => {
 				actors: { uniqueVarActor },
 			});
 
-			const { client } = await setupTest<typeof app>(app);
+			const { client } = await setupTest<typeof app>(c, app);
 
 			// Create two separate instances
 			const instance1 = await client.uniqueVarActor.get({
@@ -171,7 +171,7 @@ describe("Actor Vars", () => {
 	});
 
 	describe("Driver Context", () => {
-		test("should provide access to driver context", async () => {
+		test("should provide access to driver context", async (c) => {
 			// Reset timers to avoid test timeouts
 			vi.useRealTimers();
 
@@ -201,7 +201,7 @@ describe("Actor Vars", () => {
 			});
 
 			// Set up the test
-			const { client } = await setupTest<typeof app>(app);
+			const { client } = await setupTest<typeof app>(c, app);
 
 			// Create an instance
 			const instance = await client.driverCtxActor.get();

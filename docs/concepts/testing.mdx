@@ -27,8 +27,8 @@ import { test, expect } from "vitest";
 import { setupTest } from "actor-core/test";
 import { app } from "../src/index";
 
-test("my actor test", async () => {
-  const { client } = await setupTest(app);
+test("my actor test", async (test) => {
+  const { client } = await setupTest(test, app);
   
   // Now you can interact with your actor through the client
   const myActor = await client.myActor.get();
@@ -76,8 +76,8 @@ import { test, expect } from "vitest";
 import { setupTest } from "actor-core/test";
 import { app } from "../src/index";
 
-test("actor should persist state", async () => {
-  const { client } = await setupTest(app);
+test("actor should persist state", async (test) => {
+  const { client } = await setupTest(test, app);
   const counter = await client.counter.get();
   
   // Initial state
@@ -126,8 +126,8 @@ import { test, expect, vi } from "vitest";
 import { setupTest } from "actor-core/test";
 import { app } from "../src/index";
 
-test("actor should emit events", async () => {
-  const { client } = await setupTest(app);
+test("actor should emit events", async (test) => {
+  const { client } = await setupTest(test, app);
   const chatRoom = await client.chatRoom.get();
   
   // Set up event handler with a mock function
@@ -182,9 +182,9 @@ import { test, expect, vi } from "vitest";
 import { setupTest } from "actor-core/test";
 import { app } from "../src/index";
 
-test("scheduled tasks should execute", async () => {
+test("scheduled tasks should execute", async (test) => {
   // setupTest automatically configures vi.useFakeTimers()
-  const { client } = await setupTest(app);
+  const { client } = await setupTest(test, app);
   const scheduler = await client.scheduler.get();
   
   // Set up a scheduled task

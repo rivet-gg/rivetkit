@@ -2,7 +2,7 @@ import { actor, setup } from "@/mod";
 import { test } from "vitest";
 import { setupTest } from "@/test/mod";
 
-test("basic actor setup", async () => {
+test("basic actor setup", async (c) => {
 	const counter = actor({
 		state: { count: 0 },
 		actions: {
@@ -18,9 +18,8 @@ test("basic actor setup", async () => {
 		actors: { counter },
 	});
 
-	const { client } = await setupTest<typeof app>(app);
+	const { client } = await setupTest<typeof app>(c, app);
 
 	const counterInstance = await client.counter.get();
 	await counterInstance.increment(1);
 });
-

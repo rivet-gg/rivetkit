@@ -77,7 +77,6 @@ __metadata:
     "@cloudflare/workers-types": "npm:^4.20250129.0"
     "@types/invariant": "npm:^2"
     actor-core: "workspace:*"
-    get-port: "npm:^7.0.0"
     hono: "npm:^4.7.2"
     invariant: "npm:^2.2.4"
     tsup: "npm:^8.4.0"
@@ -99,7 +98,6 @@ __metadata:
     "@types/node": "npm:^22.13.1"
     actor-core: "workspace:*"
     bundle-require: "npm:^5.1.0"
-    get-port: "npm:^7.0.0"
     tsup: "npm:^8.4.0"
     typescript: "npm:^5.7.3"
     vitest: "npm:^3.1.1"
@@ -240,7 +238,7 @@ __metadata:
     esbuild: "npm:^0.25.1"
     lefthook: "npm:^1.6.12"
     turbo: "npm:^2.0.1"
-    vitest: "npm:^3.0.9"
+    vitest: "npm:^3.1.1"
     zx: "npm:^8.3.2"
   languageName: unknown
   linkType: soft
@@ -2846,7 +2844,6 @@ __metadata:
     "@types/ws": "npm:^8"
     cbor-x: "npm:^1.6.0"
     eventsource: "npm:^3.0.5"
-    get-port: "npm:^7.1.0"
     hono: "npm:^4.7.0"
     invariant: "npm:^2.2.4"
     on-change: "npm:^5.0.1"
@@ -3409,7 +3406,7 @@ __metadata:
     prompts: "npm:^2.4.2"
     tsx: "npm:^3.12.7"
     typescript: "npm:^5.5.2"
-    vitest: "npm:^3.0.9"
+    vitest: "npm:^3.1.1"
   languageName: unknown
   linkType: soft
 
@@ -3680,7 +3677,7 @@ __metadata:
     actor-core: "workspace:*"
     tsx: "npm:^3.12.7"
     typescript: "npm:^5.7.3"
-    vitest: "npm:^3.0.9"
+    vitest: "npm:^3.1.1"
   languageName: unknown
   linkType: soft
 
@@ -4572,7 +4569,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"get-port@npm:^7.0.0, get-port@npm:^7.1.0":
+"get-port@npm:^7.1.0":
   version: 7.1.0
   resolution: "get-port@npm:7.1.0"
   checksum: 10c0/896051fea0fd3df58c050566754ab91f46406e898ce0c708414739d908a5ac03ffef3eca7a494ea9cc1914439e8caccd2218010d1eeabdde914b9ff920fa28fc
@@ -7882,7 +7879,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vitest@npm:^3.0.9, vitest@npm:^3.1.1":
+"vitest@npm:^3.1.1":
   version: 3.1.1
   resolution: "vitest@npm:3.1.1"
   dependencies:

@@ -11,9 +11,9 @@ import {
 	TestActorDriver,
 } from "./driver/mod";
 import { type InputConfig, ConfigSchema } from "./config";
-import { onTestFinished, vi } from "vitest";
-import getPort from "get-port";
+import { type TestContext, vi } from "vitest";
 import { type Client, createClient } from "@/client/mod";
+import { createServer } from "node:net";
 
 function createRouter(
 	app: ActorCoreApp<any>,
@@ -93,7 +93,9 @@ export interface SetupTestResult<A extends ActorCoreApp<any>> {
 	};
 }
 
+// Must use `TestContext` since global hooks do not work when running concurrently
 export async function setupTest<A extends ActorCoreApp<any>>(
+	c: TestContext,
 	app: A,
 ): Promise<SetupTestResult<A>> {
 	vi.useFakeTimers();
@@ -109,13 +111,13 @@ export async function setupTest<A extends ActorCoreApp<any>>(
 	// Start server with a random port
 	const port = await getPort();
 	const server = serve(app, { port });
-	onTestFinished(
+	c.onTestFinished(
 		async () => await new Promise((resolve) => server.close(() => resolve())),
 	);
 
 	// Create client
 	const client = createClient<A>(`http://127.0.0.1:${port}`);
-	onTestFinished(async () => await client.dispose());
+	c.onTestFinished(async () => await client.dispose());
 
 	return {
 		client,
@@ -125,4 +127,54 @@ export async function setupTest<A extends ActorCoreApp<any>>(
 			},
 		},
 	};
+}
+
+export async function getPort(): Promise<number> {
+	// Pick random port between 10000 and 65535 (avoiding well-known and registered ports)
+	const MIN_PORT = 10000;
+	const MAX_PORT = 65535;
+	const getRandomPort = () =>
+		Math.floor(Math.random() * (MAX_PORT - MIN_PORT + 1)) + MIN_PORT;
+
+	let port = getRandomPort();
+	let maxAttempts = 10;
+
+	while (maxAttempts > 0) {
+		try {
+			// Try to create a server on the port to check if it's available
+			const server = await new Promise<any>((resolve, reject) => {
+				const server = createServer();
+
+				server.once("error", (err: Error & { code?: string }) => {
+					if (err.code === "EADDRINUSE") {
+						reject(new Error(`Port ${port} is in use`));
+					} else {
+						reject(err);
+					}
+				});
+
+				server.once("listening", () => {
+					resolve(server);
+				});
+
+				server.listen(port);
+			});
+
+			// Close the server since we're just checking availability
+			await new Promise<void>((resolve) => {
+				server.close(() => resolve());
+			});
+
+			return port;
+		} catch (err) {
+			// If port is in use, try a different one
+			maxAttempts--;
+			if (maxAttempts <= 0) {
+				break;
+			}
+			port = getRandomPort();
+		}
+	}
+
+	throw new Error("Could not find an available port after multiple attempts");
 }

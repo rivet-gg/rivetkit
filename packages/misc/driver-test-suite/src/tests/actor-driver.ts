@@ -23,8 +23,9 @@ export async function waitFor(
 export function runActorDriverTests(driverTestConfig: DriverTestConfig) {
 	describe("Actor Driver Tests", () => {
 		describe("State Persistence", () => {
-			test("persists state between actor instances", async () => {
+			test("persists state between actor instances", async (c) => {
 				const { client } = await setupDriverTest<CounterApp>(
+					c,
 					driverTestConfig,
 					resolve(__dirname, "../fixtures/apps/counter.ts"),
 				);
@@ -40,8 +41,9 @@ export function runActorDriverTests(driverTestConfig: DriverTestConfig) {
 				expect(persistedCount).toBe(8); // 5 + 3 = 8
 			});
 
-			test("maintains separate state between different actor IDs", async () => {
+			test("maintains separate state between different actor IDs", async (c) => {
 				const { client } = await setupDriverTest<CounterApp>(
+					c,
 					driverTestConfig,
 					resolve(__dirname, "../fixtures/apps/counter.ts"),
 				);
@@ -75,8 +77,9 @@ export function runActorDriverTests(driverTestConfig: DriverTestConfig) {
 		});
 
 		describe("Actor Scheduling", () => {
-			test("schedules and executes tasks", async () => {
+			test("schedules and executes tasks", async (c) => {
 				const { client } = await setupDriverTest<ScheduledApp>(
+					c,
 					driverTestConfig,
 					resolve(__dirname, "../fixtures/apps/scheduled.ts"),
 				);
@@ -100,8 +103,8 @@ export function runActorDriverTests(driverTestConfig: DriverTestConfig) {
 			});
 
 			// TODO: https://github.com/rivet-gg/actor-core/issues/877
-			//test("schedules multiple tasks correctly", async () => {
-			//	const { client } = await setupDriverTest<ScheduledApp>(
+			//test("schedules multiple tasks correctly", async (c) => {
+			//	const { client } = await setupDriverTest<ScheduledApp>(c,
 			//		driverTestConfig,
 			//		resolve(__dirname, "../fixtures/apps/scheduled.ts"),
 			//	);

@@ -7,8 +7,9 @@ import type { App as CounterApp } from "../../fixtures/apps/counter";
 export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
 	describe("Manager Driver Tests", () => {
 		describe("Client Connection Methods", () => {
-			test("get() - finds or creates an actor", async () => {
+			test("get() - finds or creates an actor", async (c) => {
 				const { client } = await setupDriverTest<CounterApp>(
+					c,
 					driverTestConfig,
 					resolve(__dirname, "../fixtures/apps/counter.ts"),
 				);
@@ -32,8 +33,9 @@ export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
 				expect(countB).toBe(10);
 			});
 
-			test("create() - always creates a new actor", async () => {
+			test("create() - always creates a new actor", async (c) => {
 				const { client } = await setupDriverTest<CounterApp>(
+					c,
 					driverTestConfig,
 					resolve(__dirname, "../fixtures/apps/counter.ts"),
 				);
@@ -82,8 +84,9 @@ export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
 		});
 
 		describe("Connection Options", () => {
-			test("noCreate option prevents actor creation", async () => {
+			test("noCreate option prevents actor creation", async (c) => {
 				const { client } = await setupDriverTest<CounterApp>(
+					c,
 					driverTestConfig,
 					resolve(__dirname, "../fixtures/apps/counter.ts"),
 				);
@@ -123,8 +126,9 @@ export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
 				expect(count).toBe(3);
 			});
 
-			test("connection params are passed to actors", async () => {
+			test("connection params are passed to actors", async (c) => {
 				const { client } = await setupDriverTest<CounterApp>(
+					c,
 					driverTestConfig,
 					resolve(__dirname, "../fixtures/apps/counter.ts"),
 				);
@@ -148,8 +152,9 @@ export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
 		});
 
 		describe("Actor Creation & Retrieval", () => {
-			test("creates and retrieves actors by ID", async () => {
+			test("creates and retrieves actors by ID", async (c) => {
 				const { client } = await setupDriverTest<CounterApp>(
+					c,
 					driverTestConfig,
 					resolve(__dirname, "../fixtures/apps/counter.ts"),
 				);
@@ -172,8 +177,8 @@ export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
 			});
 
 			// TODO: Correctly test region for each provider
-			//test("creates and retrieves actors with region", async () => {
-			//	const { client } = await setupDriverTest<CounterApp>(
+			//test("creates and retrieves actors with region", async (c) => {
+			//	const { client } = await setupDriverTest<CounterApp>(c,
 			//		driverTestConfig,
 			//		resolve(__dirname, "../fixtures/apps/counter.ts"),
 			//	);
@@ -201,8 +206,9 @@ export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
 		});
 
 		describe("Tag Matching", () => {
-			test("finds actors with equal or superset of specified tags", async () => {
+			test("finds actors with equal or superset of specified tags", async (c) => {
 				const { client } = await setupDriverTest<CounterApp>(
+					c,
 					driverTestConfig,
 					resolve(__dirname, "../fixtures/apps/counter.ts"),
 				);
@@ -235,8 +241,9 @@ export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
 				expect(singleTagCount).toBe(10);
 			});
 
-			test("no tags match actors with tags", async () => {
+			test("no tags match actors with tags", async (c) => {
 				const { client } = await setupDriverTest<CounterApp>(
+					c,
 					driverTestConfig,
 					resolve(__dirname, "../fixtures/apps/counter.ts"),
 				);
@@ -255,8 +262,9 @@ export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
 				expect(count).toBe(15);
 			});
 
-			test("actors with tags match actors with no tags", async () => {
+			test("actors with tags match actors with no tags", async (c) => {
 				const { client } = await setupDriverTest<CounterApp>(
+					c,
 					driverTestConfig,
 					resolve(__dirname, "../fixtures/apps/counter.ts"),
 				);
@@ -275,8 +283,9 @@ export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
 				expect(taggedCount).toBe(0);
 			});
 
-			test("specifying different tags for get and create results in the expected tags", async () => {
+			test("specifying different tags for get and create results in the expected tags", async (c) => {
 				const { client } = await setupDriverTest<CounterApp>(
+					c,
 					driverTestConfig,
 					resolve(__dirname, "../fixtures/apps/counter.ts"),
 				);
@@ -322,8 +331,8 @@ export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
 
 		describe("Multiple Actor Instances", () => {
 			// TODO: This test is flakey https://github.com/rivet-gg/actor-core/issues/873
-			//test("creates multiple actor instances of the same type", async () => {
-			//	const { client } = await setupDriverTest<CounterApp>(
+			//test("creates multiple actor instances of the same type", async (c) => {
+			//	const { client } = await setupDriverTest<CounterApp>(c,
 			//		driverTestConfig,
 			//		resolve(__dirname, "../fixtures/apps/counter.ts"),
 			//	);
@@ -361,8 +370,9 @@ export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
 			//	expect(await retrieved3.increment(0)).toBe(3);
 			//});
 
-			test("handles default instance with no explicit ID", async () => {
+			test("handles default instance with no explicit ID", async (c) => {
 				const { client } = await setupDriverTest<CounterApp>(
+					c,
 					driverTestConfig,
 					resolve(__dirname, "../fixtures/apps/counter.ts"),
 				);

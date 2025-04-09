@@ -15,8 +15,8 @@ import {
 } from "actor-core";
 import { createNodeWebSocket, type NodeWebSocket } from "@hono/node-ws";
 import invariant from "invariant";
-import getPort from "get-port";
 import { bundleRequire } from "bundle-require";
+import { getPort } from "actor-core/test";
 
 export interface DriverTestConfig {
 	/** Deploys an app and returns the connection endpoint. */
