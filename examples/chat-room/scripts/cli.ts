@@ -1,18 +1,17 @@
-import { createClient, type Encoding } from "actor-core/client";
+import { createClient } from "actor-core/client";
 import type { App } from "../actors/app";
 import prompts from "prompts";
 
 async function main() {
-	const { encoding, username, room } = await initPrompt();
+	const { username, room } = await initPrompt();
 
 	// Create type-aware client
-	const client = createClient<App>("http://localhost:6420", {
-		encoding,
-	});
+	const client = createClient<App>("http://localhost:6420");
 
 	// connect to chat room - now accessed via property
 	// can still pass parameters like room
 	const chatRoom = await client.chatRoom.get({
+		tags: { room },
 		params: { room },
 	});
 
@@ -47,20 +46,10 @@ async function main() {
 }
 
 async function initPrompt(): Promise<{
-	encoding: Encoding;
 	room: string;
 	username: string;
 }> {
 	return await prompts([
-		{
-			type: "select",
-			name: "encoding",
-			message: "Encoding",
-			choices: [
-				{ title: "CBOR", value: "cbor" },
-				{ title: "JSON", value: "json" },
-			],
-		},
 		{
 			type: "text",
 			name: "username",

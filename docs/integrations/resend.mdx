@@ -1,0 +1,269 @@
+---
+title: Resend
+---
+
+[Resend](https://resend.com) is an email API service that works seamlessly with ActorCore for handling emails and notifications.
+
+## Example
+
+See how ActorCore and Resend can power engagement with daily streak notifications.
+
+<Card icon="fire" title="Streaks" href="https://github.com/rivet-gg/actor-core/tree/main/examples/resend-streaks">View on GitHub</Card>
+
+## Quickstart
+
+<Steps>
+<Step title="Install Resend SDK">
+```bash
+npm install resend
+```
+</Step>
+
+<Step title="Create an actor with Resend">
+```typescript actors.ts
+import { actor, setup } from "actor-core";
+import { Resend } from "resend";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+const user = actor({
+  state: {
+    email: null as string | null,
+  },
+
+  actions: {
+    // Example: Somehow acquire the user's email
+    register: async (c, email: string) => {
+      c.state.email = email;
+    },
+
+    // Example: Send an email
+    sendExampleEmail: async (c) => {
+      if (!c.state.email) throw new Error("No email registered");
+      
+      await resend.emails.send({
+        from: "updates@yourdomain.com",
+        to: c.state.email,
+        subject: "Hello, world!",
+        html: "<p>Lorem ipsum</p>",
+      });
+    },
+  },
+});
+
+export const app = setup({ actors: { user } });
+export type App = typeof app;
+```
+</Step>
+
+<Step title="Call your actor">
+```typescript client.ts
+import { createClient } from "actor-core";
+import { App } from "./actors/app.ts";
+
+const client = createClient<App>("http://localhost:8787");
+const userActor = await client.user.get({ tags: { user: "user123" } });
+
+await userActor.register("user@example.com");
+await userActor.sendExampleEmail();
+```
+</Step>
+</Steps>
+
+## Use Cases
+
+### Scheduling Emails
+
+ActorCore's scheduling capabilities with Resend make it easy to send emails at specific times:
+
+<CodeGroup>
+```typescript actors.ts
+const emailScheduler = actor({
+  state: {
+    email: null as string | null,
+  },
+
+  actions: {
+    scheduleEmail: async (c, email: string, delayMs: number = 86400000) => {
+      c.state.email = email;
+      await c.schedule.at(Date.now() + delayMs, "sendEmail");
+    },
+    
+    sendEmail: async (c) => {
+      if (!c.state.email) return;
+      
+      await resend.emails.send({
+        from: "updates@yourdomain.com",
+        to: c.state.email,
+        subject: "Your scheduled message",
+        html: "<p>This email was scheduled earlier!</p>",
+      });
+    },
+  },
+});
+```
+
+```typescript client.ts
+const client = createClient<App>({ url: "http://localhost:3000" });
+const scheduler = await client.emailScheduler.get({ id: "user123" });
+await scheduler.scheduleEmail("user@example.com", 60000); // 1 minute
+```
+</CodeGroup>
+
+### Daily Reminders
+
+Send daily reminders to users based on their activity:
+
+<CodeGroup>
+```typescript actors.ts
+const reminder = actor({
+  state: {
+    email: null as string | null,
+    lastActive: null as number | null,
+  },
+
+  actions: {
+    trackActivity: async (c, email: string) => {
+      c.state.email = email;
+      c.state.lastActive = Date.now();
+      
+      // Schedule check for tomorrow
+      await c.schedule.at(Date.now() + 24 * 60 * 60 * 1000, "checkActivity");
+    },
+    
+    checkActivity: async (c) => {
+      if (!c.state.email) return;
+      
+      // If inactive for 24+ hours, send reminder
+      if (Date.now() - (c.state.lastActive || 0) >= 24 * 60 * 60 * 1000) {
+        await resend.emails.send({
+          from: "reminders@yourdomain.com",
+          to: c.state.email,
+          subject: "We miss you!",
+          html: "<p>Don't forget to check in today.</p>",
+        });
+      }
+      
+      // Reschedule for tomorrow
+      await c.schedule.at(Date.now() + 24 * 60 * 60 * 1000, "checkActivity");
+    },
+  },
+});
+```
+
+```typescript client.ts
+const client = createClient<App>({ url: "http://localhost:3000" });
+const userReminder = await client.reminder.get({ id: "user123" });
+await userReminder.trackActivity("user@example.com");
+```
+</CodeGroup>
+
+### Alerting Systems
+
+Monitor your systems and send alerts when issues are detected:
+
+<CodeGroup>
+```typescript actors.ts
+const monitor = actor({
+  state: {
+    alertEmail: null as string | null,
+    isHealthy: true,
+  },
+
+  actions: {
+    configure: async (c, email: string) => {
+      c.state.alertEmail = email;
+      await c.schedule.at(Date.now() + 60000, "checkHealth");
+    },
+    
+    checkHealth: async (c) => {
+      // Simple mock health check
+      const wasHealthy = c.state.isHealthy;
+      c.state.isHealthy = await mockHealthCheck();
+      
+      // Alert on status change to unhealthy
+      if (wasHealthy && !c.state.isHealthy && c.state.alertEmail) {
+        await resend.emails.send({
+          from: "alerts@yourdomain.com",
+          to: c.state.alertEmail,
+          subject: "⚠️ System Alert",
+          html: "<p>The system is experiencing issues.</p>",
+        });
+      }
+      
+      // Reschedule next check
+      await c.schedule.at(Date.now() + 60000, "checkHealth");
+    },
+  },
+});
+
+// Mock function
+async function mockHealthCheck() {
+  return Math.random() > 0.1; // 90% chance of being healthy
+}
+```
+
+```typescript client.ts
+const client = createClient<App>({ url: "http://localhost:3000" });
+const systemMonitor = await client.monitor.get({ id: "api-service" });
+await systemMonitor.configure("admin@example.com");
+```
+</CodeGroup>
+
+## Testing
+
+When testing actors that use Resend, you should mock the Resend API to avoid sending real emails during tests. ActorCore's testing utilities combined with Vitest make this straightforward:
+
+```typescript
+import { test, expect, vi, beforeEach } from "vitest";
+import { setupTest } from "actor-core/test";
+import { app } from "../actors/app";
+
+// Create mock for send method
+const mockSendEmail = vi.fn().mockResolvedValue({ success: true });
+
+beforeEach(() => {
+  process.env.RESEND_API_KEY = "test_mock_api_key_12345";
+
+  vi.mock("resend", () => {
+    return {
+      Resend: vi.fn().mockImplementation(() => {
+        return {
+          emails: {
+            send: mockSendEmail
+          }
+        };
+      })
+    };
+  });
+
+  mockSendEmail.mockClear();
+});
+
+test("email is sent when action is called", async (t) => {
+  const { client } = await setupTest(t, app);
+  const actor = await client.user.get();
+
+  // Call the action that should send an email
+  await actor.someActionThatSendsEmail("user@example.com");
+
+  // Verify the email was sent with the right parameters
+  expect(mockSendEmail).toHaveBeenCalledWith(
+    expect.objectContaining({
+      to: "user@example.com",
+      subject: "Expected Subject",
+    }),
+  );
+});
+```
+
+Using `vi.advanceTimersByTimeAsync()` is particularly useful for testing scheduled emails:
+
+```typescript
+// Fast forward time to test scheduled emails
+await vi.advanceTimersByTimeAsync(24 * 60 * 60 * 1000); // Advance 24 hours
+
+// Test that the scheduled email was sent
+expect(mockSendEmail).toHaveBeenCalledTimes(2);
+```
+
