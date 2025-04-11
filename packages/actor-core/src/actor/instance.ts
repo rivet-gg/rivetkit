@@ -213,7 +213,7 @@ export class ActorInstance<S, CP, CS, V> {
 		timestamp: number,
 		fn: string,
 		args: unknown[],
-	): Promise<void> {
+	): Promise<string> {
 		// Build event
 		const eventId = crypto.randomUUID();
 		const newEvent: PersistedScheduleEvents = {
@@ -244,6 +244,30 @@ export class ActorInstance<S, CP, CS, V> {
 			this.actorContext.log.info("setting alarm", { timestamp });
 			await this.#actorDriver.setAlarm(this, newEvent.t);
 		}
+		return eventId;
+	}
+
+	async getEvent(eventId: string) {
+		return this.#persist.e.find((x) => x.e === eventId);
+	}
+
+	async cancelEvent(eventId: string) {
+		const index = this.#persist.e.findIndex((x) => x.e === eventId);
+		if (index !== -1) {
+		  if (index === 0 && this.#persist.e.length === 1) {
+  			this.actorContext.log.info("clearing alarm");
+  			await this.#actorDriver.deleteAlarm(this);
+		  } else if (index === 0) {
+  			this.actorContext.log.info("setting next alarm", { timestamp: this.#persist.e[1].t });
+  			await this.#actorDriver.setAlarm(this, this.#persist.e[1].t);
+		  }
+			this.#persist.e.splice(index, 1);
+			this.actorContext.log.info("cancelled event", { eventId });
+		}
+	}
+
+	async listEvents() {
+		return this.#persist.e;
 	}
 
 	async onAlarm() {
