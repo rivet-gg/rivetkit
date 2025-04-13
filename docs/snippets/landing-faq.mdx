@@ -1,0 +1,103 @@
+import { Icon } from "@/components/Icon";
+
+<div className="text-center">
+    <h2 id="faq" className="landing-section-heading">Frequently Asked Questions</h2>
+    <p className="landing-section-text">Common questions about stateful serverless and ActorCore.</p>
+
+    <div style={{ height: '40px' }} />
+
+    <div className="faq-section">
+        <div className="faq-accordion" data-state="closed">
+            <button className="faq-question">
+                How is ActorCore different than Rivet Actors?
+                <Icon icon="chevron-down" size={16} color="white" />
+            </button>
+            <div className="faq-answer">
+                <p>ActorCore is a framework written in TypeScript that provides high-level functionality. Rivet is an open-source serverless platform written in Rust with features tailored for stateful serverless.</p>
+                <p>You can think of it as ActorCore is to Rivet as Next.js is to Vercel.</p>
+                <p>While Rivet is the primary maintainer of ActorCore, we intend for this to be community driven.</p>
+            </div>
+        </div>
+
+        <div className="faq-accordion" data-state="closed">
+            <button className="faq-question">
+                How does stateful serverless compare to the traditional actor model?
+                <Icon icon="chevron-down" size={16} color="white" />
+            </button>
+            <div className="faq-answer">
+                <p>Stateful serverless is very similar to actors: it's essentially actors with persistence, and usually doesn't have as rigid constraints on message handling. This makes it more flexible while maintaining the core benefits of the actor model.</p>
+            </div>
+        </div>
+
+        <div className="faq-accordion" data-state="closed">
+            <button className="faq-question">
+                How do stateful and stateless serverless work together?
+                <Icon icon="chevron-down" size={16} color="white" />
+            </button>
+            <div className="faq-answer">
+                <p>Stateless serverless works well when you have an external resource that maintains state. Stateful serverless, on the other hand, is almost like a mini-database.</p>
+                <p>Sometimes it makes sense to use stateless serverless to make requests to multiple stateful serverless instances, orchestrating complex operations across multiple state boundaries.</p>
+            </div>
+        </div>
+
+        <div className="faq-accordion" data-state="closed">
+            <button className="faq-question">
+                How does ActorCore achieve huge performance gains?
+                <Icon icon="chevron-down" size={16} color="white" />
+            </button>
+            <div className="faq-answer">
+                <p>By storing state in memory and flushing to a persistence layer, we can serve requests instantly instead of waiting for a round trip to the database. There are additional optimizations that can be made around your state to tune the durability of it.</p>
+                <p>Additionally, data is stored near your users at the edge, ensuring round-trip times of less than 50ms when they request it. This edge-first approach eliminates the latency typically associated with centralized databases.</p>
+            </div>
+        </div>
+
+        <div className="faq-accordion" data-state="closed">
+            <button className="faq-question">
+                Isn't well-designed software supposed to separate compute and storage?
+                <Icon icon="chevron-down" size={16} color="white" />
+            </button>
+            <div className="faq-answer">
+                <p>Some software makes sense to separate – e.g., for data lakes or highly relational data. But at the end of the day, data has to be partitioned somewhere at some point.</p>
+                <p>Usually "faster" databases like Cassandra, DynamoDB, or Vitess make consistency tradeoffs to get better performance. Stateful serverless forces you to think about how your data is sharded for better performance, better scalability, and less consistency footguns.</p>
+            </div>
+        </div>
+
+        <div className="faq-accordion" data-state="closed">
+            <button className="faq-question">
+                What is stateful serverless not good for?
+                <Icon icon="chevron-down" size={16} color="white" />
+            </button>
+            <div className="faq-answer">
+                <p>OLAP, data lakes, graph databases, and highly relational data are currently not ideal use cases for stateful serverless, though it will get better at handling these use cases over time.</p>
+            </div>
+        </div>
+
+        <div className="faq-accordion" data-state="closed">
+            <button className="faq-question">
+                Can this create a single bottleneck?
+                <Icon icon="chevron-down" size={16} color="white" />
+            </button>
+            <div className="faq-answer">
+                <p>Yes, but only as much as storing data in a single database row does. We're working on building out read replicas to allow you to perform read-only actions on actors.</p>
+            </div>
+        </div>
+
+        <div className="faq-accordion" data-state="closed">
+            <button className="faq-question">
+                Stateless serverless is standardized under WinterTC. Is there any intention to standardize stateful serverless?
+                <Icon icon="chevron-down" size={16} color="white" />
+            </button>
+            <div className="faq-answer">
+                <p>Things are cooking! Check out our <a href="https://rivet.gg/blog/2025-03-23-what-would-a-w3c-standard-look-like-for-stateful-serverless-" target="_blank">blog post</a> about what a W3C standard for stateful serverless might look like and <a href="https://x.com/threepointone/status/1903579571028390038" target="_blank">the awesome people who are collaborating on this</a>.</p>
+            </div>
+        </div>
+    </div>
+
+    <div style={{ height: '40px' }} />
+    
+    <div className="text-center">
+        <p className="text-lg">
+            Have more questions? Join our <a href="https://discord.gg/rivet" className="text-primary hover:text-primary-dark">Discord</a> or go to <a href="https://github.com/rivet-gg/actor-core/discussions" className="text-primary hover:text-primary-dark">GitHub Discussions</a>.
+        </p>
+    </div>
+</div> 

@@ -1,0 +1,594 @@
+import ChatRoomJs from "/snippets/examples/chat-room-js.mdx";
+import ChatRoomSqlite from "/snippets/examples/chat-room-sqlite.mdx";
+import ChatRoomReact from "/snippets/examples/chat-room-react.mdx";
+import AiAgentJs from "/snippets/examples/ai-agent-js.mdx";
+import AiAgentSqlite from "/snippets/examples/ai-agent-sqlite.mdx";
+import AiAgentReact from "/snippets/examples/ai-agent-react.mdx";
+import SyncJs from "/snippets/examples/sync-js.mdx";
+import SyncSqlite from "/snippets/examples/sync-sqlite.mdx";
+import SyncReact from "/snippets/examples/sync-react.mdx";
+import TenantJs from "/snippets/examples/tenant-js.mdx";
+import TenantSqlite from "/snippets/examples/tenant-sqlite.mdx";
+import TenantReact from "/snippets/examples/tenant-react.mdx";
+import DatabaseJs from "/snippets/examples/database-js.mdx";
+import DatabaseSqlite from "/snippets/examples/database-sqlite.mdx";
+import DatabaseReact from "/snippets/examples/database-react.mdx";
+import CrdtJs from "/snippets/examples/crdt-js.mdx";
+import CrdtSqlite from "/snippets/examples/crdt-sqlite.mdx";
+import CrdtReact from "/snippets/examples/crdt-react.mdx";
+import DocumentJs from "/snippets/examples/document-js.mdx";
+import DocumentSqlite from "/snippets/examples/document-sqlite.mdx";
+import DocumentReact from "/snippets/examples/document-react.mdx";
+import StreamJs from "/snippets/examples/stream-js.mdx";
+import StreamSqlite from "/snippets/examples/stream-sqlite.mdx";
+import StreamReact from "/snippets/examples/stream-react.mdx";
+import GameJs from "/snippets/examples/game-js.mdx";
+import GameSqlite from "/snippets/examples/game-sqlite.mdx";
+import GameReact from "/snippets/examples/game-react.mdx";
+import RateJs from "/snippets/examples/rate-js.mdx";
+import RateSqlite from "/snippets/examples/rate-sqlite.mdx";
+import RateReact from "/snippets/examples/rate-react.mdx";
+
+
+<div class="code-group">
+  <div class="code-group-tabs">
+    {/* Scroll Bars */}
+    <div class="scroll-indicators-overlay">
+      <div class="scroll-indicator left">
+        <Icon icon="chevron-left" color="white" size={14} />
+      </div>
+      <div class="scroll-indicator right">
+        <Icon icon="chevron-right" color="white" size={14} />
+      </div>
+    </div>
+
+    {/* Examples */}
+    <div class="code-group-tab-row primary-tabs">
+      <div class="code-group-tab-label">Example</div>
+      <div class="code-group-tab active" data-tab="chat">
+        <Icon icon="message" color="white" size={14} />
+        Chat Room
+      </div>
+      <div class="code-group-tab" data-tab="ai">
+        <Icon icon="robot" color="white" size={14} />
+        AI Agent
+      </div>
+      <div class="code-group-tab" data-tab="sync">
+        <Icon icon="rotate" color="white" size={14} />
+        Local-First Sync
+      </div>
+      <div class="code-group-tab" data-tab="tenant">
+        <Icon icon="building" color="white" size={14} />
+        Per-Tenant Saas
+      </div>
+      <div class="code-group-tab" data-tab="database">
+        <Icon icon="database" color="white" size={14} />
+        Per-User Databases
+      </div>
+      <div class="code-group-tab" data-tab="crdt">
+        <Icon icon="code-merge" color="white" size={14} />
+        Yjs CRDT
+      </div>
+      <div class="code-group-tab" data-tab="doc">
+        <Icon icon="file-pen" color="white" size={14} />
+        Collaborative Document
+      </div>
+      <div class="code-group-tab" data-tab="stream">
+        <Icon icon="wave-sine" color="white" size={14} />
+        Stream Processing
+      </div>
+      <div class="code-group-tab" data-tab="game">
+        <Icon icon="gamepad" color="white" size={14} />
+        Multiplayer Game
+      </div>
+      <div class="code-group-tab" data-tab="rate">
+        <Icon icon="gauge-high" color="white" size={14} />
+        Rate Limiter
+      </div>
+    </div>
+
+    {/* State */}
+    <div class="code-group-tab-row secondary-tabs">
+      <div class="code-group-tab-label">State</div>
+      <div class="code-group-tab active" data-tab="memory">JavaScript</div>
+      <div class="code-group-tab" data-tab="sqlite">SQLite<span class="code-group-coming-soon">Available In April</span></div>
+    </div>
+  </div>
+
+  {/* Code */}
+  <div class="code-group-panels">
+    {/* Chat Room */}
+    <div class="code-panel active" data-panel="chat-memory">
+      <div class="code-split">
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">actor.ts</span>
+            <span class="file-description">Runs on the server</span>
+          </div>
+          <div class="code-block">
+            <ChatRoomJs />
+          </div>
+        </div>
+
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">App.tsx</span>
+            <span class="file-description">Runs in the browser</span>
+          </div>
+          <div class="code-block">
+            <ChatRoomReact />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="code-panel" data-panel="chat-sqlite">
+      <div class="code-split">
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">actor.ts</span>
+            <span class="file-description">Runs on the server</span>
+          </div>
+          <div class="code-block">
+            <ChatRoomSqlite />
+          </div>
+        </div>
+
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">App.tsx</span>
+            <span class="file-description">Runs in the browser</span>
+          </div>
+          <div class="code-block">
+            <ChatRoomReact />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* AI Agent */}
+    <div class="code-panel" data-panel="ai-memory">
+      <div class="code-split">
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">actor.ts</span>
+            <span class="file-description">Runs on the server</span>
+          </div>
+          <div class="code-block">
+            <AiAgentJs />
+          </div>
+        </div>
+
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">App.tsx</span>
+            <span class="file-description">Runs in the browser</span>
+          </div>
+          <div class="code-block">
+            <AiAgentReact />
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="code-panel" data-panel="ai-sqlite">
+      <div class="code-split">
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">actor.ts</span>
+            <span class="file-description">Runs on the server</span>
+          </div>
+          <div class="code-block">
+            <AiAgentSqlite />
+          </div>
+        </div>
+
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">App.tsx</span>
+            <span class="file-description">Runs in the browser</span>
+          </div>
+          <div class="code-block">
+            <AiAgentReact />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* Local-First Sync */}
+    <div class="code-panel" data-panel="sync-memory">
+      <div class="code-split">
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">actor.ts</span>
+            <span class="file-description">Runs on the server</span>
+          </div>
+          <div class="code-block">
+            <SyncJs />
+          </div>
+        </div>
+
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">App.tsx</span>
+            <span class="file-description">Runs in the browser</span>
+          </div>
+          <div class="code-block">
+            <SyncReact />
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="code-panel" data-panel="sync-sqlite">
+      <div class="code-split">
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">actor.ts</span>
+            <span class="file-description">Runs on the server</span>
+          </div>
+          <div class="code-block">
+            <SyncSqlite />
+          </div>
+        </div>
+
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">App.tsx</span>
+            <span class="file-description">Runs in the browser</span>
+          </div>
+          <div class="code-block">
+            <SyncReact />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* Per-Tenant SaaS */}
+    <div class="code-panel" data-panel="tenant-memory">
+      <div class="code-split">
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">actor.ts</span>
+            <span class="file-description">Runs on the server</span>
+          </div>
+          <div class="code-block">
+            <TenantJs />
+          </div>
+        </div>
+
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">App.tsx</span>
+            <span class="file-description">Runs in the browser</span>
+          </div>
+          <div class="code-block">
+            <TenantReact />
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="code-panel" data-panel="tenant-sqlite">
+      <div class="code-split">
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">actor.ts</span>
+            <span class="file-description">Runs on the server</span>
+          </div>
+          <div class="code-block">
+            <TenantSqlite />
+          </div>
+        </div>
+
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">App.tsx</span>
+            <span class="file-description">Runs in the browser</span>
+          </div>
+          <div class="code-block">
+            <TenantReact />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* Per-User Databases */}
+    <div class="code-panel" data-panel="database-memory">
+      <div class="code-split">
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">actor.ts</span>
+            <span class="file-description">Runs on the server</span>
+          </div>
+          <div class="code-block">
+            <DatabaseJs />
+          </div>
+        </div>
+
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">App.tsx</span>
+            <span class="file-description">Runs in the browser</span>
+          </div>
+          <div class="code-block">
+            <DatabaseReact />
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="code-panel" data-panel="database-sqlite">
+      <div class="code-split">
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">actor.ts</span>
+            <span class="file-description">Runs on the server</span>
+          </div>
+          <div class="code-block">
+            <DatabaseSqlite />
+          </div>
+        </div>
+
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">App.tsx</span>
+            <span class="file-description">Runs in the browser</span>
+          </div>
+          <div class="code-block">
+            <DatabaseReact />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* Yjs CRDT */}
+    <div class="code-panel" data-panel="crdt-memory">
+      <div class="code-split">
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">actor.ts</span>
+            <span class="file-description">Runs on the server</span>
+          </div>
+          <div class="code-block">
+            <CrdtJs />
+          </div>
+        </div>
+
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">App.tsx</span>
+            <span class="file-description">Runs in the browser</span>
+          </div>
+          <div class="code-block">
+            <CrdtReact />
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="code-panel" data-panel="crdt-sqlite">
+      <div class="code-split">
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">actor.ts</span>
+            <span class="file-description">Runs on the server</span>
+          </div>
+          <div class="code-block">
+            <CrdtSqlite />
+          </div>
+        </div>
+
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">App.tsx</span>
+            <span class="file-description">Runs in the browser</span>
+          </div>
+          <div class="code-block">
+            <CrdtReact />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* Collaborative Document */}
+    <div class="code-panel" data-panel="doc-memory">
+      <div class="code-split">
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">actor.ts</span>
+            <span class="file-description">Runs on the server</span>
+          </div>
+          <div class="code-block">
+            <DocumentJs />
+          </div>
+        </div>
+
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">App.tsx</span>
+            <span class="file-description">Runs in the browser</span>
+          </div>
+          <div class="code-block">
+            <DocumentReact />
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="code-panel" data-panel="doc-sqlite">
+      <div class="code-split">
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">actor.ts</span>
+            <span class="file-description">Runs on the server</span>
+          </div>
+          <div class="code-block">
+            <DocumentSqlite />
+          </div>
+        </div>
+
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">App.tsx</span>
+            <span class="file-description">Runs in the browser</span>
+          </div>
+          <div class="code-block">
+            <DocumentReact />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* Stream Processing */}
+    <div class="code-panel" data-panel="stream-memory">
+      <div class="code-split">
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">actor.ts</span>
+            <span class="file-description">Runs on the server</span>
+          </div>
+          <div class="code-block">
+            <StreamJs />
+          </div>
+        </div>
+
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">App.tsx</span>
+            <span class="file-description">Runs in the browser</span>
+          </div>
+          <div class="code-block">
+            <StreamReact />
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="code-panel" data-panel="stream-sqlite">
+      <div class="code-split">
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">actor.ts</span>
+            <span class="file-description">Runs on the server</span>
+          </div>
+          <div class="code-block">
+            <StreamSqlite />
+          </div>
+        </div>
+
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">App.tsx</span>
+            <span class="file-description">Runs in the browser</span>
+          </div>
+          <div class="code-block">
+            <StreamReact />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* Multiplayer Game */}
+    <div class="code-panel" data-panel="game-memory">
+      <div class="code-split">
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">actor.ts</span>
+            <span class="file-description">Runs on the server</span>
+          </div>
+          <div class="code-block">
+            <GameJs />
+          </div>
+        </div>
+
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">App.tsx</span>
+            <span class="file-description">Runs in the browser</span>
+          </div>
+          <div class="code-block">
+            <GameReact />
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="code-panel" data-panel="game-sqlite">
+      <div class="code-split">
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">actor.ts</span>
+            <span class="file-description">Runs on the server</span>
+          </div>
+          <div class="code-block">
+            <GameSqlite />
+          </div>
+        </div>
+
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">App.tsx</span>
+            <span class="file-description">Runs in the browser</span>
+          </div>
+          <div class="code-block">
+            <GameReact />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* Rate Limiter */}
+    <div class="code-panel" data-panel="rate-memory">
+      <div class="code-split">
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">actor.ts</span>
+            <span class="file-description">Runs on the server</span>
+          </div>
+          <div class="code-block">
+            <RateJs />
+          </div>
+        </div>
+
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">App.tsx</span>
+            <span class="file-description">Runs in the browser</span>
+          </div>
+          <div class="code-block">
+            <RateReact />
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="code-panel" data-panel="rate-sqlite">
+      <div class="code-split">
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">actor.ts</span>
+            <span class="file-description">Runs on the server</span>
+          </div>
+          <div class="code-block">
+            <RateSqlite />
+          </div>
+        </div>
+
+        <div class="code-split-panel">
+          <div class="code-panel-title">
+            <span class="file-name">App.tsx</span>
+            <span class="file-description">Runs in the browser</span>
+          </div>
+          <div class="code-block">
+            <RateReact />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="code-group-disclaimer">
+    We're working on publishing full examples related to these snippets. If you find an error, please <a href="https://github.com/rivet-gg/actor-core/issues" target="_blank" rel="noopener noreferrer">create an issue</a>.
+  </div>
+</div>

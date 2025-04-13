@@ -1,610 +1,231 @@
 ---
 title: ActorCore
-description: Stateful, Scalable, Realtime Backend Framework
+description: Stateful Serverless That Runs Anywhere
 sidebarTitle: Introduction
 mode: custom
 ---
 
+import ComparisonTable from "/snippets/landing-comparison-table.mdx";
+import Snippets from "/snippets/landing-snippets.mdx";
+import Tech from "/snippets/landing-tech.mdx";
+import Quotes from "/snippets/landing-quotes.mdx";
+import Manifesto from "/snippets/landing-manifesto.mdx";
+import FAQ from "/snippets/landing-faq.mdx";
+
+<div className="particle-container"></div>
+
 <div className="landing-root">
+	<div className="landing-hero landing-section">
+		<h1 className="landing-title">
+			Stateful Serverless That Runs Anywhere
+		</h1>
 
-<CardGroup cols={2}>
-  <div>
-    <h1 style={{ fontSize: "2.25rem", fontWeight: "bold", marginBottom: "0.5rem", color: "#ff4f00" }}>ActorCore</h1>
-    <h2 style={{ fontSize: "2.25rem", marginBottom: "1rem", color: "white" }}>Stateful, Scalable, Realtime<br/>Backend Framework</h2>
-    <p style={{ fontSize: "1.125rem", marginBottom: "1rem" }}>The modern way to build multiplayer, realtime, or AI agent backends.</p>
-    <p style={{ fontSize: "1.125rem" }}>
-      Runs on 
-      <a class="platform-link no-break" href="/platforms/rivet"><img class="inline-icon" src="/images/platforms/rivet-white.svg" /> Rivet</a>, 
-      <a class="platform-link no-break" href="/platforms/cloudflare-workers"><img class="inline-icon" src="/images/platforms/cloudflare-workers.svg" /> Durable Objects</a>, 
-      <a class="platform-link no-break" href="/platforms/bun"><img class="inline-icon" src="/images/platforms/bun.svg" /> Bun</a>, and 
-      <a class="platform-link no-break" href="/platforms/nodejs"><img class="inline-icon" src="/images/platforms/nodejs.svg" /> Node.js</a>.
-	  Supports
-      <a class="platform-link no-break" href="/clients/javascript"><img class="inline-icon" src="/images/clients/javascript.svg" /> JavaScript</a>, 
-      <a class="platform-link no-break" href="/clients/javascript"><img class="inline-icon" src="/images/clients/typescript.svg" /> TypeScript</a>, and 
-      <a class="platform-link no-break" href="/clients/rust"><img class="inline-icon" src="/images/clients/rust.svg" /> Rust</a>.
-	  Integrates with 
-      <a class="platform-link no-break" href="/integrations/hono"><img class="inline-icon" src="/images/platforms/hono.svg" /> Hono</a> and 
-      <a class="platform-link no-break" href="/drivers/redis"><img class="inline-icon" src="/images/platforms/redis.svg" /> Redis</a>.
-    </p> 
-    <div className="buttons-container">
-      <a href="/overview" className="button button-orange">Get Started</a>
-      <div className="copy-command-container copy-command-button" 
-        onClick={(e) => window.copyCommand && window.copyCommand(e.currentTarget)}>
-        <div className="copy-command-text">
-          npx create-actor@latest
-        </div>
-        <div className="icon-container">
-          <div className="copy-icon"><Icon icon="copy" /></div>
-          <div className="check-icon"><Icon icon="check" /></div>
-        </div>
-      </div>
+    	<p className="landing-subtitle">
+    		The easiest way to build{" "}
+    		<span className="landing-subtitle-highlight">stateful</span>,{" "}
+    		<span className="landing-subtitle-highlight">AI agent</span>,{" "}
+    		<span className="landing-subtitle-highlight">collaborative</span>, or{" "}
+    		<span className="landing-subtitle-highlight">local-first</span>{" "}
+    		applications.<br/>
+    		Deploy to Rivet, Cloudflare, Bun, Node.js, and more.
+    	</p>
+
+    	<div className="landing-buttons">
+    		<a href="/overview" className="landing-button landing-button-primary">
+    			Get Started
+    		</a>
+    		<a
+    			href="https://github.com/rivet-gg/actor-core"
+    			className="landing-button landing-button-secondary"
+    			target="_blank"
+    			rel="noopener noreferrer"
+    		>
+    			View on GitHub
+    		</a>
+    	</div>
+
+    	<div className="copy-command-container" onClick={(e) => window.copyCommand && window.copyCommand(e.currentTarget)}>
+    		<div className="copy-command-icon"><Icon icon="arrow-right" iconType="solid" color="white" /></div>
+    		<div className="copy-command-text">npx create-actor@latest</div>
+    		<div className="icon-container">
+    			<div className="copy-icon"><Icon icon="copy" /></div>
+    			<div className="check-icon"><Icon icon="check" /></div>
+    		</div>
+    	</div>
+
+    	<div style={{ height: '50px' }} />
+
+    	<div className="features-grid">
+    		<div className="feature-box group">
+    			<Icon icon="microchip" color="#ff4f00" size={24} />
+    			<h3 className="not-prose">Long-Lived, Stateful Compute</h3>
+    			<div className="feature-description">
+    				<p>Each unit of compute is like a tiny server that remembers things between requests – no need to reload data or worry about timeouts. Like AWS Lambda, but with memory and no timeouts.</p>
+    			</div>
+    		</div>
+    		<div className="feature-box group">
+    			<Icon icon="database" color="#ff4f00" size={24} />
+    			<h3 className="not-prose">Durable State Without a Database</h3>
+    			<div className="feature-description">
+    				<p>Your code's state is saved automatically—no database, ORM, or config needed. Just use regular JavaScript objects or SQLite (available in April).</p>
+    			</div>
+    		</div>
+    		<div className="feature-box group">
+    			<Icon icon="bolt" color="#ff4f00" size={24} />
+    			<h3 className="not-prose">Blazing-Fast Reads & Writes</h3>
+    			<div className="feature-description">
+    				<p>State is stored on the same machine as your compute, so reads and writes are ultra-fast. No database round trips, no latency spikes.</p>
+    			</div>
+    		</div>
+    		<div className="feature-box group">
+    			<Icon icon="tower-broadcast" color="#ff4f00" size={24} />
+    			<h3 className="not-prose">Realtime, Made Simple</h3>
+    			<div className="feature-description">
+    				<p>Update state and broadcast changes in realtime. No external pub/sub systems, no polling – just built-in low-latency events.</p>
+    			</div>
+    		</div>
+    		<div className="feature-box group">
+    			<Icon icon="globe" color="#ff4f00" size={24} />
+    			<h3 className="not-prose">Store Data Near Your Users</h3>
+    			<div className="feature-description">
+    				<p>Your state lives close to your users on the edge – not in a faraway data center – so every interaction feels instant.</p>
+    			</div>
+    		</div>
+    		<div className="feature-box group">
+    			<Icon icon="cloud" color="#ff4f00" size={24} />
+    			<h3 className="not-prose">Serverless & Scalable</h3>
+    			<div className="feature-description">
+    				<p>No servers to manage. Your code runs on-demand and scales automatically with usage.</p>
+    			</div>
+    		</div>
+    	</div>
+
+    	<div className="subtle-link-container">
+    		<a href="#faq" className="subtle-link">Have technical questions? Jump to our FAQ <Icon icon="arrow-right" color="white" /></a>
+    	</div>
     </div>
-  </div>
-  <div className="hero-code-block" style={{ marginTop: "-1.25rem", overflow: "hidden" }}>
-    ```typescript
-    import { actor } from "actor-core";
 
-    const chatRoom = actor({
-	  state: { messages: [] },
-      actions: {
-        // receive an action call from the client
-        sendMessage: (c, username, message) => {
-          // save message to persistent storage
-          c.state.messages.push({ username, message });
+	<div style={{ height: '160px' }} />
 
-          // broadcast message to all clients
-          c.broadcast("newMessage", username, message);
-        },
-		// allow client to request message history
-		getMessages: (c) => c.state.messages
-      }
-    });
-    ```
-  </div>
-</CardGroup>
+	<div className="landing-section-xl">
+		<h2 className="landing-section-heading">Reconsider What Your Backend Can Do</h2>
+		<p className="landing-section-text">Build powerful applications with ActorCore's comprehensive feature set.</p>
 
-<div style={{ height: "16px" }} />
+		<div style={{ height: '20px' }} />
+		<Snippets />
+	</div>
 
-<CardGroup cols={2}>
-  <Card title="Persistent, In-Memory State" icon="floppy-disk">
-    Fast in-memory access with built-in durability — no external databases or
-    caches needed.
-  </Card>
-  <Card title="Ultra-Fast State Updates" icon="bolt">
-    Real-time state updates with ultra-low latency, powered by co-locating
-    compute and data.
-  </Card>
-  <Card title="Batteries Included" icon="hammer-brush">
-    Integrated support for state, actions, events, scheduling, and multiplayer — no
-    extra boilerplate code needed.
-  </Card>
-  <Card title="Serverless & Scalable" icon="microchip">
-    Effortless scaling, scale-to-zero, and easy deployments on any serverless
-    runtime.
-  </Card>
-</CardGroup>
+    {/*
+    <div style={{ height: '300px' }} />
 
-<div style={{ height: "16px" }} />
+    <div className="text-center landing-section">
+    	<h2 className="landing-section-heading">Less Complexity, More Functionality</h2>
+    	<p className="landing-section-text">ActorCore provides a solid foundation with the features you'd expect for modern apps.</p>
 
-<div class="text-left text-white text-xl font-semibold not-prose mt-8 mb-4">
-  Features
-</div>
+    	<div style={{ height: '80px' }} />
 
-<CardGroup cols={2}>
-  <Card
-    title="State"
-    href="/concepts/state"
-    icon="floppy-disk"
-    horizontal={true}
-  />
-  <Card title="Actions" href="/concepts/actions" icon="bolt" horizontal={true} />
-  <Card
-    title="Events"
-    href="/concepts/events"
-    icon="tower-cell"
-    horizontal={true}
-  />
-  <Card
-    title="Scheduling"
-    href="/concepts/schedule"
-    icon="clock"
-    horizontal={true}
-  />
-  <Card
-    title="Connections & Multiplayer"
-    href="/concepts/connections"
-    icon="network-wired"
-    horizontal={true}
-  />
-  <Card
-    title="Metadata"
-    href="/concepts/metadata"
-    icon="tag"
-    horizontal={true}
-  />
-</CardGroup>
+    	<ComparisonTable />
+    </div>
+    */}
 
-<div style={{ height: "128px" }} />
+    <div style={{ height: '260px' }} />
 
-<div class="text-center">
-	<h2>Everything you need to build realtime, stateful backends</h2>
-	<p>ActorCore provides a solid foundation with the features you'd expect for modern apps.</p>
+    <div className="landing-section">
+        <Tech />
+    </div>
 
-  <div style={{ marginTop: "36px", marginBottom: "36px" }}>
-    <table className="comparison-table">
-      <thead>
-        <tr>
-          <th>Feature</th>
-          <th>
-            <img src="/images/platforms/actor-core.svg" alt="ActorCore" className="platform-logo" />
-            ActorCore
-          </th>
-          <th>
-            <img src="/images/platforms/cloudflare-workers.svg" alt="Durable Objects" className="platform-logo" />
-            Durable Objects
-          </th>
-          <th>
-            <img src="/images/platforms/socketio.svg" alt="Socket.io" className="platform-logo" />
-            Socket.io
-          </th>
-          <th>
-            <img src="/images/platforms/redis.svg" alt="Redis" className="platform-logo" />
-            Redis
-          </th>
-          <th>
-            <img src="/images/platforms/aws-lambda.svg" alt="AWS Lambda" className="platform-logo" />
-            AWS Lambda
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>
-            <div className="feature-wrapper">
-              <div className="feature-header">
-                <div className="feature-title">
-                  <Icon icon="database" iconType="solid" style={{ color: "#ff4f00" }} />
-                  In-Memory State
-                </div>
-              </div>
-              <div className="feature-description">Fast access to in-memory data without complex caching</div>
-            </div>
-          </td>
-          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
-          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
-          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
-          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
-          <td><div className="icon-container none"></div></td>
-          <td className="mobile-only">
-            <div className="mobile-platforms">
-              <div className="platform-card">
-                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
-                <span className="platform-name">ActorCore</span>
-              </div>
-              <div className="platform-card">
-                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
-                <span className="platform-name">Durable Objects</span>
-              </div>
-              <div className="platform-card">
-                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
-                <span className="platform-name">Socket.io</span>
-              </div>
-              <div className="platform-card">
-                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
-                <span className="platform-name">Redis</span>
-              </div>
-              <div className="platform-card">
-                <div className="icon-container none"></div>
-                <span className="platform-name">AWS Lambda</span>
-              </div>
-            </div>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <div className="feature-wrapper">
-              <div className="feature-header">
-                <div className="feature-title">
-                  <Icon icon="hard-drive" iconType="solid" style={{ color: "#ff4f00" }} />
-                  Persisted State
-                </div>
-              </div>
-              <div className="feature-description">Built-in persistence that survives crashes and restarts</div>
-            </div>
-          </td>
-          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
-          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
-          <td><div className="icon-container none"></div></td>
-          <td><div className="icon-container none"></div></td>
-          <td><div className="icon-container none"></div></td>
-          <td className="mobile-only">
-            <div className="mobile-platforms">
-              <div className="platform-card">
-                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
-                <span className="platform-name">ActorCore</span>
-              </div>
-              <div className="platform-card">
-                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
-                <span className="platform-name">Durable Objects</span>
-              </div>
-              <div className="platform-card">
-                <div className="icon-container none"></div>
-                <span className="platform-name">Socket.io</span>
-              </div>
-              <div className="platform-card">
-                <div className="icon-container none"></div>
-                <span className="platform-name">Redis</span>
-              </div>
-              <div className="platform-card">
-                <div className="icon-container none"></div>
-                <span className="platform-name">AWS Lambda</span>
-              </div>
-            </div>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <div className="feature-wrapper">
-              <div className="feature-header">
-                <div className="feature-title">
-                  <Icon icon="bolt" iconType="solid" style={{ color: "#ff4f00" }} />
-                  Actions
-                </div>
-              </div>
-              <div className="feature-description">Define and call functions that interact with your actors</div>
-            </div>
-          </td>
-          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
-          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
-          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
-          <td><div className="icon-container none"></div></td>
-          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
-          <td className="mobile-only">
-            <div className="mobile-platforms">
-              <div className="platform-card">
-                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
-                <span className="platform-name">ActorCore</span>
-              </div>
-              <div className="platform-card">
-                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
-                <span className="platform-name">Durable Objects</span>
-              </div>
-              <div className="platform-card">
-                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
-                <span className="platform-name">Socket.io</span>
-              </div>
-              <div className="platform-card">
-                <div className="icon-container none"></div>
-                <span className="platform-name">Redis</span>
-              </div>
-              <div className="platform-card">
-                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
-                <span className="platform-name">AWS Lambda</span>
-              </div>
-            </div>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <div className="feature-wrapper">
-              <div className="feature-header">
-                <div className="feature-title">
-                  <Icon icon="tower-cell" iconType="solid" style={{ color: "#ff4f00" }} />
-                  Events (Pub/Sub)
-                </div>
-              </div>
-              <div className="feature-description">Real-time messaging with publish/subscribe patterns</div>
-            </div>
-          </td>
-          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
-          <td><div className="icon-container partial"><Icon icon="minus" iconType="solid" className="feature-icon" /></div></td>
-          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
-          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
-          <td><div className="icon-container none"></div></td>
-          <td className="mobile-only">
-            <div className="mobile-platforms">
-              <div className="platform-card">
-                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
-                <span className="platform-name">ActorCore</span>
-              </div>
-              <div className="platform-card">
-                <div className="icon-container partial"><Icon icon="minus" iconType="solid" className="feature-icon" /></div>
-                <span className="platform-name">Durable Objects</span>
-              </div>
-              <div className="platform-card">
-                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
-                <span className="platform-name">Socket.io</span>
-              </div>
-              <div className="platform-card">
-                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
-                <span className="platform-name">Redis</span>
-              </div>
-              <div className="platform-card">
-                <div className="icon-container none"></div>
-                <span className="platform-name">AWS Lambda</span>
-              </div>
-            </div>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <div className="feature-wrapper">
-              <div className="feature-header">
-                <div className="feature-title">
-                  <Icon icon="clock" iconType="solid" style={{ color: "#ff4f00" }} />
-                  Scheduling
-                </div>
-              </div>
-              <div className="feature-description">Run tasks in the future without external schedulers</div>
-            </div>
-          </td>
-          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
-          <td><div className="icon-container partial"><Icon icon="minus" iconType="solid" className="feature-icon" /></div></td>
-          <td><div className="icon-container none"></div></td>
-          <td><div className="icon-container none"></div></td>
-          <td><div className="icon-container partial"><Icon icon="minus" iconType="solid" className="feature-icon" /></div></td>
-          <td className="mobile-only">
-            <div className="mobile-platforms">
-              <div className="platform-card">
-                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
-                <span className="platform-name">ActorCore</span>
-              </div>
-              <div className="platform-card">
-                <div className="icon-container partial"><Icon icon="minus" iconType="solid" className="feature-icon" /></div>
-                <span className="platform-name">Durable Objects</span>
-              </div>
-              <div className="platform-card">
-                <div className="icon-container none"></div>
-                <span className="platform-name">Socket.io</span>
-              </div>
-              <div className="platform-card">
-                <div className="icon-container none"></div>
-                <span className="platform-name">Redis</span>
-              </div>
-              <div className="platform-card">
-                <div className="icon-container partial"><Icon icon="minus" iconType="solid" className="feature-icon" /></div>
-                <span className="platform-name">AWS Lambda</span>
-              </div>
-            </div>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <div className="feature-wrapper">
-              <div className="feature-header">
-                <div className="feature-title">
-                  <Icon icon="globe" iconType="solid" style={{ color: "#ff4f00" }} />
-                  Edge Computing
-                </div>
-              </div>
-              <div className="feature-description">Deploy globally for low-latency access from anywhere</div>
-            </div>
-          </td>
-          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>¹</td>
-          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
-          <td><div className="icon-container none"></div></td>
-          <td><div className="icon-container none"></div></td>
-          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
-          <td className="mobile-only">
-            <div className="mobile-platforms">
-              <div className="platform-card">
-                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
-                <span className="platform-name">ActorCore ¹</span>
-              </div>
-              <div className="platform-card">
-                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
-                <span className="platform-name">Durable Objects</span>
-              </div>
-              <div className="platform-card">
-                <div className="icon-container none"></div>
-                <span className="platform-name">Socket.io</span>
-              </div>
-              <div className="platform-card">
-                <div className="icon-container none"></div>
-                <span className="platform-name">Redis</span>
-              </div>
-              <div className="platform-card">
-                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
-                <span className="platform-name">AWS Lambda</span>
-              </div>
-            </div>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <div className="feature-wrapper">
-              <div className="feature-header">
-                <div className="feature-title">
-                  <Icon icon="unlock" iconType="solid" style={{ color: "#ff4f00" }} />
-                  No Vendor Lock
-                </div>
-              </div>
-              <div className="feature-description">Run on multiple platforms without rewriting your app</div>
-            </div>
-          </td>
-          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
-          <td><div className="icon-container none"></div></td>
-          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
-          <td><div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div></td>
-          <td><div className="icon-container none"></div></td>
-          <td className="mobile-only">
-            <div className="mobile-platforms">
-              <div className="platform-card">
-                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
-                <span className="platform-name">ActorCore</span>
-              </div>
-              <div className="platform-card">
-                <div className="icon-container none"></div>
-                <span className="platform-name">Durable Objects</span>
-              </div>
-              <div className="platform-card">
-                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
-                <span className="platform-name">Socket.io</span>
-              </div>
-              <div className="platform-card">
-                <div className="icon-container check"><Icon icon="check" iconType="solid" className="feature-icon" /></div>
-                <span className="platform-name">Redis</span>
-              </div>
-              <div className="platform-card">
-                <div className="icon-container none"></div>
-                <span className="platform-name">AWS Lambda</span>
-              </div>
-            </div>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+    <div style={{ height: '260px' }} />
 
-  <p><Icon icon="minus" iconType="solid" color="#FF4F00" /> = requires significant boilerplate code or external service</p>
-  <p>¹ = on supported platforms</p>
-</div>
+    <div className="text-center landing-section">
+        <h2 className="landing-section-heading">Supercharged Local Development with the Studio</h2>
+        <p className="landing-section-text">Like Postman, but for all of your stateful serverless needs.</p>
 
-<div style={{ height: "96px" }} />
+        <div style={{ height: '40px' }} />
 
-<h2 class="text-white text-2xl font-semibold not-prose mt-8 mb-4">
-  Overview
-</h2>
+        <div className="youtube-container">
+          <iframe
+            src="https://www.youtube-nocookie.com/embed/RYgo25fH9Ss?si=KH-fD6fHP501TTpn"
+            title="YouTube video player"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen
+          ></iframe>
+        </div>
 
-<Steps>
-    <Step title="Create Actor">
-      ```typescript Actor
-      import { actor, setup } from "actor-core";
+        <div style={{ height: '40px' }} />
 
-      const chatRoom = actor({
-		state: { messages: [] },
-        actions: {
-          // receive an action call from the client
-          sendMessage: (c, username: string, message: string) => {
-            // save message to persistent storage
-            c.state.messages.push({ username, message });
+        <div className="landing-buttons">
+            <a href="https://studio.rivet.gg" className="landing-button landing-button-secondary" target="_blank" rel="noopener noreferrer">
+                Visit The Studio
+            </a>
+        </div>
+    </div>
 
-            // broadcast message to all clients
-            c.broadcast("newMessage", username, message);
-          },
-          // allow client to request message history
-          getMessages: (c) => c.state.messages
-        },
-      });
+    <div style={{ height: '220px' }} />
 
-	  export const app = setup({
-        actors: { chatRoom },
-        cors: { origin: "http://localhost:8080" }
-      });
+    <div className="landing-section">
+        <Quotes />
+    </div>
 
-      export type App = typeof app;
-      ```
-    </Step>
-    <Step title="Connect to Actor">
-      <CodeGroup>
+    <div style={{ height: '260px' }} />
 
-      ```typescript Browser (TypeScript)
-      import { createClient } from "actor-core/client";
-      import type { App } from "../src/index";
+    <div className="text-center landing-section">
+        <h2 className="landing-section-heading">Join the Community</h2>
+        <p className="landing-section-text">Help make ActorCore the universal way to build & scale stateful serverless applications.</p>
 
-      const client = createClient<App>(/* manager endpoint */);
+        <div style={{ height: '40px' }} />
 
-      // connect to chat room
-      const chatRoom = await client.chatRoom.get({ channel: "random" });
+        <div className="tech-buttons-grid" style={{ maxWidth: '600px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+            <a href="https://rivet.gg/discord" className="tech-button" target="_blank" rel="noopener noreferrer">
+                <Icon icon="discord" color="#5865F2" className="tech-icon" />
+                Discord
+            </a>
+            <a href="https://x.com/ActorCore_org" className="tech-button" target="_blank" rel="noopener noreferrer">
+                <Icon icon="x-twitter" color="white" className="tech-icon" />
+                X
+            </a>
+            <a href="https://bsky.app/profile/rivet.gg" className="tech-button" target="_blank" rel="noopener noreferrer">
+                <Icon icon="bluesky" color="#0085FF" className="tech-icon" />
+                Bluesky
+            </a>
+            <a href="https://github.com/rivet-gg/actor-core/discussions" className="tech-button" target="_blank" rel="noopener noreferrer">
+                <Icon icon="github" color="white" className="tech-icon" />
+                Discussions
+            </a>
+            <a href="https://github.com/rivet-gg/actor-core/issues" className="tech-button" style={{ gridColumn: '2' }} target="_blank" rel="noopener noreferrer">
+                <Icon icon="github" color="white" className="tech-icon" />
+                Issues
+            </a>
+        </div>
+    </div>
 
-      // listen for new messages
-      chatRoom.on("newMessage", (username: string, message: string) =>
-        console.log(`Message from ${username}: ${message}`),
-      );
+    <div style={{ height: '260px' }} />
 
-      // send message to room
-      await chatRoom.sendMessage("william", "All the world's a stage.");
-      ```
+    <div className="landing-section">
+        <FAQ />
+    </div>
 
-      ```javascript Browser (JavaScript)
-      import { createClient } from "actor-core/client";
+    <div style={{ height: '260px' }} />
 
-      const client = createClient(/* manager endpoint */);
+    <div className="landing-section">
+        <Manifesto />
+    </div>
 
-      // connect to chat room
-      const chatRoom = await client.chatRoom.get();
+    <div style={{ height: '260px' }} />
 
-      // listen for new messages
-      chatRoom.on("newMessage", (username, message) =>
-        console.log(`Message from ${username}: ${message}`),
-      );
-
-      // send message to room
-      await chatRoom.sendMessage("william", "All the world's a stage.");
-      ```
-
-      </CodeGroup>
-    </Step>
-
-</Steps>
-
-{/*
-
-<h2 class="text-white text-2xl font-semibold not-prose mt-8 mb-4">
-  Overview
-</h2>
-
-Resources to help you use LLMs with ActorCore to build AI agents and tools. The following guides provide information on how to use ActorCore with your vibe coding workflow of choice.
-
-<CardGroup cols={3}>
-  <Card title="Cursor" href="/llm/cursor" horizontal={true} />
-  <Card title="Windsurf" href="/llm/windsurf" horizontal={true} />
-  <Card title="Claude Code" href="/llm/claude" horizontal={true} />
-  <Card title="llms.txt" href="/llm/llms" horizontal={true} />
-  <Card title="llms-full.txt" href="/llm/llms-full" horizontal={true} />
-  <Card title="prompt.txt" href="/llm/prompt" horizontal={true} />
-</CardGroup>
-
-*/}
-
-<h2 class="text-white text-2xl font-semibold not-prose mt-8 mb-4">
-  Platforms
-</h2>
-
-<CardGroup cols={4}>
-	<Card title="Rivet" href="/platforms/rivet" horizontal={true} />
-	<Card title="Durable Objects" href="/platforms/cloudflare-workers" horizontal={true} />
-	<Card title="Bun" href="/platforms/bun" horizontal={true} />
-	<Card title="Node.js" href="/platforms/nodejs" horizontal={true} />
-</CardGroup>
-
-<h2 class="text-white text-2xl font-semibold not-prose mt-8 mb-4">
-  Community & Support
-</h2>
-
-{" "}
-
-<CardGroup cols={3}>
-  <Card
-    title="GitHub Discussions"
-    icon="github"
-    horizontal={true}
-    href="https://github.com/rivet-gg/actor-core/discussions"
-  />
-  <Card
-    title="GitHub Issues"
-    icon="github"
-    horizontal={true}
-    href="https://github.com/rivet-gg/actor-core/issues"
-  />
-  <Card
-    title="X"
-    icon="x-twitter"
-    horizontal={true}
-    href="https://x.com/rivet_gg"
-  />
-  <Card
-    title="Bluesky"
-    icon="bluesky"
-    horizontal={true}
-    href="https://bsky.app/profile/rivet.gg"
-  />
-  <Card
-    title="Discord"
-    icon="discord"
-    horizontal={true}
-    href="https://rivet.gg/discord"
-  />
-</CardGroup>
+    <div className="cta-section landing-section">
+        <h2 className="cta-title" id="rotating-cta-title">Performance in every act - thanks to ActorCore.</h2>
+    	<div style={{ height: "16px" }} />
+        <div className="landing-buttons">
+            <a href="/overview" className="landing-button landing-button-primary">
+                Get Started
+            </a>
+            <a href="https://github.com/rivet-gg/actor-core" target="_blank" className="landing-button landing-button-secondary">
+                View on GitHub
+            </a>
+        </div>
+    	<div style={{ height: "8px" }} />
+        <p className="cta-pun-complaint">Click here to file a complaint for bad puns.</p>
+    </div>
 
 </div>

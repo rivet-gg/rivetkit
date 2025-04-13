@@ -1,4 +1,4 @@
-# Actor Core React
+# ActorCore React
 
 🎭 React integration for [ActorCore](https://actorcore.org/introduction)
 
