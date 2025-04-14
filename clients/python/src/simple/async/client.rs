@@ -5,7 +5,7 @@ use pyo3::prelude::*;
 
 use crate::util::{try_opts_from_kwds, PyKwdArgs};
 
-use super::handle::{ActorHandle, InnerActorData};
+use super::handle::ActorHandle;
 
 #[pyclass(name = "AsyncSimpleClient")]
 pub struct Client {
@@ -48,10 +48,7 @@ impl Client {
             let handle = client.get(&name, opts).await;
 
             match handle {
-                Ok(handle) => Ok(ActorHandle {
-                    handle,
-                    data: InnerActorData::new(),
-                }),
+                Ok(handle) => Ok(ActorHandle::new(handle)),
                 Err(e) => Err(py_runtime_err!(
                     "Failed to get actor: {}",
                     e
@@ -70,10 +67,7 @@ impl Client {
             let handle = client.get_with_id(&id, opts).await;
 
             match handle {
-                Ok(handle) => Ok(ActorHandle {
-                    handle,
-                    data: InnerActorData::new(),
-                }),
+                Ok(handle) => Ok(ActorHandle::new(handle)),
                 Err(e) => Err(py_runtime_err!(
                     "Failed to get actor: {}",
                     e
@@ -92,10 +86,7 @@ impl Client {
             let handle = client.create(&name, opts).await;
 
             match handle {
-                Ok(handle) => Ok(ActorHandle {
-                    handle,
-                    data: InnerActorData::new(),
-                }),
+                Ok(handle) => Ok(ActorHandle::new(handle)),
                 Err(e) => Err(py_runtime_err!(
                     "Failed to get actor: {}",
                     e

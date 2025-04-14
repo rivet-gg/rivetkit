@@ -1,15 +1,44 @@
-[build-system]
-requires = ["maturin>=1.8,<2.0"]
-build-backend = "maturin"
-
 [project]
 name = "python_actor_core_client"
+version = "0.8.0"
+authors = [
+  { name="Rivet Gaming, LLC", email="developer@rivet.gg" },
+]
+description = "Python client for ActorCore - the Stateful Serverless Framework for building AI agents, realtime apps, and game servers"
+readme = "README.md"
+license = "Apache-2.0"
 requires-python = ">=3.8"
 classifiers = [
     "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
-dynamic = ["version"]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/rivet-gg/actor-core"
+Issues = "https://github.com/rivet-gg/actor-core/issues"
+
+[project.optional-dependencies]
+tests = [
+    "asyncio==3.4.3",
+    "iniconfig==2.1.0",
+    "packaging==24.2",
+    "pluggy==1.5.0",
+    "pytest==8.3.5",
+    "pytest-aio==1.9.0",
+]
+
+
+[build-system]
+requires = ["maturin>=1.8,<2.0"]
+build-backend = "maturin"
+
 [tool.maturin]
 features = ["pyo3/extension-module"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+log_cli = true
+log_level = "DEBUG"

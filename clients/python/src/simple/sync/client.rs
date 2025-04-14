@@ -1,7 +1,7 @@
 use actor_core_client::{self as actor_core_rs, CreateOptions, GetOptions, GetWithIdOptions};
 use pyo3::prelude::*;
 
-use super::handle::{ActorHandle, InnerActorData};
+use super::handle::ActorHandle;
 use crate::util::{try_opts_from_kwds, PyKwdArgs, SYNC_RUNTIME};
 
 #[pyclass(name = "SimpleClient")]
@@ -43,10 +43,7 @@ impl Client {
         let handle = SYNC_RUNTIME.block_on(handle);
 
         match handle {
-            Ok(handle) => Ok(ActorHandle {
-                handle,
-                data: InnerActorData::new(),
-            }),
+            Ok(handle) => Ok(ActorHandle::new(handle)),
             Err(e) => Err(py_runtime_err!(
                 "Failed to get actor: {}",
                 e
@@ -61,10 +58,7 @@ impl Client {
         let handle = SYNC_RUNTIME.block_on(handle);
 
         match handle {
-            Ok(handle) => Ok(ActorHandle {
-                handle,
-                data: InnerActorData::new(),
-            }),
+            Ok(handle) => Ok(ActorHandle::new(handle)),
             Err(e) => Err(py_runtime_err!(
                 "Failed to get actor: {}",
                 e
@@ -79,10 +73,7 @@ impl Client {
         let handle = SYNC_RUNTIME.block_on(handle);
 
         match handle {
-            Ok(handle) => Ok(ActorHandle {
-                handle,
-                data: InnerActorData::new(),
-            }),
+            Ok(handle) => Ok(ActorHandle::new(handle)),
             Err(e) => Err(py_runtime_err!(
                 "Failed to get actor: {}",
                 e

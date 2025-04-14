@@ -1,61 +1,40 @@
-use std::sync::Arc;
 use actor_core_client::{self as actor_core_rs};
 use futures_util::FutureExt;
 use pyo3::{prelude::*, types::{PyList, PyString, PyTuple}};
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::mpsc;
 
 use crate::util::{self, SYNC_RUNTIME};
+
+const EVENT_BUFFER_SIZE: usize = 100;
 
 struct ActorEvent {
     name: String,
     args: Vec<serde_json::Value>,
 }
 
-pub struct InnerActorData {
-    event_tx: Mutex<Option<mpsc::Sender<ActorEvent>>>,
-}
-
-impl InnerActorData {
-    pub fn new() -> Arc<Self> {
-        Arc::new(Self {
-            event_tx: Mutex::new(None),
-        })
-    }
-}
-
-impl InnerActorData {
-    pub async fn on_event(
-        &self,
-        event_name: String,
-        args: &Vec<serde_json::Value>
-    ) {
-        let tx = &self.event_tx.lock().await;
-        let Some(tx) = tx.as_ref() else {
-            return;
-        };
-
-        tx.send(ActorEvent {
-            name: event_name,
-            args: args.clone(),
-        }).await.map_err(|e| {
-            py_runtime_err!(
-                "Failed to send via inner tx: {}",
-                e
-            )
-        }).ok();
-    }
-}
-
 #[pyclass]
 pub struct ActorHandle {
-    pub handle: actor_core_rs::handle::ActorHandle,
-    pub data: Arc<InnerActorData>,
+    handle: actor_core_rs::handle::ActorHandle,
+    event_rx: Option<mpsc::Receiver<ActorEvent>>,
+    event_tx: mpsc::Sender<ActorEvent>,
+}
+
+impl ActorHandle {
+    pub fn new(handle: actor_core_rs::handle::ActorHandle) -> Self {
+        let (event_tx, event_rx) = mpsc::channel(EVENT_BUFFER_SIZE);
+
+        Self {
+            handle,
+            event_tx,
+            event_rx: Some(event_rx),
+        }
+    }
 }
 
 #[pymethods]
 impl ActorHandle {
     #[new]
-    pub fn new() -> PyResult<Self> {
+    pub fn py_new() -> PyResult<Self> {
         Err(py_runtime_err!("Actor handle cannot be instantiated directly"))
     }
 
@@ -97,16 +76,26 @@ impl ActorHandle {
         event_name: &str,
     ) -> PyResult<()> {
         let event_name = event_name.to_string();
-        let data = self.data.clone();
-        
+        let tx = self.event_tx.clone();
+
         SYNC_RUNTIME.block_on(
             self.handle.on_event(&event_name.clone(), move |args| {
                 let event_name = event_name.clone();
                 let args = args.clone();
-                let data = data.clone();
-                
+                let tx = tx.clone();
+
                 tokio::spawn(async move {
-                    data.on_event(event_name, &args).await;
+                    let event = ActorEvent {
+                        name: event_name,
+                        args: args.clone(),
+                    };
+                    // Send this upstream(?)
+                    tx.send(event).await.map_err(|e| {
+                        py_runtime_err!(
+                            "Failed to send via inner tx: {}",
+                            e
+                        )
+                    }).ok();
                 });
             })
         );
@@ -116,16 +105,14 @@ impl ActorHandle {
     
     #[pyo3(signature=(count, timeout=None))]
     pub fn receive<'a>(
-        &self,
+        &mut self,
         py: Python<'a>,
         count: u32,
         timeout: Option<f64>
     ) -> PyResult<Bound<'a, PyList>> {
-        let (tx, mut rx) = mpsc::channel(count as usize);
-
-        SYNC_RUNTIME.block_on(async {
-            self.data.event_tx.lock().await.replace(tx);
-        });
+        let mut rx = self.event_rx.take().ok_or_else(|| {
+            py_runtime_err!("Two .receive() calls cannot co-exist")
+        })?;
 
         let result: Vec<ActorEvent> = SYNC_RUNTIME.block_on(async {
             let mut events: Vec<ActorEvent> = Vec::new();
