@@ -1,0 +1,89 @@
+```typescript
+import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+
+// Chat room schema
+export const messages = sqliteTable("messages", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  role: text("role"),
+  content: text("content"),
+  sender: text("sender"),
+  text: text("text"),
+  timestamp: integer("timestamp").defaultNow()
+});
+
+// Rate limiter schema
+export const limiters = sqliteTable("limiters", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  count: integer("count"),
+  resetAt: integer("reset_at")
+});
+
+// Tenant organization schema
+export const members = sqliteTable("members", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name"),
+  email: text("email"),
+  role: text("role")
+});
+
+export const invoices = sqliteTable("invoices", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  amount: integer("amount"),
+  date: integer("date"),
+  paid: integer("paid")
+});
+
+// CRDT Document schema
+export const documents = sqliteTable("documents", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  docData: text("doc_data"),
+  text: text("text")
+});
+
+// Stream processor schema
+export const streams = sqliteTable("streams", {
+  id: integer("id").primaryKey({ autoIncrement: true })
+});
+
+export const streamValues = sqliteTable("stream_values", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  value: integer("value")
+});
+
+// Cursor schema
+export const cursors = sqliteTable("cursors", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: text("user_id"),
+  x: integer("x"),
+  y: integer("y")
+});
+
+// Notes schema
+export const notes = sqliteTable("notes", {
+  id: text("id").primaryKey(),
+  content: text("content")
+});
+
+// Contact sync schema
+export const contacts = sqliteTable("contacts", {
+  id: text("id").primaryKey(),
+  name: text("name"),
+  email: text("email"),
+  phone: text("phone"),
+  updatedAt: integer("updated_at")
+});
+
+// Game schema
+export const players = sqliteTable("players", {
+  id: text("id").primaryKey(),
+  positionX: integer("position_x"),
+  positionY: integer("position_y"),
+  inputX: integer("input_x"),
+  inputY: integer("input_y")
+});
+
+export const gameSettings = sqliteTable("game_settings", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  mapSize: integer("map_size")
+});
+```

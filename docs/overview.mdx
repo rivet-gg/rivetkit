@@ -5,6 +5,29 @@ sidebarTitle: "Overview"
 
 ActorCore is a framework for building stateful, scalable, realtime backend applications. Whether you're building multiplayer games, collaborative apps, AI agent backends, or any stateful service, ActorCore provides the tools and patterns to simplify your architecture.
 
+{/*## What are actors good for?
+
+Actors in ActorCore are ideal for applications requiring:
+
+- **Stateful Services**: Applications where maintaining state across interactions is critical. For example, **Collaborative Apps** with shared editing and automatic persistence.
+- **Realtime Systems**: Applications requiring fast, in-memory state modifications or push updates to connected clients. For example, **Multiplayer Games** with game rooms and player state.
+- **Long-Running Processes**: Tasks that execute over extended periods or in multiple steps. For example, **AI Agents** with ongoing conversations and stateful tool calls.
+- **Durability**: Processes that must survive crashes and restarts without data loss. For example, **Durable Execution** workflows that continue after system restarts.
+- **Horizontal Scalability**: Systems that need to scale by distributing load across many instances. For example, **Realtime Stream Processing** for stateful event handling.
+- **Local-First Architecture**: Systems that synchronize state between offline clients. For example, **Local-First Sync** between devices.*/}
+
+## Core Concepts
+
+In ActorCore, each actor has these key characteristics:
+
+- **State Is Automatically Persisted**: State automatically persists between restarts, upgrades, & crashes
+- **State Is Stored In-Memory**: State is stored in memory for high-performance reads/writes while also automatically persisted
+- **Isolated State Ownership**: Actors only manage their own state, which can only be modified by the actor itself
+- **Communicates via Actions**: How clients and other actors interact with an actor
+- **Actions Are Low-Latency**: Actions provide WebSocket-like performance for time-sensitive operations
+- **Broadcast Updates With Events**: Actors can publish real-time updates to connected clients
+
+
 ## Get Started
 
 Integrate ActorCore with your project:
