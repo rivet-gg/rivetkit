@@ -136,6 +136,7 @@ Seamlessly integrate ActorCore with your favorite frameworks, languages, and too
 
 ### Integrations
 - <img src="docs/images/integrations/hono.svg" height="16" alt="Hono" />&nbsp;&nbsp;[Hono](/integrations/hono)
+- <img src="docs/images/integrations/vitest.svg" height="16" alt="Vitest" />&nbsp;&nbsp;[Vitest](/concepts/testing)
 - <img src="docs/images/integrations/resend.svg" height="16" alt="Resend" />&nbsp;&nbsp;[Resend](/integrations/resend)
 - <img src="docs/images/integrations/better-auth.svg" height="16" alt="Better Auth" />&nbsp;&nbsp;[Better Auth](https://github.com/rivet-gg/actor-core/issues/906) *(On The Roadmap)*
 - <img src="docs/images/platforms/vercel.svg" height="16" alt="AI SDK" />&nbsp;&nbsp;[AI SDK](https://github.com/rivet-gg/actor-core/issues/907) *(On The Roadmap)*
@@ -232,7 +233,6 @@ We ship fast, so we want to share what you can expect to see before the end of t
 Help shape our roadmap by [creating issues](https://github.com/rivet-gg/actor-core/issues) and [joining our Discord](https://rivet.gg/discord).
 
 - [ ] SQLite Support
-- [ ] Oodles Of Examples
 - [ ] SQLite in Studio
 - [ ] Local-First Extensions
 - [ ] Auth Extensions
@@ -249,8 +249,12 @@ Help shape our roadmap by [creating issues](https://github.com/rivet-gg/actor-co
 - [ ] Schema Validation
 - [ ] Vite Integration
 - [ ] OpenTelemetry
+- [ ] More Examples
 - [X] Studio
 - [X] File system driver
+- [X] Redis driver
+- [X] Bun support
+- [X] P2P topology
 - [X] React client
 - [X] Rust client
 - [X] Resend Integration
