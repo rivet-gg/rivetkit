@@ -1,4 +1,6 @@
-# Testing
+# Contributing
+
+## Testing
 
 For now, only testing the outcome of running the CLI is supported. Before running tests, make sure that you have installed and started Docker. 
 
