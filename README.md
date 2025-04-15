@@ -257,7 +257,7 @@ Help shape our roadmap by [creating issues](https://github.com/rivet-gg/actor-co
 - [X] Vitest Integration
 - [X] Non-serialized state
 - [X] `create-actor`
-- [X] `actor-core dev` command
+- [X] `actor-core dev`
 - [X] Hono Integration
 
 ## License

@@ -1116,6 +1116,34 @@
   border-color: rgba(255, 255, 255, 0.2);
 }
 
+.tech-button-completed {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.5);
+  position: relative;
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+.tech-button-completed:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.tech-completed-icon {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+}
+
 .tech-icon {
   width: 20px;
   height: 20px;
