@@ -8,11 +8,6 @@ const chatRoom = actor({
     messages: [] as Message[] 
   },
 
-  // Initialize the room
-  createState: () => ({
-    messages: []
-  }),
-
   actions: {
     sendMessage: (c, sender: string, text: string) => {
       const message = { sender, text, timestamp: Date.now() };
