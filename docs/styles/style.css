@@ -410,11 +410,6 @@
   }
 }
 
-[data-page="/"] #header,
-[data-page="/introduction"] #header {
-  display: none;
-}
-
 /* Comparison table styles */
 .comparison-table {
   width: 100%;
