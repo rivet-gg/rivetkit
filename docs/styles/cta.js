@@ -20,8 +20,8 @@ const CTA_TITLES = [
 ];
 
 function initializeAllCTAs() {
-  // Find CTA container
-  document.querySelectorAll('.cta-container:not([data-cta-initialized])').forEach(container => {
+  // Find CTA container, looking for both the old class and potential new classes
+  document.querySelectorAll('.cta-container:not([data-cta-initialized]), .cta-section:not([data-cta-initialized])').forEach(container => {
     // Skip if already initialized
     if (container.hasAttribute('data-cta-initialized')) return;
     
@@ -30,10 +30,18 @@ function initializeAllCTAs() {
     // Mark as initialized
     container.setAttribute('data-cta-initialized', 'true');
     
-    const titleElement = container.querySelector('#rotating-cta-title');
+    // Try both ID and class selectors for title element
+    const titleElement = container.querySelector('#rotating-cta-title, .cta-title');
     const subtitle = container.querySelector('.cta-pun-complaint');
     
-    if (!titleElement || !subtitle) return;
+    if (!titleElement || !subtitle) {
+      console.log("[Initialize] CTA - Missing elements", { 
+        titleElement: !!titleElement, 
+        subtitle: !!subtitle,
+        container: container.className 
+      });
+      return;
+    }
     
     let currentIndex = 0;
     let clickCount = 0;
@@ -41,6 +49,12 @@ function initializeAllCTAs() {
     function getNextTitle() {
       currentIndex = (currentIndex + 1) % CTA_TITLES.length;
       return CTA_TITLES[currentIndex];
+    }
+
+    // Set initial title if not already set
+    if (!titleElement.dataset.initialized) {
+      titleElement.textContent = CTA_TITLES[currentIndex];
+      titleElement.dataset.initialized = "true";
     }
 
     subtitle.addEventListener('click', () => {
