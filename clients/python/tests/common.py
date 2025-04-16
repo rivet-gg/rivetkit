@@ -60,7 +60,8 @@ def start_mock_server():
     packages = [
         ("actor-core", repo_root / "packages/actor-core"),
         ("nodejs", repo_root / "packages/platforms/nodejs"),
-        ("memory", repo_root / "packages/drivers/memory")
+        ("memory", repo_root / "packages/drivers/memory"),
+        ("file-system", repo_root / "packages/drivers/file-system")
     ]
     
     logger.info("Packing packages (3 total)")
@@ -81,15 +82,15 @@ def start_mock_server():
     # Create server script
     logger.info("Creating server start script")
     server_dir = temp_path / "counter"
-    server_script_path = server_dir / "src/server.ts"
+    server_script_path = server_dir / "run.ts"
     
 
     port = get_free_port()
     server_script = f"""
-import {{ app }} from "./index.ts";
+import {{ app }} from "./actors/app.ts";
 import {{ serve }} from "@actor-core/nodejs";
 
-serve(app, {{ port: {port} }});
+serve(app, {{ port: {port}, mode: "memory" }});
 """
     
     server_script_path.write_text(server_script)
@@ -104,7 +105,8 @@ serve(app, {{ port: {port} }});
         "dependencies": {
             "actor-core": f"file:{vendor_dir}/actor-core-actor-core.tgz",
             "@actor-core/nodejs": f"file:{vendor_dir}/actor-core-nodejs.tgz",
-            "@actor-core/memory": f"file:{vendor_dir}/actor-core-memory.tgz"
+            "@actor-core/memory": f"file:{vendor_dir}/actor-core-memory.tgz",
+            "@actor-core/file-system": f"file:{vendor_dir}/actor-core-file-system.tgz",
         },
         "devDependencies": {
             "tsx": "^3.12.7"
@@ -130,7 +132,7 @@ serve(app, {{ port: {port} }});
     # Start the server
     logger.info("Starting the server")
     process = subprocess.Popen(
-        ["npx", "tsx", "src/server.ts"],
+        ["npx", "tsx", "run.ts"],
         cwd=server_dir
     )
     

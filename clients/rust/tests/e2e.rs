@@ -49,6 +49,7 @@ impl MockServer {
             ("actor-core", repo_root.join("packages/actor-core")),
             ("nodejs", repo_root.join("packages/platforms/nodejs")),
             ("memory", repo_root.join("packages/drivers/memory")),
+            ("file-system", repo_root.join("packages/drivers/file-system")),
         ];
 
         // Pack each package to the vendor directory
@@ -80,14 +81,14 @@ impl MockServer {
 
         // Create the server directory structure
         let server_dir = temp_path.join("counter");
-        let server_script_path = server_dir.join("src/server.ts");
+        let server_script_path = server_dir.join("run.ts");
 
         // Write the server script
         let server_script = r#"
-import { app } from "./index.ts";
+import { app } from "./actors/app.ts";
 import { serve } from "@actor-core/nodejs";
 
-serve(app, { port: PORT });
+serve(app, { port: PORT, mode: "memory" });
 "#
         .replace("PORT", &port.to_string());
 
@@ -104,7 +105,8 @@ serve(app, { port: PORT });
     "dependencies": {{
         "actor-core": "file:{}",
         "@actor-core/nodejs": "file:{}",
-        "@actor-core/memory": "file:{}"
+        "@actor-core/memory": "file:{}",
+        "@actor-core/file-system": "file:{}"
     }},
     "devDependencies": {{
         "tsx": "^3.12.7"
@@ -112,7 +114,8 @@ serve(app, { port: PORT });
 }}"#,
             vendor_dir.join("actor-core-actor-core.tgz").display(),
             vendor_dir.join("actor-core-nodejs.tgz").display(),
-            vendor_dir.join("actor-core-memory.tgz").display()
+            vendor_dir.join("actor-core-memory.tgz").display(),
+            vendor_dir.join("actor-core-file-system.tgz").display()
         );
 
         std::fs::write(&package_json_path, package_json).expect("Failed to write package.json");
@@ -134,7 +137,7 @@ serve(app, { port: PORT });
 
         // Spawn the server process
         let child = Command::new("npx")
-            .args(["tsx", "src/server.ts"])
+            .args(["tsx", "run.ts"])
             .current_dir(&server_dir)
             .spawn()
             .expect("Failed to spawn server process");
