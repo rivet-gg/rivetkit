@@ -7578,6 +7578,12 @@ __metadata:
   languageName: node
   linkType: hard
 
+"snippets@workspace:examples/snippets":
+  version: 0.0.0-use.local
+  resolution: "snippets@workspace:examples/snippets"
+  languageName: unknown
+  linkType: soft
+
 "socks-proxy-agent@npm:^8.0.3":
   version: 8.0.5
   resolution: "socks-proxy-agent@npm:8.0.5"

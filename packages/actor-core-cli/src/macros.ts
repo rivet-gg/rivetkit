@@ -24,6 +24,8 @@ export async function getExamples(): Promise<ExamplesRegistry> {
 	const dirs = await readdir(EXAMPLES_PATH, { encoding: "utf-8" });
 
 	for (const dir of dirs) {
+		if (dir === "snippets") continue;
+
 		const output = execSync(`git ls-files ${dir}`, {
 			cwd: EXAMPLES_PATH,
 			encoding: "utf-8",
