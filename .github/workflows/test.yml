@@ -3,18 +3,19 @@
 name: 'Test'
 on: 
   pull_request:
-    paths:
-      - 'packages/**'
-      - 'clients/**'
-      - 'examples/**'
-      - '.github/workflows/**'
-      - 'package.json'
-      - 'yarn.lock'
-      - 'tsconfig*.json'
-      - 'turbo.json'
-      - 'tsup.base.ts'
-      - 'biome.json'
-      - 'Cargo.toml'
+    # TODO: Graphite does not support path filters
+    # paths:
+    #   - 'packages/**'
+    #   - 'clients/**'
+    #   - 'examples/**'
+    #   - '.github/workflows/**'
+    #   - 'package.json'
+    #   - 'yarn.lock'
+    #   - 'tsconfig*.json'
+    #   - 'turbo.json'
+    #   - 'tsup.base.ts'
+    #   - 'biome.json'
+    #   - 'Cargo.toml'
   workflow_dispatch:
 
 jobs:
