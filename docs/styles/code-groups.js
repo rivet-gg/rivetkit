@@ -1,3 +1,10 @@
+function initializeAllCodeGroups() {
+  // Find all code group elements that need initialization
+  document.querySelectorAll('.code-group:not([data-code-group-initialized])').forEach(group => {
+    initializeCodeGroup(group);
+  });
+}
+
 function initializeCodeGroup(group) {
   if (group.hasAttribute('data-code-group-initialized')) {
     return;
@@ -113,59 +120,9 @@ function initializeCodeGroup(group) {
   group.setAttribute('data-code-group-initialized', 'true');
 }
 
-// Setup observer to initialize code groups when they appear
-const codeGroupObserver = new MutationObserver((mutations) => {
-  for (const mutation of mutations) {
-    if (mutation.type !== 'childList') continue;
-
-    for (const node of mutation.addedNodes) {
-      // Quick check for element nodes only
-      if (node.nodeType !== 1) continue;
-
-      // Direct class check is faster than matches()
-      if (node.classList?.contains('code-group')) {
-        initializeCodeGroup(node);
-        continue;
-      }
-
-      // Only query children if the node might contain code groups
-      if (node.getElementsByClassName) {
-        const groups = node.getElementsByClassName('code-group');
-        for (let i = 0; i < groups.length; i++) {
-          initializeCodeGroup(groups[i]);
-        }
-      }
-    }
-  }
-});
-
-// Start observing with optimized configuration
-codeGroupObserver.observe(document.body, {
-  childList: true,
-  subtree: true,
-  attributes: false,
-  characterData: false
-});
-
-// Cleanup function
-function cleanup() {
-  codeGroupObserver.disconnect();
-}
-
-// Add cleanup on page unload
-window.addEventListener('unload', cleanup);
-
-// Initialize existing code groups
-function initializeExistingCodeGroups() {
-  const groups = document.getElementsByClassName('code-group');
-  for (let i = 0; i < groups.length; i++) {
-    initializeCodeGroup(groups[i]);
-  }
-}
-
-// Initialize if already in DOM
+// Initial run on DOM ready
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initializeExistingCodeGroups);
+  document.addEventListener("DOMContentLoaded", initializeAllCodeGroups);
 } else {
-  initializeExistingCodeGroups();
-} 
+  initializeAllCodeGroups();
+}

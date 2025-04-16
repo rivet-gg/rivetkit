@@ -33,12 +33,47 @@ const PARTICLE_CONFIG = {
   
   // Animation
   TARGET_FPS: 60,
-  MAX_FRAME_TIME: 0.1 // seconds
+  MAX_FRAME_TIME: 0.1, // seconds
 };
+
+// Global particle state
+const GLOBAL_STATE = {
+  // Particle canvases
+  particleCanvases: {},
+  
+  // Particles array
+  particles: [],
+  
+  // Animation reference
+  animationFrameId: null,
+  
+  // Current animation state
+  active: false,
+  
+  // Time tracking
+  lastFrameTime: 0,
+  
+  // Mouse tracking variables
+  mouseX: 0,
+  mouseY: 0,
+  lastMouseX: 0,
+  lastMouseY: 0,
+  mouseVX: 0,
+  mouseVY: 0,
+  lastMouseTime: 0
+};
+
+// Canvas and context references
+let canvas = null;
+let ctx = null;
+
+// Global DOM elements
+let wrapper = null;
+let mouseMoveListener = null;
+let resizeListener = null;
 
 // Private Particle class
 class Particle {
-  static particleCanvases = {};
   static CANVAS_SIZE = PARTICLE_CONFIG.CANVAS_SIZE;
   static CONTAINER_HEIGHT = PARTICLE_CONFIG.CONTAINER_HEIGHT;
   static PARTICLE_RADIUS = PARTICLE_CONFIG.CANVAS_SIZE / 6;
@@ -99,20 +134,15 @@ class Particle {
         }
       });
 
-      if (!Particle.particleCanvases[shape]) {
-        Particle.particleCanvases[shape] = {};
+      if (!GLOBAL_STATE.particleCanvases[shape]) {
+        GLOBAL_STATE.particleCanvases[shape] = {};
       }
-      Particle.particleCanvases[shape].white = whiteCanvas;
-      Particle.particleCanvases[shape].orange = orangeCanvas;
+      GLOBAL_STATE.particleCanvases[shape].white = whiteCanvas;
+      GLOBAL_STATE.particleCanvases[shape].orange = orangeCanvas;
     });
   }
 
-  constructor() {
-    // Initialize static canvases if not already done
-    if (Object.keys(Particle.particleCanvases).length === 0) {
-      Particle.initParticleCanvases();
-    }
-    
+  constructor() {    
     this.shape = Particle.SHAPES[Math.floor(Math.random() * Particle.SHAPES.length)];
     this.angle = Math.random() * Math.PI * 2; // Initial random angle
     this.rotationSpeed = PARTICLE_CONFIG.ROTATION_SPEED;
@@ -209,7 +239,7 @@ class Particle {
     if (this.opacity > 0) {
       ctx.globalAlpha = this.opacity * Particle.BASE_OPACITY * (1 - colorMix);
       ctx.drawImage(
-        Particle.particleCanvases[this.shape].white,
+        GLOBAL_STATE.particleCanvases[this.shape].white,
         -Particle.CANVAS_SIZE/2,
         -Particle.CANVAS_SIZE/2
       );
@@ -220,7 +250,7 @@ class Particle {
       // Ignore this.opacity since any fast particle will turn orange
       ctx.globalAlpha = colorMix;
       ctx.drawImage(
-        Particle.particleCanvases[this.shape].orange,
+        GLOBAL_STATE.particleCanvases[this.shape].orange,
         -Particle.CANVAS_SIZE/2,
         -Particle.CANVAS_SIZE/2
       );
@@ -279,24 +309,30 @@ class Particle {
   }
 }
 
-// Debounce helper function
-function debounce(func, wait) {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
-}
-
-function initializeParticleBackground(container) {
-  console.log("[Initialize] ParticleBackground", container?.id || "main");
+// Create the particle system and initialize everything needed
+function createParticleSystem() {
+  console.log("[Particles] Creating particle system");
   
-  // Apply styles to container
-  Object.assign(container.style, {
+  if (GLOBAL_STATE.active) {
+    console.log("[Particles] System already active, skipping creation");
+    return; // Already active
+  }
+  
+  // Initialize particle canvases if needed
+  if (Object.keys(GLOBAL_STATE.particleCanvases).length === 0) {
+    Particle.initParticleCanvases();
+  }
+  
+  // Create particles if needed
+  if (GLOBAL_STATE.particles.length === 0) {
+    console.log("[Particles] Creating particles");
+    GLOBAL_STATE.particles = Array.from({ length: PARTICLE_CONFIG.PARTICLE_COUNT }, () => new Particle());
+  }
+  
+  // Create wrapper element
+  wrapper = document.createElement('div');
+  wrapper.setAttribute('data-particle-wrapper', 'true');
+  Object.assign(wrapper.style, {
     position: 'absolute',
     top: '0',
     left: '0',
@@ -306,108 +342,132 @@ function initializeParticleBackground(container) {
     pointerEvents: 'none',
     zIndex: '-1'
   });
-
-  // Create canvas element
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
+  
+  // Create canvas
+  canvas = document.createElement('canvas');
+  canvas.setAttribute('data-particles', 'true');
+  Object.assign(canvas.style, {
+    position: 'absolute',
+    top: '0',
+    left: '0',
+    width: '100%',
+    height: `${Particle.CONTAINER_HEIGHT}px`,
+    pointerEvents: 'none',
+    zIndex: '-1'
+  });
   
   // Set canvas size
-  function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+  canvas.width = window.innerWidth;
+  canvas.height = Particle.CONTAINER_HEIGHT;
+  
+  // Get context
+  ctx = canvas.getContext('2d');
+  
+  // Add canvas to wrapper
+  wrapper.appendChild(canvas);
+  
+  // Add wrapper to body
+  if (document.body.firstChild) {
+    document.body.insertBefore(wrapper, document.body.firstChild);
+  } else {
+    document.body.appendChild(wrapper);
   }
-  resizeCanvas();
   
-  // Add canvas to container
-  container.appendChild(canvas);
-  
-  const particles = Array.from({ length: PARTICLE_CONFIG.PARTICLE_COUNT }, () => new Particle());
-
-  // Mouse tracking variables
-  let mouseX = 0;
-  let mouseY = 0;
-  let lastMouseX = 0;
-  let lastMouseY = 0;
-  let mouseVX = 0;
-  let mouseVY = 0;
-  let lastMouseTime = performance.now();
-  const FORCE_RADIUS = PARTICLE_CONFIG.FORCE_RADIUS;
-  const BASE_PUSH_FORCE = PARTICLE_CONFIG.BASE_PUSH_FORCE;
-  const MAX_VELOCITY = PARTICLE_CONFIG.MAX_VELOCITY;
-
-  // Track mouse movement and calculate velocity
-  document.addEventListener('mousemove', (e) => {
+  // Set up mouse tracking
+  mouseMoveListener = (e) => {
     const currentTime = performance.now();
-    const deltaTime = (currentTime - lastMouseTime) / 1000;
+    const deltaTime = (currentTime - GLOBAL_STATE.lastMouseTime) / 1000;
     
-    const canvasRect = canvas.getBoundingClientRect();
-    
-    // Since canvas is fixed in viewport, just use client coordinates
-    mouseX = e.clientX - canvasRect.left;
-    mouseY = e.clientY - canvasRect.top;
+    // Use page coordinates for absolute positioning
+    GLOBAL_STATE.mouseX = e.pageX;
+    GLOBAL_STATE.mouseY = e.pageY;
     
     if (deltaTime > 0) {
-      mouseVX = (mouseX - lastMouseX) / deltaTime;
-      mouseVY = (mouseY - lastMouseY) / deltaTime;
+      GLOBAL_STATE.mouseVX = (GLOBAL_STATE.mouseX - GLOBAL_STATE.lastMouseX) / deltaTime;
+      GLOBAL_STATE.mouseVY = (GLOBAL_STATE.mouseY - GLOBAL_STATE.lastMouseY) / deltaTime;
       
       const maxVelocity = PARTICLE_CONFIG.MAX_MOUSE_VELOCITY;
-      mouseVX = Math.max(Math.min(mouseVX, maxVelocity), -maxVelocity);
-      mouseVY = Math.max(Math.min(mouseVY, maxVelocity), -maxVelocity);
+      GLOBAL_STATE.mouseVX = Math.max(Math.min(GLOBAL_STATE.mouseVX, maxVelocity), -maxVelocity);
+      GLOBAL_STATE.mouseVY = Math.max(Math.min(GLOBAL_STATE.mouseVY, maxVelocity), -maxVelocity);
     }
     
-    lastMouseX = mouseX;
-    lastMouseY = mouseY;
-    lastMouseTime = currentTime;
-  });
+    GLOBAL_STATE.lastMouseX = GLOBAL_STATE.mouseX;
+    GLOBAL_STATE.lastMouseY = GLOBAL_STATE.mouseY;
+    GLOBAL_STATE.lastMouseTime = currentTime;
+  };
+  
+  document.addEventListener('mousemove', mouseMoveListener);
+  
+  // Handle resize
+  resizeListener = () => {
+    if (canvas) {
+      canvas.width = window.innerWidth;
+      canvas.height = Particle.CONTAINER_HEIGHT;
+      GLOBAL_STATE.particles.forEach(particle => particle.reset());
+    }
+  };
+  
+  window.addEventListener('resize', resizeListener);
+  
+  // Initialize timing
+  GLOBAL_STATE.lastFrameTime = performance.now();
+  GLOBAL_STATE.lastMouseTime = performance.now();
+  
+  // Start animation
+  startAnimation();
+  
+  // Mark as active
+  GLOBAL_STATE.active = true;
+}
 
-  // Track scroll events - no need to update mouse position since canvas is fixed
-  document.addEventListener('scroll', () => {
-    // Just update the last scroll position for reference if needed
-    lastScrollY = window.scrollY;
-  });
-
-  let lastFrameTime = performance.now();
-  let animationFrameId = null;
+// Start the animation loop
+function startAnimation() {
+  if (GLOBAL_STATE.animationFrameId !== null) {
+    // Animation already running
+    return;
+  }
+  
+  console.log("[Particles] Starting animation");
+  
   const TARGET_FPS = PARTICLE_CONFIG.TARGET_FPS;
   const FRAME_TIME = 1000 / TARGET_FPS;
+  const FORCE_RADIUS = PARTICLE_CONFIG.FORCE_RADIUS;
 
   function animate() {
     const currentTime = performance.now();
-    const timeSinceLastFrame = currentTime - lastFrameTime;
+    const timeSinceLastFrame = currentTime - GLOBAL_STATE.lastFrameTime;
 
     // Only render if enough time has passed for next frame
     if (timeSinceLastFrame >= FRAME_TIME) {
       const deltaTime = Math.min(timeSinceLastFrame / 1000, PARTICLE_CONFIG.MAX_FRAME_TIME);
-      lastFrameTime = currentTime;
+      GLOBAL_STATE.lastFrameTime = currentTime;
 
-      // Clear canvas
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      particles.forEach(particle => {
-        const dx = particle.x - mouseX;
-        const dy = particle.y - mouseY;
+      // Update all particles
+      GLOBAL_STATE.particles.forEach(particle => {
+        const dx = particle.x - GLOBAL_STATE.mouseX;
+        const dy = particle.y - GLOBAL_STATE.mouseY;
         const distance = Math.sqrt(dx * dx + dy * dy);
         
         if (distance < FORCE_RADIUS) {
           // Calculate mouse velocity magnitude
-          const mouseSpeed = Math.sqrt(mouseVX * mouseVX + mouseVY * mouseVY);
+          const mouseSpeed = Math.sqrt(GLOBAL_STATE.mouseVX * GLOBAL_STATE.mouseVX + GLOBAL_STATE.mouseVY * GLOBAL_STATE.mouseVY);
           // Normalize mouse velocity to 0-1 range
           const normalizedSpeed = Math.min(mouseSpeed / PARTICLE_CONFIG.MAX_VELOCITY, 1);
           
           // Calculate base force factor with smoother distance falloff
           const forceFactor = Math.pow(1 - distance / FORCE_RADIUS, 1.5) *
-                            normalizedSpeed * 
-                            PARTICLE_CONFIG.BASE_PUSH_FORCE * 
-                            PARTICLE_CONFIG.MOVEMENT_FORCE_MULTIPLIER * 
-                            deltaTime * 60;
+                          normalizedSpeed * 
+                          PARTICLE_CONFIG.BASE_PUSH_FORCE * 
+                          PARTICLE_CONFIG.MOVEMENT_FORCE_MULTIPLIER * 
+                          deltaTime * 60;
           
           // Calculate repulsion direction (away from mouse)
           const repelDirX = dx / distance;
           const repelDirY = dy / distance;
           
           // Get normalized mouse movement direction
-          const mvx = mouseVX / (mouseSpeed || 1);
-          const mvy = mouseVY / (mouseSpeed || 1);
+          const mvx = GLOBAL_STATE.mouseVX / (mouseSpeed || 1);
+          const mvy = GLOBAL_STATE.mouseVY / (mouseSpeed || 1);
           
           // Calculate movement influence based on distance
           const movementInfluence = Math.pow(1 - distance / FORCE_RADIUS, 1.2);
@@ -424,107 +484,92 @@ function initializeParticleBackground(container) {
         }
         
         particle.update(deltaTime);
-        particle.draw(ctx);
       });
-    }
-    animationFrameId = requestAnimationFrame(animate);
-  }
 
-  // Create a disconnect observer to cleanup when container is removed
-  const disconnectObserver = new MutationObserver((mutations) => {
-    for (const mutation of mutations) {
-      if (mutation.type !== 'childList') continue;
-
-      for (const node of mutation.removedNodes) {
-        if (node === container || (node.nodeType === 1 && node.contains(container))) {
-          if (animationFrameId) {
-            cancelAnimationFrame(animationFrameId);
-          }
-          disconnectObserver.disconnect();
-          return;
-        }
+      // Make sure canvas and context exist before drawing
+      if (canvas && ctx) {
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw particles
+        GLOBAL_STATE.particles.forEach(particle => {
+          particle.draw(ctx);
+        });
       }
     }
+    
+    // Continue animation
+    GLOBAL_STATE.animationFrameId = requestAnimationFrame(animate);
+  }
+
+  GLOBAL_STATE.animationFrameId = requestAnimationFrame(animate);
+}
+
+// Completely destroy the particle system
+function destroyParticleSystem() {
+  console.log("[Particles] Destroying particle system");
+  
+  // Cancel animation frame
+  if (GLOBAL_STATE.animationFrameId !== null) {
+    cancelAnimationFrame(GLOBAL_STATE.animationFrameId);
+    GLOBAL_STATE.animationFrameId = null;
+  }
+  
+  // Remove event listeners
+  if (mouseMoveListener) {
+    document.removeEventListener('mousemove', mouseMoveListener);
+    mouseMoveListener = null;
+  }
+  
+  if (resizeListener) {
+    window.removeEventListener('resize', resizeListener);
+    resizeListener = null;
+  }
+  
+  // Remove DOM elements
+  if (wrapper && document.body.contains(wrapper)) {
+    wrapper.remove();
+  }
+  
+  // Clear references
+  canvas = null;
+  ctx = null;
+  wrapper = null;
+  
+  // Mark as inactive
+  GLOBAL_STATE.active = false;
+}
+
+// Check if the page should show particles (.landing-root exists)
+function shouldShowParticles() {
+  return document.querySelector('.landing-root') !== null;
+}
+
+// Handle mutation observer updates
+function observerInitialize() {
+  // Check if we should show or hide particles
+  if (shouldShowParticles()) {
+    if (!GLOBAL_STATE.active) {
+      console.log("[Particles] Landing page detected - creating particles");
+      createParticleSystem();
+    }
+  } else {
+    if (GLOBAL_STATE.active) {
+      console.log("[Particles] Not a landing page - destroying particles");
+      destroyParticleSystem();
+    }
+  }
+  
+  // Mark all containers as initialized
+  document.querySelectorAll('.particle-container:not([data-particle-initialized])').forEach(container => {
+    container.setAttribute('data-particle-initialized', 'true');
   });
-
-  // Start observing the document for container removal with optimized config
-  disconnectObserver.observe(document.body, {
-    childList: true,
-    subtree: true,
-    attributes: false,
-    characterData: false
-  });
-
-  animate();
-
-  // Handle window resize with debouncing
-  const debouncedResize = debounce(() => {
-    resizeCanvas();
-    particles.forEach(particle => particle.reset());
-  }, 100); // 100ms debounce delay
-
-  window.addEventListener('resize', debouncedResize);
 }
 
-// Setup observer to initialize particle containers when they appear
-const particleObserver = new MutationObserver((mutations) => {
-  for (const mutation of mutations) {
-    if (mutation.type !== 'childList') continue;
-
-    for (const node of mutation.addedNodes) {
-      // Quick check for element nodes only
-      if (node.nodeType !== 1) continue;
-
-      // Direct class check is faster than matches()
-      if (node.classList?.contains('particle-container')) {
-        initializeParticleBackground(node);
-        continue;
-      }
-
-      // Only query children if the node might contain particle containers
-      if (node.getElementsByClassName) {
-        const containers = node.getElementsByClassName('particle-container');
-        for (let i = 0; i < containers.length; i++) {
-          initializeParticleBackground(containers[i]);
-        }
-      }
-    }
-  }
-});
-
-// Start observing with optimized configuration
-particleObserver.observe(document.body, {
-  childList: true,
-  subtree: true,
-  attributes: false,
-  characterData: false
-});
-
-// Initialize existing particle containers
-const existingContainers = document.getElementsByClassName('particle-container');
-for (let i = 0; i < existingContainers.length; i++) {
-  initializeParticleBackground(existingContainers[i]);
+// Compatibility function for observer-manager.js
+function initializeAllParticles() {
+  observerInitialize();
 }
 
-// Cleanup function
-function cleanup() {
-  particleObserver.disconnect();
-}
-
-// Add cleanup on page unload
-window.addEventListener('unload', cleanup);
-
-// Initialize existing particle containers
-function initializeExistingParticles() {
-  const containers = document.getElementsByClassName('particle-container');
-  for (let i = 0; i < containers.length; i++) {
-    initializeParticleBackground(containers[i]);
-  }
-}
-
-// Initialize if already in DOM
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initializeExistingParticles);
-} else {
-  initializeExistingParticles();
-} 
+// Initialize after a small delay
+//setTimeout(observerInitialize, 50);
