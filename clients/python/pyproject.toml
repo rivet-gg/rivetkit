@@ -1,5 +1,5 @@
 [project]
-name = "python_actor_core_client"
+name = "actor-core-client"
 version = "0.8.0"
 authors = [
   { name="Rivet Gaming, LLC", email="developer@rivet.gg" },

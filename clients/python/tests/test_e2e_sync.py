@@ -1,4 +1,4 @@
-from python_actor_core_client import Client as ActorClient
+from actor_core_client import Client as ActorClient
 from common import start_mock_server, logger
 
 def test_e2e_sync():

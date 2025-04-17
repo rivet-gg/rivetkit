@@ -1,6 +1,6 @@
 import asyncio
 import pytest
-from python_actor_core_client import AsyncSimpleClient as ActorClient
+from actor_core_client import AsyncSimpleClient as ActorClient
 from common import start_mock_server, logger
 
 async def do_oneoff_increment(client):

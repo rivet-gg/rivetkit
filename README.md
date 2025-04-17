@@ -131,7 +131,7 @@ Seamlessly integrate ActorCore with your favorite frameworks, languages, and too
 ### Clients
 - <img src="docs/images/clients/javascript.svg" height="16" alt="JavaScript" />&nbsp;&nbsp;[JavaScript](/clients/javascript)
 - <img src="docs/images/clients/typescript.svg" height="16" alt="TypeScript" />&nbsp;&nbsp;[TypeScript](/clients/javascript)
-- <img src="docs/images/clients/python.svg" height="16" alt="Python" />&nbsp;&nbsp;[Python](https://github.com/rivet-gg/actor-core/issues/900) *(Available In April)*
+- <img src="docs/images/clients/python.svg" height="16" alt="Python" />&nbsp;&nbsp;[Python](/clients/python)
 - <img src="docs/images/clients/rust.svg" height="16" alt="Rust" />&nbsp;&nbsp;[Rust](/clients/rust)
 
 ### Integrations

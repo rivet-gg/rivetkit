@@ -28,6 +28,13 @@ let client = Client::new(
     EncodingKind::Cbor,                   // Encoding (Json or Cbor)
 );
 ```
+
+```python Python (Callbacks)
+from actor_core_client import AsyncClient as ActorClient
+
+# Create a client with the connection address
+client = ActorClient("http://localhost:6420")
+```
 </CodeGroup>
 
 <Tip>See the setup guide for your platform for details on how to get the connection address.</Tip>
@@ -75,6 +82,17 @@ let room = client.get("chatRoom", options)
 room.action("sendMessage", vec![json!("Alice"), json!("Hello everyone!")])
     .await
     .expect("Failed to send message");
+```
+
+```python Python (Callbacks)
+# Connect to a chat room for the "general" channel
+room = await client.get("chatRoom", tags=[
+    ("name", "chat_room"),
+    ("channel", "general")
+])
+
+# Now you can call methods on the actor
+await room.action("sendMessage", ["Alice", "Hello everyone!"])
 ```
 </CodeGroup>
 
@@ -125,6 +143,16 @@ doc.action("initializeDocument", vec![json!("My New Document")])
     .await
     .expect("Failed to initialize document");
 ```
+
+```python Python (Callbacks)
+# Create a new document actor
+doc = await client.get("myDocument", tags=[
+    ("name", "my_document"),
+    ("docId", "123")
+])
+
+await doc.action("initializeDocument", ["My New Document"])
+```
 </CodeGroup>
 
 ### `getWithId(id, opts)` - Connect by ID
@@ -148,7 +176,7 @@ let my_actor_id = "55425f42-82f8-451f-82c1-6227c83c9372";
 let options = GetWithIdOptions {
     params: None,
 };
-let doc = client.get_with_id("myDocument", my_actor_id, options)
+let doc = client.get_with_id(my_actor_id, options)
     .await
     .expect("Failed to connect to document");
 
@@ -156,6 +184,14 @@ let doc = client.get_with_id("myDocument", my_actor_id, options)
 doc.action("updateContent", vec![json!("Updated content")])
     .await
     .expect("Failed to update document");
+```
+
+```python Python (Callbacks)
+# Connect to a specific actor by its ID
+my_actor_id = "55425f42-82f8-451f-82c1-6227c83c9372"
+doc = await client.get_with_id(my_actor_id)
+
+await doc.action("updateContent", ["Updated content"])
 ```
 </CodeGroup>
 
@@ -208,6 +244,22 @@ game_room.action("updateSettings", vec![settings])
     .await
     .expect("Failed to update settings");
 ```
+
+```python Python (Callbacks)
+# Call an action
+result = await math_utils.action("multiplyByTwo", [5])
+print(result)  # 10
+
+# Call an action with multiple parameters
+await chat_room.action("sendMessage", ["Alice", "Hello everyone!"])
+
+# Call an action with an object parameter
+await game_room.action("updateSettings", [{
+    "maxPlayers": 10,
+    "timeLimit": 300,
+    "gameMode": "capture-the-flag"
+}])
+```
 </CodeGroup>
 
 <Note>
@@ -256,6 +308,24 @@ game_room.on_event("stateUpdate", move |args| {
     game_ui_clone.update(game_state);
 }).await;
 ```
+
+```python Python (Callbacks)
+# Listen for new chat messages
+def handle_message(message):
+    sender = message["sender"]
+    text = message["text"]
+    print(f"{sender}: {text}")
+    # Update UI with message data
+
+chat_room.on_event("newMessage", handle_message)
+
+# Listen for game state updates
+def handle_state_update(game_state):
+    # Update UI with new game state
+    update_game_ui(game_state)
+
+game_room.on_event("stateUpdate", handle_state_update)
+```
 </CodeGroup>
 
 ### `once(eventName, callback)` - One-time Listening
@@ -273,6 +343,15 @@ actor.once("requestApproved", () => {
 
 ```rust Rust
 // `once` is not implemented in Rust
+```
+
+```python Python (Callbacks)
+# Listen for when a request is approved
+def handle_approval():
+    show_approval_notification()
+    unlock_features()
+
+actor.on_event("requestApproved", handle_approval)
 ```
 </CodeGroup>
 
@@ -317,6 +396,18 @@ let options = GetOptions {
 let chat_room = client.get("chatRoom", options)
     .await
     .expect("Failed to connect to chat room");
+```
+
+```python Python (Callbacks)
+chat_room = await client.get(
+    "chatRoom",
+    tags=[("channel", "super-secret")],
+    params={
+        "userId": "1234",
+        "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+        "displayName": "Alice"
+    }
+)
 ```
 </CodeGroup>
 
@@ -390,6 +481,19 @@ let client = Client::new(
 );
 
 // Rust does not support accepting multiple transports
+```
+
+```python Python (Callbacks)
+from actor_core_client import AsyncClient as ActorClient
+
+# Example with all client options
+client = ActorClient(
+    "https://actors.example.com",
+    "websocket"  # or "sse"
+    "cbor",      # or "json"
+)
+
+# Python does not support accepting multiple transports
 ```
 </CodeGroup>
 
@@ -489,6 +593,11 @@ actor.disconnect().await;
 // The client will be cleaned up automatically when it goes out of scope
 // Or explicitly drop it with:
 drop(client);
+```
+
+```python Python (Callbacks)
+# Disconnect from the actor
+await actor.disconnect()
 ```
 </CodeGroup>
 

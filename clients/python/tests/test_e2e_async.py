@@ -1,6 +1,6 @@
 import asyncio
 import pytest
-from python_actor_core_client import AsyncClient as ActorClient
+from actor_core_client import AsyncClient as ActorClient
 from common import start_mock_server, get_free_port, logger
 
 @pytest.mark.asyncio
