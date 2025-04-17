@@ -3897,6 +3897,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"chat-room-python@workspace:examples/chat-room-python":
+  version: 0.0.0-use.local
+  resolution: "chat-room-python@workspace:examples/chat-room-python"
+  dependencies:
+    "@actor-core/cli": "workspace:*"
+    "@types/node": "npm:^22.13.9"
+    actor-core: "workspace:*"
+    tsx: "npm:^3.12.7"
+    typescript: "npm:^5.5.2"
+  languageName: unknown
+  linkType: soft
+
 "chat-room@workspace:examples/chat-room":
   version: 0.0.0-use.local
   resolution: "chat-room@workspace:examples/chat-room"
