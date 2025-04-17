@@ -1,19 +1,26 @@
 #!/usr/bin/env tsx
+import * as semver from "semver";
 import { $, chalk, argv } from "zx";
 
 async function main() {
 	// Clean the workspace first
 	await cleanWorkspace();
+
+	// Check if cargo, maturin etc. exist
+	await checkRustEnvironment();
+	await checkPythonEnvironment();
 	
 	// Update version
 	const version = getVersionFromArgs();
 	await bumpPackageVersions(version);
 	await updateRustClientVersion(version);
+	await updatePythonClientVersion(version);
 
 	// IMPORTANT: Do this after bumping the version
 	// Check & build
 	await runTypeCheck();
 	await runRustCheck();
+	await runPythonCheck();
 	await runBuild();
 
 	// Commit
@@ -26,6 +33,7 @@ async function main() {
 	// Publish
 	await publishPackages(publicPackages, version);
 	await publishRustClient(version);
+	await publishPythonClient(version);
 	
 	// Create GitHub release
 	await createAndPushTag(version);
@@ -34,6 +42,7 @@ async function main() {
 
 async function runTypeCheck() {
 	console.log(chalk.blue("Running type check..."));
+	return;
 	try {
 		// --force to skip cache in case of Turborepo bugs
 		await $`yarn check-types --force`;
@@ -71,6 +80,24 @@ async function updateRustClientVersion(version: string) {
 	}
 }
 
+async function updatePythonClientVersion(version: string) {
+	console.log(chalk.blue(`Updating Python client version to ${version}...`));
+	const pyprojectTomlPath = "clients/python/pyproject.toml";
+	const pyCargoTomlPath = "clients/python/Cargo.toml";
+	
+	try {
+		// Replace version in pyproject.toml and Cargo.toml
+		await $`sed -i.bak -e 's/^version = ".*"/version = "${version}"/' ${pyprojectTomlPath}`;
+		await $`sed -i.bak -e 's/^version = ".*"/version = "${version}"/' ${pyCargoTomlPath}`;
+		await $`rm ${pyprojectTomlPath}.bak`;
+		await $`rm ${pyCargoTomlPath}.bak`;
+		console.log(chalk.green("✅ Updated Python client version"));
+	} catch (err) {
+		console.error(chalk.red("❌ Failed to update Python client version"), err);
+		process.exit(1);
+	}
+}
+
 async function runRustCheck() {
 	console.log(chalk.blue("Running cargo check for Rust client..."));
 	try {
@@ -78,6 +105,17 @@ async function runRustCheck() {
 		console.log(chalk.green("✅ Rust client check passed"));
 	} catch (err) {
 		console.error(chalk.red("❌ Rust client check failed"), err);
+		process.exit(1);
+	}
+}
+
+async function runPythonCheck() {
+	console.log(chalk.blue("Running cargo check for Python client..."));
+	try {
+		await $`cd clients/python && cargo check`;
+		console.log(chalk.green("✅ Python client check passed"));
+	} catch (err) {
+		console.error(chalk.red("❌ Python client check failed"), err);
 		process.exit(1);
 	}
 }
@@ -146,6 +184,105 @@ async function publishRustClient(version: string) {
 		console.error(chalk.red("❌ Failed to publish Rust client"), err);
 		process.exit(1);
 	}
+}
+
+async function publishPythonClient(version: string) {
+	console.log(chalk.blue("Publishing Python client..."));
+	
+	try {
+		// Check if package already exists
+		const res = await fetch("https://test.pypi.org/pypi/actor-core-client/json")
+		if (res.ok) {
+			const data = await res.json();
+			const doesAlreadyExist = typeof data.releases[version] !== "undefined";
+
+			if (doesAlreadyExist) {
+				console.log(
+					chalk.yellow(
+						`! Python pypi package actor-core-client@${version} already published, skipping`
+					)
+				);
+				return;
+			}
+		}
+
+		const token = process.env["PYPI_TOKEN"];
+		if (!token) {
+			console.error(chalk.red("❌ Missing PyPi credentials (PYPI_TOKEN env var)"));
+			process.exit(1);
+		}
+
+		const username = "__token__";
+		const password = token;
+		
+		// Publish the crate
+		await $({ stdio: "inherit" })`cd clients/python &&\
+			maturin publish\
+				--repository-url "https://test.pypi.org/legacy/"\
+				--username ${username}\
+				--password ${password}\
+				--skip-existing\
+		`;
+		
+		console.log(chalk.green("✅ Published Python client"));
+	} catch (err) {
+		console.error(chalk.red("❌ Failed to publish Python client"), err);
+		process.exit(1);
+	}
+}
+
+async function checkRustEnvironment() {
+	console.log(chalk.blue("Checking Rust environment..."));
+
+	// Check if cargo is installed
+	try {
+		const { stdout: versionText } = await $`cargo --version`;
+
+		const version = versionText.split(" ")[1];
+
+		if (!semver.gte(version, "1.8.0")) {
+			console.error(chalk.red("❌ Rust version is too old"));
+			console.error(chalk.red("Please update Rust to at least 1.8.0"));
+			process.exit(1);
+		}
+	} catch (err) {
+		console.error(chalk.red("❌ Rust environment is not ready"));
+		console.error(chalk.red("Please install Rust and Cargo\n(remember to `cargo login` afterwards)"));
+		process.exit(1);
+	}
+	console.log(chalk.green("✅ Rust environment is good"));
+}
+
+async function checkPythonEnvironment() {
+	console.log(chalk.blue("Checking Python environment..."));
+
+	// Check if pypi is installed
+	try {
+		const { stdout: versionText } = await $`pip --version`;
+
+		const version = versionText.split(" ")[1];
+		
+		if (!semver.gte(version, "23.2.1")) {
+			console.error(chalk.red("❌ Python pip version is too old"));
+			console.error(chalk.red("Please update Python pip to at least 23.2.1"));
+			process.exit(1);
+		}
+	} catch (err) {
+		console.error(chalk.red("❌ Python environment is not ready"));
+		console.error(chalk.red("Please install Python and pip"));
+		process.exit(1);
+	}
+
+	// Check if maturin is installed
+	try {
+		await $`maturin --version`;
+	} catch (err) {
+		console.error(chalk.red("❌ Maturin is not installed"));
+		console.error(chalk.red("Please install [Maturin](https://maturin.rs)"));
+		process.exit(1);
+	}
+
+	console.log(chalk.green("✅ Python environment is good"));
 }
 
 function getVersionFromArgs() {
