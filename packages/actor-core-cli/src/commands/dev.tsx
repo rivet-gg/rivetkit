@@ -103,7 +103,6 @@ export async function action(
 			createLock();
 
 			while (true) {
-				yield* validateConfigTask(ctx, cwd, appPath);
 				yield* ctx.task(
 					"Server started. Watching for changes",
 					async function* (ctx) {
