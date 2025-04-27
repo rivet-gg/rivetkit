@@ -1,0 +1,49 @@
+{
+  "name": "collab-document",
+  "version": "0.8.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev:actors": "npx @actor-core/cli@latest dev actors/app.ts",
+    "dev:frontend": "react-scripts start",
+    "check-types": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@actor-core/react": "workspace:*",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "actor-core": "workspace:*",
+    "react": "^19",
+    "react-dom": "^19",
+    "react-scripts": "^5.0.1"
+  },
+  "devDependencies": {
+    "@actor-core/cli": "workspace:*",
+    "actor-core": "workspace:*",
+    "typescript": "^5.5.2"
+  },
+  "example": {
+    "platforms": [
+      "*"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "resolutions": {
+    "react@^19": "^19.0.0",
+    "react-dom@^19": "^19.0.0",
+    "react@^18": "^18.3"
+  }
+}

@@ -1,0 +1,37 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    padding-top: 24px;
+    width: 100%;
+    height: 100%;
+}
+#example--repo-ref {
+    position: fixed;
+    top: 0px;
+    left: 0px;
+    cursor: pointer;
+    background-color: rgb(243, 243, 243);
+    height: 24px;
+    width: 100%;
+    padding: 8px 8px;
+}
+#example--github-icon {
+    height: 24px;
+    float: left;
+}
+#example--repo-link {
+    height: 24px;
+    margin-left: 8px;
+    color: rgb(45, 50, 55);
+    font-weight: bold;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 15px;
+    vertical-align: middle;
+}
+
+#example--repo-ref:hover #example--repo-link {
+    color: black;
+}
+#example--repo-ref:hover svg {
+    fill: black !important;
+}

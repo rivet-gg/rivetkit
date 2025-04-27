@@ -1,15 +1,12 @@
 import { createClient } from "actor-core/client";
 import { createReactActorCore } from "@actor-core/react";
 import { useState, useEffect } from "react";
-import type {
-  App, Cursor, TextUpdatedEvent,
-  CursorUpdateEvent, UserDisconnectedEvent
-} from "../actors/app";
+import type { App, Cursor, CursorUpdateEvent, TextUpdatedEvent, UserDisconnectedEvent } from "../actors/app";
 
 const client = createClient<App>("http://localhost:6420");
 const { useActor, useActorEvent } = createReactActorCore(client);
 
-export function DocumentEditor() {
+function DocumentEditor() {
   // Connect to actor for this document ID from URL
   const documentId = new URLSearchParams(window.location.search).get('id') || 'default-doc';
   const [{ actor, state }] = useActor("document", { tags: { id: documentId } });
@@ -113,3 +110,12 @@ export function DocumentEditor() {
     </div>
   );
 }
+
+export default function ReactApp() {
+  return (
+    <div className="app">
+      <h1>Collaborative Document Editor</h1>
+      <DocumentEditor />
+    </div>
+  );
+} 

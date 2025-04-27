@@ -2,7 +2,10 @@
 import { createClient } from "actor-core/client";
 import { createReactActorCore } from "@actor-core/react";
 import { useState, useEffect } from "react";
-import type { App } from "../actors/app";
+import type {
+  App, Cursor, TextUpdatedEvent,
+  CursorUpdateEvent, UserDisconnectedEvent
+} from "../actors/app";
 
 const client = createClient<App>("http://localhost:6420");
 const { useActor, useActorEvent } = createReactActorCore(client);
@@ -10,65 +13,86 @@ const { useActor, useActorEvent } = createReactActorCore(client);
 export function DocumentEditor() {
   // Connect to actor for this document ID from URL
   const documentId = new URLSearchParams(window.location.search).get('id') || 'default-doc';
-  const [{ actor, connectionId }] = useActor("document", { tags: { id: documentId } });
-  
+  const [{ actor, state }] = useActor("document", { tags: { id: documentId } });
+
   // Local state
   const [text, setText] = useState("");
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
-  const [otherCursors, setOtherCursors] = useState({});
+  const [otherCursors, setOtherCursors] = useState<Record<string, Cursor>>({});
   
   // Load initial document state
   useEffect(() => {
-    if (actor) {
+    if (actor && state === "created") {
       actor.getText().then(setText);
       actor.getCursors().then(setOtherCursors);
     }
-  }, [actor]);
+  }, [actor, state]);
   
   // Listen for updates from other users
-  useActorEvent({ actor, event: "textUpdated" }, ({ text: newText, userId: senderId }) => {
-    if (senderId !== connectionId) setText(newText);
+  useActorEvent({ actor, event: "textUpdated" }, (event) => {
+    const { text: newText, userId: _senderId } = event as TextUpdatedEvent;
+
+    setText(newText);
   });
   
-  useActorEvent({ actor, event: "cursorUpdated" }, ({ userId: cursorUserId, x, y }) => {
-    if (cursorUserId !== connectionId) {
-      setOtherCursors(prev => ({
-        ...prev,
-        [cursorUserId]: { x, y, userId: cursorUserId }
-      }));
-    }
-  });
-  
-  // Update cursor position
-  const updateCursor = (e) => {
-    if (!actor) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+  useActorEvent({ actor, event: "cursorUpdated" }, (event) => {
+    const { userId: cursorUserId, x, y } = event as CursorUpdateEvent;
     
-    if (x !== cursorPos.x || y !== cursorPos.y) {
-      setCursorPos({ x, y });
-      actor.updateCursor(x, y);
-    }
-  };
+    setOtherCursors(prev => ({
+      ...prev,
+      [cursorUserId]: { x, y, userId: cursorUserId }
+    }));
+  });
+
+  useActorEvent({ actor, event: "userDisconnected" }, (event) => {
+    const { userId } = event as UserDisconnectedEvent;
+    
+    setOtherCursors(prev => {
+      const newCursors = { ...prev };
+      delete newCursors[userId];
+      return newCursors;
+    });
+  });  
+
+
+  useEffect(() => {
+    if (!actor || state !== "created") return;
+
+    const updateCursor = ({ x, y }: { x: number, y: number }) => {
+      
+      if (x !== cursorPos.x || y !== cursorPos.y) {
+        setCursorPos({ x, y });
+        actor.updateCursor(x, y);
+      }
+    };
+
+    window.addEventListener("mousemove", (e) => {
+      const x = e.clientX;
+      const y = e.clientY;
+      
+      updateCursor({ x, y });
+    });
+  }, [actor, state]);
   
   return (
     <div className="document-editor">
       <h2>Document: {documentId}</h2>
       
-      <div onMouseMove={updateCursor}>
+      <div>
         <textarea
           value={text}
           onChange={(e) => {
             const newText = e.target.value;
             setText(newText);
-            actor?.setText(newText);
+            if (actor && state === "created") {
+              actor.setText(newText);
+            }
           }}
           placeholder="Start typing..."
         />
         
         {/* Other users' cursors */}
-        {Object.values(otherCursors).map((cursor: any) => (
+        {Object.values(otherCursors).map((cursor) => (
           <div 
             key={cursor.userId}
             style={{

@@ -1,4 +1,4 @@
-import { actor } from "actor-core";
+import { actor, setup } from "actor-core";
 
 export type Cursor = { x: number, y: number, userId: string };
 
@@ -69,4 +69,10 @@ const document = actor({
   }
 });
 
-export default document;
+// Create and export the app
+export const app = setup({
+  actors: { document }
+});
+
+// Export type for client type checking
+export type App = typeof app; 
