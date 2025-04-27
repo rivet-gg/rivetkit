@@ -1,0 +1,35 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+
+# Converting a Snippet to Fullstack Example
+
+Create a new folder for our snippet inside of example folder .
+1. Copy `tsconfig.json`, `package.json`, `src/index.tsx`, `public/index.html`, `public/github.css`, and `.gitignore` from the `chat-room-react` example folder (1) into the new snippet example folder. (1: `examples/chat-room-react`)
+- Update index.html's github anchor link to point to `https://github.com/rivet-gg/actor-core/tree/main/examples/{insert example name}`
+2. Copy the `actor-json.ts` file from the snippet folder into the file `actors/app.ts` in the example folder. Make sure its being exported & setup correctly (see example from `chat-room-react/actors/app.ts`: )
+    ```
+    // We get rid of the default export
+    // export default ...
+
+    // and instead...
+    
+    // Create and export the app
+    export const app = setup({
+        actors: { actor },
+    });
+
+    // Export type for client type checking
+    export type App = typeof app;
+    ```
+3. Copy the `App.tsx` from the snippet folder into `src/App.tsx` file, and then make it export the main app class as `export default function ReactApp`
+4. Ask for user review at this point and see if you should continue. If you continue:
+5. Call `yarn install` and fix any type errors. Review to other `examples/*` folders for sample.
+
+# NOTES
+1. Everything should be installed wit yarn
+2. Environment variables should be used for any LLM calls
+- Make sure to use dotenv to put the env to use
+3. Feel free to install any missing packages that were present in the original snippet.
