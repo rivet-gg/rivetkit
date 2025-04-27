@@ -36,6 +36,16 @@ export interface SaveStateOptions {
 	immediate?: boolean;
 }
 
+/**
+ * Options for the `_broadcastWithOptions` method.
+ */
+export interface BroadcastInstanceOptions {
+	/**
+	 * The connection IDs to be excluded from the broadcast.
+	 */
+	exclude?: string[];
+}
+
 /** Actor type alias with all `any` types. Used for `extends` in classes referencing this actor. */
 // biome-ignore lint/suspicious/noExplicitAny: Needs to be used in `extends`
 export type AnyActorInstance = ActorInstance<any, any, any, any>;
@@ -1013,6 +1023,16 @@ export class ActorInstance<S, CP, CS, V> {
 	 * @param args - The arguments to send with the event.
 	 */
 	_broadcast<Args extends Array<unknown>>(name: string, ...args: Args) {
+		return this._broadcastWithOptions({}, name, ...args);
+	}
+
+	/**
+	 * Broadcasts an event to all connected clients with options.
+	 * @param opts - Options for the broadcast.
+	 * @param name - The name of the event.
+	 * @param args - The arguments to send with the event.
+	 */
+	_broadcastWithOptions<Args extends Array<unknown>>(opts: BroadcastInstanceOptions, name: string, ...args: Args) {
 		this.#assertReady();
 
 		// Send to all connected clients
@@ -1028,8 +1048,14 @@ export class ActorInstance<S, CP, CS, V> {
 			},
 		});
 
+		const excludeList = opts.exclude ?? [];
+
 		// Send message to clients
 		for (const connection of subscriptions) {
+			if (excludeList.includes(connection.id)) {
+				continue;
+			}
+
 			connection._sendMessage(toClientSerializer);
 		}
 	}

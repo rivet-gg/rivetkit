@@ -9,6 +9,20 @@ import { Actions } from "./config";
 import { ActorContext } from "./context";
 
 /**
+ * Options for the `_broadcast` method.
+ */
+interface BroadcastOptions {
+	/**
+	 * The connection IDs to be excluded from the broadcast.
+	 */
+	exclude?: ConnId[];
+	/**
+	 * Excludes the current connection from the broadcast.
+	 */
+	excludeSelf?: boolean;
+}
+
+/**
  * Context for a remote procedure call.
  *
  * @typeParam A Actor this action belongs to
@@ -48,6 +62,28 @@ export class ActionContext<S, CP, CS, V> {
 	 */
 	broadcast(name: string, ...args: any[]): void {
 		this.#actorContext.broadcast(name, ...args);
+	}
+
+	/**
+	 * Broadcasts an event to all connected clients with options.
+	 */
+	broadcastWithOptions<Args extends Array<unknown>>(opts: BroadcastOptions, name: string, ...args: Args) {
+		const exclude = opts.exclude ?? [];
+
+		if (opts.excludeSelf) {
+			exclude.push(this.conn.id);
+		}
+
+		// @ts-ignore - Access protected method
+		this.#actorContext.broadcastWithOptions({ exclude }, name, ...args);
+		return;
+	}
+
+	/**
+	 * Alias for `broadcastWithOptions`
+	 */
+	broadcastWith<Args extends Array<unknown>>(opts: BroadcastOptions, name: string, ...args: Args) {
+		return this.broadcastWithOptions(opts, name, ...args);
 	}
 
 	/**

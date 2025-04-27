@@ -1,6 +1,6 @@
 import { Logger } from "@/common/log";
 import { Actions } from "./config";
-import { ActorInstance, SaveStateOptions } from "./instance";
+import { ActorInstance, BroadcastInstanceOptions, SaveStateOptions } from "./instance";
 import { Conn, ConnId } from "./connection";
 import { ActorTags } from "@/common/utils";
 import { Schedule } from "./schedule";
@@ -38,6 +38,18 @@ export class ActorContext<S, CP, CS, V> {
 	broadcast<Args extends Array<unknown>>(name: string, ...args: Args): void {
 		// @ts-ignore - Access protected method
 		this.#actor._broadcast(name, ...args);
+		return;
+	}
+
+	/**
+	 * Broadcasts an event to all connected clients with options.
+	 * @param opts - Options for the broadcast.
+	 * @param name - The name of the event.
+	 * @param args - The arguments to send with the event.
+	 */
+	broadcastWithOptions<Args extends Array<unknown>>(opts: BroadcastInstanceOptions, name: string, ...args: Args) {
+		// @ts-ignore - Access protected method
+		this.#actor._broadcastWithOptions(opts, name, ...args);
 		return;
 	}
 
