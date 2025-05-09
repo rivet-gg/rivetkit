@@ -12,6 +12,15 @@ pub struct CreateRequestMetadata {
     pub region: Option<String>,
 }
 
+impl Default for CreateRequestMetadata {
+    fn default() -> Self {
+        Self {
+            tags: vec![],
+            region: None,
+        }
+    }
+}
+
 pub struct PartialCreateRequestMetadata {
     pub tags: Option<ActorTags>,
     pub region: Option<String>,
@@ -54,10 +63,7 @@ impl Default for CreateOptions {
     fn default() -> Self {
         Self {
             params: None,
-            create: CreateRequestMetadata {
-                tags: vec![],
-                region: None,
-            },
+            create: CreateRequestMetadata::default()
         }
     }
 }

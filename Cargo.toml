@@ -1,4 +1,5 @@
 [workspace]
 members = [
     "clients/rust",
+    "clients/python",
 ]

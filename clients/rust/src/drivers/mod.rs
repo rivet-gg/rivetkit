@@ -25,6 +25,7 @@ pub enum DriverStopReason {
 pub(crate) type MessageToClient = Arc<protocol::ToClient>;
 pub(crate) type MessageToServer = Arc<protocol::ToServer>;
 
+#[derive(Debug)]
 pub(crate) struct DriverHandle {
     abort_handle: AbortHandle,
     sender: mpsc::Sender<MessageToServer>,

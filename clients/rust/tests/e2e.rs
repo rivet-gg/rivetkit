@@ -3,8 +3,6 @@ use fs_extra;
 use portpicker;
 use serde_json::json;
 use std::process::{Child, Command};
-use std::sync::atomic::{AtomicI64, Ordering};
-use std::sync::Arc;
 use std::time::Duration;
 use tempfile;
 use tokio::time::sleep;

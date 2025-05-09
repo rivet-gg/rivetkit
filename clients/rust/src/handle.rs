@@ -1,6 +1,7 @@
 use anyhow::Result;
 use futures_util::FutureExt;
 use serde_json::Value;
+use std::fmt::Debug;
 use std::ops::Deref;
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::time::Duration;
@@ -399,5 +400,15 @@ impl ActorHandleInner {
         };
 
         rx.await.ok();
+    }
+}
+
+impl Debug for ActorHandleInner {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ActorHandle")
+            .field("endpoint", &self.endpoint)
+            .field("transport_kind", &self.transport_kind)
+            .field("encoding_kind", &self.encoding_kind)
+            .finish()
     }
 }
