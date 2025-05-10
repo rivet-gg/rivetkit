@@ -7,9 +7,11 @@ export interface ActorDriverContext {
 
 export class RivetActorDriver implements ActorDriver {
 	#ctx: ActorContext;
+	#alarms: Map<string, { timeout: NodeJS.Timeout, timestamp: number }>;
 
 	constructor(ctx: ActorContext) {
 		this.#ctx = ctx;
+		this.#alarms = new Map();
 	}
 
 	getContext(_actorId: string): ActorDriverContext {
@@ -27,9 +29,24 @@ export class RivetActorDriver implements ActorDriver {
 	}
 
 	async setAlarm(actor: AnyActorInstance, timestamp: number): Promise<void> {
-		const timeout = Math.max(0, timestamp - Date.now());
-		setTimeout(() => {
+		const delay = Math.max(timestamp - Date.now(), 0);
+		const timeout = setTimeout(() => {
+			this.#alarms.delete(actor.id);
 			actor.onAlarm();
-		}, timeout);
+		}, delay);
+		this.#alarms.set(actor.id, { timeout, timestamp });
+	}
+
+	async getAlarm(actor: AnyActorInstance): Promise<number | null> {
+		const alarm = this.#alarms.get(actor.id);
+		return alarm ? alarm.timestamp : null;
+	}
+
+	async deleteAlarm(actor: AnyActorInstance): Promise<void> {
+		const alarm = this.#alarms.get(actor.id);
+		if (alarm) {
+			clearTimeout(alarm.timeout);
+			this.#alarms.delete(actor.id);
+		}
 	}
 }

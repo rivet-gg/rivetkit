@@ -61,4 +61,12 @@ export class CloudflareWorkersActorDriver implements ActorDriver {
 	async setAlarm(actor: AnyActorInstance, timestamp: number): Promise<void> {
 		await this.#getDOCtx(actor.id).storage.setAlarm(timestamp);
 	}
+
+	async getAlarm(actor: AnyActorInstance): Promise<number | null> {
+		return await this.#getDOCtx(actor.id).storage.getAlarm();
+	}
+
+	async deleteAlarm(actor: AnyActorInstance): Promise<void> {
+		await this.#getDOCtx(actor.id).storage.deleteAlarm();
+	}
 }

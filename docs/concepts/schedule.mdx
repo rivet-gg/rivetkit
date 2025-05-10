@@ -21,6 +21,9 @@ Parameters:
 - `fn` (string): The name of the action to be executed.
 - `...args` (unknown[]): Additional arguments to pass to the function.
 
+Returns:
+- `Promise<string>`: A unique identifier for the scheduled event.
+
 ### `c.schedule.at(timestamp, fn, ...args)`
 
 Schedules a function to be executed at a specific timestamp. This function persists across actor restarts, upgrades, or crashes.
@@ -30,6 +33,41 @@ Parameters:
 - `timestamp` (number): The exact time in milliseconds since the Unix epoch when the function should be executed.
 - `fn` (string): The name of the action to be executed.
 - `...args` (unknown[]): Additional arguments to pass to the function.
+
+Returns:
+- `Promise<string>`: A unique identifier for the scheduled event.
+
+### `c.schedule.list()`
+
+Lists all scheduled events for the actor.
+
+Returns:
+- `Promise<Alarm[]>`: An array of scheduled alarms, where each alarm has the following properties:
+  - `id` (string): The unique identifier of the alarm
+  - `createdAt` (number): The timestamp when the alarm was created
+  - `triggersAt` (number): The timestamp when the alarm will trigger
+  - `fn` (string): The name of the action to be executed
+  - `args` (unknown[]): The arguments to pass to the function
+
+### `c.schedule.get(alarmId)`
+
+Gets details about a specific scheduled event.
+
+Parameters:
+- `alarmId` (string): The unique identifier of the alarm to retrieve.
+
+Returns:
+- `Promise<Alarm | undefined>`: The alarm details if found, undefined otherwise.
+
+### `c.schedule.cancel(alarmId)`
+
+Cancels a scheduled event.
+
+Parameters:
+- `alarmId` (string): The unique identifier of the alarm to cancel.
+
+Returns:
+- `Promise<void>`
 
 ## Scheduling Private Actions
 
@@ -46,7 +84,7 @@ const reminderService = actor({
   },
   
   actions: {
-    setReminder: (c, userId, message, delayMs) => {
+    setReminder: async (c, userId, message, delayMs) => {
       const reminderId = crypto.randomUUID();
       
       // Store the reminder in state
@@ -57,7 +95,89 @@ const reminderService = actor({
       };
       
       // Schedule the sendReminder action to run after the delay
-      c.after(delayMs, "sendReminder", reminderId);
+      // Store the alarmId for potential cancellation
+      const alarmId = await c.schedule.after(delayMs, "sendReminder", reminderId);
+      
+      return { reminderId, alarmId };
+    },
+    
+    cancelReminder: async (c, reminderId) => {
+      const reminder = c.state.reminders[reminderId];
+      if (!reminder) return { success: false };
+      
+      // Cancel the scheduled reminder
+      await c.schedule.cancel(reminder.alarmId);
+      
+      // Clean up the reminder
+      delete c.state.reminders[reminderId];
+      
+      return { success: true };
+    },
+    
+    sendReminder: (c, reminderId) => {
+      const reminder = c.state.reminders[reminderId];
+      if (!reminder) return;
+      
+      // Find the user's connection if they're online
+      const userConn = c.conns.find(
+        conn => conn.state.userId === reminder.userId
+      );
+      
+      if (userConn) {
+        // Send the reminder to the user
+        userConn.send("reminder", {
+          message: reminder.message,
+          scheduledAt: reminder.scheduledFor
+        });
+      } else {
+        // If user is offline, store reminder for later delivery
+        // ...
+      }
+      
+      // Clean up the processed reminder
+      delete c.state.reminders[reminderId];
+    }
+  }
+});
+```
+
+## Testing Schedules
+
+```typescript
+import { actor } from "actor-core";
+
+const reminderService = actor({
+  state: {
+    reminders: {}
+  },
+  
+  actions: {
+    setReminder: async (c, userId, message, delayMs) => {
+      const reminderId = crypto.randomUUID();
+      
+      // Store the reminder in state
+      c.state.reminders[reminderId] = {
+        userId,
+        message,
+        scheduledFor: Date.now() + delayMs
+      };
+      
+      // Schedule the sendReminder action to run after the delay
+      // Store the alarmId for potential cancellation
+      const alarmId = await c.schedule.after(delayMs, "sendReminder", reminderId);
+      
+      return { reminderId, alarmId };
+    },
+    
+    cancelReminder: async (c, reminderId) => {
+      const reminder = c.state.reminders[reminderId];
+      if (!reminder) return { success: false };
+      
+      // Cancel the scheduled reminder
+      await c.schedule.cancel(reminder.alarmId);
+      
+      // Clean up the reminder
+      delete c.state.reminders[reminderId];
       
       return { reminderId };
     },
