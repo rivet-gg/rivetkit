@@ -1,7 +1,7 @@
 import type { AnyActorInstance } from "./instance";
 import type { Conn } from "./connection";
 import type { Logger } from "@/common/log";
-import type { ActorTags } from "@/common/utils";
+import type { ActorKey } from "@/common/utils";
 import type { Schedule } from "./schedule";
 import type { ConnId } from "./connection";
 import type { SaveStateOptions } from "./instance";
@@ -65,10 +65,10 @@ export class ActionContext<S, CP, CS, V> {
 	}
 
 	/**
-	 * Gets the actor tags.
+	 * Gets the actor key.
 	 */
-	get tags(): ActorTags {
-		return this.#actorContext.tags;
+	get key(): ActorKey {
+		return this.#actorContext.key;
 	}
 
 	/**

@@ -76,34 +76,44 @@ export function createManagerRouter(
 					`Actor does not exist for ID: ${query.getForId.actorId}`,
 				);
 			actorOutput = output;
-		} else if ("getOrCreateForTags" in query) {
-			const existingActor = await driver.getWithTags({
+		} else if ("getForKey" in query) {
+			const existingActor = await driver.getWithKey({
 				c,
 				baseUrl: baseUrl,
-				name: query.getOrCreateForTags.name,
-				tags: query.getOrCreateForTags.tags,
+				name: query.getForKey.name,
+				key: query.getForKey.key,
+			});
+			if (!existingActor) {
+				throw new Error("Actor not found with key.");
+			}
+			actorOutput = existingActor;
+		} else if ("getOrCreateForKey" in query) {
+			const existingActor = await driver.getWithKey({
+				c,
+				baseUrl: baseUrl,
+				name: query.getOrCreateForKey.name,
+				key: query.getOrCreateForKey.key,
 			});
 			if (existingActor) {
 				// Actor exists
 				actorOutput = existingActor;
 			} else {
-				if (query.getOrCreateForTags.create) {
-					// Create if needed
-					actorOutput = await driver.createActor({
-						c,
-						baseUrl: baseUrl,
-						...query.getOrCreateForTags.create,
-					});
-				} else {
-					// Creation disabled
-					throw new Error("Actor not found with tags or is private.");
-				}
+				// Create if needed
+				actorOutput = await driver.createActor({
+					c,
+					baseUrl: baseUrl,
+					name: query.getOrCreateForKey.name,
+					key: query.getOrCreateForKey.key,
+					region: query.getOrCreateForKey.region,
+				});
 			}
 		} else if ("create" in query) {
 			actorOutput = await driver.createActor({
 				c,
 				baseUrl: baseUrl,
-				...query.create,
+				name: query.create.name,
+				key: query.create.key,
+				region: query.create.region,
 			});
 		} else {
 			assertUnreachable(query);

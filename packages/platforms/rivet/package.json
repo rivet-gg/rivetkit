@@ -24,7 +24,7 @@
   "scripts": {
     "build": "tsup src/mod.ts",
     "check-types": "tsc --noEmit",
-    "test": "echo Tests disabled for now"
+    "test": "vitest run"
   },
   "peerDependencies": {
     "actor-core": "*"

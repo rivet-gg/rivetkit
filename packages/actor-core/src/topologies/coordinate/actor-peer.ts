@@ -2,7 +2,7 @@ import type { GlobalState } from "@/topologies/coordinate/topology";
 import { logger } from "./log";
 import type { CoordinateDriver } from "./driver";
 import type { ActorInstance, AnyActorInstance } from "@/actor/instance";
-import type { ActorTags } from "@/common/utils";
+import type { ActorKey } from "@/common/utils";
 import { ActorDriver } from "@/actor/driver";
 import {
 	CONN_DRIVER_COORDINATE_RELAY,
@@ -19,7 +19,7 @@ export class ActorPeer {
 	#globalState: GlobalState;
 	#actorId: string;
 	#actorName?: string;
-	#actorTags?: ActorTags;
+	#actorKey?: ActorKey;
 	#isDisposed = false;
 
 	/** Connections that hold a reference to this actor. If this set is empty, the actor should be shut down. */
@@ -147,7 +147,7 @@ export class ActorPeer {
 
 		// Parse tags
 		this.#actorName = actor.name;
-		this.#actorTags = actor.tags;
+		this.#actorKey = actor.key;
 
 		// Handle leadership
 		this.#leaderNodeId = actor.leaderNodeId;
@@ -203,7 +203,7 @@ export class ActorPeer {
 	}
 
 	async #convertToLeader() {
-		if (!this.#actorName || !this.#actorTags) throw new Error("missing name or tags");
+		if (!this.#actorName || !this.#actorKey) throw new Error("missing name or key");
 
 		logger().debug("peer acquired leadership", { actorId: this.#actorId });
 
@@ -226,7 +226,7 @@ export class ActorPeer {
 			this.#actorDriver,
 			this.#actorId,
 			this.#actorName,
-			this.#actorTags,
+			this.#actorKey,
 			"unknown",
 		);
 	}

@@ -1,24 +1,6 @@
-import { assertUnreachable } from "actor-core/utils";
-import type { ActorTags } from "actor-core";
-import {
-	ManagerDriver,
-	GetForIdInput,
-	GetWithTagsInput,
-	CreateActorInput,
-	GetActorOutput,
-} from "actor-core/driver-helpers";
-import { logger } from "./log";
-import { type RivetClientConfig, rivetRequest } from "./rivet_client";
-
-// biome-ignore lint/suspicious/noExplicitAny: will add api types later
-type RivetActor = any;
-// biome-ignore lint/suspicious/noExplicitAny: will add api types later
-type RivetBuild = any;
-
-const RESERVED_TAGS = ["name", "access", "framework", "framework-version"];
 
 export interface ActorState {
-	tags: ActorTags;
+	key: string[];
 	destroyedAt?: number;
 }
 
@@ -40,24 +22,20 @@ export class RivetManagerDriver implements ManagerDriver {
 				`/actors/${encodeURIComponent(actorId)}`,
 			);
 
-			// Check if actor exists and is public
-			if ((res.actor.tags as ActorTags).access !== "public") {
+			// Check if actor exists, is public, and not destroyed
+			if ((res.actor.tags as Record<string, string>).access !== "public" || res.actor.destroyedAt) {
 				return undefined;
 			}
 
-			// Check if actor is destroyed
-			if (res.actor.destroyedAt) {
-				return undefined;
-			}
-
+			// Ensure actor has required tags
 			if (!("name" in res.actor.tags)) {
-				throw new Error(`Actor {res.actor.id} missing 'name' in tags.`);
+				throw new Error(`Actor ${res.actor.id} missing 'name' in tags.`);
 			}
 
 			return {
 				endpoint: buildActorEndpoint(res.actor),
 				name: res.actor.tags.name,
-				tags: res.actor.tags as ActorTags,
+				key: this.#extractKeyFromRivetTags(res.actor.tags),
 			};
 		} catch (error) {
 			// Handle not found or other errors
@@ -65,26 +43,28 @@ export class RivetManagerDriver implements ManagerDriver {
 		}
 	}
 
-	async getWithTags({
-		tags,
-	}: GetWithTagsInput): Promise<GetActorOutput | undefined> {
-		const tagsJson = JSON.stringify({
-			...tags,
-			access: "public",
-		});
-		let { actors } = await rivetRequest<void, { actors: RivetActor[] }>(
+	async getWithKey({
+		name,
+		key,
+	}: GetWithKeyInput): Promise<GetActorOutput | undefined> {
+		// Convert key array to Rivet's tag format
+		const rivetTags = this.#convertKeyToRivetTags(name, key);
+		
+		// Query actors with matching tags
+		const { actors } = await rivetRequest<void, { actors: RivetActor[] }>(
 			this.#clientConfig,
 			"GET",
-			`/actors?tags_json=${encodeURIComponent(tagsJson)}`,
+			`/actors?tags_json=${encodeURIComponent(JSON.stringify(rivetTags))}`,
 		);
 
-		// TODO(RVT-4248): Don't return actors that aren't networkable yet
-		actors = actors.filter((a: RivetActor) => {
-			// This should never be triggered. This assertion will leak if private actors exist if it's ever triggered.
-			if ((a.tags as ActorTags).access !== "public") {
-				throw new Error("unreachable: actor tags not public");
+		// Filter actors to ensure they're valid
+		const validActors = actors.filter((a: RivetActor) => {
+			// Verify actor is public
+			if ((a.tags as Record<string, string>).access !== "public") {
+				return false;
 			}
 
+			// Verify all ports have hostname and port
 			for (const portName in a.network.ports) {
 				const port = a.network.ports[portName];
 				if (!port.hostname || !port.port) return false;
@@ -92,55 +72,46 @@ export class RivetManagerDriver implements ManagerDriver {
 			return true;
 		});
 
-		if (actors.length === 0) {
+		if (validActors.length === 0) {
 			return undefined;
 		}
 
-		// Make the chosen actor consistent
-		if (actors.length > 1) {
-			actors.sort((a: RivetActor, b: RivetActor) => a.id.localeCompare(b.id));
-		}
+		// For consistent results, sort by ID if multiple actors match
+		const actor = validActors.length > 1 
+			? validActors.sort((a, b) => a.id.localeCompare(b.id))[0]
+			: validActors[0];
 
-		const actor = actors[0];
-
+		// Ensure actor has required tags
 		if (!("name" in actor.tags)) {
-			throw new Error(`Actor {res.actor.id} missing 'name' in tags.`);
+			throw new Error(`Actor ${actor.id} missing 'name' in tags.`);
 		}
 
 		return {
-			endpoint: buildActorEndpoint(actors[0]),
+			endpoint: buildActorEndpoint(actor),
 			name: actor.tags.name,
-			tags: actor.tags as ActorTags,
+			key: this.#extractKeyFromRivetTags(actor.tags),
 		};
 	}
 
 	async createActor({
 		name,
-		tags,
+		key,
 		region,
 	}: CreateActorInput): Promise<GetActorOutput> {
-		// Verify build access
+		// Find a matching build that's public and current
 		const build = await this.#getBuildWithTags({
-			name: name,
+			name,
 			current: "true",
 			access: "public",
 		});
-		if (!build) throw new Error("Build not found with tags or is private");
-
-		// HACK: We don't allow overriding name on Rivet since that's a special property that's used for the actor name
-		if (RESERVED_TAGS.some((tag) => tag in tags)) {
-			throw new Error(
-				`Cannot use property ${RESERVED_TAGS.join(", ")} in actor tags. These are reserved.`,
-			);
+		
+		if (!build) {
+			throw new Error("Build not found with tags or is private");
 		}
 
-		// Create actor
-		const req = {
-			tags: {
-				name,
-				access: "public",
-				...tags,
-			},
+		// Create the actor request
+		const createRequest = {
+			tags: this.#convertKeyToRivetTags(name, key),
 			build: build.id,
 			region,
 			network: {
@@ -152,46 +123,59 @@ export class RivetManagerDriver implements ManagerDriver {
 				},
 			},
 		};
-		logger().info("creating actor", { ...req });
-		const { actor } = await rivetRequest<typeof req, { actor: RivetActor }>(
+
+		logger().info("creating actor", { ...createRequest });
+		
+		// Create the actor
+		const { actor } = await rivetRequest<typeof createRequest, { actor: RivetActor }>(
 			this.#clientConfig,
 			"POST",
 			"/actors",
-			req,
+			createRequest,
 		);
 
 		return {
 			endpoint: buildActorEndpoint(actor),
 			name,
-			tags: actor.tags as ActorTags,
+			key: this.#extractKeyFromRivetTags(actor.tags),
 		};
+	}
+
+	// Helper method to convert a key array to Rivet's tag-based format
+	#convertKeyToRivetTags(name: string, key: string[]): Record<string, string> {
+		return {
+			name,
+			access: "public",
+			key: serializeKeyForTag(key),
+		};
+	}
+	
+	// Helper method to extract key array from Rivet's tag-based format
+	#extractKeyFromRivetTags(tags: Record<string, string>): string[] {
+		return deserializeKeyFromTag(tags.key);
 	}
 
 	async #getBuildWithTags(
 		buildTags: Record<string, string>,
 	): Promise<RivetBuild | undefined> {
-		const tagsJson = JSON.stringify(buildTags);
-		let { builds } = await rivetRequest<void, { builds: RivetBuild[] }>(
+		// Query builds with matching tags
+		const { builds } = await rivetRequest<void, { builds: RivetBuild[] }>(
 			this.#clientConfig,
 			"GET",
-			`/builds?tags_json=${encodeURIComponent(tagsJson)}`,
+			`/builds?tags_json=${encodeURIComponent(JSON.stringify(buildTags))}`,
 		);
 
-		builds = builds.filter((b: RivetBuild) => {
-			// Filter out private builds
-			if (b.tags.access !== "public") return false;
-
-			return true;
-		});
-
-		if (builds.length === 0) {
+		// Filter to public builds
+		const publicBuilds = builds.filter(b => b.tags.access === "public");
+		
+		if (publicBuilds.length === 0) {
 			return undefined;
 		}
-		if (builds.length > 1) {
-			builds.sort((a: RivetBuild, b: RivetBuild) => a.id.localeCompare(b.id));
-		}
-
-		return builds[0];
+		
+		// For consistent results, sort by ID if multiple builds match
+		return publicBuilds.length > 1
+			? publicBuilds.sort((a, b) => a.id.localeCompare(b.id))[0]
+			: publicBuilds[0];
 	}
 }
 
@@ -224,3 +208,21 @@ function buildActorEndpoint(actor: RivetActor): string {
 
 	return `${isTls ? "https" : "http"}://${hostname}:${port}${path}`;
 }
+
+import { assertUnreachable } from "actor-core/utils";
+import type { ActorKey } from "actor-core";
+import {
+	ManagerDriver,
+	GetForIdInput,
+	GetWithKeyInput,
+	CreateActorInput,
+	GetActorOutput,
+} from "actor-core/driver-helpers";
+import { logger } from "./log";
+import { type RivetClientConfig, rivetRequest } from "./rivet_client";
+import { serializeKeyForTag, deserializeKeyFromTag } from "./util";
+
+// biome-ignore lint/suspicious/noExplicitAny: will add api types later
+type RivetActor = any;
+// biome-ignore lint/suspicious/noExplicitAny: will add api types later
+type RivetBuild = any;

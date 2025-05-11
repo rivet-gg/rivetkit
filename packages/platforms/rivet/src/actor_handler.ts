@@ -1,6 +1,6 @@
 import { setupLogging } from "actor-core/log";
 import type { ActorContext } from "@rivet-gg/actor-core";
-import type { ActorTags } from "actor-core";
+import type { ActorKey } from "actor-core";
 import { upgradeWebSocket } from "hono/deno";
 import { logger } from "./log";
 import type { RivetHandler } from "./util";
@@ -114,11 +114,14 @@ export function createActorHandler(inputConfig: InputConfig): RivetHandler {
 				);
 			}
 
+			// Extract key from Rivet's tag format
+			const key = extractKeyFromRivetTags(ctx.metadata.actor.tags);
+
 			// Start actor
 			await actorTopology.start(
 				ctx.metadata.actor.id,
 				ctx.metadata.actor.tags.name,
-				ctx.metadata.actor.tags as ActorTags,
+				key,
 				ctx.metadata.region.id,
 			);
 
@@ -128,4 +131,21 @@ export function createActorHandler(inputConfig: InputConfig): RivetHandler {
 	} satisfies RivetHandler;
 
 	return handler;
+}
+
+// Helper function to extract key array from Rivet's tag format
+function extractKeyFromRivetTags(tags: Record<string, string>): string[] {
+	const key: string[] = [];
+	
+	// Extract key values from tags using the numerical suffix pattern
+	for (let i = 0; ; i++) {
+		const tagKey = `key${i}`;
+		if (tagKey in tags) {
+			key.push(tags[tagKey]);
+		} else {
+			break;
+		}
+	}
+	
+	return key;
 }

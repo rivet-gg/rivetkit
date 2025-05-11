@@ -27,3 +27,7 @@ export {
 	NoSupportedTransport,
 	ActionError,
 } from "@/client/errors";
+export {
+	AnyActorDefinition,
+	ActorDefinition,
+} from "@/actor/definition";

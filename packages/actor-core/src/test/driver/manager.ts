@@ -3,7 +3,7 @@ import type {
 	CreateActorOutput,
 	GetActorOutput,
 	GetForIdInput,
-	GetWithTagsInput,
+	GetWithKeyInput,
 	ManagerDriver,
 } from "@/driver-helpers/mod";
 import type { TestGlobalState } from "./global_state";
@@ -41,28 +41,30 @@ export class TestManagerDriver implements ManagerDriver {
 		return {
 			endpoint: buildActorEndpoint(baseUrl, actorId),
 			name: actor.name,
-			tags: actor.tags,
+			key: actor.key,
 		};
 	}
 
-	async getWithTags({
+	async getWithKey({
 		baseUrl,
 		name,
-		tags,
-	}: GetWithTagsInput): Promise<GetActorOutput | undefined> {
+		key,
+	}: GetWithKeyInput): Promise<GetActorOutput | undefined> {
 		// NOTE: This is a slow implementation that checks each actor individually.
 		// This can be optimized with an index in the future.
 
-		// Search through all actors to find a match
-		// Find actors with a superset of the queried tags
+		// Search through all actors to find a match with the same key
 		const actor = this.#state.findActor((actor) => {
 			if (actor.name !== name) return false;
 
-			for (const key in tags) {
-				const value = tags[key];
+			// Compare key arrays
+			if (!actor.key || actor.key.length !== key.length) {
+				return false;
+			}
 
-				// If actor doesn't have this tag key, or values don't match, it's not a match
-				if (actor.tags[key] === undefined || actor.tags[key] !== value) {
+			// Check if all elements in key are in actor.key
+			for (let i = 0; i < key.length; i++) {
+				if (key[i] !== actor.key[i]) {
 					return false;
 				}
 			}
@@ -73,7 +75,7 @@ export class TestManagerDriver implements ManagerDriver {
 			return {
 				endpoint: buildActorEndpoint(baseUrl, actor.id),
 				name,
-				tags: actor.tags,
+				key: actor.key,
 			};
 		}
 
@@ -83,10 +85,10 @@ export class TestManagerDriver implements ManagerDriver {
 	async createActor({
 		baseUrl,
 		name,
-		tags,
+		key,
 	}: CreateActorInput): Promise<CreateActorOutput> {
 		const actorId = crypto.randomUUID();
-		this.#state.createActor(actorId, name, tags);
+		this.#state.createActor(actorId, name, key);
 
 		this.inspector.onActorsChange(this.#state.getAllActors());
 

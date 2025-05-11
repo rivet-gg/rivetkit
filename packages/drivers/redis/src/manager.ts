@@ -3,7 +3,7 @@ import type {
 	CreateActorOutput,
 	GetActorOutput,
 	GetForIdInput,
-	GetWithTagsInput,
+	GetWithKeyInput,
 	ManagerDriver,
 } from "actor-core/driver-helpers";
 import type Redis from "ioredis";
@@ -14,7 +14,7 @@ import type { ActorCoreApp } from "actor-core";
 interface Actor {
 	id: string;
 	name: string;
-	tags: Record<string, string>;
+	key: string[];
 	region?: string;
 	createdAt?: string;
 	destroyedAt?: string;
@@ -22,7 +22,7 @@ interface Actor {
 
 /**
  * Redis Manager Driver for Actor-Core
- * Implements efficient tag-based indexing using Redis Sets
+ * Handles actor creation and lookup by ID or key
  */
 export class RedisManagerDriver implements ManagerDriver {
 	#redis: Redis;
@@ -65,94 +65,58 @@ export class RedisManagerDriver implements ManagerDriver {
 		}
 
 		const metadata = JSON.parse(metadataStr);
-		const { name, tags } = metadata;
+		const { name, key } = metadata;
 
 		return {
 			endpoint: buildActorEndpoint(baseUrl, actorId),
 			name,
-			tags,
+			key,
 		};
 	}
 
-	async getWithTags({
+	async getWithKey({
 		baseUrl,
 		name,
-		tags,
-	}: GetWithTagsInput): Promise<GetActorOutput | undefined> {
-		if (Object.keys(tags).length === 0) {
-			// Handle the case of no tags - try to find any actor with this name
-			// This gets the first matching actor by name
-			const actorIds = await this.#redis.smembers(this.#getNameIndexKey(name));
+		key,
+	}: GetWithKeyInput): Promise<GetActorOutput | undefined> {
+		// Since keys are 1:1 with actor IDs, we can directly look up by key
+		const lookupKey = this.#generateActorKeyRedisKey(name, key);
+		const actorId = await this.#redis.get(lookupKey);
 
-			if (actorIds.length > 0) {
-				// Use the first actor (should be consistent for the same query)
-				const actorId = actorIds[0];
-				return this.#buildActorOutput(baseUrl, actorId);
-			}
-
+		if (!actorId) {
 			return undefined;
 		}
 
-		// For tag queries, we need to find actors with at least these tags
-		// 1. Get all actors with the requested name
-		// 2. Find actors that have all the requested tags
-		const nameKey = this.#getNameIndexKey(name);
-
-		// Get the set of actor IDs for each tag
-		const tagKeys: string[] = [];
-		for (const [key, value] of Object.entries(tags)) {
-			tagKeys.push(this.#getTagIndexKey(name, key, value));
-		}
-
-		// If we have tags to search for, add the name index as the first key
-		// This ensures we only match actors with the correct name
-		tagKeys.unshift(nameKey);
-
-		// Use SINTER to find actors with all requested tags
-		// This efficiently finds the intersection of all sets
-		const matchingActorIds = await this.#redis.sinter(tagKeys);
-
-		if (matchingActorIds.length > 0) {
-			// Use the first actor (should be consistent for the same query)
-			const actorId = matchingActorIds[0];
-			return this.#buildActorOutput(baseUrl, actorId);
-		}
-
-		return undefined;
+		return this.getForId({ baseUrl, actorId });
 	}
 
 	async createActor({
 		baseUrl,
 		name,
-		tags,
+		key,
 	}: CreateActorInput): Promise<CreateActorOutput> {
 		const actorId = crypto.randomUUID();
+		const actorKeyRedisKey = this.#generateActorKeyRedisKey(name, key);
 
 		// Use a transaction to ensure all operations are atomic
 		const pipeline = this.#redis.multi();
 
 		// Store basic actor information
 		pipeline.set(KEYS.ACTOR.initialized(actorId), "1");
-		pipeline.set(KEYS.ACTOR.metadata(actorId), JSON.stringify({ name, tags }));
+		pipeline.set(KEYS.ACTOR.metadata(actorId), JSON.stringify({ name, key }));
 
-		// Add to name index
-		pipeline.sadd(this.#getNameIndexKey(name), actorId);
-
-		// Add to tag indexes for each tag
-		for (const [key, value] of Object.entries(tags)) {
-			pipeline.sadd(this.#getTagIndexKey(name, key, value), actorId);
-		}
+		// Create direct lookup by name+key -> actorId
+		pipeline.set(actorKeyRedisKey, actorId);
 
 		// Execute all commands atomically
 		await pipeline.exec();
 
-		// Notify inspector of actor creation with minimal data
-		// to avoid async Redis calls after cleanup
+		// Notify inspector of actor creation
 		this.inspector.onActorsChange([
 			{
 				id: actorId,
 				name,
-				tags,
+				key,
 			},
 		]);
 
@@ -177,7 +141,7 @@ export class RedisManagerDriver implements ManagerDriver {
 				actors.push({
 					id: actorId,
 					name: metadata.name,
-					tags: metadata.tags,
+					key: metadata.key || [],
 				});
 			}
 		}
@@ -185,34 +149,26 @@ export class RedisManagerDriver implements ManagerDriver {
 		return actors;
 	}
 
-	// Helper method to build actor output from an ID
-	async #buildActorOutput(
-		baseUrl: string,
-		actorId: string,
-	): Promise<GetActorOutput | undefined> {
-		const metadataStr = await this.#redis.get(KEYS.ACTOR.metadata(actorId));
+	// Generate a Redis key for looking up an actor by name+key
+	#generateActorKeyRedisKey(name: string, key: string[]): string {
+		// Base prefix for actor key lookups
+		let redisKey = `actor_by_key:${this.#escapeRedisKey(name)}`;
 
-		if (!metadataStr) {
-			return undefined;
+		// Add each key component with proper escaping
+		if (key.length > 0) {
+			redisKey += `:${key.map((k) => this.#escapeRedisKey(k)).join(":")}`;
 		}
 
-		const metadata = JSON.parse(metadataStr);
-		const { name, tags } = metadata;
-
-		return {
-			endpoint: buildActorEndpoint(baseUrl, actorId),
-			name,
-			tags,
-		};
+		return redisKey;
 	}
 
-	// Helper methods for consistent key naming
-	#getNameIndexKey(name: string): string {
-		return `actor_name:${name}`;
-	}
-
-	#getTagIndexKey(name: string, tagKey: string, tagValue: string): string {
-		return `actor_tag:${name}:${tagKey}:${tagValue}`;
+	// Escape special characters in Redis keys
+	// Redis keys shouldn't contain spaces or control characters
+	// and we need to escape the delimiter character (:)
+	#escapeRedisKey(part: string): string {
+		return part
+			.replace(/\\/g, "\\\\") // Escape backslashes first
+			.replace(/:/g, "\\:"); // Escape colons (our delimiter)
 	}
 }
 

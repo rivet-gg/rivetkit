@@ -103,4 +103,4 @@ This ensures imports resolve correctly across different build environments and p
 - Ensure proper error handling with descriptive messages
 - Run `yarn check-types` regularly during development to catch type errors early. Prefer `yarn check-types` instead of `yarn build`.
 - Use `tsx` CLI to execute TypeScript scripts directly (e.g., `tsx script.ts` instead of `node script.js`).
-
+- Do not auto-commit changes

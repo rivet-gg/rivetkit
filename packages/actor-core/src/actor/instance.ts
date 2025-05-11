@@ -1,6 +1,6 @@
 import type { Logger } from "@/common//log";
 import {
-	type ActorTags,
+	type ActorKey,
 	isJsonSerializable,
 	stringifyError,
 } from "@/common//utils";
@@ -109,7 +109,7 @@ export class ActorInstance<S, CP, CS, V> {
 	#actorDriver!: ActorDriver;
 	#actorId!: string;
 	#name!: string;
-	#tags!: ActorTags;
+	#key!: ActorKey;
 	#region!: string;
 	#ready = false;
 
@@ -145,14 +145,14 @@ export class ActorInstance<S, CP, CS, V> {
 		actorDriver: ActorDriver,
 		actorId: string,
 		name: string,
-		tags: ActorTags,
+		key: ActorKey,
 		region: string,
 	) {
 		this.#connectionDrivers = connectionDrivers;
 		this.#actorDriver = actorDriver;
 		this.#actorId = actorId;
 		this.#name = name;
-		this.#tags = tags;
+		this.#key = key;
 		this.#region = region;
 		this.#schedule = new Schedule(this);
 		this.inspector = new ActorInspector(this);
@@ -954,10 +954,10 @@ export class ActorInstance<S, CP, CS, V> {
 	}
 
 	/**
-	 * Gets the tags.
+	 * Gets the key.
 	 */
-	get tags(): ActorTags {
-		return this.#tags;
+	get key(): ActorKey {
+		return this.#key;
 	}
 
 	/**

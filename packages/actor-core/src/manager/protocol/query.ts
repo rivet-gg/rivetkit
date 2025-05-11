@@ -1,16 +1,21 @@
-import { ActorTagsSchema, type ActorTags } from "@/common//utils";
+import { ActorKeySchema, type ActorKey } from "@/common//utils";
 import { z } from "zod";
 
 export const CreateRequestSchema = z.object({
 	name: z.string(),
-	tags: ActorTagsSchema,
+	key: ActorKeySchema,
 	region: z.string().optional(),
+});
+
+export const GetForKeyRequestSchema = z.object({
+	name: z.string(),
+	key: ActorKeySchema,
 });
 
 export const GetOrCreateRequestSchema = z.object({
 	name: z.string(),
-	tags: ActorTagsSchema,
-	create: CreateRequestSchema.optional(),
+	key: ActorKeySchema,
+	region: z.string().optional(),
 });
 
 export const ActorQuerySchema = z.union([
@@ -20,7 +25,10 @@ export const ActorQuerySchema = z.union([
 		}),
 	}),
 	z.object({
-		getOrCreateForTags: GetOrCreateRequestSchema,
+		getForKey: GetForKeyRequestSchema,
+	}),
+	z.object({
+		getOrCreateForKey: GetOrCreateRequestSchema,
 	}),
 	z.object({
 		create: CreateRequestSchema,
@@ -28,6 +36,7 @@ export const ActorQuerySchema = z.union([
 ]);
 
 export type ActorQuery = z.infer<typeof ActorQuerySchema>;
+export type GetForKeyRequest = z.infer<typeof GetForKeyRequestSchema>;
 export type GetOrCreateRequest = z.infer<typeof GetOrCreateRequestSchema>;
 /**
  * Interface representing a request to create an actor.

@@ -21,7 +21,7 @@ export type ManagerInspectorConnHandler = InspectorConnHandler<ToServer>;
 interface Actor {
 	id: string;
 	name: string;
-	tags: Record<string, string>;
+	key: string[];
 	region?: string;
 	createdAt?: string;
 	destroyedAt?: string;

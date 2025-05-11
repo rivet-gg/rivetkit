@@ -12,9 +12,10 @@ export type { Conn } from "./connection";
 export type { ActionContext } from "./action";
 export type { ActorConfig, OnConnectOptions } from "./config";
 export type { Encoding } from "@/actor/protocol/serde";
-export type { ActorTags } from "@/common/utils";
+export type { ActorKey } from "@/common/utils";
 export type {
 	ActorDefinition,
+	AnyActorDefinition,
 	ActorContextOf,
 	ActionContextOf,
 } from "./definition";

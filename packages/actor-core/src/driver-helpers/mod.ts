@@ -15,5 +15,5 @@ export {
 	CreateActorOutput,
 	GetActorOutput,
 	GetForIdInput,
-	GetWithTagsInput,
+	GetWithKeyInput,
 } from "@/manager/driver";

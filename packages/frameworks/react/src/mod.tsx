@@ -1,7 +1,7 @@
 "use client";
 import type {
 	ActorAccessor,
-	ActorHandle,
+	ActorConn,
 	ExtractAppFromClient,
 	ExtractActorsFromApp,
 	ClientRaw,
@@ -24,7 +24,7 @@ export function createReactActorCore<Client extends ClientRaw>(client: Client) {
 			AD extends Registry[N],
 		>(
 			name: Exclude<N, symbol | number>,
-			...options: Parameters<ActorAccessor<AD>["get"]>
+			...options: Parameters<ActorAccessor<AD>["connect"]>
 		) {
 			const [manager] = useState(
 				() =>
@@ -49,7 +49,7 @@ export function createReactActorCore<Client extends ClientRaw>(client: Client) {
 			return [state] as const;
 		},
 		useActorEvent<N extends keyof Registry, AD extends Registry[N]>(
-			opts: { actor: ActorHandle<AD> | undefined; event: string },
+			opts: { actor: ActorConn<AD> | undefined; event: string },
 			cb: (...args: unknown[]) => void,
 		) {
 			const ref = useRef(cb);
@@ -62,7 +62,7 @@ export function createReactActorCore<Client extends ClientRaw>(client: Client) {
 				if (!opts.actor) {
 					return noop;
 				}
-				const unsub = opts.actor.on(opts.event, (...args) => {
+				const unsub = opts.actor.on(opts.event, (...args: unknown[]) => {
 					ref.current(...args);
 				});
 

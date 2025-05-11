@@ -2,7 +2,7 @@ import { Logger } from "@/common/log";
 import { Actions } from "./config";
 import { ActorInstance, SaveStateOptions } from "./instance";
 import { Conn, ConnId } from "./connection";
-import { ActorTags } from "@/common/utils";
+import { ActorKey } from "@/common/utils";
 import { Schedule } from "./schedule";
 
 
@@ -58,11 +58,11 @@ export class ActorContext<S, CP, CS, V> {
 	}
 
 	/**
-	 * Gets the actor tags.
+	 * Gets the actor key.
 	 */
-	get tags(): ActorTags {
+	get key(): ActorKey {
 		// @ts-ignore - Access protected method
-		return this.#actor.tags;
+		return this.#actor.key;
 	}
 
 	/**

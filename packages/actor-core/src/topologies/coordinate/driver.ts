@@ -1,4 +1,4 @@
-import type { ActorTags } from "@/common/utils";
+import type { ActorKey } from "@/common/utils";
 
 export type NodeMessageCallback = (message: string) => void;
 
@@ -13,7 +13,7 @@ export interface StartActorAndAcquireLeaseOutput {
 	/** Undefined if not initialized. */
 	actor?: {
 		name?: string;
-		tags?: ActorTags;
+		key?: ActorKey;
 		leaderNodeId?: string;
 	};
 }

@@ -1,10 +1,10 @@
 import type {
-	ActorHandle,
+	ActorConn,
 	ActorAccessor,
-	AnyActorDefinition,
 	ExtractAppFromClient,
 	ExtractActorsFromApp,
 	ClientRaw,
+	AnyActorDefinition,
 } from "actor-core/client";
 
 /**
@@ -38,7 +38,7 @@ namespace State {
 	export type Value<AD extends AnyActorDefinition> =
 		| { state: "init"; actor: undefined; isLoading: false }
 		| { state: "creating"; actor: undefined; isLoading: true }
-		| { state: "created"; actor: ActorHandle<AD>; isLoading: false }
+		| { state: "created"; actor: ActorConn<AD>; isLoading: false }
 		| { state: "error"; error: unknown; actor: undefined; isLoading: false };
 
 	export const INIT = <AD extends AnyActorDefinition>(): Value<AD> => ({
@@ -52,7 +52,7 @@ namespace State {
 		isLoading: true,
 	});
 	export const CREATED = <AD extends AnyActorDefinition>(
-		actor: ActorHandle<AD>,
+		actor: ActorConn<AD>,
 	): Value<AD> => ({
 		state: "created",
 		actor,
@@ -77,25 +77,25 @@ export class ActorManager<
 > {
 	#client: C;
 	#name: Exclude<ActorName, symbol | number>;
-	#options: Parameters<ActorAccessor<AD>["get"]>;
+	#options: Parameters<ActorAccessor<AD>["connect"]>;
 
 	#listeners: (() => void)[] = [];
 
 	#state: State.Value<AD> = State.INIT();
 
-	#createPromise: Promise<ActorHandle<AD>> | null = null;
+	#createPromise: Promise<ActorConn<AD>> | null = null;
 
 	constructor(
 		client: C,
 		name: Exclude<ActorName, symbol | number>,
-		options: Parameters<ActorAccessor<AD>["get"]>,
+		options: Parameters<ActorAccessor<AD>["connect"]>,
 	) {
 		this.#client = client;
 		this.#name = name;
 		this.#options = options;
 	}
 
-	setOptions(options: Parameters<ActorAccessor<AD>["get"]>) {
+	setOptions(options: Parameters<ActorAccessor<AD>["connect"]>) {
 		if (shallowEqualObjects(options, this.#options)) {
 			if (!this.#state.actor) {
 				this.create();
@@ -103,7 +103,7 @@ export class ActorManager<
 			return;
 		}
 
-		this.#state.actor?.disconnect();
+		this.#state.actor?.dispose();
 
 		this.#state = { ...State.INIT() };
 		this.#options = options;
@@ -118,8 +118,8 @@ export class ActorManager<
 		this.#state = { ...State.CREATING() };
 		this.#update();
 		try {
-			this.#createPromise = this.#client.get(this.#name, ...this.#options);
-			const actor = await this.#createPromise;
+			this.#createPromise = this.#client.connect(this.#name, ...this.#options);
+			const actor = (await this.#createPromise) as ActorConn<AD>;
 			this.#state = { ...State.CREATED(actor) };
 			this.#createPromise = null;
 		} catch (e) {

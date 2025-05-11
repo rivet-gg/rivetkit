@@ -1,7 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as fsSync from "node:fs";
 import * as path from "node:path";
-import type { ActorTags } from "actor-core";
+import type { ActorKey } from "actor-core";
 import { logger } from "./log";
 import {
 	getStoragePath,
@@ -19,15 +19,15 @@ export class ActorState {
 	initialized = true;
 	id: string;
 	name: string;
-	tags: ActorTags;
+	key: ActorKey;
 
 	// Persisted data
 	persistedData: unknown = undefined;
 
-	constructor(id: string, name: string, tags: ActorTags) {
+	constructor(id: string, name: string, key: ActorKey) {
 		this.id = id;
 		this.name = name;
-		this.tags = tags;
+		this.key = key;
 	}
 }
 
@@ -75,10 +75,13 @@ export class FileSystemGlobalState {
 						const rawState = JSON.parse(stateData);
 						
 						// Create actor state with persistedData
+						// Handle new key format or create empty array if not present
+						const actorKey = Array.isArray(rawState.key) ? rawState.key : [];
+						
 						const state = new ActorState(
 							rawState.id,
 							rawState.name,
-							rawState.tags
+							actorKey
 						);
 						state.persistedData = rawState.persistedData;
 						
@@ -153,7 +156,7 @@ export class FileSystemGlobalState {
 			const serializedState = {
 				id: state.id,
 				name: state.name,
-				tags: state.tags,
+				key: state.key,
 				persistedData: state.persistedData
 			};
 
@@ -186,7 +189,7 @@ export class FileSystemGlobalState {
 	async createActor(
 		actorId: string,
 		name: string,
-		tags: ActorTags,
+		key: ActorKey,
 	): Promise<void> {
 		// Check if actor already exists
 		if (this.hasActor(actorId)) {
@@ -198,7 +201,7 @@ export class FileSystemGlobalState {
 		await ensureDirectoryExists(actorDir);
 
 		// Create initial state
-		const newState = new ActorState(actorId, name, tags);
+		const newState = new ActorState(actorId, name, key);
 
 		// Cache the state
 		this.#stateCache.set(actorId, newState);

@@ -123,7 +123,7 @@ export class RedisCoordinateDriver implements CoordinateDriver {
 		return {
 			actor: {
 				name: metadata.name,
-				tags: metadata.tags,
+				key: metadata.key,
 				leaderNodeId,
 			},
 		};

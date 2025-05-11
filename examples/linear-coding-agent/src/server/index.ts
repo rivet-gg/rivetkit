@@ -72,12 +72,10 @@ server.post('/api/webhook/linear', async (c) => {
       return c.json({ status: 'error', statusEmoji: '❌', message: 'No issue ID found in webhook event' }, 400);
     }
     
-    // Create or get a coding agent instance with the issue ID as a tag
+    // Create or get a coding agent instance with the issue ID as a key
     // This ensures each issue gets its own actor instance
     console.log(`[SERVER] Getting actor for issue: ${issueId}`);
-    const actorClient = await client.codingAgent.get({
-      tags: { issueId },
-    });
+    const actorClient = await client.codingAgent.connect(issueId);
     
     // Initialize the agent if needed
     console.log(`[SERVER] Initializing actor for issue: ${issueId}`);

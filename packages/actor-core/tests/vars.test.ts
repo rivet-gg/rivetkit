@@ -73,10 +73,10 @@ describe("Actor Vars", () => {
 
 			// Create two separate instances
 			const instance1 = await client.nestedVarActor.connect(
-				{ id: "instance1" }
+				["instance1"]
 			);
 			const instance2 = await client.nestedVarActor.connect(
-				{ id: "instance2" }
+				["instance2"]
 			);
 
 			// Modify vars in the first instance
@@ -155,10 +155,10 @@ describe("Actor Vars", () => {
 
 			// Create two separate instances
 			const instance1 = await client.uniqueVarActor.connect(
-				{ id: "test1" }
+				["test1"]
 			);
 			const instance2 = await client.uniqueVarActor.connect(
-				{ id: "test2" }
+				["test2"]
 			);
 
 			// Get vars from both instances

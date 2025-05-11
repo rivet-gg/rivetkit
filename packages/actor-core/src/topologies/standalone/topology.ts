@@ -101,7 +101,7 @@ export class StandaloneTopology {
 			this.#driverConfig.drivers.actor,
 			actorId,
 			actorMetadata.name,
-			actorMetadata.tags,
+			actorMetadata.key,
 			"unknown",
 		);
 

@@ -3,9 +3,9 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 import * as errors from "@/actor/errors";
 import type { Logger } from "./log";
 
-export const ActorTagsSchema = z.record(z.string());
+export const ActorKeySchema = z.array(z.string());
 
-export type ActorTags = z.infer<typeof ActorTagsSchema>;
+export type ActorKey = z.infer<typeof ActorKeySchema>;
 
 export interface RivetEnvironment {
 	project?: string;

@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import type { ActorCoreApp, ActorTags } from "actor-core";
+import type { ActorCoreApp, ActorKey } from "actor-core";
 import { logger } from "./log";
 import type { Config } from "./config";
 import { PartitionTopologyActor } from "actor-core/topologies/partition";
@@ -13,7 +13,7 @@ const KEYS = {
 	STATE: {
 		INITIALIZED: "actor:state:initialized",
 		NAME: "actor:state:name",
-		TAGS: "actor:state:tags",
+		KEY: "actor:state:key",
 	},
 };
 
@@ -23,12 +23,12 @@ export interface ActorHandlerInterface extends DurableObject {
 
 export interface ActorInitRequest {
 	name: string;
-	tags: ActorTags;
+	key: ActorKey;
 }
 
 interface InitializedData {
 	name: string;
-	tags: ActorTags;
+	key: ActorKey;
 }
 
 export type DurableObjectConstructor = new (
@@ -71,17 +71,17 @@ export function createActorDurableObject(
 					const res = await this.ctx.storage.get([
 						KEYS.STATE.INITIALIZED,
 						KEYS.STATE.NAME,
-						KEYS.STATE.TAGS,
+						KEYS.STATE.KEY,
 					]);
 					if (res.get(KEYS.STATE.INITIALIZED)) {
 						const name = res.get(KEYS.STATE.NAME) as string;
 						if (!name) throw new Error("missing actor name");
-						const tags = res.get(KEYS.STATE.TAGS) as ActorTags;
-						if (!tags) throw new Error("missing actor tags");
+						const key = res.get(KEYS.STATE.KEY) as ActorKey;
+						if (!key) throw new Error("missing actor key");
 
-						logger().debug("already initialized", { name, tags });
+						logger().debug("already initialized", { name, key });
 
-						this.#initialized = { name, tags };
+						this.#initialized = { name, key };
 						this.#initializedPromise.resolve();
 					} else {
 						logger().debug("waiting to initialize");
@@ -121,7 +121,7 @@ export function createActorDurableObject(
 			await actorTopology.start(
 				actorId,
 				this.#initialized.name,
-				this.#initialized.tags,
+				this.#initialized.key,
 				// TODO:
 				"unknown",
 			);
@@ -136,14 +136,14 @@ export function createActorDurableObject(
 			await this.ctx.storage.put({
 				[KEYS.STATE.INITIALIZED]: true,
 				[KEYS.STATE.NAME]: req.name,
-				[KEYS.STATE.TAGS]: req.tags,
+				[KEYS.STATE.KEY]: req.key,
 			});
 			this.#initialized = {
 				name: req.name,
-				tags: req.tags,
+				key: req.key,
 			};
 
-			logger().debug("initialized actor", { tags: req.tags });
+			logger().debug("initialized actor", { key: req.key });
 
 			// Preemptively actor so the lifecycle hooks are called
 			await this.#loadActor();

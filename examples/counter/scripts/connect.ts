@@ -5,7 +5,7 @@ import type { App } from "../actors/app";
 async function main() {
 	const client = createClient<App>(process.env.ENDPOINT ?? "http://localhost:6420");
 
-	const counter = await client.counter.get()
+	const counter = await client.counter.connect()
 
 	counter.on("newCount", (count: number) => console.log("Event:", count));
 

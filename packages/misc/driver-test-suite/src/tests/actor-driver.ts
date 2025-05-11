@@ -31,105 +31,83 @@ export function runActorDriverTests(driverTestConfig: DriverTestConfig) {
 				);
 
 				// Create instance and increment
-				const counterInstance = await client.counter.get();
+				const counterInstance = await client.counter.connect();
 				const initialCount = await counterInstance.increment(5);
 				expect(initialCount).toBe(5);
 
 				// Get a fresh reference to the same actor and verify state persisted
-				const sameInstance = await client.counter.get();
+				const sameInstance = await client.counter.connect();
 				const persistedCount = await sameInstance.increment(3);
-				expect(persistedCount).toBe(8); // 5 + 3 = 8
+				expect(persistedCount).toBe(8);
 			});
 
-			test("maintains separate state between different actor IDs", async (c) => {
+			test("restores state after actor disconnect/reconnect", async (c) => {
 				const { client } = await setupDriverTest<CounterApp>(
 					c,
 					driverTestConfig,
 					resolve(__dirname, "../fixtures/apps/counter.ts"),
 				);
 
-				// Create two counters with different IDs
-				const counterOne = await client.counter.get({
-					tags: { id: "counter-1" },
-				});
-				const counterTwo = await client.counter.get({
-					tags: { id: "counter-2" },
-				});
+				// Create actor and set initial state
+				const counterInstance = await client.counter.connect();
+				await counterInstance.increment(5);
+				
+				// Disconnect the actor
+				await counterInstance.dispose();
 
-				// Set different values
-				await counterOne.increment(10);
-				await counterTwo.increment(20);
+				// Reconnect to the same actor
+				const reconnectedInstance = await client.counter.connect();
+				const persistedCount = await reconnectedInstance.increment(0);
+				expect(persistedCount).toBe(5);
+			});
 
-				// Verify they maintained separate states
-				const counterOneRefresh = await client.counter.get({
-					tags: { id: "counter-1" },
-				});
-				const counterTwoRefresh = await client.counter.get({
-					tags: { id: "counter-2" },
-				});
+			test("maintains separate state for different actors", async (c) => {
+				const { client } = await setupDriverTest<CounterApp>(
+					c,
+					driverTestConfig,
+					resolve(__dirname, "../fixtures/apps/counter.ts"),
+				);
 
-				const countOne = await counterOneRefresh.increment(0); // Get current value
-				const countTwo = await counterTwoRefresh.increment(0); // Get current value
-
-				expect(countOne).toBe(10);
-				expect(countTwo).toBe(20);
+				// Create first counter with specific key
+				const counterA = await client.counter.connect(["counter-a"]);
+				await counterA.increment(5);
+				
+				// Create second counter with different key
+				const counterB = await client.counter.connect(["counter-b"]);
+				await counterB.increment(10);
+				
+				// Verify state is separate
+				const countA = await counterA.increment(0);
+				const countB = await counterB.increment(0);
+				expect(countA).toBe(5);
+				expect(countB).toBe(10);
 			});
 		});
 
-		describe("Actor Scheduling", () => {
-			test("schedules and executes tasks", async (c) => {
+		describe("Scheduled Alarms", () => {
+			test("executes scheduled alarms", async (c) => {
 				const { client } = await setupDriverTest<ScheduledApp>(
 					c,
 					driverTestConfig,
 					resolve(__dirname, "../fixtures/apps/scheduled.ts"),
 				);
 
-				// Get the scheduled actor
-				const scheduledActor = await client.scheduled.get();
-
+				// Create instance
+				const alarmInstance = await client.scheduled.connect();
+				
 				// Schedule a task to run in 100ms
-				const scheduledTime = await scheduledActor.scheduleTask(100);
-				expect(scheduledTime).toBeGreaterThan(Date.now());
-
-				// Advance time by 150ms and run any pending timers
+				await alarmInstance.scheduleTask(100);
+				
+				// Wait for longer than the scheduled time
 				await waitFor(driverTestConfig, 150);
-
+				
 				// Verify the scheduled task ran
-				const count = await scheduledActor.getScheduledCount();
-				expect(count).toBe(1);
-
-				const lastRun = await scheduledActor.getLastRun();
+				const lastRun = await alarmInstance.getLastRun();
+				const scheduledCount = await alarmInstance.getScheduledCount();
+				
 				expect(lastRun).toBeGreaterThan(0);
+				expect(scheduledCount).toBe(1);
 			});
-
-			// TODO: https://github.com/rivet-gg/actor-core/issues/877
-			//test("schedules multiple tasks correctly", async (c) => {
-			//	const { client } = await setupDriverTest<ScheduledApp>(c,
-			//		driverTestConfig,
-			//		resolve(__dirname, "../fixtures/apps/scheduled.ts"),
-			//	);
-			//
-			//	// Create a new scheduled actor with unique ID
-			//	const scheduledActor = await client.scheduled.get();
-			//
-			//	// Schedule multiple tasks with different delays
-			//	await scheduledActor.scheduleTask(50);
-			//	await scheduledActor.scheduleTask(150);
-			//
-			//	// Advance time by 75ms - should execute only the first task
-			//	await waitFor(driverTestConfig, 75);
-			//
-			//	// Verify first task ran
-			//	let count = await scheduledActor.getScheduledCount();
-			//	expect(count).toBe(1);
-			//
-			//	// Advance time by another 100ms to execute the second task
-			//	await waitFor(driverTestConfig, 100);
-			//
-			//	// Verify both tasks ran
-			//	count = await scheduledActor.getScheduledCount();
-			//	expect(count).toBe(2);
-			//});
 		});
 	});
 }

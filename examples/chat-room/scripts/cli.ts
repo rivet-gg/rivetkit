@@ -10,8 +10,7 @@ async function main() {
 
 	// connect to chat room - now accessed via property
 	// can still pass parameters like room
-	const chatRoom = await client.chatRoom.get({
-		tags: { room },
+	const chatRoom = await client.chatRoom.connect(room, {
 		params: { room },
 	});
 

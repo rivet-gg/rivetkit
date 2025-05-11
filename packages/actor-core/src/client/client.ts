@@ -1,6 +1,6 @@
 import type { Transport } from "@/actor/protocol/message/mod";
 import type { Encoding } from "@/actor/protocol/serde";
-import type { ActorTags } from "@/common//utils";
+import type { ActorKey } from "@/common//utils";
 import type {
 	ActorsRequest,
 	ActorsResponse,
@@ -33,26 +33,26 @@ export type ExtractAppFromClient<C extends Client<ActorCoreApp<{}>>> =
  */
 export interface ActorAccessor<AD extends AnyActorDefinition> {
 	/**
-	 * Connects to an actor by its tags, creating it if necessary.
+	 * Connects to an actor by its key, creating it if necessary.
 	 * The actor name is automatically injected from the property accessor.
 	 *
 	 * @template A The actor class that this connection is for.
-	 * @param {ActorTags} [tags={}] - The tags to identify the actor. Defaults to an empty object.
+	 * @param {string | string[]} [key=[]] - The key to identify the actor. Can be a single string or an array of strings.
 	 * @param {GetOptions} [opts] - Options for getting the actor.
 	 * @returns {Promise<ActorConn<AD>>} - A promise resolving to the actor connection.
 	 */
-	connect(tags?: ActorTags, opts?: GetOptions): Promise<ActorConn<AD>>;
+	connect(key?: string | string[], opts?: GetOptions): Promise<ActorConn<AD>>;
 
 	/**
 	 * Creates a new actor with the name automatically injected from the property accessor,
 	 * and connects to it.
 	 *
 	 * @template A The actor class that this connection is for.
-	 * @param {CreateOptions} opts - Options for creating the actor (excluding name and tags).
-	 * @param {ActorTags} [tags={}] - The tags to identify the actor. Defaults to an empty object.
+	 * @param {string | string[]} key - The key to identify the actor. Can be a single string or an array of strings.
+	 * @param {CreateOptions} [opts] - Options for creating the actor (excluding name and key).
 	 * @returns {Promise<ActorConn<AD>>} - A promise resolving to the actor connection.
 	 */
-	createAndConnect(opts: CreateOptions, tags?: ActorTags): Promise<ActorConn<AD>>;
+	createAndConnect(key: string | string[], opts?: CreateOptions): Promise<ActorConn<AD>>;
 
 	/**
 	 * Connects to an actor by its ID.
@@ -106,9 +106,9 @@ export interface GetOptions extends QueryOptions {
 /**
  * Options for creating an actor.
  * @typedef {QueryOptions} CreateOptions
- * @property {Object} - Additional options for actor creation excluding name and tags that come from the tags parameter.
+ * @property {Object} - Additional options for actor creation excluding name and key that come from the key parameter.
  */
-export interface CreateOptions extends QueryOptions, Omit<CreateRequest, "name" | "tags"> {}
+export interface CreateOptions extends QueryOptions, Omit<CreateRequest, "name" | "key"> {}
 
 /**
  * Represents a region to connect to.
@@ -196,15 +196,18 @@ export class ClientRaw {
 	/**
 	 * Connects to an actor by its ID.
 	 * @template AD The actor class that this connection is for.
+	 * @param {string} name - The name of the actor.
 	 * @param {string} actorId - The ID of the actor.
 	 * @param {GetWithIdOptions} [opts] - Options for getting the actor.
 	 * @returns {Promise<ActorConn<AD>>} - A promise resolving to the actor connection.
 	 */
 	async connectForId<AD extends AnyActorDefinition>(
+		name: string,
 		actorId: string,
 		opts?: GetWithIdOptions,
 	): Promise<ActorConn<AD>> {
 		logger().debug("connect to actor with id ", {
+			name,
 			actorId,
 			params: opts?.params,
 		});
@@ -229,60 +232,83 @@ export class ClientRaw {
 	}
 
 	/**
-	 * Connects to an actor by its tags, creating it if necessary.
+	 * Connects to an actor by its key, creating it if necessary.
 	 *
 	 * @example
 	 * ```
 	 * const room = await client.connect<ChatRoom>(
+	 *   'chat-room',
 	 *   // Get or create the actor for the channel `random`
-	 *   { name: 'my_document', channel: 'random' },
+	 *   'random',
 	 * );
 	 *
-	 * // This actor will have the tags: { name: 'my_document', channel: 'random' }
+	 * // Or using an array of strings as key
+	 * const room = await client.connect<ChatRoom>(
+	 *   'chat-room',
+	 *   ['user123', 'room456'],
+	 * );
+	 *
 	 * await room.sendMessage('Hello, world!');
 	 * ```
 	 *
 	 * @template AD The actor class that this connection is for.
-	 * @param {ActorTags} [tags={}] - The tags to identify the actor. Defaults to an empty object.
+	 * @param {string} name - The name of the actor.
+	 * @param {string | string[]} [key=[]] - The key to identify the actor. Can be a single string or an array of strings.
 	 * @param {GetOptions} [opts] - Options for getting the actor.
 	 * @returns {Promise<ActorConn<AD>>} - A promise resolving to the actor connection.
 	 * @see {@link https://rivet.gg/docs/manage#client.connect}
 	 */
 	async connect<AD extends AnyActorDefinition>(
-		tags: ActorTags = {},
+		name: string,
+		key?: string | string[],
 		opts?: GetOptions,
 	): Promise<ActorConn<AD>> {
-		// Extract name from tags
-		const { name, ...restTags } = tags;
+		// Convert string to array of strings
+		const keyArray: string[] = typeof key === 'string' ? [key] : (key || []);
 
 		// Build create config
 		let create: CreateRequest | undefined = undefined;
 		if (!opts?.noCreate) {
 			create = {
 				name,
-				// Fall back to tags defined when querying actor
-				tags: opts?.create?.tags ?? restTags,
+				// Fall back to key defined when querying actor
+				key: opts?.create?.key ?? keyArray,
 				...opts?.create,
 			};
 		}
 
 		logger().debug("connect to actor", {
-			tags,
+			name,
+			key: keyArray,
 			parameters: opts?.params,
 			create,
 		});
+
+		let requestQuery;
+		if (opts?.noCreate) {
+			// Use getForKey endpoint if noCreate is specified
+			requestQuery = {
+				getForKey: {
+					name,
+					key: keyArray,
+				},
+			};
+		} else {
+			// Use getOrCreateForKey endpoint
+			requestQuery = {
+				getOrCreateForKey: {
+					name,
+					key: keyArray,
+					region: create?.region,
+				},
+			};
+		}
 
 		const resJson = await this.#sendManagerRequest<
 			ActorsRequest,
 			ActorsResponse
 		>("POST", "/manager/actors", {
-			query: {
-				getOrCreateForTags: {
-					name,
-					tags: restTags,
-					create,
-				},
-			},
+			query: requestQuery,
 		});
 
 		const conn = await this.#createConn(
@@ -294,44 +320,56 @@ export class ClientRaw {
 	}
 
 	/**
-	 * Creates a new actor with the provided tags and connects to it.
+	 * Creates a new actor with the provided key and connects to it.
 	 *
 	 * @example
 	 * ```
-	 * // Create a new document actor
+	 * // Create a new document actor with a single string key
 	 * const doc = await client.createAndConnect<MyDocument>(
-	 *   { region: 'us-east-1' },
-	 *   { name: 'my_document', docId: '123' }
+	 *   'document',
+	 *   'doc123',
+	 *   { region: 'us-east-1' }
+	 * );
+	 * 
+	 * // Or with an array of strings as key
+	 * const doc = await client.createAndConnect<MyDocument>(
+	 *   'document',
+	 *   ['user123', 'document456'],
+	 *   { region: 'us-east-1' }
 	 * );
 	 *
 	 * await doc.doSomething();
 	 * ```
 	 *
 	 * @template AD The actor class that this connection is for.
-	 * @param {CreateOptions} opts - Options for creating the actor (excluding name and tags).
-	 * @param {ActorTags} [tags={}] - The tags to identify the actor. Defaults to an empty object.
+	 * @param {string} name - The name of the actor.
+	 * @param {string | string[]} key - The key to identify the actor. Can be a single string or an array of strings.
+	 * @param {CreateOptions} [opts] - Options for creating the actor (excluding name and key).
 	 * @returns {Promise<ActorConn<AD>>} - A promise resolving to the actor connection.
 	 * @see {@link https://rivet.gg/docs/manage#client.createAndConnect}
 	 */
 	async createAndConnect<AD extends AnyActorDefinition>(
-		opts: CreateOptions,
-		tags: ActorTags = {},
+		name: string,
+		key: string | string[],
+		opts: CreateOptions = {},
 	): Promise<ActorConn<AD>> {
-		// Extract name from tags
-		const { name, ...restTags } = tags;
+		// Convert string to array of strings
+		const keyArray: string[] = typeof key === 'string' ? [key] : key;
 
 		// Build create config
 		const create = {
-			name,
-			tags: restTags,
 			...opts,
+			// Do these last to override `opts`
+			name,
+			key: keyArray,
 		};
 
 		// Default to the chosen region
 		//if (!create.region) create.region = (await this.#regionPromise)?.id;
 
 		logger().debug("create actor and connect", {
-			tags,
+			name,
+			key: keyArray,
 			parameters: opts?.params,
 			create,
 		});
@@ -555,21 +593,23 @@ export function createClient<A extends ActorCoreApp<any>>(
 				// Return actor accessor object with methods
 				return {
 					connect: (
-						tags?: ActorTags,
+						key?: string | string[],
 						opts?: GetOptions,
 					): Promise<ActorConn<ExtractActorsFromApp<A>[typeof prop]>> => {
 						return target.connect<ExtractActorsFromApp<A>[typeof prop]>(
-							{ name: prop, ...(tags || {}) },
+							prop,
+							key,
 							opts
 						);
 					},
 					createAndConnect: (
-						opts: CreateOptions,
-						tags?: ActorTags,
+						key: string | string[],
+						opts: CreateOptions = {},
 					): Promise<ActorConn<ExtractActorsFromApp<A>[typeof prop]>> => {
 						return target.createAndConnect<ExtractActorsFromApp<A>[typeof prop]>(
-							opts,
-							{ name: prop, ...(tags || {}) }
+							prop,
+							key,
+							opts
 						);
 					},
 					connectForId: (
@@ -577,6 +617,7 @@ export function createClient<A extends ActorCoreApp<any>>(
 						opts?: GetWithIdOptions,
 					): Promise<ActorConn<ExtractActorsFromApp<A>[typeof prop]>> => {
 						return target.connectForId<ExtractActorsFromApp<A>[typeof prop]>(
+							prop,
 							actorId,
 							opts,
 						);

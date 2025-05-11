@@ -3,7 +3,7 @@ import { z } from "zod";
 const ActorSchema = z.object({
 	id: z.string(),
 	name: z.string(),
-	tags: z.record(z.string()),
+	key: z.array(z.string()),
 });
 
 export type Actor = z.infer<typeof ActorSchema>;

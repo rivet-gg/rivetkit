@@ -406,8 +406,8 @@ export const codingAgent = actor({
 
 	// Handle actor instantiation
 	onCreate: (c) => {
-		console.log(`[ACTOR] Created actor instance with tags: ${JSON.stringify(c.tags)}`);
-		updateDebugState(c, "Actor created", `with tags: ${JSON.stringify(c.tags)}`);
+		console.log(`[ACTOR] Created actor instance with key: ${JSON.stringify(c.key)}`);
+		updateDebugState(c, "Actor created", `with key: ${JSON.stringify(c.key)}`);
 	},
 	
 	// Handle actor start

@@ -1,4 +1,4 @@
-import type { ActorTags } from "actor-core";
+import type { ActorKey } from "actor-core";
 
 /**
  * Class representing an actor's state
@@ -8,15 +8,15 @@ export class ActorState {
 	initialized = true;
 	id: string;
 	name: string;
-	tags: ActorTags;
+	key: ActorKey;
 
 	// Persisted data
 	persistedData: unknown = undefined;
 
-	constructor(id: string, name: string, tags: ActorTags) {
+	constructor(id: string, name: string, key: ActorKey) {
 		this.id = id;
 		this.name = name;
-		this.tags = tags;
+		this.key = key;
 	}
 }
 
@@ -42,10 +42,10 @@ export class MemoryGlobalState {
 		this.#getActor(actorId).persistedData = data;
 	}
 
-	createActor(actorId: string, name: string, tags: ActorTags): void {
+	createActor(actorId: string, name: string, key: ActorKey): void {
 		// Create actor state if it doesn't exist
 		if (!this.#actors.has(actorId)) {
-			this.#actors.set(actorId, new ActorState(actorId, name, tags));
+			this.#actors.set(actorId, new ActorState(actorId, name, key));
 		} else {
 			throw new Error(`Actor already exists for ID: ${actorId}`);
 		}

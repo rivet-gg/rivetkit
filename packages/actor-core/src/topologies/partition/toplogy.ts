@@ -20,7 +20,7 @@ import {
 	type GenericWebSocketDriverState,
 } from "../common/generic-conn-driver";
 import type { ConnDriver } from "@/actor/driver";
-import type { ActorTags } from "@/common/utils";
+import type { ActorKey } from "@/common/utils";
 import type { DriverConfig } from "@/driver-helpers/config";
 import type { AppConfig } from "@/app/config";
 import type { ActorInspectorConnection } from "@/inspector/actor";
@@ -268,7 +268,7 @@ export class PartitionTopologyActor {
 		this.router = actorRouter;
 	}
 
-	async start(id: string, name: string, tags: ActorTags, region: string) {
+	async start(id: string, name: string, key: ActorKey, region: string) {
 		const actorDriver = this.#driverConfig.drivers?.actor;
 		if (!actorDriver) throw new Error("config.drivers.actor not defined.");
 
@@ -287,7 +287,7 @@ export class PartitionTopologyActor {
 			actorDriver,
 			id,
 			name,
-			tags,
+			key,
 			region,
 		);
 
