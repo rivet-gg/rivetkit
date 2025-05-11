@@ -72,12 +72,12 @@ describe("Actor Vars", () => {
 			const { client } = await setupTest<typeof app>(c, app);
 
 			// Create two separate instances
-			const instance1 = await client.nestedVarActor.get({
-				tags: { id: "instance1" },
-			});
-			const instance2 = await client.nestedVarActor.get({
-				tags: { id: "instance2" },
-			});
+			const instance1 = await client.nestedVarActor.get(
+				{ id: "instance1" }
+			);
+			const instance2 = await client.nestedVarActor.get(
+				{ id: "instance2" }
+			);
 
 			// Modify vars in the first instance
 			const modifiedVars = await instance1.modifyNested();
@@ -154,12 +154,12 @@ describe("Actor Vars", () => {
 			const { client } = await setupTest<typeof app>(c, app);
 
 			// Create two separate instances
-			const instance1 = await client.uniqueVarActor.get({
-				tags: { id: "test1" },
-			});
-			const instance2 = await client.uniqueVarActor.get({
-				tags: { id: "test2" },
-			});
+			const instance1 = await client.uniqueVarActor.get(
+				{ id: "test1" }
+			);
+			const instance2 = await client.uniqueVarActor.get(
+				{ id: "test2" }
+			);
 
 			// Get vars from both instances
 			const vars1 = await instance1.getVars();

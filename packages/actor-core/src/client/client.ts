@@ -37,19 +37,21 @@ export interface ActorAccessor<AD extends AnyActorDefinition> {
 	 * The actor name is automatically injected from the property accessor.
 	 *
 	 * @template A The actor class that this handle is connected to.
-	 * @param {Omit<GetOptions, 'name'>} [opts] - Options for getting the actor.
+	 * @param {ActorTags} [tags={}] - The tags to identify the actor. Defaults to an empty object.
+	 * @param {GetOptions} [opts] - Options for getting the actor.
 	 * @returns {Promise<ActorHandle<AD>>} - A promise resolving to the actor handle.
 	 */
-	get(opts?: Omit<GetOptions, "name">): Promise<ActorHandle<AD>>;
+	get(tags?: ActorTags, opts?: GetOptions): Promise<ActorHandle<AD>>;
 
 	/**
 	 * Creates a new actor with the name automatically injected from the property accessor.
 	 *
 	 * @template A The actor class that this handle is connected to.
-	 * @param {Omit<CreateOptions, 'name'>} opts - Options for creating the actor.
+	 * @param {CreateOptions} opts - Options for creating the actor (excluding name and tags).
+	 * @param {ActorTags} [tags={}] - The tags to identify the actor. Defaults to an empty object.
 	 * @returns {Promise<ActorHandle<AD>>} - A promise resolving to the actor handle.
 	 */
-	create(opts: Omit<CreateOptions, "name">): Promise<ActorHandle<AD>>;
+	create(opts: CreateOptions, tags?: ActorTags): Promise<ActorHandle<AD>>;
 
 	/**
 	 * Gets an actor by its ID.
@@ -94,7 +96,6 @@ export interface GetWithIdOptions extends QueryOptions {}
  * @property {Partial<CreateRequest>} [create] - Config used to create the actor.
  */
 export interface GetOptions extends QueryOptions {
-	tags?: ActorTags;
 	/** Prevents creating a new actor if one does not exist. */
 	noCreate?: boolean;
 	/** Config used to create the actor. */
@@ -104,12 +105,9 @@ export interface GetOptions extends QueryOptions {
 /**
  * Options for creating an actor.
  * @typedef {QueryOptions} CreateOptions
- * @property {CreateRequest} create - Config used to create the actor.
+ * @property {Object} - Additional options for actor creation excluding name and tags that come from the tags parameter.
  */
-export interface CreateOptions extends QueryOptions {
-	/** Config used to create the actor. */
-	create: Omit<CreateRequest, "name">;
-}
+export interface CreateOptions extends QueryOptions, Omit<CreateRequest, "name" | "tags"> {}
 
 /**
  * Represents a region to connect to.
@@ -147,19 +145,21 @@ export interface ActorAccessor<AD extends AnyActorDefinition> {
 	 * The actor name is automatically injected from the property accessor.
 	 *
 	 * @template A The actor class that this handle is connected to.
-	 * @param {Omit<GetOptions, 'name'>} [opts] - Options for getting the actor.
+	 * @param {ActorTags} [tags={}] - The tags to identify the actor. Defaults to an empty object.
+	 * @param {GetOptions} [opts] - Options for getting the actor.
 	 * @returns {Promise<ActorHandle<AD>>} - A promise resolving to the actor handle.
 	 */
-	get(opts?: GetOptions): Promise<ActorHandle<AD>>;
+	get(tags?: ActorTags, opts?: GetOptions): Promise<ActorHandle<AD>>;
 
 	/**
 	 * Creates a new actor with the name automatically injected from the property accessor.
 	 *
 	 * @template A The actor class that this handle is connected to.
-	 * @param {Omit<CreateOptions, 'name'>} opts - Options for creating the actor.
+	 * @param {CreateOptions} opts - Options for creating the actor (excluding name and tags).
+	 * @param {ActorTags} [tags={}] - The tags to identify the actor. Defaults to an empty object.
 	 * @returns {Promise<ActorHandle<AD>>} - A promise resolving to the actor handle.
 	 */
-	create(opts: CreateOptions): Promise<ActorHandle<AD>>;
+	create(opts: CreateOptions, tags?: ActorTags): Promise<ActorHandle<AD>>;
 
 	/**
 	 * Gets an actor by its ID.
@@ -268,27 +268,27 @@ export class ClientRaw {
 	 *
 	 * @example
 	 * ```
-	 * const room = await client.get<ChatRoom>({
-	 *   name: 'chat_room',
+	 * const room = await client.get<ChatRoom>(
 	 *   // Get or create the actor for the channel `random`
-	 *   channel: 'random'
-	 * });
+	 *   { name: 'my_document', channel: 'random' },
+	 * );
 	 *
-	 * // This actor will have the tags: { name: 'chat_room', channel: 'random' }
+	 * // This actor will have the tags: { name: 'my_document', channel: 'random' }
 	 * await room.sendMessage('Hello, world!');
 	 * ```
 	 *
 	 * @template AD The actor class that this handle is connected to.
-	 * @param {ActorTags} tags - The tags to identify the actor.
+	 * @param {ActorTags} [tags={}] - The tags to identify the actor. Defaults to an empty object.
 	 * @param {GetOptions} [opts] - Options for getting the actor.
 	 * @returns {Promise<ActorHandle<AD>>} - A promise resolving to the actor handle.
 	 * @see {@link https://rivet.gg/docs/manage#client.get}
 	 */
 	async get<AD extends AnyActorDefinition>(
-		name: string,
+		tags: ActorTags = {},
 		opts?: GetOptions,
 	): Promise<ActorHandle<AD>> {
-		let tags = opts?.tags ?? {};
+		// Extract name from tags
+		const { name, ...restTags } = tags;
 
 		// Build create config
 		let create: CreateRequest | undefined = undefined;
@@ -296,13 +296,12 @@ export class ClientRaw {
 			create = {
 				name,
 				// Fall back to tags defined when querying actor
-				tags: opts?.create?.tags ?? tags,
+				tags: opts?.create?.tags ?? restTags,
 				...opts?.create,
 			};
 		}
 
 		logger().debug("get actor", {
-			name,
 			tags,
 			parameters: opts?.params,
 			create,
@@ -315,7 +314,7 @@ export class ClientRaw {
 			query: {
 				getOrCreateForTags: {
 					name,
-					tags,
+					tags: restTags,
 					create,
 				},
 			},
@@ -335,38 +334,39 @@ export class ClientRaw {
 	 * @example
 	 * ```
 	 * // Create a new document actor
-	 * const doc = await client.create<MyDocument>({
-	 *   create: {
-	 *     tags: {
-	 *       name: 'my_document',
-	 *       docId: '123'
-	 *     }
-	 *   }
-	 * });
+	 * const doc = await client.create<MyDocument>(
+	 *   { region: 'us-east-1' },
+	 *   { name: 'my_document', docId: '123' }
+	 * );
 	 *
 	 * await doc.doSomething();
 	 * ```
 	 *
 	 * @template AD The actor class that this handle is connected to.
-	 * @param {CreateOptions} opts - Options for creating the actor.
+	 * @param {CreateOptions} opts - Options for creating the actor (excluding name and tags).
+	 * @param {ActorTags} [tags={}] - The tags to identify the actor. Defaults to an empty object.
 	 * @returns {Promise<ActorHandle<AD>>} - A promise resolving to the actor handle.
 	 * @see {@link https://rivet.gg/docs/manage#client.create}
 	 */
 	async create<AD extends AnyActorDefinition>(
-		name: string,
 		opts: CreateOptions,
+		tags: ActorTags = {},
 	): Promise<ActorHandle<AD>> {
+		// Extract name from tags
+		const { name, ...restTags } = tags;
+
 		// Build create config
 		const create = {
 			name,
-			...opts.create,
+			tags: restTags,
+			...opts,
 		};
 
 		// Default to the chosen region
 		//if (!create.region) create.region = (await this.#regionPromise)?.id;
 
 		logger().debug("create actor", {
-			name,
+			tags,
 			parameters: opts?.params,
 			create,
 		});
@@ -642,16 +642,21 @@ export function createClient<A extends ActorCoreApp<any>>(
 				// Return actor accessor object with methods
 				return {
 					get: (
+						tags?: ActorTags,
 						opts?: GetOptions,
 					): Promise<ActorHandle<ExtractActorsFromApp<A>[typeof prop]>> => {
-						return target.get<ExtractActorsFromApp<A>[typeof prop]>(prop, opts);
+						return target.get<ExtractActorsFromApp<A>[typeof prop]>(
+							{ name: prop, ...(tags || {}) },
+							opts
+						);
 					},
 					create: (
 						opts: CreateOptions,
+						tags?: ActorTags,
 					): Promise<ActorHandle<ExtractActorsFromApp<A>[typeof prop]>> => {
 						return target.create<ExtractActorsFromApp<A>[typeof prop]>(
-							prop,
 							opts,
+							{ name: prop, ...(tags || {}) }
 						);
 					},
 					getWithId: (
