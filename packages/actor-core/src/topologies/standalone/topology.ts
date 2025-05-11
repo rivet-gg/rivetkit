@@ -5,7 +5,6 @@ import {
 	generateConnId,
 	generateConnToken,
 } from "@/actor/connection";
-import { createActorRouter } from "@/actor/router";
 import { logger } from "./log";
 import * as errors from "@/actor/errors";
 import {
@@ -22,8 +21,17 @@ import { ActionContext } from "@/actor/action";
 import type { DriverConfig } from "@/driver-helpers/config";
 import type { AppConfig } from "@/app/config";
 import { createManagerRouter } from "@/manager/router";
-import type { ActorInspectorConnection } from "@/inspector/actor";
 import type { ManagerInspectorConnection } from "@/inspector/manager";
+import type {
+	ConnectWebSocketOpts,
+	ConnectWebSocketOutput,
+	ConnectSseOpts,
+	ConnectSseOutput,
+	ConnsMessageOpts,
+	RpcOpts,
+	RpcOutput,
+	ConnectionHandlers,
+} from "@/actor/router_endpoints";
 
 class ActorHandler {
 	/** Will be undefined if not yet loaded. */
@@ -75,8 +83,6 @@ export class StandaloneTopology {
 
 		// Load actor meta
 		const actorMetadata = await this.#driverConfig.drivers.manager.getForId({
-			// HACK: The endpoint doesn't matter here, so we're passing a bogon IP
-			baseUrl: "http://192.0.2.0",
 			actorId,
 		});
 		if (!actorMetadata) throw new Error(`No actor found for ID ${actorId}`);
@@ -124,9 +130,142 @@ export class StandaloneTopology {
 
 		const upgradeWebSocket = driverConfig.getUpgradeWebSocket?.(app);
 
+		// Create shared connection handlers that will be used by both manager and actor routers
+		const sharedConnectionHandlers: ConnectionHandlers = {
+			onConnectWebSocket: async (
+				opts: ConnectWebSocketOpts,
+			): Promise<ConnectWebSocketOutput> => {
+				const { handler, actor } = await this.#getActor(opts.actorId);
+
+				const connId = generateConnId();
+				const connToken = generateConnToken();
+				const connState = await actor.prepareConn(opts.params, opts.req.raw);
+
+				let conn: AnyConn | undefined;
+				return {
+					onOpen: async (ws) => {
+						// Save socket
+						handler.genericConnGlobalState.websockets.set(connId, ws);
+
+						// Create connection
+						conn = await actor.createConn(
+							connId,
+							connToken,
+							opts.params,
+							connState,
+							CONN_DRIVER_GENERIC_WEBSOCKET,
+							{ encoding: opts.encoding } satisfies GenericWebSocketDriverState,
+						);
+					},
+					onMessage: async (message) => {
+						logger().debug("received message");
+
+						if (!conn) {
+							logger().warn("`conn` does not exist");
+							return;
+						}
+
+						await actor.processMessage(message, conn);
+					},
+					onClose: async () => {
+						handler.genericConnGlobalState.websockets.delete(connId);
+
+						if (conn) {
+							actor.__removeConn(conn);
+						}
+					},
+				};
+			},
+			onConnectSse: async (opts: ConnectSseOpts): Promise<ConnectSseOutput> => {
+				const { handler, actor } = await this.#getActor(opts.actorId);
+
+				const connId = generateConnId();
+				const connToken = generateConnToken();
+				const connState = await actor.prepareConn(opts.params, opts.req.raw);
+
+				let conn: AnyConn | undefined;
+				return {
+					onOpen: async (stream) => {
+						// Save socket
+						handler.genericConnGlobalState.sseStreams.set(connId, stream);
+
+						// Create connection
+						conn = await actor.createConn(
+							connId,
+							connToken,
+							opts.params,
+							connState,
+							CONN_DRIVER_GENERIC_SSE,
+							{ encoding: opts.encoding } satisfies GenericSseDriverState,
+						);
+					},
+					onClose: async () => {
+						handler.genericConnGlobalState.sseStreams.delete(connId);
+
+						if (conn) {
+							actor.__removeConn(conn);
+						}
+					},
+				};
+			},
+			onRpc: async (opts: RpcOpts): Promise<RpcOutput> => {
+				let conn: AnyConn | undefined;
+				try {
+					const { actor } = await this.#getActor(opts.actorId);
+
+					// Create conn
+					const connState = await actor.prepareConn(opts.params, opts.req.raw);
+					conn = await actor.createConn(
+						generateConnId(),
+						generateConnToken(),
+						opts.params,
+						connState,
+						CONN_DRIVER_GENERIC_HTTP,
+						{} satisfies GenericHttpDriverState,
+					);
+
+					// Call RPC
+					const ctx = new ActionContext(actor.actorContext!, conn);
+					const output = await actor.executeRpc(
+						ctx,
+						opts.rpcName,
+						opts.rpcArgs,
+					);
+
+					return { output };
+				} finally {
+					if (conn) {
+						const { actor } = await this.#getActor(opts.actorId);
+						actor.__removeConn(conn);
+					}
+				}
+			},
+			onConnMessage: async (opts: ConnsMessageOpts): Promise<void> => {
+				const { actor } = await this.#getActor(opts.actorId);
+
+				// Find connection
+				const conn = actor.conns.get(opts.connId);
+				if (!conn) {
+					throw new errors.ConnNotFound(opts.connId);
+				}
+
+				// Authenticate connection
+				if (conn._token !== opts.connToken) {
+					throw new errors.IncorrectConnToken();
+				}
+
+				// Process message
+				await actor.processMessage(opts.message, conn);
+			},
+		};
+
 		// Build manager router
 		const managerRouter = createManagerRouter(appConfig, driverConfig, {
-			upgradeWebSocket,
+			proxyMode: {
+				inline: {
+					handlers: sharedConnectionHandlers,
+				},
+			},
 			onConnectInspector: async () => {
 				const inspector = driverConfig.drivers?.manager?.inspector;
 				if (!inspector) throw new errors.Unsupported("inspector");
@@ -153,172 +292,7 @@ export class StandaloneTopology {
 			},
 		});
 
-		// Build actor router
-		const actorRouter = createActorRouter(appConfig, driverConfig, {
-			upgradeWebSocket,
-			onConnectWebSocket: async ({ req, encoding, params: connParams }) => {
-				const actorId = req.param("actorId");
-				if (!actorId) throw new errors.InternalError("Missing actor ID");
-
-				const { handler, actor } = await this.#getActor(actorId);
-
-				const connId = generateConnId();
-				const connToken = generateConnToken();
-				const connState = await actor.prepareConn(connParams, req.raw);
-
-				let conn: AnyConn | undefined;
-				return {
-					onOpen: async (ws) => {
-						// Save socket
-						handler.genericConnGlobalState.websockets.set(connId, ws);
-
-						// Create connection
-						conn = await actor.createConn(
-							connId,
-							connToken,
-
-							connParams,
-							connState,
-							CONN_DRIVER_GENERIC_WEBSOCKET,
-							{ encoding } satisfies GenericWebSocketDriverState,
-						);
-					},
-					onMessage: async (message) => {
-						logger().debug("received message");
-
-						if (!conn) {
-							logger().warn("`conn` does not exist");
-							return;
-						}
-
-						await actor.processMessage(message, conn);
-					},
-					onClose: async () => {
-						handler.genericConnGlobalState.websockets.delete(connId);
-
-						if (conn) {
-							actor.__removeConn(conn);
-						}
-					},
-				};
-			},
-			onConnectSse: async ({ req, encoding, params: connParams }) => {
-				const actorId = req.param("actorId");
-				if (!actorId) throw new errors.InternalError("Missing actor ID");
-
-				const { handler, actor } = await this.#getActor(actorId);
-
-				const connId = generateConnId();
-				const connToken = generateConnToken();
-				const connState = await actor.prepareConn(connParams, req.raw);
-
-				let conn: AnyConn | undefined;
-				return {
-					onOpen: async (stream) => {
-						// Save socket
-						handler.genericConnGlobalState.sseStreams.set(connId, stream);
-
-						// Create connection
-						conn = await actor.createConn(
-							connId,
-							connToken,
-							connParams,
-							connState,
-							CONN_DRIVER_GENERIC_SSE,
-							{ encoding } satisfies GenericSseDriverState,
-						);
-					},
-					onClose: async () => {
-						handler.genericConnGlobalState.sseStreams.delete(connId);
-
-						if (conn) {
-							actor.__removeConn(conn);
-						}
-					},
-				};
-			},
-			onRpc: async ({ req, params: connParams, rpcName, rpcArgs }) => {
-				const actorId = req.param("actorId");
-				if (!actorId) throw new errors.InternalError("Missing actor ID");
-
-				let conn: AnyConn | undefined;
-				try {
-					const { actor } = await this.#getActor(actorId);
-
-					// Create conn
-					const connState = await actor.prepareConn(connParams, req.raw);
-					conn = await actor.createConn(
-						generateConnId(),
-						generateConnToken(),
-						connParams,
-						connState,
-						CONN_DRIVER_GENERIC_HTTP,
-						{} satisfies GenericHttpDriverState,
-					);
-
-					// Call RPC
-					const ctx = new ActionContext(actor.actorContext!, conn);
-					const output = await actor.executeRpc(ctx, rpcName, rpcArgs);
-
-					return { output };
-				} finally {
-					if (conn) {
-						const { actor } = await this.#getActor(actorId);
-						actor.__removeConn(conn);
-					}
-				}
-			},
-			onConnMessage: async ({ req, connId, connToken, message }) => {
-				const actorId = req.param("actorId");
-				if (!actorId) throw new errors.InternalError("Missing actor ID");
-
-				const { actor } = await this.#getActor(actorId);
-
-				// Find connection
-				const conn = actor.conns.get(connId);
-				if (!conn) {
-					throw new errors.ConnNotFound(connId);
-				}
-
-				// Authenticate connection
-				if (conn._token !== connToken) {
-					throw new errors.IncorrectConnToken();
-				}
-
-				// Process message
-				await actor.processMessage(message, conn);
-			},
-			onConnectInspector: async ({ req }) => {
-				const actorId = req.param("actorId");
-				if (!actorId) throw new errors.InternalError("Missing actor ID");
-
-				const { actor } = await this.#getActor(actorId);
-
-				let conn: ActorInspectorConnection | undefined;
-				return {
-					onOpen: async (ws) => {
-						conn = actor.inspector.createConnection(ws);
-					},
-					onMessage: async (message) => {
-						if (!conn) {
-							logger().warn("`conn` does not exist");
-							return;
-						}
-
-						actor.inspector.processMessage(conn, message);
-					},
-					onClose: async () => {
-						if (conn) {
-							actor.inspector.removeConnection(conn);
-						}
-					},
-				};
-			},
-		});
-
 		app.route("/", managerRouter);
-		// Mount the actor router
-		app.route("/actors/:actorId", actorRouter);
 
 		this.router = app;
 	}

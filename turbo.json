@@ -1,5 +1,4 @@
-{
-  "$schema": "https://turbo.build/schema.json",
+{ "$schema": "https://turbo.build/schema.json",
   "tasks": {
     "//#fmt": {
       "cache": false

@@ -11,32 +11,32 @@ export interface ManagerDriver {
 }
 export interface GetForIdInput<E extends Env = any> {
 	c?: HonoContext<E>;
-	baseUrl: string;
 	actorId: string;
 }
 
 export interface GetWithKeyInput<E extends Env = any> {
 	c?: HonoContext<E>;
-	baseUrl: string;
 	name: string;
 	key: ActorKey;
 }
 
 export interface GetActorOutput<E extends Env = any> {
 	c?: HonoContext<E>;
-	endpoint: string;
+	actorId: string;
 	name: string;
 	key: ActorKey;
+	meta?: unknown;
 }
 
 export interface CreateActorInput<E extends Env = any> {
 	c?: HonoContext<E>;
-	baseUrl: string;
 	name: string;
 	key: ActorKey;
 	region?: string;
 }
 
 export interface CreateActorOutput {
-	endpoint: string;
+	actorId: string;
+	meta?: unknown;
 }
+

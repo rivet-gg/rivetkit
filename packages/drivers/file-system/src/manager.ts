@@ -31,7 +31,6 @@ export class FileSystemManagerDriver implements ManagerDriver {
 	}
 
 	async getForId({
-		baseUrl,
 		actorId,
 	}: GetForIdInput): Promise<GetActorOutput | undefined> {
 		// Validate the actor exists
@@ -44,9 +43,10 @@ export class FileSystemManagerDriver implements ManagerDriver {
 			const state = this.#state.loadActorState(actorId);
 
 			return {
-				endpoint: buildActorEndpoint(baseUrl, actorId),
+				actorId,
 				name: state.name,
 				key: state.key,
+				meta: undefined,
 			};
 		} catch (error) {
 			logger().error("failed to read actor state", { actorId, error });
@@ -55,7 +55,6 @@ export class FileSystemManagerDriver implements ManagerDriver {
 	}
 
 	async getWithKey({
-		baseUrl,
 		name,
 		key,
 	}: GetWithKeyInput): Promise<GetActorOutput | undefined> {
@@ -65,12 +64,12 @@ export class FileSystemManagerDriver implements ManagerDriver {
 		// Search through all actors to find a match
 		const actor = this.#state.findActor((actor) => {
 			if (actor.name !== name) return false;
-			
+
 			// If actor doesn't have a key, it's not a match
 			if (!actor.key || actor.key.length !== key.length) {
 				return false;
 			}
-			
+
 			// Check if all elements in key are in actor.key
 			for (let i = 0; i < key.length; i++) {
 				if (key[i] !== actor.key[i]) {
@@ -82,9 +81,10 @@ export class FileSystemManagerDriver implements ManagerDriver {
 
 		if (actor) {
 			return {
-				endpoint: buildActorEndpoint(baseUrl, actor.id),
+				actorId: actor.id,
 				name,
 				key: actor.key,
+				meta: undefined,
 			};
 		}
 
@@ -92,22 +92,18 @@ export class FileSystemManagerDriver implements ManagerDriver {
 	}
 
 	async createActor({
-		baseUrl,
 		name,
 		key,
 	}: CreateActorInput): Promise<CreateActorOutput> {
 		const actorId = crypto.randomUUID();
 		await this.#state.createActor(actorId, name, key);
-		
+
 		// Notify inspector about actor changes
 		this.inspector.onActorsChange(this.#state.getAllActors());
-		
+
 		return {
-			endpoint: buildActorEndpoint(baseUrl, actorId),
+			actorId,
+			meta: undefined,
 		};
 	}
-}
-
-function buildActorEndpoint(baseUrl: string, actorId: string) {
-	return `${baseUrl}/actors/${actorId}`;
 }

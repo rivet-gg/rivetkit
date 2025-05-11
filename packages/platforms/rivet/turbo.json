@@ -1,4 +1,10 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "extends": ["//"]
+  "extends": ["//"],
+  "tasks": {
+    "test": {
+      "dependsOn": ["^build", "check-types", "build", "@actor-core/cli#build"],
+      "env": ["RIVET_API_ENDPOINT", "RIVET_CLOUD_TOKEN", "_RIVET_SKIP_DEPLOY"]
+    }
+  }
 }

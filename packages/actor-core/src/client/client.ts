@@ -1,12 +1,6 @@
 import type { Transport } from "@/actor/protocol/message/mod";
 import type { Encoding } from "@/actor/protocol/serde";
-import type { ActorKey } from "@/common//utils";
-import type {
-	ActorsRequest,
-	ActorsResponse,
-	//RivetConfigResponse,
-} from "@/manager/protocol/mod";
-import type { CreateRequest } from "@/manager/protocol/query";
+import type { ActorQuery } from "@/manager/protocol/query";
 import * as errors from "./errors";
 import {
 	ActorConn,
@@ -15,9 +9,7 @@ import {
 	CONNECT_SYMBOL,
 } from "./actor_conn";
 import { logger } from "./log";
-import { importWebSocket } from "@/common/websocket";
-import { importEventSource } from "@/common/eventsource";
-import { ActorCoreApp } from "@/mod";
+import type { ActorCoreApp } from "@/mod";
 import type { AnyActorDefinition } from "@/actor/definition";
 
 /** Extract the actor registry from the app definition. */
@@ -39,9 +31,9 @@ export interface ActorAccessor<AD extends AnyActorDefinition> {
 	 * @template A The actor class that this connection is for.
 	 * @param {string | string[]} [key=[]] - The key to identify the actor. Can be a single string or an array of strings.
 	 * @param {GetOptions} [opts] - Options for getting the actor.
-	 * @returns {Promise<ActorConn<AD>>} - A promise resolving to the actor connection.
+	 * @returns {ActorConn<AD>} - A promise resolving to the actor connection.
 	 */
-	connect(key?: string | string[], opts?: GetOptions): Promise<ActorConn<AD>>;
+	connect(key?: string | string[], opts?: GetOptions): ActorConn<AD>;
 
 	/**
 	 * Creates a new actor with the name automatically injected from the property accessor,
@@ -50,9 +42,9 @@ export interface ActorAccessor<AD extends AnyActorDefinition> {
 	 * @template A The actor class that this connection is for.
 	 * @param {string | string[]} key - The key to identify the actor. Can be a single string or an array of strings.
 	 * @param {CreateOptions} [opts] - Options for creating the actor (excluding name and key).
-	 * @returns {Promise<ActorConn<AD>>} - A promise resolving to the actor connection.
+	 * @returns {ActorConn<AD>} - A promise resolving to the actor connection.
 	 */
-	createAndConnect(key: string | string[], opts?: CreateOptions): Promise<ActorConn<AD>>;
+	createAndConnect(key: string | string[], opts?: CreateOptions): ActorConn<AD>;
 
 	/**
 	 * Connects to an actor by its ID.
@@ -60,9 +52,9 @@ export interface ActorAccessor<AD extends AnyActorDefinition> {
 	 * @template A The actor class that this connection is for.
 	 * @param {string} actorId - The ID of the actor.
 	 * @param {GetWithIdOptions} [opts] - Options for getting the actor.
-	 * @returns {Promise<ActorConn<AD>>} - A promise resolving to the actor connection.
+	 * @returns {ActorConn<AD>} - A promise resolving to the actor connection.
 	 */
-	connectForId(actorId: string, opts?: GetWithIdOptions): Promise<ActorConn<AD>>;
+	connectForId(actorId: string, opts?: GetWithIdOptions): ActorConn<AD>;
 }
 
 /**
@@ -94,21 +86,24 @@ export interface GetWithIdOptions extends QueryOptions {}
  * Options for getting an actor.
  * @typedef {QueryOptions} GetOptions
  * @property {boolean} [noCreate] - Prevents creating a new actor if one does not exist.
- * @property {Partial<CreateRequest>} [create] - Config used to create the actor.
+ * @property {string} [createInRegion] - Region to create the actor in if it doesn't exist.
  */
 export interface GetOptions extends QueryOptions {
 	/** Prevents creating a new actor if one does not exist. */
 	noCreate?: boolean;
-	/** Config used to create the actor. */
-	create?: Partial<Omit<CreateRequest, "name">>;
+	/** Region to create the actor in if it doesn't exist. */
+	createInRegion?: string;
 }
 
 /**
  * Options for creating an actor.
  * @typedef {QueryOptions} CreateOptions
- * @property {Object} - Additional options for actor creation excluding name and key that come from the key parameter.
+ * @property {string} [region] - The region to create the actor in.
  */
-export interface CreateOptions extends QueryOptions, Omit<CreateRequest, "name" | "key"> {}
+export interface CreateOptions extends QueryOptions {
+	/** The region to create the actor in. */
+	region?: string;
+}
 
 /**
  * Represents a region to connect to.
@@ -130,11 +125,6 @@ export interface Region {
 	name: string;
 }
 
-export interface DynamicImports {
-	WebSocket: typeof WebSocket;
-	EventSource: typeof EventSource;
-}
-
 export const ACTOR_CONNS_SYMBOL = Symbol("actorConns");
 
 /**
@@ -148,49 +138,25 @@ export class ClientRaw {
 
 	[ACTOR_CONNS_SYMBOL] = new Set<ActorConnRaw>();
 
-	#managerEndpointPromise: Promise<string>;
-	//#regionPromise: Promise<Region | undefined>;
+	#managerEndpoint: string;
 	#encodingKind: Encoding;
 	#supportedTransports: Transport[];
-
-	// External imports
-	#dynamicImportsPromise: Promise<DynamicImports>;
 
 	/**
 	 * Creates an instance of Client.
 	 *
-	 * @param {string | Promise<string>} managerEndpointPromise - The manager endpoint or a promise resolving to it. See {@link https://rivet.gg/docs/setup|Initial Setup} for instructions on getting the manager endpoint.
+	 * @param {string} managerEndpoint - The manager endpoint. See {@link https://rivet.gg/docs/setup|Initial Setup} for instructions on getting the manager endpoint.
 	 * @param {ClientOptions} [opts] - Options for configuring the client.
 	 * @see {@link https://rivet.gg/docs/setup|Initial Setup}
 	 */
-	public constructor(
-		managerEndpointPromise: string | Promise<string>,
-		opts?: ClientOptions,
-	) {
-		if (managerEndpointPromise instanceof Promise) {
-			// Save promise
-			this.#managerEndpointPromise = managerEndpointPromise;
-		} else {
-			// Convert to promise
-			this.#managerEndpointPromise = new Promise((resolve) =>
-				resolve(managerEndpointPromise),
-			);
-		}
-
-		//this.#regionPromise = this.#fetchRegion();
+	public constructor(managerEndpoint: string, opts?: ClientOptions) {
+		this.#managerEndpoint = managerEndpoint;
 
 		this.#encodingKind = opts?.encoding ?? "cbor";
 		this.#supportedTransports = opts?.supportedTransports ?? [
 			"websocket",
 			"sse",
 		];
-
-		// Import dynamic dependencies
-		this.#dynamicImportsPromise = (async () => {
-			const WebSocket = await importWebSocket();
-			const EventSource = await importEventSource();
-			return { WebSocket, EventSource };
-		})();
 	}
 
 	/**
@@ -201,11 +167,11 @@ export class ClientRaw {
 	 * @param {GetWithIdOptions} [opts] - Options for getting the actor.
 	 * @returns {Promise<ActorConn<AD>>} - A promise resolving to the actor connection.
 	 */
-	async connectForId<AD extends AnyActorDefinition>(
+	connectForId<AD extends AnyActorDefinition>(
 		name: string,
 		actorId: string,
 		opts?: GetWithIdOptions,
-	): Promise<ActorConn<AD>> {
+	): ActorConn<AD> {
 		logger().debug("connect to actor with id ", {
 			name,
 			actorId,
@@ -218,12 +184,12 @@ export class ClientRaw {
 			},
 		};
 
-		const managerEndpoint = await this.#managerEndpointPromise;
-		const conn = await this.#createConn(
+		const managerEndpoint = this.#managerEndpoint;
+		const conn = this.#createConn(
 			managerEndpoint,
 			opts?.params,
 			["websocket", "sse"],
-			actorQuery
+			actorQuery,
 		);
 		return this.#createProxy(conn) as ActorConn<AD>;
 	}
@@ -233,14 +199,14 @@ export class ClientRaw {
 	 *
 	 * @example
 	 * ```
-	 * const room = await client.connect<ChatRoom>(
+	 * const room = client.connect<ChatRoom>(
 	 *   'chat-room',
 	 *   // Get or create the actor for the channel `random`
 	 *   'random',
 	 * );
 	 *
 	 * // Or using an array of strings as key
-	 * const room = await client.connect<ChatRoom>(
+	 * const room = client.connect<ChatRoom>(
 	 *   'chat-room',
 	 *   ['user123', 'room456'],
 	 * );
@@ -255,33 +221,23 @@ export class ClientRaw {
 	 * @returns {Promise<ActorConn<AD>>} - A promise resolving to the actor connection.
 	 * @see {@link https://rivet.gg/docs/manage#client.connect}
 	 */
-	async connect<AD extends AnyActorDefinition>(
+	connect<AD extends AnyActorDefinition>(
 		name: string,
 		key?: string | string[],
 		opts?: GetOptions,
-	): Promise<ActorConn<AD>> {
+	): ActorConn<AD> {
 		// Convert string to array of strings
-		const keyArray: string[] = typeof key === 'string' ? [key] : (key || []);
-
-		// Build create config
-		let create: CreateRequest | undefined = undefined;
-		if (!opts?.noCreate) {
-			create = {
-				name,
-				// Fall back to key defined when querying actor
-				key: opts?.create?.key ?? keyArray,
-				...opts?.create,
-			};
-		}
+		const keyArray: string[] = typeof key === "string" ? [key] : key || [];
 
 		logger().debug("connect to actor", {
 			name,
 			key: keyArray,
 			parameters: opts?.params,
-			create,
+			noCreate: opts?.noCreate,
+			createInRegion: opts?.createInRegion,
 		});
 
-		let actorQuery;
+		let actorQuery: ActorQuery;
 		if (opts?.noCreate) {
 			// Use getForKey endpoint if noCreate is specified
 			actorQuery = {
@@ -296,17 +252,17 @@ export class ClientRaw {
 				getOrCreateForKey: {
 					name,
 					key: keyArray,
-					region: create?.region,
+					region: opts?.createInRegion,
 				},
 			};
 		}
 
-		const managerEndpoint = await this.#managerEndpointPromise;
-		const conn = await this.#createConn(
+		const managerEndpoint = this.#managerEndpoint;
+		const conn = this.#createConn(
 			managerEndpoint,
 			opts?.params,
 			["websocket", "sse"],
-			actorQuery
+			actorQuery,
 		);
 		return this.#createProxy(conn) as ActorConn<AD>;
 	}
@@ -322,7 +278,7 @@ export class ClientRaw {
 	 *   'doc123',
 	 *   { region: 'us-east-1' }
 	 * );
-	 * 
+	 *
 	 * // Or with an array of strings as key
 	 * const doc = await client.createAndConnect<MyDocument>(
 	 *   'document',
@@ -340,13 +296,13 @@ export class ClientRaw {
 	 * @returns {Promise<ActorConn<AD>>} - A promise resolving to the actor connection.
 	 * @see {@link https://rivet.gg/docs/manage#client.createAndConnect}
 	 */
-	async createAndConnect<AD extends AnyActorDefinition>(
+	createAndConnect<AD extends AnyActorDefinition>(
 		name: string,
 		key: string | string[],
 		opts: CreateOptions = {},
-	): Promise<ActorConn<AD>> {
+	): ActorConn<AD> {
 		// Convert string to array of strings
-		const keyArray: string[] = typeof key === 'string' ? [key] : key;
+		const keyArray: string[] = typeof key === "string" ? [key] : key;
 
 		// Build create config
 		const create = {
@@ -355,9 +311,6 @@ export class ClientRaw {
 			name,
 			key: keyArray,
 		};
-
-		// Default to the chosen region
-		//if (!create.region) create.region = (await this.#regionPromise)?.id;
 
 		logger().debug("create actor and connect", {
 			name,
@@ -370,24 +323,22 @@ export class ClientRaw {
 			create,
 		};
 
-		const managerEndpoint = await this.#managerEndpointPromise;
-		const conn = await this.#createConn(
+		const managerEndpoint = this.#managerEndpoint;
+		const conn = this.#createConn(
 			managerEndpoint,
 			opts?.params,
 			["websocket", "sse"],
-			actorQuery
+			actorQuery,
 		);
 		return this.#createProxy(conn) as ActorConn<AD>;
 	}
 
-	async #createConn(
+	#createConn(
 		endpoint: string,
 		params: unknown,
 		serverTransports: Transport[],
-		actorQuery: unknown,
-	): Promise<ActorConnRaw> {
-		const imports = await this.#dynamicImportsPromise;
-
+		actorQuery: ActorQuery,
+	): ActorConnRaw {
 		const conn = new ActorConnRaw(
 			this,
 			endpoint,
@@ -395,7 +346,6 @@ export class ClientRaw {
 			this.#encodingKind,
 			this.#supportedTransports,
 			serverTransports,
-			imports,
 			actorQuery,
 		);
 		this[ACTOR_CONNS_SYMBOL].add(conn);
@@ -499,7 +449,7 @@ export class ClientRaw {
 		body?: Request,
 	): Promise<Response> {
 		try {
-			const managerEndpoint = await this.#managerEndpointPromise;
+			const managerEndpoint = this.#managerEndpoint;
 			const res = await fetch(`${managerEndpoint}${path}`, {
 				method,
 				headers: {
@@ -556,15 +506,15 @@ export type Client<A extends ActorCoreApp<any>> = ClientRaw & {
  * Creates a client with the actor accessor proxy.
  *
  * @template A The actor application type.
- * @param {string | Promise<string>} managerEndpointPromise - The manager endpoint or a promise resolving to it.
+ * @param {string} managerEndpoint - The manager endpoint.
  * @param {ClientOptions} [opts] - Options for configuring the client.
  * @returns {Client<A>} - A proxied client that supports the `client.myActor.connect()` syntax.
  */
 export function createClient<A extends ActorCoreApp<any>>(
-	managerEndpointPromise: string | Promise<string>,
+	managerEndpoint: string,
 	opts?: ClientOptions,
 ): Client<A> {
-	const client = new ClientRaw(managerEndpointPromise, opts);
+	const client = new ClientRaw(managerEndpoint, opts);
 
 	// Create proxy for accessing actors by name
 	return new Proxy(client, {
@@ -586,27 +536,25 @@ export function createClient<A extends ActorCoreApp<any>>(
 					connect: (
 						key?: string | string[],
 						opts?: GetOptions,
-					): Promise<ActorConn<ExtractActorsFromApp<A>[typeof prop]>> => {
+					): ActorConn<ExtractActorsFromApp<A>[typeof prop]> => {
 						return target.connect<ExtractActorsFromApp<A>[typeof prop]>(
 							prop,
 							key,
-							opts
+							opts,
 						);
 					},
 					createAndConnect: (
 						key: string | string[],
 						opts: CreateOptions = {},
-					): Promise<ActorConn<ExtractActorsFromApp<A>[typeof prop]>> => {
-						return target.createAndConnect<ExtractActorsFromApp<A>[typeof prop]>(
-							prop,
-							key,
-							opts
-						);
+					): ActorConn<ExtractActorsFromApp<A>[typeof prop]> => {
+						return target.createAndConnect<
+							ExtractActorsFromApp<A>[typeof prop]
+						>(prop, key, opts);
 					},
 					connectForId: (
 						actorId: string,
 						opts?: GetWithIdOptions,
-					): Promise<ActorConn<ExtractActorsFromApp<A>[typeof prop]>> => {
+					): ActorConn<ExtractActorsFromApp<A>[typeof prop]> => {
 						return target.connectForId<ExtractActorsFromApp<A>[typeof prop]>(
 							prop,
 							actorId,

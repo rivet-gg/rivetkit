@@ -29,7 +29,6 @@ export class MemoryManagerDriver implements ManagerDriver {
 	}
 
 	async getForId({
-		baseUrl,
 		actorId,
 	}: GetForIdInput): Promise<GetActorOutput | undefined> {
 		// Validate the actor exists
@@ -39,14 +38,14 @@ export class MemoryManagerDriver implements ManagerDriver {
 		}
 
 		return {
-			endpoint: buildActorEndpoint(baseUrl, actorId),
+			actorId: actor.id,
 			name: actor.name,
 			key: actor.key,
+			meta: undefined,
 		};
 	}
 
 	async getWithKey({
-		baseUrl,
 		name,
 		key,
 	}: GetWithKeyInput): Promise<GetActorOutput | undefined> {
@@ -56,12 +55,12 @@ export class MemoryManagerDriver implements ManagerDriver {
 		// Search through all actors to find a match
 		const actor = this.#state.findActor((actor) => {
 			if (actor.name !== name) return false;
-			
+
 			// If actor doesn't have a key, it's not a match
 			if (!actor.key || actor.key.length !== key.length) {
 				return false;
 			}
-			
+
 			// Check if all elements in key are in actor.key
 			for (let i = 0; i < key.length; i++) {
 				if (key[i] !== actor.key[i]) {
@@ -73,9 +72,10 @@ export class MemoryManagerDriver implements ManagerDriver {
 
 		if (actor) {
 			return {
-				endpoint: buildActorEndpoint(baseUrl, actor.id),
+				actorId: actor.id,
 				name,
 				key: actor.key,
+				meta: undefined,
 			};
 		}
 
@@ -83,7 +83,6 @@ export class MemoryManagerDriver implements ManagerDriver {
 	}
 
 	async createActor({
-		baseUrl,
 		name,
 		key,
 	}: CreateActorInput): Promise<CreateActorOutput> {
@@ -92,12 +91,6 @@ export class MemoryManagerDriver implements ManagerDriver {
 
 		this.inspector.onActorsChange(this.#state.getAllActors());
 
-		return {
-			endpoint: buildActorEndpoint(baseUrl, actorId),
-		};
+		return { actorId, meta: undefined };
 	}
-}
-
-function buildActorEndpoint(baseUrl: string, actorId: string) {
-	return `${baseUrl}/actors/${actorId}`;
 }

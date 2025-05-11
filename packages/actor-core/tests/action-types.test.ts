@@ -31,7 +31,7 @@ describe("Action Types", () => {
 		});
 
 		const { client } = await setupTest<typeof app>(c, app);
-		const instance = await client.syncActor.connect();
+		const instance = client.syncActor.connect();
 
 		// Test increment action
 		let result = await instance.increment(5);
@@ -101,7 +101,7 @@ describe("Action Types", () => {
 		});
 
 		const { client } = await setupTest<typeof app>(c, app);
-		const instance = await client.asyncActor.connect();
+		const instance = client.asyncActor.connect();
 
 		// Test delayed increment
 		const result = await instance.delayedIncrement(5);
@@ -155,7 +155,7 @@ describe("Action Types", () => {
 		});
 
 		const { client } = await setupTest<typeof app>(c, app);
-		const instance = await client.promiseActor.connect();
+		const instance = client.promiseActor.connect();
 
 		// Test resolved promise
 		const resolvedValue = await instance.resolvedPromise();

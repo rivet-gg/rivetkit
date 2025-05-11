@@ -75,7 +75,14 @@ export class Logger {
 const loggers: Record<string, Logger> = {};
 
 export function getLogger(name = "default"): Logger {
-	const defaultLogLevelEnv = typeof process !== "undefined" ? (process.env._LOG_LEVEL as LogLevel) : undefined;
+	let defaultLogLevelEnv: LogLevel | undefined = undefined;
+	if (typeof Deno !== "undefined") {
+		defaultLogLevelEnv = Deno.env.get("_LOG_LEVEL") as LogLevel;
+	} else if (typeof process !== "undefined") {
+		// Do this after Deno since `process` is sometimes polyfilled
+		defaultLogLevelEnv = process.env._LOG_LEVEL as LogLevel;
+	}
+
 	const defaultLogLevel: LogLevel = defaultLogLevelEnv ?? "INFO";
 	if (!loggers[name]) {
 		loggers[name] = new Logger(name, defaultLogLevel);

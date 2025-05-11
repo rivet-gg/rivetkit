@@ -1,9 +1,30 @@
-import type { Context as HonoContext } from "hono";
-import { getLogger } from "./log";
+import type { Context as HonoContext, Next } from "hono";
+import { getLogger, Logger } from "./log";
 import { deconstructError } from "./utils";
 
 export function logger() {
 	return getLogger("router");
+}
+
+export function loggerMiddleware(logger: Logger) {
+	return async (c: HonoContext, next: Next) => {
+		const method = c.req.method;
+		const path = c.req.path;
+		const startTime = Date.now();
+
+		await next();
+
+		const duration = Date.now() - startTime;
+		logger.debug("http request", {
+			method,
+			path,
+			status: c.res.status,
+			dt: `${duration}ms`,
+			reqSize: c.req.header("content-length"),
+			resSize: c.res.headers.get("content-length"),
+			userAgent: c.req.header("user-agent"),
+		});
+	};
 }
 
 export function handleRouteNotFound(c: HonoContext) {

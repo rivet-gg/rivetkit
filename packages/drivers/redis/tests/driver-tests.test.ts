@@ -120,7 +120,6 @@ test("Valkey container starts and stops properly", async () => {
 				host: "localhost",
 				connectTimeout: 1000,
 			});
-			await newRedis.connect();
 			await newRedis.quit();
 			throw new Error("Valkey connection should have failed");
 		} catch (error) {

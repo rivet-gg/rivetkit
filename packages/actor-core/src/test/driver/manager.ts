@@ -29,7 +29,6 @@ export class TestManagerDriver implements ManagerDriver {
 	}
 
 	async getForId({
-		baseUrl,
 		actorId,
 	}: GetForIdInput): Promise<GetActorOutput | undefined> {
 		// Validate the actor exists
@@ -39,41 +38,73 @@ export class TestManagerDriver implements ManagerDriver {
 		}
 
 		return {
-			endpoint: buildActorEndpoint(baseUrl, actorId),
+			actorId,
 			name: actor.name,
 			key: actor.key,
 		};
 	}
 
 	async getWithKey({
-		baseUrl,
 		name,
 		key,
 	}: GetWithKeyInput): Promise<GetActorOutput | undefined> {
 		// NOTE: This is a slow implementation that checks each actor individually.
 		// This can be optimized with an index in the future.
 
-		// Search through all actors to find a match with the same key
 		const actor = this.#state.findActor((actor) => {
-			if (actor.name !== name) return false;
-
-			// Compare key arrays
-			if (!actor.key || actor.key.length !== key.length) {
+			if (actor.name !== name) {
 				return false;
 			}
 
-			// Check if all elements in key are in actor.key
-			for (let i = 0; i < key.length; i++) {
-				if (key[i] !== actor.key[i]) {
+			// handle empty key
+			if (key === null || key === undefined) {
+				return actor.key === null || actor.key === undefined;
+			}
+
+			// handle array
+			if (Array.isArray(key)) {
+				if (!Array.isArray(actor.key)) {
 					return false;
 				}
+				if (key.length !== actor.key.length) {
+					return false;
+				}
+				// Check if all elements in key are in actor.key
+				for (let i = 0; i < key.length; i++) {
+					if (key[i] !== actor.key[i]) {
+						return false;
+					}
+				}
+				return true;
 			}
-			return true;
+
+			// Handle object
+			if (typeof key === "object" && !Array.isArray(key)) {
+				if (typeof actor.key !== "object" || Array.isArray(actor.key)) {
+					return false;
+				}
+				if (actor.key === null) {
+					return false;
+				}
+
+				// Check if all keys in key are in actor.key
+				const keyObj = key as Record<string, unknown>;
+				const actorKeyObj = actor.key as unknown as Record<string, unknown>;
+				for (const k in keyObj) {
+					if (!(k in actorKeyObj) || keyObj[k] !== actorKeyObj[k]) {
+						return false;
+					}
+				}
+				return true;
+			}
+
+			// handle scalar
+			return key === actor.key;
 		});
 
 		if (actor) {
 			return {
-				endpoint: buildActorEndpoint(baseUrl, actor.id),
+				actorId: actor.id,
 				name,
 				key: actor.key,
 			};
@@ -83,7 +114,6 @@ export class TestManagerDriver implements ManagerDriver {
 	}
 
 	async createActor({
-		baseUrl,
 		name,
 		key,
 	}: CreateActorInput): Promise<CreateActorOutput> {
@@ -93,11 +123,7 @@ export class TestManagerDriver implements ManagerDriver {
 		this.inspector.onActorsChange(this.#state.getAllActors());
 
 		return {
-			endpoint: buildActorEndpoint(baseUrl, actorId),
+			actorId,
 		};
 	}
-}
-
-function buildActorEndpoint(baseUrl: string, actorId: string) {
-	return `${baseUrl}/actors/${actorId}`;
 }

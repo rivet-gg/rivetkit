@@ -31,12 +31,12 @@ export function runActorDriverTests(driverTestConfig: DriverTestConfig) {
 				);
 
 				// Create instance and increment
-				const counterInstance = await client.counter.connect();
+				const counterInstance = client.counter.connect();
 				const initialCount = await counterInstance.increment(5);
 				expect(initialCount).toBe(5);
 
 				// Get a fresh reference to the same actor and verify state persisted
-				const sameInstance = await client.counter.connect();
+				const sameInstance = client.counter.connect();
 				const persistedCount = await sameInstance.increment(3);
 				expect(persistedCount).toBe(8);
 			});
@@ -49,14 +49,14 @@ export function runActorDriverTests(driverTestConfig: DriverTestConfig) {
 				);
 
 				// Create actor and set initial state
-				const counterInstance = await client.counter.connect();
+				const counterInstance = client.counter.connect();
 				await counterInstance.increment(5);
 				
 				// Disconnect the actor
 				await counterInstance.dispose();
 
 				// Reconnect to the same actor
-				const reconnectedInstance = await client.counter.connect();
+				const reconnectedInstance = client.counter.connect();
 				const persistedCount = await reconnectedInstance.increment(0);
 				expect(persistedCount).toBe(5);
 			});
@@ -69,11 +69,11 @@ export function runActorDriverTests(driverTestConfig: DriverTestConfig) {
 				);
 
 				// Create first counter with specific key
-				const counterA = await client.counter.connect(["counter-a"]);
+				const counterA = client.counter.connect(["counter-a"]);
 				await counterA.increment(5);
 				
 				// Create second counter with different key
-				const counterB = await client.counter.connect(["counter-b"]);
+				const counterB = client.counter.connect(["counter-b"]);
 				await counterB.increment(10);
 				
 				// Verify state is separate
@@ -93,7 +93,7 @@ export function runActorDriverTests(driverTestConfig: DriverTestConfig) {
 				);
 
 				// Create instance
-				const alarmInstance = await client.scheduled.connect();
+				const alarmInstance = client.scheduled.connect();
 				
 				// Schedule a task to run in 100ms
 				await alarmInstance.scheduleTask(100);

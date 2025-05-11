@@ -4,10 +4,13 @@ import { resolve } from "path";
 
 export default defineConfig({
 	...defaultConfig,
+	test: {
+		...defaultConfig.test,
+		maxConcurrency: 1,
+	},
 	resolve: {
 		alias: {
 			"@": resolve(__dirname, "./src"),
 		},
 	},
 });
-

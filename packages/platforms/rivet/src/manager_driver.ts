@@ -1,7 +1,22 @@
+import { assertUnreachable } from "actor-core/utils";
+import type {
+	ManagerDriver,
+	GetForIdInput,
+	GetWithKeyInput,
+	CreateActorInput,
+	GetActorOutput,
+} from "actor-core/driver-helpers";
+import { logger } from "./log";
+import { type RivetClientConfig, rivetRequest } from "./rivet_client";
+import { serializeKeyForTag, deserializeKeyFromTag } from "./util";
 
 export interface ActorState {
 	key: string[];
 	destroyedAt?: number;
+}
+
+export interface GetActorMeta {
+	endpoint: string;
 }
 
 export class RivetManagerDriver implements ManagerDriver {
@@ -22,8 +37,8 @@ export class RivetManagerDriver implements ManagerDriver {
 				`/actors/${encodeURIComponent(actorId)}`,
 			);
 
-			// Check if actor exists, is public, and not destroyed
-			if ((res.actor.tags as Record<string, string>).access !== "public" || res.actor.destroyedAt) {
+			// Check if actor exists and not destroyed
+			if (res.actor.destroyedAt) {
 				return undefined;
 			}
 
@@ -31,11 +46,20 @@ export class RivetManagerDriver implements ManagerDriver {
 			if (!("name" in res.actor.tags)) {
 				throw new Error(`Actor ${res.actor.id} missing 'name' in tags.`);
 			}
+			if (res.actor.tags.role !== "actor") {
+				throw new Error(`Actor ${res.actor.id} does not have an actor role.`);
+			}
+			if (res.actor.tags.framework !== "actor-core") {
+				throw new Error(`Actor ${res.actor.id} is not an ActorCore actor.`);
+			}
 
 			return {
-				endpoint: buildActorEndpoint(res.actor),
+				actorId: res.actor.id,
 				name: res.actor.tags.name,
 				key: this.#extractKeyFromRivetTags(res.actor.tags),
+				meta: {
+					endpoint: buildActorEndpoint(res.actor),
+				} satisfies GetActorMeta,
 			};
 		} catch (error) {
 			// Handle not found or other errors
@@ -49,7 +73,7 @@ export class RivetManagerDriver implements ManagerDriver {
 	}: GetWithKeyInput): Promise<GetActorOutput | undefined> {
 		// Convert key array to Rivet's tag format
 		const rivetTags = this.#convertKeyToRivetTags(name, key);
-		
+
 		// Query actors with matching tags
 		const { actors } = await rivetRequest<void, { actors: RivetActor[] }>(
 			this.#clientConfig,
@@ -59,11 +83,6 @@ export class RivetManagerDriver implements ManagerDriver {
 
 		// Filter actors to ensure they're valid
 		const validActors = actors.filter((a: RivetActor) => {
-			// Verify actor is public
-			if ((a.tags as Record<string, string>).access !== "public") {
-				return false;
-			}
-
 			// Verify all ports have hostname and port
 			for (const portName in a.network.ports) {
 				const port = a.network.ports[portName];
@@ -77,9 +96,10 @@ export class RivetManagerDriver implements ManagerDriver {
 		}
 
 		// For consistent results, sort by ID if multiple actors match
-		const actor = validActors.length > 1 
-			? validActors.sort((a, b) => a.id.localeCompare(b.id))[0]
-			: validActors[0];
+		const actor =
+			validActors.length > 1
+				? validActors.sort((a, b) => a.id.localeCompare(b.id))[0]
+				: validActors[0];
 
 		// Ensure actor has required tags
 		if (!("name" in actor.tags)) {
@@ -87,9 +107,12 @@ export class RivetManagerDriver implements ManagerDriver {
 		}
 
 		return {
-			endpoint: buildActorEndpoint(actor),
+			actorId: actor.id,
 			name: actor.tags.name,
 			key: this.#extractKeyFromRivetTags(actor.tags),
+			meta: {
+				endpoint: buildActorEndpoint(actor),
+			} satisfies GetActorMeta,
 		};
 	}
 
@@ -98,21 +121,23 @@ export class RivetManagerDriver implements ManagerDriver {
 		key,
 		region,
 	}: CreateActorInput): Promise<GetActorOutput> {
-		// Find a matching build that's public and current
-		const build = await this.#getBuildWithTags({
-			name,
-			current: "true",
-			access: "public",
-		});
-		
-		if (!build) {
-			throw new Error("Build not found with tags or is private");
+		// Create the actor request
+		let actorLogLevel: string | undefined = undefined;
+		if (typeof Deno !== "undefined") {
+			actorLogLevel = Deno.env.get("_ACTOR_LOG_LEVEL");
+		} else if (typeof process !== "undefined") {
+			// Do this after Deno since `process` is sometimes polyfilled
+			actorLogLevel = process.env._ACTOR_LOG_LEVEL;
 		}
 
-		// Create the actor request
 		const createRequest = {
 			tags: this.#convertKeyToRivetTags(name, key),
-			build: build.id,
+			build_tags: {
+				name,
+				role: "actor",
+				framework: "actor-core",
+				current: "true",
+			},
 			region,
 			network: {
 				ports: {
@@ -122,22 +147,33 @@ export class RivetManagerDriver implements ManagerDriver {
 					},
 				},
 			},
+			runtime: {
+				environment: actorLogLevel
+					? {
+							_LOG_LEVEL: actorLogLevel,
+						}
+					: {},
+			},
+			lifecycle: {
+				durable: true,
+			},
 		};
 
 		logger().info("creating actor", { ...createRequest });
-		
+
 		// Create the actor
-		const { actor } = await rivetRequest<typeof createRequest, { actor: RivetActor }>(
-			this.#clientConfig,
-			"POST",
-			"/actors",
-			createRequest,
-		);
+		const { actor } = await rivetRequest<
+			typeof createRequest,
+			{ actor: RivetActor }
+		>(this.#clientConfig, "POST", "/actors", createRequest);
 
 		return {
-			endpoint: buildActorEndpoint(actor),
+			actorId: actor.id,
 			name,
 			key: this.#extractKeyFromRivetTags(actor.tags),
+			meta: {
+				endpoint: buildActorEndpoint(actor),
+			} satisfies GetActorMeta,
 		};
 	}
 
@@ -145,11 +181,12 @@ export class RivetManagerDriver implements ManagerDriver {
 	#convertKeyToRivetTags(name: string, key: string[]): Record<string, string> {
 		return {
 			name,
-			access: "public",
 			key: serializeKeyForTag(key),
+			role: "actor",
+			framework: "actor-core",
 		};
 	}
-	
+
 	// Helper method to extract key array from Rivet's tag-based format
 	#extractKeyFromRivetTags(tags: Record<string, string>): string[] {
 		return deserializeKeyFromTag(tags.key);
@@ -165,17 +202,14 @@ export class RivetManagerDriver implements ManagerDriver {
 			`/builds?tags_json=${encodeURIComponent(JSON.stringify(buildTags))}`,
 		);
 
-		// Filter to public builds
-		const publicBuilds = builds.filter(b => b.tags.access === "public");
-		
-		if (publicBuilds.length === 0) {
+		if (builds.length === 0) {
 			return undefined;
 		}
-		
+
 		// For consistent results, sort by ID if multiple builds match
-		return publicBuilds.length > 1
-			? publicBuilds.sort((a, b) => a.id.localeCompare(b.id))[0]
-			: publicBuilds[0];
+		return builds.length > 1
+			? builds.sort((a, b) => a.id.localeCompare(b.id))[0]
+			: builds[0];
 	}
 }
 
@@ -183,7 +217,7 @@ function buildActorEndpoint(actor: RivetActor): string {
 	// Fetch port
 	const httpPort = actor.network.ports.http;
 	if (!httpPort) throw new Error("missing http port");
-	const hostname = httpPort.hostname;
+	let hostname = httpPort.hostname;
 	if (!hostname) throw new Error("missing hostname");
 	const port = httpPort.port;
 	if (!port) throw new Error("missing port");
@@ -206,21 +240,11 @@ function buildActorEndpoint(actor: RivetActor): string {
 
 	const path = httpPort.path ?? "";
 
+	// HACK: Fix hostname inside of Docker Compose
+	if (hostname === "127.0.0.1") hostname = "rivet-guard";
+
 	return `${isTls ? "https" : "http"}://${hostname}:${port}${path}`;
 }
-
-import { assertUnreachable } from "actor-core/utils";
-import type { ActorKey } from "actor-core";
-import {
-	ManagerDriver,
-	GetForIdInput,
-	GetWithKeyInput,
-	CreateActorInput,
-	GetActorOutput,
-} from "actor-core/driver-helpers";
-import { logger } from "./log";
-import { type RivetClientConfig, rivetRequest } from "./rivet_client";
-import { serializeKeyForTag, deserializeKeyFromTag } from "./util";
 
 // biome-ignore lint/suspicious/noExplicitAny: will add api types later
 type RivetActor = any;

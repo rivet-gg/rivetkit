@@ -57,10 +57,10 @@ export const deploy = new Command()
 
 			await workflow(
 				"Deploy actors to Rivet",
-				async function* (ctx) {
+				async function*(ctx) {
 					const { config, cli } = yield* ctx.task(
 						"Prepare",
-						async function* (ctx) {
+						async function*(ctx) {
 							const config = yield* validateConfigTask(ctx, cwd, appPath);
 
 							const cli = yield* ctx.task("Locale rivet-cli", async (ctx) => {
@@ -96,7 +96,7 @@ export const deploy = new Command()
 					);
 
 					const { accessToken, projectName, envName, endpoint } =
-						yield* ctx.task("Auth with Rivet", async function* (ctx) {
+						yield* ctx.task("Auth with Rivet", async function*(ctx) {
 							const { stdout } = await exec`${cli} metadata auth-status`;
 							const isLogged = stdout === "true";
 
@@ -164,7 +164,7 @@ export const deploy = new Command()
 					if (!opts.skipManager) {
 						manager = yield* ctx.task(
 							"Deploy ActorCore",
-							async function* (ctx) {
+							async function*(ctx) {
 								yield fs.mkdir(path.join(cwd, ".actorcore"), {
 									recursive: true,
 								});
@@ -185,7 +185,7 @@ export const deploy = new Command()
 								);
 
 								const output =
-									await exec`${cli} publish manager --env ${envName} --tags access=private ${entrypoint}`;
+									await exec`${cli} publish manager --env ${envName} --tags role=manager,framework=actor-core,framework-version=${VERSION} --unstable-minify false ${entrypoint}`;
 								if (output.exitCode !== 0) {
 									throw ctx.error("Failed to deploy ActorCore.", {
 										hint: "Check the logs above for more information.",
@@ -257,11 +257,32 @@ export const deploy = new Command()
 										environment: envName,
 										body: {
 											region: region.id,
-											tags: { name: "manager", owner: "rivet" },
-											buildTags: { name: "manager", current: "true" },
+											tags: {
+												name: "manager",
+												role: "manager",
+												framework: "actor-core",
+											},
+											buildTags: {
+												name: "manager",
+												role: "manager",
+												framework: "actor-core",
+												current: "true",
+											},
 											runtime: {
 												environment: {
 													RIVET_SERVICE_TOKEN: serviceToken,
+													...(process.env._RIVET_MANAGER_LOG_LEVEL
+														? {
+															_LOG_LEVEL:
+																process.env._RIVET_MANAGER_LOG_LEVEL,
+														}
+														: {}),
+													...(process.env._RIVET_ACTOR_LOG_LEVEL
+														? {
+															_ACTOR_LOG_LEVEL:
+																process.env._RIVET_ACTOR_LOG_LEVEL,
+														}
+														: {}),
 												},
 											},
 											network: {
@@ -290,10 +311,9 @@ export const deploy = new Command()
 						config.app.config.actors,
 					).entries()) {
 						yield* ctx.task(
-							`Deploy & upload "${actorName}" build (${idx + 1}/${
-								Object.keys(config.app.config.actors).length
+							`Deploy & upload "${actorName}" build (${idx + 1}/${Object.keys(config.app.config.actors).length
 							})`,
-							async function* (ctx) {
+							async function*(ctx) {
 								yield fs.mkdir(path.join(cwd, ".actorcore"), {
 									recursive: true,
 								});
@@ -317,18 +337,18 @@ export const deploy = new Command()
 								`,
 								);
 
-								const actorTags = {
-									access: "public",
+								const buildTags = {
+									role: "actor",
 									framework: "actor-core",
 									"framework-version": VERSION,
 								};
 
-								const tagsArray = Object.entries(actorTags)
+								const tagsArray = Object.entries(buildTags)
 									.map(([key, value]) => `${key}=${value}`)
 									.join(",");
 
 								const output =
-									await exec`${cli} publish --env=${envName} --tags=${tagsArray} ${actorName} ${entrypoint}`;
+									await exec`${cli} publish --env=${envName} --tags=${tagsArray} --unstable-minify false ${actorName} ${entrypoint}`;
 
 								if (output.exitCode !== 0) {
 									throw ctx.error("Failed to deploy & upload actors.", {

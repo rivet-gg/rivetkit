@@ -17,8 +17,12 @@ export class RivetActorDriver implements ActorDriver {
 	}
 
 	async readPersistedData(_actorId: string): Promise<unknown | undefined> {
-		// Use "state" as the key for persisted data
-		return await this.#ctx.kv.get(["actor-core", "data"]);
+		let data = await this.#ctx.kv.get(["actor-core", "data"]);
+
+		// HACK: Modify to be undefined if null. This will be fixed in Actors v2.
+		if (data === null) data = undefined;
+
+		return data;
 	}
 
 	async writePersistedData(_actorId: string, data: unknown): Promise<void> {

@@ -1,11 +1,15 @@
 import { setupLogging } from "actor-core/log";
 import type { ActorContext } from "@rivet-gg/actor-core";
 import { logger } from "./log";
-import { RivetManagerDriver } from "./manager_driver";
+import { GetActorMeta, RivetManagerDriver } from "./manager_driver";
 import type { RivetClientConfig } from "./rivet_client";
 import type { RivetHandler } from "./util";
+import { createWebSocketProxy } from "./ws_proxy";
 import { PartitionTopologyManager } from "actor-core/topologies/partition";
 import { type InputConfig, ConfigSchema } from "./config";
+import { proxy } from "hono/proxy";
+import invariant from "invariant";
+import { upgradeWebSocket } from "hono/deno";
 
 export function createManagerHandler(inputConfig: InputConfig): RivetHandler {
 	const driverConfig = ConfigSchema.parse(inputConfig);
@@ -69,11 +73,46 @@ export function createManagerHandler(inputConfig: InputConfig): RivetHandler {
 				driverConfig.drivers.manager = new RivetManagerDriver(clientConfig);
 			}
 
+			// Setup WebSocket upgrader
+			if (!driverConfig.getUpgradeWebSocket) {
+				driverConfig.getUpgradeWebSocket = () => upgradeWebSocket;
+			}
+
 			// Create manager topology
 			driverConfig.topology = driverConfig.topology ?? "partition";
 			const managerTopology = new PartitionTopologyManager(
 				driverConfig.app.config,
 				driverConfig,
+				{
+					onProxyRequest: async (c, actorRequest, _actorId, metaRaw) => {
+						invariant(metaRaw, "meta not provided");
+						const meta = metaRaw as GetActorMeta;
+
+						const parsedRequestUrl = new URL(actorRequest.url);
+						const actorUrl = `${meta.endpoint}${parsedRequestUrl.pathname}${parsedRequestUrl.search}`;
+
+						logger().debug("proxying request to rivet actor", {
+							method: actorRequest.method,
+							url: actorUrl,
+						});
+
+						const proxyRequest = new Request(actorUrl, actorRequest);
+						return await proxy(proxyRequest);
+					},
+					onProxyWebSocket: async (c, path, actorId, metaRaw) => {
+						invariant(metaRaw, "meta not provided");
+						const meta = metaRaw as GetActorMeta;
+
+						const actorUrl = `${meta.endpoint}${path}`;
+
+						logger().debug("proxying websocket to rivet actor", {
+							url: actorUrl,
+						});
+
+						// TODO: fix as any
+						return createWebSocketProxy(c, actorUrl) as any;
+					},
+				},
 			);
 
 			const app = managerTopology.router;

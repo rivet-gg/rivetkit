@@ -39,3 +39,16 @@ export class ActionError extends ActorClientError {
 		super(message);
 	}
 }
+
+/**
+ * Error thrown when a connection error occurs.
+ */
+export class ConnectionError extends ActorClientError {
+	constructor(
+		public readonly code: string,
+		message: string,
+		public readonly metadata?: unknown,
+	) {
+		super(message);
+	}
+}

@@ -1,3 +1,5 @@
+import { ToServer } from "@/actor/protocol/message/to-server";
+
 export { type DriverConfig, DriverConfigSchema } from "./config";
 export type { ActorInstance, AnyActorInstance } from "@/actor/instance";
 export {

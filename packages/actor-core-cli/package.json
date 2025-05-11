@@ -38,6 +38,7 @@
     "bundle-require": "^5.1.0",
     "chokidar": "^4.0.3",
     "esbuild": "^0.25.1",
+    "invariant": "^2.2.4",
     "open": "^10.1.0",
     "yoga-wasm-web": "0.3.3"
   },
@@ -46,6 +47,7 @@
     "@rivet-gg/api": "^24.6.2",
     "@sentry/esbuild-plugin": "^3.2.0",
     "@sentry/node": "^9.3.0",
+    "@types/invariant": "^2",
     "@types/micromatch": "^4",
     "@types/react": "^18.3",
     "@types/semver": "^7.5.8",

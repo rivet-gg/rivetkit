@@ -15,6 +15,7 @@ interface ActorErrorOptions extends ErrorOptions {
 export class ActorError extends Error {
 	public public: boolean;
 	public metadata?: unknown;
+	public statusCode: number = 500;
 
 	constructor(
 		public readonly code: string,
@@ -24,6 +25,22 @@ export class ActorError extends Error {
 		super(message, { cause: opts?.cause });
 		this.public = opts?.public ?? false;
 		this.metadata = opts?.metadata;
+		
+		// Set status code based on error type
+		if (opts?.public) {
+			this.statusCode = 400; // Bad request for public errors
+		}
+	}
+
+	/**
+	 * Serialize error for HTTP response
+	 */
+	serializeForHttp() {
+		return {
+			type: this.code,
+			message: this.message,
+			metadata: this.metadata,
+		};
 	}
 }
 
@@ -244,5 +261,23 @@ export class ProxyError extends ActorError {
 			`Error proxying ${operation}: ${error}`,
 			{ public: true, cause: error }
 		);
+	}
+}
+
+export class InvalidRpcRequest extends ActorError {
+	constructor(message: string) {
+		super("invalid_rpc_request", message, { public: true });
+	}
+}
+
+export class InvalidRequest extends ActorError {
+	constructor(message: string) {
+		super("invalid_request", message, { public: true });
+	}
+}
+
+export class InvalidParams extends ActorError {
+	constructor(message: string) {
+		super("invalid_params", message, { public: true });
 	}
 }

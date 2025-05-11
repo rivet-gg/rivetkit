@@ -37,7 +37,6 @@ const KEYS = {
 export class CloudflareWorkersManagerDriver implements ManagerDriver {
 	async getForId({
 		c,
-		baseUrl,
 		actorId,
 	}: GetForIdInput<{ Bindings: Bindings }>): Promise<
 		GetActorOutput | undefined
@@ -54,16 +53,19 @@ export class CloudflareWorkersManagerDriver implements ManagerDriver {
 			return undefined;
 		}
 
+		// Generate durable ID from actorId for meta
+		const durableId = c.env.ACTOR_DO.idFromString(actorId);
+
 		return {
-			endpoint: buildActorEndpoint(baseUrl, actorId),
+			actorId,
 			name: actorData.name,
 			key: actorData.key,
+			meta: durableId,
 		};
 	}
 
 	async getWithKey({
 		c,
-		baseUrl,
 		name,
 		key,
 	}: GetWithKeyInput<{ Bindings: Bindings }>): Promise<
@@ -99,15 +101,13 @@ export class CloudflareWorkersManagerDriver implements ManagerDriver {
 			name,
 			key,
 		});
-		return this.#buildActorOutput(c, baseUrl, actorId);
+		return this.#buildActorOutput(c, actorId);
 	}
 
 	async createActor({
 		c,
-		baseUrl,
 		name,
 		key,
-		region,
 	}: CreateActorInput<{ Bindings: Bindings }>): Promise<GetActorOutput> {
 		if (!c) throw new Error("Missing Hono context");
 		const log = logger();
@@ -136,16 +136,16 @@ export class CloudflareWorkersManagerDriver implements ManagerDriver {
 		await c.env.ACTOR_KV.put(KEYS.ACTOR.keyIndex(name, key), actorId);
 
 		return {
-			endpoint: buildActorEndpoint(baseUrl, actorId),
+			actorId,
 			name,
 			key,
+			meta: durableId,
 		};
 	}
 
 	// Helper method to build actor output from an ID
 	async #buildActorOutput(
 		c: any,
-		baseUrl: string,
 		actorId: string,
 	): Promise<GetActorOutput | undefined> {
 		const actorData = (await c.env.ACTOR_KV.get(KEYS.ACTOR.metadata(actorId), {
@@ -156,14 +156,14 @@ export class CloudflareWorkersManagerDriver implements ManagerDriver {
 			return undefined;
 		}
 
+		// Generate durable ID for meta
+		const durableId = c.env.ACTOR_DO.idFromString(actorId);
+
 		return {
-			endpoint: buildActorEndpoint(baseUrl, actorId),
+			actorId,
 			name: actorData.name,
 			key: actorData.key,
+			meta: durableId,
 		};
 	}
-}
-
-function buildActorEndpoint(baseUrl: string, actorId: string) {
-	return `${baseUrl}/actors/${actorId}`;
 }

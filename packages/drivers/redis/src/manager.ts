@@ -53,7 +53,6 @@ export class RedisManagerDriver implements ManagerDriver {
 	}
 
 	async getForId({
-		baseUrl,
 		actorId,
 	}: GetForIdInput): Promise<GetActorOutput | undefined> {
 		// Get metadata from Redis
@@ -68,14 +67,14 @@ export class RedisManagerDriver implements ManagerDriver {
 		const { name, key } = metadata;
 
 		return {
-			endpoint: buildActorEndpoint(baseUrl, actorId),
+			actorId,
 			name,
 			key,
+			meta: undefined,
 		};
 	}
 
 	async getWithKey({
-		baseUrl,
 		name,
 		key,
 	}: GetWithKeyInput): Promise<GetActorOutput | undefined> {
@@ -87,11 +86,10 @@ export class RedisManagerDriver implements ManagerDriver {
 			return undefined;
 		}
 
-		return this.getForId({ baseUrl, actorId });
+		return this.getForId({ actorId });
 	}
 
 	async createActor({
-		baseUrl,
 		name,
 		key,
 	}: CreateActorInput): Promise<CreateActorOutput> {
@@ -121,7 +119,8 @@ export class RedisManagerDriver implements ManagerDriver {
 		]);
 
 		return {
-			endpoint: buildActorEndpoint(baseUrl, actorId.toString()),
+			actorId,
+			meta: undefined,
 		};
 	}
 
@@ -171,8 +170,3 @@ export class RedisManagerDriver implements ManagerDriver {
 			.replace(/:/g, "\\:"); // Escape colons (our delimiter)
 	}
 }
-
-function buildActorEndpoint(baseUrl: string, actorId: string) {
-	return `${baseUrl}/actors/${actorId}`;
-}
-

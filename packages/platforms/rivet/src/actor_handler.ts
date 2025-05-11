@@ -1,13 +1,14 @@
 import { setupLogging } from "actor-core/log";
 import type { ActorContext } from "@rivet-gg/actor-core";
-import type { ActorKey } from "actor-core";
 import { upgradeWebSocket } from "hono/deno";
 import { logger } from "./log";
 import type { RivetHandler } from "./util";
+import { deserializeKeyFromTag } from "./util";
 import { PartitionTopologyActor } from "actor-core/topologies/partition";
 import { ConfigSchema, type InputConfig } from "./config";
 import { RivetActorDriver } from "./actor_driver";
 import { rivetRequest } from "./rivet_client";
+import invariant from "invariant";
 
 export function createActorHandler(inputConfig: InputConfig): RivetHandler {
 	const driverConfig = ConfigSchema.parse(inputConfig);
@@ -135,17 +136,6 @@ export function createActorHandler(inputConfig: InputConfig): RivetHandler {
 
 // Helper function to extract key array from Rivet's tag format
 function extractKeyFromRivetTags(tags: Record<string, string>): string[] {
-	const key: string[] = [];
-	
-	// Extract key values from tags using the numerical suffix pattern
-	for (let i = 0; ; i++) {
-		const tagKey = `key${i}`;
-		if (tagKey in tags) {
-			key.push(tags[tagKey]);
-		} else {
-			break;
-		}
-	}
-	
-	return key;
+	invariant(typeof tags.key === "string", "key tag does not exist");
+	return deserializeKeyFromTag(tags.key);
 }

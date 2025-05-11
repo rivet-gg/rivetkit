@@ -26,6 +26,7 @@ export {
 	MalformedResponseMessage,
 	NoSupportedTransport,
 	ActionError,
+	ConnectionError,
 } from "@/client/errors";
 export {
 	AnyActorDefinition,

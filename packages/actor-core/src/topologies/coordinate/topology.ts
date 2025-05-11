@@ -12,6 +12,16 @@ import { handleRouteError, handleRouteNotFound } from "@/common/router";
 import type { DriverConfig } from "@/driver-helpers/config";
 import type { AppConfig } from "@/app/config";
 import { createManagerRouter } from "@/manager/router";
+import type {
+	ConnectWebSocketOpts,
+	ConnectSseOpts,
+	RpcOpts,
+	ConnsMessageOpts,
+	ConnectWebSocketOutput,
+	ConnectSseOutput,
+	RpcOutput,
+	ConnectionHandlers,
+} from "@/actor/router_endpoints";
 
 export interface GlobalState {
 	nodeId: string;
@@ -53,77 +63,71 @@ export class CoordinateTopology {
 
 		const upgradeWebSocket = driverConfig.getUpgradeWebSocket?.(app);
 
-		// Build manager router
-		const managerRouter = createManagerRouter(appConfig, driverConfig, {
-			upgradeWebSocket,
-			onConnectInspector: () => {
-				throw new errors.Unsupported("inspect");
-			},
-		});
-
-		// Forward requests to actor
-		const actorRouter = createActorRouter(appConfig, driverConfig, {
-			upgradeWebSocket,
-			onConnectWebSocket: async (opts) => {
-				const actorId = opts.req.param("actorId");
-				if (!actorId) throw new errors.InternalError("Missing actor ID");
+		// Share connection handlers for both routers
+		const connectionHandlers: ConnectionHandlers = {
+			onConnectWebSocket: async (
+				opts: ConnectWebSocketOpts,
+			): Promise<ConnectWebSocketOutput> => {
 				return await serveWebSocket(
 					appConfig,
 					driverConfig,
 					actorDriver,
 					CoordinateDriver,
 					globalState,
-					actorId,
+					opts.actorId,
 					opts,
 				);
 			},
-			onConnectSse: async (opts) => {
-				const actorId = opts.req.param("actorId");
-				if (!actorId) throw new errors.InternalError("Missing actor ID");
+			onConnectSse: async (opts: ConnectSseOpts): Promise<ConnectSseOutput> => {
 				return await serveSse(
 					appConfig,
 					driverConfig,
 					actorDriver,
 					CoordinateDriver,
 					globalState,
-					actorId,
+					opts.actorId,
 					opts,
 				);
 			},
-			onRpc: async () => {
+			onRpc: async (opts: RpcOpts): Promise<RpcOutput> => {
 				// TODO:
 				throw new errors.InternalError("UNIMPLEMENTED");
 			},
-			onConnMessage: async ({ req, connId, connToken, message }) => {
-				const actorId = req.param("actorId");
-				if (!actorId) throw new errors.InternalError("Missing actor ID");
-
+			onConnMessage: async (opts: ConnsMessageOpts): Promise<void> => {
 				await publishMessageToLeader(
 					appConfig,
 					driverConfig,
 					CoordinateDriver,
 					globalState,
-					actorId,
+					opts.actorId,
 					{
 						b: {
 							lm: {
-								ai: actorId,
-								ci: connId,
-								ct: connToken,
-								m: message,
+								ai: opts.actorId,
+								ci: opts.connId,
+								ct: opts.connToken,
+								m: opts.message,
 							},
 						},
 					},
-					req.raw.signal,
+					opts.req.raw.signal,
 				);
 			},
-			onConnectInspector: async () => {
+		};
+
+		// Build manager router
+		const managerRouter = createManagerRouter(appConfig, driverConfig, {
+			proxyMode: {
+				inline: {
+					handlers: connectionHandlers,
+				},
+			},
+			onConnectInspector: () => {
 				throw new errors.Unsupported("inspect");
 			},
 		});
 
 		app.route("/", managerRouter);
-		app.route("/actors/:actorId", actorRouter);
 
 		app.notFound(handleRouteNotFound);
 		app.onError(handleRouteError);

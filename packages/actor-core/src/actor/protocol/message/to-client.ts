@@ -8,6 +8,16 @@ export const InitSchema = z.object({
 	ct: z.string(),
 });
 
+// Used for connection errors (both during initialization and afterwards)
+export const ConnectionErrorSchema = z.object({
+	// Code
+	c: z.string(),
+	// Message
+	m: z.string(),
+	// Metadata
+	md: z.unknown().optional(),
+});
+
 export const RpcResponseOkSchema = z.object({
 	// ID
 	i: z.number().int(),
@@ -46,6 +56,7 @@ export const ToClientSchema = z.object({
 	// Body
 	b: z.union([
 		z.object({ i: InitSchema }),
+		z.object({ ce: ConnectionErrorSchema }),
 		z.object({ ro: RpcResponseOkSchema }),
 		z.object({ re: RpcResponseErrorSchema }),
 		z.object({ ev: ToClientEventSchema }),
@@ -54,6 +65,7 @@ export const ToClientSchema = z.object({
 });
 
 export type ToClient = z.infer<typeof ToClientSchema>;
+export type ConnectionError = z.infer<typeof ConnectionErrorSchema>;
 export type RpcResponseOk = z.infer<typeof RpcResponseOkSchema>;
 export type RpcResponseError = z.infer<typeof RpcResponseErrorSchema>;
 export type ToClientEvent = z.infer<typeof ToClientEventSchema>;

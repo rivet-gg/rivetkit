@@ -129,6 +129,7 @@ export { handler as default, ActorHandler };
 
 			wranglerProcess.stdout?.on("data", (data) => {
 				const output = data.toString();
+				console.log(`wrangler: ${output}`);
 				if (output.includes(`Ready on http://localhost:${port}`)) {
 					if (!isResolved) {
 						isResolved = true;
@@ -139,7 +140,7 @@ export { handler as default, ActorHandler };
 			});
 
 			wranglerProcess.stderr?.on("data", (data) => {
-				console.error(`wrangler error: ${data}`);
+				console.error(`wrangler: ${data}`);
 			});
 
 			wranglerProcess.on("error", (error) => {

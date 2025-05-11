@@ -101,8 +101,6 @@ export function createActorDurableObject(
 			if (!config.drivers.actor) {
 				config.drivers.actor = new CloudflareWorkersActorDriver(globalState);
 			}
-			if (!config.getUpgradeWebSocket)
-				config.getUpgradeWebSocket = () => upgradeWebSocket;
 			const actorTopology = new PartitionTopologyActor(app.config, config);
 
 			// Register DO with global state

@@ -8,9 +8,13 @@ import * as cbor from "cbor-x";
 import * as errors from "./errors";
 import { logger } from "./log";
 import { type WebSocketMessage as ConnMessage, messageLength } from "./utils";
-import { ACTOR_CONNS_SYMBOL, ClientRaw, DynamicImports } from "./client";
-import { ActorDefinition, AnyActorDefinition } from "@/actor/definition";
-import pRetry, { AbortError } from "p-retry";
+import { ACTOR_CONNS_SYMBOL, type ClientRaw } from "./client";
+import type { ActorDefinition, AnyActorDefinition } from "@/actor/definition";
+import pRetry from "p-retry";
+import { importWebSocket } from "@/common/websocket";
+import { importEventSource } from "@/common/eventsource";
+import invariant from "invariant";
+import type { ActorQuery } from "@/manager/protocol/query";
 
 interface RpcInFlight {
 	name: string;
@@ -30,6 +34,13 @@ interface EventSubscriptions<Args extends Array<unknown>> {
  */
 export type EventUnsubscribe = () => void;
 
+/**
+ * A function that handles connection errors.
+ *
+ * @typedef {Function} ConnectionErrorCallback
+ */
+export type ConnectionErrorCallback = (error: errors.ConnectionError) => void;
+
 interface SendOpts {
 	ephemeral: boolean;
 }
@@ -37,6 +48,11 @@ interface SendOpts {
 export type ConnTransport = { websocket: WebSocket } | { sse: EventSource };
 
 export const CONNECT_SYMBOL = Symbol("connect");
+
+interface DynamicImports {
+	WebSocket: typeof WebSocket;
+	EventSource: typeof EventSource;
+}
 
 /**
  * Provides underlying functions for {@link ActorConn}. See {@link ActorConn} for using type-safe remote procedure calls.
@@ -50,7 +66,7 @@ export class ActorConnRaw {
 	#abortController = new AbortController();
 
 	/** If attempting to connect. Helpful for knowing if in a retry loop when reconnecting. */
-	#connecting: boolean = false;
+	#connecting = false;
 
 	// These will only be set on SSE driver
 	#connectionId?: string;
@@ -64,6 +80,8 @@ export class ActorConnRaw {
 	// biome-ignore lint/suspicious/noExplicitAny: Unknown subscription type
 	#eventSubscriptions = new Map<string, Set<EventSubscriptions<any[]>>>();
 
+	#errorHandlers = new Set<ConnectionErrorCallback>();
+
 	#rpcIdCounter = 0;
 
 	/**
@@ -73,10 +91,16 @@ export class ActorConnRaw {
 	 */
 	#keepNodeAliveInterval: NodeJS.Timeout;
 
+	/** Promise used to indicate the required properties for using this class have loaded. Currently just #dynamicImports */
+	#onConstructedPromise: Promise<void>;
+
 	/** Promise used to indicate the socket has connected successfully. This will be rejected if the connection fails. */
 	#onOpenPromise?: PromiseWithResolvers<undefined>;
 
 	// TODO: ws message queue
+
+	// External imports
+	#dynamicImports!: DynamicImports;
 
 	/**
 	 * Do not call this directly.
@@ -94,10 +118,21 @@ export class ActorConnRaw {
 		private readonly encodingKind: Encoding,
 		private readonly supportedTransports: Transport[],
 		private readonly serverTransports: Transport[],
-		private readonly dynamicImports: DynamicImports,
-		private readonly actorQuery: unknown,
+		private readonly actorQuery: ActorQuery,
 	) {
 		this.#keepNodeAliveInterval = setInterval(() => 60_000);
+
+		this.#onConstructedPromise = (async () => {
+			// Import dynamic dependencies
+			const [WebSocket, EventSource] = await Promise.all([
+				importWebSocket(),
+				importEventSource(),
+			]);
+			this.#dynamicImports = {
+				WebSocket,
+				EventSource,
+			};
+		})();
 	}
 
 	/**
@@ -114,6 +149,8 @@ export class ActorConnRaw {
 		name: string,
 		...args: Args
 	): Promise<Response> {
+		await this.#onConstructedPromise;
+
 		logger().debug("action", { name, args });
 
 		// Check if we have an active websocket connection
@@ -149,18 +186,16 @@ export class ActorConnRaw {
 			// If no websocket connection, use HTTP RPC via manager
 			try {
 				// Get the manager endpoint from the endpoint provided
-				const managerEndpoint = this.endpoint.split('/manager/')[0];
-				const actorQueryStr = encodeURIComponent(JSON.stringify(this.actorQuery));
-				
-				const url = `${managerEndpoint}/actor/rpc/${name}?query=${actorQueryStr}`;
-				logger().debug("=== CLIENT HTTP RPC: Sending request ===", { 
-					url, 
-					managerEndpoint,
-					actorQuery: this.actorQuery, 
+				const actorQueryStr = encodeURIComponent(
+					JSON.stringify(this.actorQuery),
+				);
+
+				const url = `${this.endpoint}/actors/rpc/${name}?query=${actorQueryStr}`;
+				logger().debug("http rpc: request", {
+					url,
 					name,
-					args 
 				});
-				
+
 				try {
 					const response = await fetch(url, {
 						method: "POST",
@@ -172,16 +207,15 @@ export class ActorConnRaw {
 						}),
 					});
 
-					logger().debug("=== CLIENT HTTP RPC: Response received ===", { 
-						status: response.status, 
+					logger().debug("http rpc: response", {
+						status: response.status,
 						ok: response.ok,
-						headers: Object.fromEntries([...response.headers])
 					});
 
 					if (!response.ok) {
 						try {
 							const errorData = await response.json();
-							logger().error("=== CLIENT HTTP RPC: Error response ===", { errorData });
+							logger().error("http rpc error response", { errorData });
 							throw new errors.ActionError(
 								errorData.c || "RPC_ERROR",
 								errorData.m || "RPC call failed",
@@ -190,9 +224,8 @@ export class ActorConnRaw {
 						} catch (parseError) {
 							// If response is not JSON, get it as text and throw generic error
 							const errorText = await response.text();
-							logger().error("=== CLIENT HTTP RPC: Error parsing response ===", { 
-								errorText, 
-								parseError 
+							logger().error("http rpc: error parsing response", {
+								errorText,
 							});
 							throw new errors.ActionError(
 								"RPC_ERROR",
@@ -205,33 +238,29 @@ export class ActorConnRaw {
 					// Clone response to avoid consuming it
 					const responseClone = response.clone();
 					const responseText = await responseClone.text();
-					logger().debug("=== CLIENT HTTP RPC: Response body ===", { responseText });
 
 					// Parse response body
 					try {
 						const responseData = JSON.parse(responseText);
-						logger().debug("=== CLIENT HTTP RPC: Parsed response ===", { responseData });
 						return responseData.o as Response;
 					} catch (parseError) {
-						logger().error("=== CLIENT HTTP RPC: Error parsing JSON ===", { 
-							responseText, 
-							parseError 
+						logger().error("http rpc: error parsing json", {
+							parseError,
 						});
 						throw new errors.ActionError(
 							"RPC_ERROR",
 							`Failed to parse response: ${parseError}`,
-							{ responseText }
+							{ responseText },
 						);
 					}
 				} catch (fetchError) {
-					logger().error("=== CLIENT HTTP RPC: Fetch error ===", { 
+					logger().error("http rpc: fetch error", {
 						error: fetchError,
-						url
 					});
 					throw new errors.ActionError(
 						"RPC_ERROR",
 						`Fetch failed: ${fetchError}`,
-						{ cause: fetchError }
+						{ cause: fetchError },
 					);
 				}
 			} catch (error) {
@@ -239,9 +268,9 @@ export class ActorConnRaw {
 					throw error;
 				}
 				throw new errors.ActionError(
-					"RPC_ERROR", 
-					`Failed to execute RPC ${name}: ${error}`, 
-					{ cause: error }
+					"RPC_ERROR",
+					`Failed to execute RPC ${name}: ${error}`,
+					{ cause: error },
 				);
 			}
 		}
@@ -312,6 +341,8 @@ enc
 
 	async #connectAndWait() {
 		try {
+			await this.#onConstructedPromise;
+
 			// Create promise for open
 			if (this.#onOpenPromise)
 				throw new Error("#onOpenPromise already defined");
@@ -348,7 +379,7 @@ enc
 	}
 
 	#connectWebSocket() {
-		const { WebSocket } = this.dynamicImports;
+		const { WebSocket } = this.#dynamicImports;
 
 		const url = this.#buildConnUrl("websocket");
 
@@ -381,7 +412,7 @@ enc
 	}
 
 	#connectSse() {
-		const { EventSource } = this.dynamicImports;
+		const { EventSource } = this.#dynamicImports;
 
 		const url = this.#buildConnUrl("sse");
 
@@ -436,37 +467,67 @@ enc
 
 	/** Called by the onmessage event from drivers. */
 	async #handleOnMessage(event: MessageEvent<any>) {
-		logger().trace("received message", { 
-			dataType: typeof event.data, 
+		logger().trace("received message", {
+			dataType: typeof event.data,
 			isBlob: event.data instanceof Blob,
-			isArrayBuffer: event.data instanceof ArrayBuffer
+			isArrayBuffer: event.data instanceof ArrayBuffer,
 		});
 
 		const response = (await this.#parse(event.data)) as wsToClient.ToClient;
-		logger().trace("parsed message", { 
-			response: JSON.stringify(response).substring(0, 100) + "..." 
+		logger().trace("parsed message", {
+			response: JSON.stringify(response).substring(0, 100) + "...",
 		});
 
 		if ("i" in response.b) {
 			// This is only called for SSE
 			this.#connectionId = response.b.i.ci;
 			this.#connectionToken = response.b.i.ct;
-			logger().trace("received init message", { 
-				connectionId: this.#connectionId 
+			logger().trace("received init message", {
+				connectionId: this.#connectionId,
 			});
 			this.#handleOnOpen();
+		} else if ("ce" in response.b) {
+			// Connection error
+			const { c: code, m: message, md: metadata } = response.b.ce;
+
+			logger().warn("actor connection error", {
+				code,
+				message,
+				metadata,
+			});
+
+			// Create a connection error
+			const connectionError = new errors.ConnectionError(
+				code,
+				message,
+				metadata,
+			);
+
+			// If we have an onOpenPromise, reject it with the error
+			if (this.#onOpenPromise) {
+				this.#onOpenPromise.reject(connectionError);
+			}
+
+			// Reject any in-flight requests
+			for (const [id, inFlight] of this.#rpcInFlight.entries()) {
+				inFlight.reject(connectionError);
+				this.#rpcInFlight.delete(id);
+			}
+
+			// Dispatch to error handler if registered
+			this.#dispatchConnectionError(connectionError);
 		} else if ("ro" in response.b) {
 			// RPC response OK
 			const { i: rpcId } = response.b.ro;
-			logger().trace("received RPC response", { 
-				rpcId, 
-				outputType: typeof response.b.ro.o
+			logger().trace("received RPC response", {
+				rpcId,
+				outputType: typeof response.b.ro.o,
 			});
 
 			const inFlight = this.#takeRpcInFlight(rpcId);
-			logger().trace("resolving RPC promise", { 
-				rpcId, 
-				actionName: inFlight?.name 
+			logger().trace("resolving RPC promise", {
+				rpcId,
+				actionName: inFlight?.name,
 			});
 			inFlight.resolve(response.b.ro);
 		} else if ("re" in response.b) {
@@ -486,9 +547,9 @@ enc
 
 			inFlight.reject(new errors.ActionError(code, message, metadata));
 		} else if ("ev" in response.b) {
-			logger().trace("received event", { 
-				name: response.b.ev.n, 
-				argsCount: response.b.ev.a?.length 
+			logger().trace("received event", {
+				name: response.b.ev.n,
+				argsCount: response.b.ev.a?.length,
 			});
 			this.#dispatchEvent(response.b.ev);
 		} else if ("er" in response.b) {
@@ -556,16 +617,13 @@ enc
 
 	#buildConnUrl(transport: Transport): string {
 		// Get the manager endpoint from the endpoint provided
-		const managerEndpoint = this.endpoint.split('/manager/')[0];
 		const actorQueryStr = encodeURIComponent(JSON.stringify(this.actorQuery));
-		
-		logger().debug("=== Client building conn URL ===", {
-			originalEndpoint: this.endpoint,
-			managerEndpoint: managerEndpoint,
-			transport: transport
+
+		logger().debug("building conn url", {
+			transport,
 		});
-		
-		let url = `${managerEndpoint}/actor/connect/${transport}?encoding=${this.encodingKind}&query=${actorQueryStr}`;
+
+		let url = `${this.endpoint}/actors/connect/${transport}?encoding=${this.encodingKind}&query=${actorQueryStr}`;
 
 		if (this.params !== undefined) {
 			const paramsStr = JSON.stringify(this.params);
@@ -581,8 +639,6 @@ enc
 		if (transport === "websocket") {
 			url = url.replace(/^http:/, "ws:").replace(/^https:/, "wss:");
 		}
-		
-		logger().debug("=== Client final conn URL ===", { url });
 
 		return url;
 	}
@@ -615,6 +671,19 @@ enc
 		// Clean up empty listener sets
 		if (listeners.size === 0) {
 			this.#eventSubscriptions.delete(name);
+		}
+	}
+
+	#dispatchConnectionError(error: errors.ConnectionError) {
+		// Call all registered error handlers
+		for (const handler of [...this.#errorHandlers]) {
+			try {
+				handler(error);
+			} catch (err) {
+				logger().error("Error in connection error handler", {
+					error: stringifyError(err),
+				});
+			}
 		}
 	}
 
@@ -681,13 +750,28 @@ enc
 		return this.#addEventSubscription<Args>(eventName, callback, true);
 	}
 
+	/**
+	 * Subscribes to connection errors.
+	 *
+	 * @param {ConnectionErrorCallback} callback - The callback function to execute when a connection error occurs.
+	 * @returns {() => void} - A function to unsubscribe from the error handler.
+	 */
+	onError(callback: ConnectionErrorCallback): () => void {
+		this.#errorHandlers.add(callback);
+
+		// Return unsubscribe function
+		return () => {
+			this.#errorHandlers.delete(callback);
+		};
+	}
+
 	#sendMessage(message: wsToServer.ToServer, opts?: SendOpts) {
-		let queueMessage: boolean = false;
+		let queueMessage = false;
 		if (!this.#transport) {
 			// No transport connected yet
 			queueMessage = true;
 		} else if ("websocket" in this.#transport) {
-			const { WebSocket } = this.dynamicImports;
+			const { WebSocket } = this.#dynamicImports;
 			if (this.#transport.websocket.readyState === WebSocket.OPEN) {
 				try {
 					const messageSerialized = this.#serialize(message);
@@ -708,7 +792,7 @@ enc
 				queueMessage = true;
 			}
 		} else if ("sse" in this.#transport) {
-			const { EventSource } = this.dynamicImports;
+			const { EventSource } = this.#dynamicImports;
 
 			if (this.#transport.sse.readyState === EventSource.OPEN) {
 				// Spawn in background since #sendMessage cannot be async
@@ -732,10 +816,9 @@ enc
 				throw new errors.InternalError("Missing connection ID or token.");
 
 			// Get the manager endpoint from the endpoint provided
-			const managerEndpoint = this.endpoint.split('/manager/')[0];
 			const actorQueryStr = encodeURIComponent(JSON.stringify(this.actorQuery));
 
-			let url = `${managerEndpoint}/actor/connections/${this.#connectionId}/message?encoding=${this.encodingKind}&connectionToken=${encodeURIComponent(this.#connectionToken)}&query=${actorQueryStr}`;
+			let url = `${this.endpoint}/actors/connections/${this.#connectionId}/message?encoding=${this.encodingKind}&connectionToken=${encodeURIComponent(this.#connectionToken)}&query=${actorQueryStr}`;
 
 			// TODO: Implement ordered messages, this is not guaranteed order. Needs to use an index in order to ensure we can pipeline requests efficiently.
 			// TODO: Validate that we're using HTTP/3 whenever possible for pipelining requests
@@ -830,6 +913,8 @@ enc
 	 * @returns {Promise<void>} A promise that resolves when the socket is gracefully closed.
 	 */
 	async dispose(): Promise<void> {
+		await this.#onConstructedPromise;
+
 		// Internally, this "disposes" the connection
 
 		if (this.#disposed) {
@@ -898,7 +983,7 @@ type ActorDefinitionRpcs<AD extends AnyActorDefinition> = {
  *
  * @example
  * ```
- * const room = await client.connect<ChatRoom>(...etc...);
+ * const room = client.connect<ChatRoom>(...etc...);
  * // This calls the rpc named `sendMessage` on the `ChatRoom` actor.
  * await room.sendMessage('Hello, world!');
  * ```

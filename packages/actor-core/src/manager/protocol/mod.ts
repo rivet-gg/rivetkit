@@ -8,7 +8,7 @@ export const ActorsRequestSchema = z.object({
 });
 
 export const ActorsResponseSchema = z.object({
-	endpoint: z.string(),
+	actorId: z.string(),
 	supportedTransports: z.array(TransportSchema),
 });
 

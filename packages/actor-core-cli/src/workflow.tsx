@@ -216,6 +216,7 @@ export interface Context {
 interface TaskOptions {
 	showLabel?: boolean;
 	success?: ReactNode;
+	quiet?: boolean;
 }
 
 interface RunnerToolbox {

@@ -85,6 +85,9 @@ This ensures imports resolve correctly across different build environments and p
   - Extend from `ActorError` base class
   - Use `UserError` for client-safe errors
   - Use `InternalError` for internal errors
+- Don't try to fix type issues by casting to unknown or any. If you need to do this, then stop and ask me to manually intervene.
+- Write log messages in lowercase
+- Instead of returning raw HTTP responses with c.json, use or write an error in packages/actor-core/src/actor/errors.ts and throw that instead. The middleware will automatically serialize the response for you.
 
 ## Project Structure
 
