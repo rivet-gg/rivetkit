@@ -40,7 +40,7 @@ describe("Action Timeout", () => {
 		});
 
 		const { client } = await setupTest<typeof app>(c, app);
-		const instance = await client.timeoutActor.get();
+		const instance = await client.timeoutActor.connect();
 
 		// The quick action should complete successfully
 		const quickResult = await instance.quickAction();
@@ -72,7 +72,7 @@ describe("Action Timeout", () => {
 		});
 
 		const { client } = await setupTest<typeof app>(c, app);
-		const instance = await client.defaultTimeoutActor.get();
+		const instance = await client.defaultTimeoutActor.connect();
 
 		// This action should complete successfully
 		const result = await instance.normalAction();
@@ -101,7 +101,7 @@ describe("Action Timeout", () => {
 		});
 
 		const { client } = await setupTest<typeof app>(c, app);
-		const instance = await client.syncActor.get();
+		const instance = await client.syncActor.connect();
 
 		// Synchronous action should not be affected by timeout
 		const result = await instance.syncAction();
@@ -169,13 +169,13 @@ describe("Action Timeout", () => {
 		const { client } = await setupTest<typeof app>(c, app);
 
 		// The short timeout actor should fail
-		const shortInstance = await client.shortTimeoutActor.get();
+		const shortInstance = await client.shortTimeoutActor.connect();
 		await expect(shortInstance.delayedAction()).rejects.toThrow(
 			"Action timed out.",
 		);
 
 		// The longer timeout actor should succeed
-		const longerInstance = await client.longerTimeoutActor.get();
+		const longerInstance = await client.longerTimeoutActor.connect();
 		const result = await longerInstance.delayedAction();
 		expect(result).toBe("delayed response");
 	});

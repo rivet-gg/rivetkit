@@ -8,7 +8,7 @@ import * as cbor from "cbor-x";
 import * as errors from "./errors";
 import { logger } from "./log";
 import { type WebSocketMessage as ConnMessage, messageLength } from "./utils";
-import { ACTOR_HANDLES_SYMBOL, ClientRaw, DynamicImports } from "./client";
+import { ACTOR_CONNS_SYMBOL, ClientRaw, DynamicImports } from "./client";
 import { ActorDefinition, AnyActorDefinition } from "@/actor/definition";
 import pRetry, { AbortError } from "p-retry";
 
@@ -39,11 +39,11 @@ export type ConnTransport = { websocket: WebSocket } | { sse: EventSource };
 export const CONNECT_SYMBOL = Symbol("connect");
 
 /**
- * Provides underlying functions for {@link ActorHandle}. See {@link ActorHandle} for using type-safe remote procedure calls.
+ * Provides underlying functions for {@link ActorConn}. See {@link ActorConn} for using type-safe remote procedure calls.
  *
- * @see {@link ActorHandle}
+ * @see {@link ActorConn}
  */
-export class ActorHandleRaw {
+export class ActorConnRaw {
 	#disposed = false;
 
 	/* Will be aborted on dispose. */
@@ -81,7 +81,7 @@ export class ActorHandleRaw {
 	/**
 	 * Do not call this directly.
 	 *
-	 * Creates an instance of ActorHandleRaw.
+	 * Creates an instance of ActorConnRaw.
 	 *
 	 * @param {string} endpoint - The endpoint to connect to.
 	 *
@@ -100,9 +100,9 @@ export class ActorHandleRaw {
 	}
 
 	/**
-	 * Call a raw RPC handle. See {@link ActorHandle} for type-safe RPC calls.
+	 * Call a raw RPC connection. See {@link ActorConn} for type-safe RPC calls.
 	 *
-	 * @see {@link ActorHandle}
+	 * @see {@link ActorConn}
 	 * @template Args - The type of arguments to pass to the RPC function.
 	 * @template Response - The type of the response returned by the RPC function.
 	 * @param {string} name - The name of the RPC function to call.
@@ -712,10 +712,10 @@ enc
 	 * @returns {Promise<void>} A promise that resolves when the socket is gracefully closed.
 	 */
 	async dispose(): Promise<void> {
-		// Internally, this "disposes" the handle
+		// Internally, this "disposes" the connection
 
 		if (this.#disposed) {
-			logger().warn("handle already disconnected");
+			logger().warn("connection already disconnected");
 			return;
 		}
 		this.#disposed = true;
@@ -729,7 +729,7 @@ enc
 		this.#abortController.abort();
 
 		// Remove from registry
-		this.client[ACTOR_HANDLES_SYMBOL].delete(this);
+		this.client[ACTOR_CONNS_SYMBOL].delete(this);
 
 		// Disconnect transport cleanly
 		if (!this.#transport) {
@@ -776,29 +776,29 @@ type ActorDefinitionRpcs<AD extends AnyActorDefinition> = {
 };
 
 /**
- * Connection to an actor. Allows calling actor's remote procedure calls with inferred types. See {@link ActorHandleRaw} for underlying methods.
+ * Connection to an actor. Allows calling actor's remote procedure calls with inferred types. See {@link ActorConnRaw} for underlying methods.
  *
  * @example
  * ```
- * const room = await client.get<ChatRoom>(...etc...);
+ * const room = await client.connect<ChatRoom>(...etc...);
  * // This calls the rpc named `sendMessage` on the `ChatRoom` actor.
  * await room.sendMessage('Hello, world!');
  * ```
  *
  * Private methods (e.g. those starting with `_`) are automatically excluded.
  *
- * @template AD The actor class that this handle is connected to.
- * @see {@link ActorHandleRaw}
+ * @template AD The actor class that this connection is for.
+ * @see {@link ActorConnRaw}
  */
 
-export type ActorHandle<AD extends AnyActorDefinition> = ActorHandleRaw &
+export type ActorConn<AD extends AnyActorDefinition> = ActorConnRaw &
 	ActorDefinitionRpcs<AD>;
 
 //{
 //	[K in keyof A as K extends string ? K extends `_${string}` ? never : K : K]: A[K] extends (...args: infer Args) => infer Return ? ActorRPCFunction<Args, Return> : never;
 //};
 /**
- * RPC function returned by `ActorHandle`. This will call `ActorHandle.rpc` when triggered.
+ * RPC function returned by `ActorConn`. This will call `ActorConn.rpc` when triggered.
  *
  * @typedef {Function} ActorRPCFunction
  * @template Args

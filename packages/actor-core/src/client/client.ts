@@ -9,11 +9,11 @@ import type {
 import type { CreateRequest } from "@/manager/protocol/query";
 import * as errors from "./errors";
 import {
-	ActorHandle,
-	ActorHandleRaw,
+	ActorConn,
+	ActorConnRaw,
 	ActorRPCFunction,
 	CONNECT_SYMBOL,
-} from "./handle";
+} from "./actor_conn";
 import { logger } from "./log";
 import { importWebSocket } from "@/common/websocket";
 import { importEventSource } from "@/common/eventsource";
@@ -33,35 +33,36 @@ export type ExtractAppFromClient<C extends Client<ActorCoreApp<{}>>> =
  */
 export interface ActorAccessor<AD extends AnyActorDefinition> {
 	/**
-	 * Gets an actor by its tags, creating it if necessary.
+	 * Connects to an actor by its tags, creating it if necessary.
 	 * The actor name is automatically injected from the property accessor.
 	 *
-	 * @template A The actor class that this handle is connected to.
+	 * @template A The actor class that this connection is for.
 	 * @param {ActorTags} [tags={}] - The tags to identify the actor. Defaults to an empty object.
 	 * @param {GetOptions} [opts] - Options for getting the actor.
-	 * @returns {Promise<ActorHandle<AD>>} - A promise resolving to the actor handle.
+	 * @returns {Promise<ActorConn<AD>>} - A promise resolving to the actor connection.
 	 */
-	get(tags?: ActorTags, opts?: GetOptions): Promise<ActorHandle<AD>>;
+	connect(tags?: ActorTags, opts?: GetOptions): Promise<ActorConn<AD>>;
 
 	/**
-	 * Creates a new actor with the name automatically injected from the property accessor.
+	 * Creates a new actor with the name automatically injected from the property accessor,
+	 * and connects to it.
 	 *
-	 * @template A The actor class that this handle is connected to.
+	 * @template A The actor class that this connection is for.
 	 * @param {CreateOptions} opts - Options for creating the actor (excluding name and tags).
 	 * @param {ActorTags} [tags={}] - The tags to identify the actor. Defaults to an empty object.
-	 * @returns {Promise<ActorHandle<AD>>} - A promise resolving to the actor handle.
+	 * @returns {Promise<ActorConn<AD>>} - A promise resolving to the actor connection.
 	 */
-	create(opts: CreateOptions, tags?: ActorTags): Promise<ActorHandle<AD>>;
+	createAndConnect(opts: CreateOptions, tags?: ActorTags): Promise<ActorConn<AD>>;
 
 	/**
-	 * Gets an actor by its ID.
+	 * Connects to an actor by its ID.
 	 *
-	 * @template A The actor class that this handle is connected to.
+	 * @template A The actor class that this connection is for.
 	 * @param {string} actorId - The ID of the actor.
 	 * @param {GetWithIdOptions} [opts] - Options for getting the actor.
-	 * @returns {Promise<ActorHandle<AD>>} - A promise resolving to the actor handle.
+	 * @returns {Promise<ActorConn<AD>>} - A promise resolving to the actor connection.
 	 */
-	getWithId(actorId: string, opts?: GetWithIdOptions): Promise<ActorHandle<AD>>;
+	connectForId(actorId: string, opts?: GetWithIdOptions): Promise<ActorConn<AD>>;
 }
 
 /**
@@ -134,43 +135,7 @@ export interface DynamicImports {
 	EventSource: typeof EventSource;
 }
 
-export const ACTOR_HANDLES_SYMBOL = Symbol("actorHandles");
-
-/**
- * Represents an actor accessor that provides methods to interact with a specific actor.
- */
-export interface ActorAccessor<AD extends AnyActorDefinition> {
-	/**
-	 * Gets an actor by its tags, creating it if necessary.
-	 * The actor name is automatically injected from the property accessor.
-	 *
-	 * @template A The actor class that this handle is connected to.
-	 * @param {ActorTags} [tags={}] - The tags to identify the actor. Defaults to an empty object.
-	 * @param {GetOptions} [opts] - Options for getting the actor.
-	 * @returns {Promise<ActorHandle<AD>>} - A promise resolving to the actor handle.
-	 */
-	get(tags?: ActorTags, opts?: GetOptions): Promise<ActorHandle<AD>>;
-
-	/**
-	 * Creates a new actor with the name automatically injected from the property accessor.
-	 *
-	 * @template A The actor class that this handle is connected to.
-	 * @param {CreateOptions} opts - Options for creating the actor (excluding name and tags).
-	 * @param {ActorTags} [tags={}] - The tags to identify the actor. Defaults to an empty object.
-	 * @returns {Promise<ActorHandle<AD>>} - A promise resolving to the actor handle.
-	 */
-	create(opts: CreateOptions, tags?: ActorTags): Promise<ActorHandle<AD>>;
-
-	/**
-	 * Gets an actor by its ID.
-	 *
-	 * @template A The actor class that this handle is connected to.
-	 * @param {string} actorId - The ID of the actor.
-	 * @param {GetWithIdOptions} [opts] - Options for getting the actor.
-	 * @returns {Promise<ActorHandle<AD>>} - A promise resolving to the actor handle.
-	 */
-	getWithId(actorId: string, opts?: GetWithIdOptions): Promise<ActorHandle<AD>>;
-}
+export const ACTOR_CONNS_SYMBOL = Symbol("actorConns");
 
 /**
  * Client for managing & connecting to actors.
@@ -181,7 +146,7 @@ export interface ActorAccessor<AD extends AnyActorDefinition> {
 export class ClientRaw {
 	#disposed = false;
 
-	[ACTOR_HANDLES_SYMBOL] = new Set<ActorHandleRaw>();
+	[ACTOR_CONNS_SYMBOL] = new Set<ActorConnRaw>();
 
 	#managerEndpointPromise: Promise<string>;
 	//#regionPromise: Promise<Region | undefined>;
@@ -229,17 +194,17 @@ export class ClientRaw {
 	}
 
 	/**
-	 * Gets an actor by its ID.
-	 * @template AD The actor class that this handle is connected to.
+	 * Connects to an actor by its ID.
+	 * @template AD The actor class that this connection is for.
 	 * @param {string} actorId - The ID of the actor.
 	 * @param {GetWithIdOptions} [opts] - Options for getting the actor.
-	 * @returns {Promise<ActorHandle<AD>>} - A promise resolving to the actor handle.
+	 * @returns {Promise<ActorConn<AD>>} - A promise resolving to the actor connection.
 	 */
-	async getWithId<AD extends AnyActorDefinition>(
+	async connectForId<AD extends AnyActorDefinition>(
 		actorId: string,
 		opts?: GetWithIdOptions,
-	): Promise<ActorHandle<AD>> {
-		logger().debug("get actor with id ", {
+	): Promise<ActorConn<AD>> {
+		logger().debug("connect to actor with id ", {
 			actorId,
 			params: opts?.params,
 		});
@@ -255,20 +220,20 @@ export class ClientRaw {
 			},
 		});
 
-		const handle = await this.#createHandle(
+		const conn = await this.#createConn(
 			resJson.endpoint,
 			opts?.params,
 			resJson.supportedTransports,
 		);
-		return this.#createProxy(handle) as ActorHandle<AD>;
+		return this.#createProxy(conn) as ActorConn<AD>;
 	}
 
 	/**
-	 * Gets an actor by its tags, creating it if necessary.
+	 * Connects to an actor by its tags, creating it if necessary.
 	 *
 	 * @example
 	 * ```
-	 * const room = await client.get<ChatRoom>(
+	 * const room = await client.connect<ChatRoom>(
 	 *   // Get or create the actor for the channel `random`
 	 *   { name: 'my_document', channel: 'random' },
 	 * );
@@ -277,16 +242,16 @@ export class ClientRaw {
 	 * await room.sendMessage('Hello, world!');
 	 * ```
 	 *
-	 * @template AD The actor class that this handle is connected to.
+	 * @template AD The actor class that this connection is for.
 	 * @param {ActorTags} [tags={}] - The tags to identify the actor. Defaults to an empty object.
 	 * @param {GetOptions} [opts] - Options for getting the actor.
-	 * @returns {Promise<ActorHandle<AD>>} - A promise resolving to the actor handle.
-	 * @see {@link https://rivet.gg/docs/manage#client.get}
+	 * @returns {Promise<ActorConn<AD>>} - A promise resolving to the actor connection.
+	 * @see {@link https://rivet.gg/docs/manage#client.connect}
 	 */
-	async get<AD extends AnyActorDefinition>(
+	async connect<AD extends AnyActorDefinition>(
 		tags: ActorTags = {},
 		opts?: GetOptions,
-	): Promise<ActorHandle<AD>> {
+	): Promise<ActorConn<AD>> {
 		// Extract name from tags
 		const { name, ...restTags } = tags;
 
@@ -301,7 +266,7 @@ export class ClientRaw {
 			};
 		}
 
-		logger().debug("get actor", {
+		logger().debug("connect to actor", {
 			tags,
 			parameters: opts?.params,
 			create,
@@ -320,21 +285,21 @@ export class ClientRaw {
 			},
 		});
 
-		const handle = await this.#createHandle(
+		const conn = await this.#createConn(
 			resJson.endpoint,
 			opts?.params,
 			resJson.supportedTransports,
 		);
-		return this.#createProxy(handle) as ActorHandle<AD>;
+		return this.#createProxy(conn) as ActorConn<AD>;
 	}
 
 	/**
-	 * Creates a new actor with the provided tags.
+	 * Creates a new actor with the provided tags and connects to it.
 	 *
 	 * @example
 	 * ```
 	 * // Create a new document actor
-	 * const doc = await client.create<MyDocument>(
+	 * const doc = await client.createAndConnect<MyDocument>(
 	 *   { region: 'us-east-1' },
 	 *   { name: 'my_document', docId: '123' }
 	 * );
@@ -342,16 +307,16 @@ export class ClientRaw {
 	 * await doc.doSomething();
 	 * ```
 	 *
-	 * @template AD The actor class that this handle is connected to.
+	 * @template AD The actor class that this connection is for.
 	 * @param {CreateOptions} opts - Options for creating the actor (excluding name and tags).
 	 * @param {ActorTags} [tags={}] - The tags to identify the actor. Defaults to an empty object.
-	 * @returns {Promise<ActorHandle<AD>>} - A promise resolving to the actor handle.
-	 * @see {@link https://rivet.gg/docs/manage#client.create}
+	 * @returns {Promise<ActorConn<AD>>} - A promise resolving to the actor connection.
+	 * @see {@link https://rivet.gg/docs/manage#client.createAndConnect}
 	 */
-	async create<AD extends AnyActorDefinition>(
+	async createAndConnect<AD extends AnyActorDefinition>(
 		opts: CreateOptions,
 		tags: ActorTags = {},
-	): Promise<ActorHandle<AD>> {
+	): Promise<ActorConn<AD>> {
 		// Extract name from tags
 		const { name, ...restTags } = tags;
 
@@ -365,7 +330,7 @@ export class ClientRaw {
 		// Default to the chosen region
 		//if (!create.region) create.region = (await this.#regionPromise)?.id;
 
-		logger().debug("create actor", {
+		logger().debug("create actor and connect", {
 			tags,
 			parameters: opts?.params,
 			create,
@@ -380,22 +345,22 @@ export class ClientRaw {
 			},
 		});
 
-		const handle = await this.#createHandle(
+		const conn = await this.#createConn(
 			resJson.endpoint,
 			opts?.params,
 			resJson.supportedTransports,
 		);
-		return this.#createProxy(handle) as ActorHandle<AD>;
+		return this.#createProxy(conn) as ActorConn<AD>;
 	}
 
-	async #createHandle(
+	async #createConn(
 		endpoint: string,
 		params: unknown,
 		serverTransports: Transport[],
-	): Promise<ActorHandleRaw> {
+	): Promise<ActorConnRaw> {
 		const imports = await this.#dynamicImportsPromise;
 
-		const handle = new ActorHandleRaw(
+		const conn = new ActorConnRaw(
 			this,
 			endpoint,
 			params,
@@ -404,18 +369,18 @@ export class ClientRaw {
 			serverTransports,
 			imports,
 		);
-		this[ACTOR_HANDLES_SYMBOL].add(handle);
-		handle[CONNECT_SYMBOL]();
-		return handle;
+		this[ACTOR_CONNS_SYMBOL].add(conn);
+		conn[CONNECT_SYMBOL]();
+		return conn;
 	}
 
 	#createProxy<AD extends AnyActorDefinition>(
-		handle: ActorHandleRaw,
-	): ActorHandle<AD> {
+		conn: ActorConnRaw,
+	): ActorConn<AD> {
 		// Stores returned RPC functions for faster calls
 		const methodCache = new Map<string, ActorRPCFunction>();
-		return new Proxy(handle, {
-			get(target: ActorHandleRaw, prop: string | symbol, receiver: unknown) {
+		return new Proxy(conn, {
+			get(target: ActorConnRaw, prop: string | symbol, receiver: unknown) {
 				// Handle built-in Symbol properties
 				if (typeof prop === "symbol") {
 					return Reflect.get(target, prop, receiver);
@@ -449,7 +414,7 @@ export class ClientRaw {
 			},
 
 			// Support for 'in' operator
-			has(target: ActorHandleRaw, prop: string | symbol) {
+			has(target: ActorConnRaw, prop: string | symbol) {
 				// All string properties are potentially RPC functions
 				if (typeof prop === "string") {
 					return true;
@@ -459,17 +424,17 @@ export class ClientRaw {
 			},
 
 			// Support instanceof checks
-			getPrototypeOf(target: ActorHandleRaw) {
+			getPrototypeOf(target: ActorConnRaw) {
 				return Reflect.getPrototypeOf(target);
 			},
 
 			// Prevent property enumeration of non-existent RPC methods
-			ownKeys(target: ActorHandleRaw) {
+			ownKeys(target: ActorConnRaw) {
 				return Reflect.ownKeys(target);
 			},
 
 			// Support proper property descriptors
-			getOwnPropertyDescriptor(target: ActorHandleRaw, prop: string | symbol) {
+			getOwnPropertyDescriptor(target: ActorConnRaw, prop: string | symbol) {
 				const targetDescriptor = Reflect.getOwnPropertyDescriptor(target, prop);
 				if (targetDescriptor) {
 					return targetDescriptor;
@@ -485,7 +450,7 @@ export class ClientRaw {
 				}
 				return undefined;
 			},
-		}) as ActorHandle<AD>;
+		}) as ActorConn<AD>;
 	}
 
 	/**
@@ -525,58 +490,6 @@ export class ClientRaw {
 	}
 
 	/**
-	 * Fetches the region information.
-	 * @private
-	 * @returns {Promise<Region | undefined>} - A promise resolving to the region or undefined.
-	 * @see {@link https://rivet.gg/docs/edge#Fetching-regions-via-API}
-	 */
-	//async #fetchRegion(): Promise<Region | undefined> {
-	//	try {
-	//		// Fetch the connection info from the manager
-	//		const { endpoint, project, environment } =
-	//			await this.#sendManagerRequest<undefined, RivetConfigResponse>(
-	//				"GET",
-	//				"/rivet/config",
-	//			);
-	//
-	//		// Fetch the region
-	//		//
-	//		// This is fetched from the client instead of the manager so Rivet
-	//		// can automatically determine the recommended region using an
-	//		// anycast request made from the client
-	//		const url = new URL("/regions/resolve", endpoint);
-	//		if (project) url.searchParams.set("project", project);
-	//		if (environment) url.searchParams.set("environment", environment);
-	//		const res = await fetch(url.toString());
-	//
-	//		if (!res.ok) {
-	//			// Add safe fallback in case we can't fetch the region
-	//			logger().error(
-	//				"failed to fetch region, defaulting to manager region",
-	//				{
-	//					status: res.statusText,
-	//					body: await res.text(),
-	//				},
-	//			);
-	//			return undefined;
-	//		}
-	//
-	//		const { region }: { region: Region } = await res.json();
-	//
-	//		return region;
-	//	} catch (error) {
-	//		// Add safe fallback in case we can't fetch the region
-	//		logger().error(
-	//			"failed to fetch region, defaulting to manager region",
-	//			{
-	//				error,
-	//			},
-	//		);
-	//		return undefined;
-	//	}
-	//}
-
-	/**
 	 * Disconnects from all actors.
 	 *
 	 * @returns {Promise<void>} A promise that resolves when the socket is gracefully closed.
@@ -591,8 +504,8 @@ export class ClientRaw {
 		logger().debug("disposing client");
 
 		const disposePromises = [];
-		for (const handle of this[ACTOR_HANDLES_SYMBOL].values()) {
-			disposePromises.push(handle.dispose());
+		for (const conn of this[ACTOR_CONNS_SYMBOL].values()) {
+			disposePromises.push(conn.dispose());
 		}
 		await Promise.all(disposePromises);
 	}
@@ -616,7 +529,7 @@ export type Client<A extends ActorCoreApp<any>> = ClientRaw & {
  * @template A The actor application type.
  * @param {string | Promise<string>} managerEndpointPromise - The manager endpoint or a promise resolving to it.
  * @param {ClientOptions} [opts] - Options for configuring the client.
- * @returns {Client<A>} - A proxied client that supports the `client.myActor.get()` syntax.
+ * @returns {Client<A>} - A proxied client that supports the `client.myActor.connect()` syntax.
  */
 export function createClient<A extends ActorCoreApp<any>>(
 	managerEndpointPromise: string | Promise<string>,
@@ -641,29 +554,29 @@ export function createClient<A extends ActorCoreApp<any>>(
 			if (typeof prop === "string") {
 				// Return actor accessor object with methods
 				return {
-					get: (
+					connect: (
 						tags?: ActorTags,
 						opts?: GetOptions,
-					): Promise<ActorHandle<ExtractActorsFromApp<A>[typeof prop]>> => {
-						return target.get<ExtractActorsFromApp<A>[typeof prop]>(
+					): Promise<ActorConn<ExtractActorsFromApp<A>[typeof prop]>> => {
+						return target.connect<ExtractActorsFromApp<A>[typeof prop]>(
 							{ name: prop, ...(tags || {}) },
 							opts
 						);
 					},
-					create: (
+					createAndConnect: (
 						opts: CreateOptions,
 						tags?: ActorTags,
-					): Promise<ActorHandle<ExtractActorsFromApp<A>[typeof prop]>> => {
-						return target.create<ExtractActorsFromApp<A>[typeof prop]>(
+					): Promise<ActorConn<ExtractActorsFromApp<A>[typeof prop]>> => {
+						return target.createAndConnect<ExtractActorsFromApp<A>[typeof prop]>(
 							opts,
 							{ name: prop, ...(tags || {}) }
 						);
 					},
-					getWithId: (
+					connectForId: (
 						actorId: string,
 						opts?: GetWithIdOptions,
-					): Promise<ActorHandle<ExtractActorsFromApp<A>[typeof prop]>> => {
-						return target.getWithId<ExtractActorsFromApp<A>[typeof prop]>(
+					): Promise<ActorConn<ExtractActorsFromApp<A>[typeof prop]>> => {
+						return target.connectForId<ExtractActorsFromApp<A>[typeof prop]>(
 							actorId,
 							opts,
 						);

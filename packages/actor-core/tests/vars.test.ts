@@ -25,7 +25,7 @@ describe("Actor Vars", () => {
 			});
 
 			const { client } = await setupTest<typeof app>(c, app);
-			const instance = await client.varActor.get();
+			const instance = await client.varActor.connect();
 
 			// Test accessing vars
 			const result = await instance.getVars();
@@ -72,10 +72,10 @@ describe("Actor Vars", () => {
 			const { client } = await setupTest<typeof app>(c, app);
 
 			// Create two separate instances
-			const instance1 = await client.nestedVarActor.get(
+			const instance1 = await client.nestedVarActor.connect(
 				{ id: "instance1" }
 			);
-			const instance2 = await client.nestedVarActor.get(
+			const instance2 = await client.nestedVarActor.connect(
 				{ id: "instance2" }
 			);
 
@@ -119,7 +119,7 @@ describe("Actor Vars", () => {
 			const { client } = await setupTest<typeof app>(c, app);
 
 			// Create an instance
-			const instance = await client.dynamicVarActor.get();
+			const instance = await client.dynamicVarActor.connect();
 
 			// Test accessing dynamically created vars
 			const vars = await instance.getVars();
@@ -154,10 +154,10 @@ describe("Actor Vars", () => {
 			const { client } = await setupTest<typeof app>(c, app);
 
 			// Create two separate instances
-			const instance1 = await client.uniqueVarActor.get(
+			const instance1 = await client.uniqueVarActor.connect(
 				{ id: "test1" }
 			);
-			const instance2 = await client.uniqueVarActor.get(
+			const instance2 = await client.uniqueVarActor.connect(
 				{ id: "test2" }
 			);
 
@@ -204,7 +204,7 @@ describe("Actor Vars", () => {
 			const { client } = await setupTest<typeof app>(c, app);
 
 			// Create an instance
-			const instance = await client.driverCtxActor.get();
+			const instance = await client.driverCtxActor.connect();
 
 			// Test accessing driver context through vars
 			const vars = await instance.getVars();
