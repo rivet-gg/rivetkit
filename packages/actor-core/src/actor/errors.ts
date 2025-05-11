@@ -194,3 +194,55 @@ export class UserError extends ActorError {
 		});
 	}
 }
+
+// Proxy-related errors
+
+export class MissingRequiredParameters extends ActorError {
+	constructor(missingParams: string[]) {
+		super(
+			"missing_required_parameters", 
+			`Missing required parameters: ${missingParams.join(", ")}`,
+			{ public: true }
+		);
+	}
+}
+
+export class InvalidQueryJSON extends ActorError {
+	constructor(error?: unknown) {
+		super(
+			"invalid_query_json", 
+			`Invalid query JSON: ${error}`,
+			{ public: true, cause: error }
+		);
+	}
+}
+
+export class InvalidQueryFormat extends ActorError {
+	constructor(error?: unknown) {
+		super(
+			"invalid_query_format", 
+			`Invalid query format: ${error}`,
+			{ public: true, cause: error }
+		);
+	}
+}
+
+export class ActorNotFound extends ActorError {
+	constructor(identifier?: string) {
+		super(
+			"actor_not_found", 
+			identifier ? `Actor not found: ${identifier}` : "Actor not found",
+			{ public: true }
+		);
+	}
+}
+
+export class ProxyError extends ActorError {
+	constructor(operation: string, error?: unknown) {
+		super(
+			"proxy_error", 
+			`Error proxying ${operation}: ${error}`,
+			{ public: true, cause: error }
+		);
+	}
+}

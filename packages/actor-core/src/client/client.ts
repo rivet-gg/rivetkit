@@ -212,21 +212,18 @@ export class ClientRaw {
 			params: opts?.params,
 		});
 
-		const resJson = await this.#sendManagerRequest<
-			ActorsRequest,
-			ActorsResponse
-		>("POST", "/manager/actors", {
-			query: {
-				getForId: {
-					actorId,
-				},
+		const actorQuery = {
+			getForId: {
+				actorId,
 			},
-		});
+		};
 
+		const managerEndpoint = await this.#managerEndpointPromise;
 		const conn = await this.#createConn(
-			resJson.endpoint,
+			managerEndpoint,
 			opts?.params,
-			resJson.supportedTransports,
+			["websocket", "sse"],
+			actorQuery
 		);
 		return this.#createProxy(conn) as ActorConn<AD>;
 	}
@@ -284,10 +281,10 @@ export class ClientRaw {
 			create,
 		});
 
-		let requestQuery;
+		let actorQuery;
 		if (opts?.noCreate) {
 			// Use getForKey endpoint if noCreate is specified
-			requestQuery = {
+			actorQuery = {
 				getForKey: {
 					name,
 					key: keyArray,
@@ -295,7 +292,7 @@ export class ClientRaw {
 			};
 		} else {
 			// Use getOrCreateForKey endpoint
-			requestQuery = {
+			actorQuery = {
 				getOrCreateForKey: {
 					name,
 					key: keyArray,
@@ -304,17 +301,12 @@ export class ClientRaw {
 			};
 		}
 
-		const resJson = await this.#sendManagerRequest<
-			ActorsRequest,
-			ActorsResponse
-		>("POST", "/manager/actors", {
-			query: requestQuery,
-		});
-
+		const managerEndpoint = await this.#managerEndpointPromise;
 		const conn = await this.#createConn(
-			resJson.endpoint,
+			managerEndpoint,
 			opts?.params,
-			resJson.supportedTransports,
+			["websocket", "sse"],
+			actorQuery
 		);
 		return this.#createProxy(conn) as ActorConn<AD>;
 	}
@@ -374,19 +366,16 @@ export class ClientRaw {
 			create,
 		});
 
-		const resJson = await this.#sendManagerRequest<
-			ActorsRequest,
-			ActorsResponse
-		>("POST", "/manager/actors", {
-			query: {
-				create,
-			},
-		});
+		const actorQuery = {
+			create,
+		};
 
+		const managerEndpoint = await this.#managerEndpointPromise;
 		const conn = await this.#createConn(
-			resJson.endpoint,
+			managerEndpoint,
 			opts?.params,
-			resJson.supportedTransports,
+			["websocket", "sse"],
+			actorQuery
 		);
 		return this.#createProxy(conn) as ActorConn<AD>;
 	}
@@ -395,6 +384,7 @@ export class ClientRaw {
 		endpoint: string,
 		params: unknown,
 		serverTransports: Transport[],
+		actorQuery: unknown,
 	): Promise<ActorConnRaw> {
 		const imports = await this.#dynamicImportsPromise;
 
@@ -406,6 +396,7 @@ export class ClientRaw {
 			this.#supportedTransports,
 			serverTransports,
 			imports,
+			actorQuery,
 		);
 		this[ACTOR_CONNS_SYMBOL].add(conn);
 		conn[CONNECT_SYMBOL]();

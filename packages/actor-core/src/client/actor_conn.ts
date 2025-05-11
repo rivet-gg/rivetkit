@@ -95,6 +95,7 @@ export class ActorConnRaw {
 		private readonly supportedTransports: Transport[],
 		private readonly serverTransports: Transport[],
 		private readonly dynamicImports: DynamicImports,
+		private readonly actorQuery: unknown,
 	) {
 		this.#keepNodeAliveInterval = setInterval(() => 60_000);
 	}
@@ -115,34 +116,135 @@ export class ActorConnRaw {
 	): Promise<Response> {
 		logger().debug("action", { name, args });
 
-		// TODO: Add to queue if socket is not open
+		// Check if we have an active websocket connection
+		if (this.#transport) {
+			// If we have an active connection, use the websocket RPC
+			const rpcId = this.#rpcIdCounter;
+			this.#rpcIdCounter += 1;
 
-		const rpcId = this.#rpcIdCounter;
-		this.#rpcIdCounter += 1;
+			const { promise, resolve, reject } =
+				Promise.withResolvers<wsToClient.RpcResponseOk>();
+			this.#rpcInFlight.set(rpcId, { name, resolve, reject });
 
-		const { promise, resolve, reject } =
-			Promise.withResolvers<wsToClient.RpcResponseOk>();
-		this.#rpcInFlight.set(rpcId, { name, resolve, reject });
-
-		this.#sendMessage({
-			b: {
-				rr: {
-					i: rpcId,
-					n: name,
-					a: args,
+			this.#sendMessage({
+				b: {
+					rr: {
+						i: rpcId,
+						n: name,
+						a: args,
+					},
 				},
-			},
-		} satisfies wsToServer.ToServer);
+			} satisfies wsToServer.ToServer);
 
-		// TODO: Throw error if disconnect is called
+			// TODO: Throw error if disconnect is called
 
-		const { i: responseId, o: output } = await promise;
-		if (responseId !== rpcId)
-			throw new Error(
-				`Request ID ${rpcId} does not match response ID ${responseId}`,
-			);
+			const { i: responseId, o: output } = await promise;
+			if (responseId !== rpcId)
+				throw new Error(
+					`Request ID ${rpcId} does not match response ID ${responseId}`,
+				);
 
-		return output as Response;
+			return output as Response;
+		} else {
+			// If no websocket connection, use HTTP RPC via manager
+			try {
+				// Get the manager endpoint from the endpoint provided
+				const managerEndpoint = this.endpoint.split('/manager/')[0];
+				const actorQueryStr = encodeURIComponent(JSON.stringify(this.actorQuery));
+				
+				const url = `${managerEndpoint}/actor/rpc/${name}?query=${actorQueryStr}`;
+				logger().debug("=== CLIENT HTTP RPC: Sending request ===", { 
+					url, 
+					managerEndpoint,
+					actorQuery: this.actorQuery, 
+					name,
+					args 
+				});
+				
+				try {
+					const response = await fetch(url, {
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify({
+							a: args,
+						}),
+					});
+
+					logger().debug("=== CLIENT HTTP RPC: Response received ===", { 
+						status: response.status, 
+						ok: response.ok,
+						headers: Object.fromEntries([...response.headers])
+					});
+
+					if (!response.ok) {
+						try {
+							const errorData = await response.json();
+							logger().error("=== CLIENT HTTP RPC: Error response ===", { errorData });
+							throw new errors.ActionError(
+								errorData.c || "RPC_ERROR",
+								errorData.m || "RPC call failed",
+								errorData.md,
+							);
+						} catch (parseError) {
+							// If response is not JSON, get it as text and throw generic error
+							const errorText = await response.text();
+							logger().error("=== CLIENT HTTP RPC: Error parsing response ===", { 
+								errorText, 
+								parseError 
+							});
+							throw new errors.ActionError(
+								"RPC_ERROR",
+								`RPC call failed: ${errorText}`,
+								{},
+							);
+						}
+					}
+
+					// Clone response to avoid consuming it
+					const responseClone = response.clone();
+					const responseText = await responseClone.text();
+					logger().debug("=== CLIENT HTTP RPC: Response body ===", { responseText });
+
+					// Parse response body
+					try {
+						const responseData = JSON.parse(responseText);
+						logger().debug("=== CLIENT HTTP RPC: Parsed response ===", { responseData });
+						return responseData.o as Response;
+					} catch (parseError) {
+						logger().error("=== CLIENT HTTP RPC: Error parsing JSON ===", { 
+							responseText, 
+							parseError 
+						});
+						throw new errors.ActionError(
+							"RPC_ERROR",
+							`Failed to parse response: ${parseError}`,
+							{ responseText }
+						);
+					}
+				} catch (fetchError) {
+					logger().error("=== CLIENT HTTP RPC: Fetch error ===", { 
+						error: fetchError,
+						url
+					});
+					throw new errors.ActionError(
+						"RPC_ERROR",
+						`Fetch failed: ${fetchError}`,
+						{ cause: fetchError }
+					);
+				}
+			} catch (error) {
+				if (error instanceof errors.ActionError) {
+					throw error;
+				}
+				throw new errors.ActionError(
+					"RPC_ERROR", 
+					`Failed to execute RPC ${name}: ${error}`, 
+					{ cause: error }
+				);
+			}
+		}
 	}
 
 	//async #rpcHttp<Args extends Array<unknown> = unknown[], Response = unknown>(name: string, ...args: Args): Promise<Response> {
@@ -453,7 +555,17 @@ enc
 	}
 
 	#buildConnUrl(transport: Transport): string {
-		let url = `${this.endpoint}/connect/${transport}?encoding=${this.encodingKind}`;
+		// Get the manager endpoint from the endpoint provided
+		const managerEndpoint = this.endpoint.split('/manager/')[0];
+		const actorQueryStr = encodeURIComponent(JSON.stringify(this.actorQuery));
+		
+		logger().debug("=== Client building conn URL ===", {
+			originalEndpoint: this.endpoint,
+			managerEndpoint: managerEndpoint,
+			transport: transport
+		});
+		
+		let url = `${managerEndpoint}/actor/connect/${transport}?encoding=${this.encodingKind}&query=${actorQueryStr}`;
 
 		if (this.params !== undefined) {
 			const paramsStr = JSON.stringify(this.params);
@@ -469,6 +581,8 @@ enc
 		if (transport === "websocket") {
 			url = url.replace(/^http:/, "ws:").replace(/^https:/, "wss:");
 		}
+		
+		logger().debug("=== Client final conn URL ===", { url });
 
 		return url;
 	}
@@ -617,7 +731,11 @@ enc
 			if (!this.#connectionId || !this.#connectionToken)
 				throw new errors.InternalError("Missing connection ID or token.");
 
-			let url = `${this.endpoint}/connections/${this.#connectionId}/message?encoding=${this.encodingKind}&connectionToken=${encodeURIComponent(this.#connectionToken)}`;
+			// Get the manager endpoint from the endpoint provided
+			const managerEndpoint = this.endpoint.split('/manager/')[0];
+			const actorQueryStr = encodeURIComponent(JSON.stringify(this.actorQuery));
+
+			let url = `${managerEndpoint}/actor/connections/${this.#connectionId}/message?encoding=${this.encodingKind}&connectionToken=${encodeURIComponent(this.#connectionToken)}&query=${actorQueryStr}`;
 
 			// TODO: Implement ordered messages, this is not guaranteed order. Needs to use an index in order to ensure we can pipeline requests efficiently.
 			// TODO: Validate that we're using HTTP/3 whenever possible for pipelining requests

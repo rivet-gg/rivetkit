@@ -1,5 +1,6 @@
 import { ActorKeySchema, type ActorKey } from "@/common//utils";
 import { z } from "zod";
+import { EncodingSchema } from "@/actor/protocol/serde";
 
 export const CreateRequestSchema = z.object({
 	name: z.string(),
@@ -35,9 +36,16 @@ export const ActorQuerySchema = z.union([
 	}),
 ]);
 
+export const ConnectQuerySchema = z.object({
+	query: ActorQuerySchema,
+	encoding: EncodingSchema,
+	params: z.string().optional(),
+});
+
 export type ActorQuery = z.infer<typeof ActorQuerySchema>;
 export type GetForKeyRequest = z.infer<typeof GetForKeyRequestSchema>;
 export type GetOrCreateRequest = z.infer<typeof GetOrCreateRequestSchema>;
+export type ConnectQuery = z.infer<typeof ConnectQuerySchema>;
 /**
  * Interface representing a request to create an actor.
  */
