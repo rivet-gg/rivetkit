@@ -24,12 +24,6 @@ export class MalformedResponseMessage extends ActorClientError {
 	}
 }
 
-export class NoSupportedTransport extends ActorClientError {
-	constructor() {
-		super("No supported transport available between client and server");
-	}
-}
-
 export class ActionError extends ActorClientError {
 	constructor(
 		public readonly code: string,
