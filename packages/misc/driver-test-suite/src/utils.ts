@@ -1,12 +1,12 @@
 import type { ActorCoreApp } from "actor-core";
 import { type TestContext, vi } from "vitest";
-import { createClient, type Client } from "actor-core/client";
-import type { DriverTestConfig } from "./mod";
+import { createClient, Transport, type Client } from "actor-core/client";
+import type { DriverTestConfig, DriverTestConfigWithTransport } from "./mod";
 
 // Must use `TestContext` since global hooks do not work when running concurrently
 export async function setupDriverTest<A extends ActorCoreApp<any>>(
 	c: TestContext,
-	driverTestConfig: DriverTestConfig,
+	driverTestConfig: DriverTestConfigWithTransport,
 	appPath: string,
 ): Promise<{
 	client: Client<A>;
@@ -20,7 +20,9 @@ export async function setupDriverTest<A extends ActorCoreApp<any>>(
 	c.onTestFinished(cleanup);
 
 	// Create client
-	const client = createClient<A>(endpoint);
+	const client = createClient<A>(endpoint, {
+		transport: driverTestConfig.transport,
+	});
 	if (!driverTestConfig.HACK_skipCleanupNet) {
 		c.onTestFinished(async () => await client.dispose());
 	}
