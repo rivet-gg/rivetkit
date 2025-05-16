@@ -17,6 +17,7 @@ import { createNodeWebSocket, type NodeWebSocket } from "@hono/node-ws";
 import invariant from "invariant";
 import { bundleRequire } from "bundle-require";
 import { getPort } from "actor-core/test";
+import { Transport } from "actor-core/client";
 
 export interface DriverTestConfig {
 	/** Deploys an app and returns the connection endpoint. */
@@ -32,6 +33,10 @@ export interface DriverTestConfig {
 	HACK_skipCleanupNet?: boolean;
 }
 
+export interface DriverTestConfigWithTransport extends DriverTestConfig {
+	transport: Transport;
+}
+
 export interface DriverDeployOutput {
 	endpoint: string;
 
@@ -41,10 +46,18 @@ export interface DriverDeployOutput {
 
 /** Runs all Vitest tests against the provided drivers. */
 export function runDriverTests(driverTestConfig: DriverTestConfig) {
-	describe("driver tests", () => {
-		runActorDriverTests(driverTestConfig);
-		runManagerDriverTests(driverTestConfig);
-	});
+	for (const transport of ["websocket", "sse"] as Transport[]) {
+		describe(`driver tests (${transport})`, () => {
+			runActorDriverTests({
+				...driverTestConfig,
+				transport,
+			});
+			runManagerDriverTests({
+				...driverTestConfig,
+				transport,
+			});
+		});
+	}
 }
 
 /**

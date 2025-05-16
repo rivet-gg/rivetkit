@@ -1,5 +1,5 @@
 import { describe, test, expect, vi } from "vitest";
-import type { DriverTestConfig } from "@/mod";
+import type { DriverTestConfig, DriverTestConfigWithTransport } from "@/mod";
 import { setupDriverTest } from "@/utils";
 import { resolve } from "node:path";
 import type { App as CounterApp } from "../../fixtures/apps/counter";
@@ -20,7 +20,7 @@ export async function waitFor(
 		return Promise.resolve();
 	}
 }
-export function runActorDriverTests(driverTestConfig: DriverTestConfig) {
+export function runActorDriverTests(driverTestConfig: DriverTestConfigWithTransport) {
 	describe("Actor Driver Tests", () => {
 		describe("State Persistence", () => {
 			test("persists state between actor instances", async (c) => {

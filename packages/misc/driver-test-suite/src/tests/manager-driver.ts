@@ -1,11 +1,11 @@
 import { describe, test, expect, vi } from "vitest";
-import { waitFor, type DriverTestConfig } from "@/mod";
+import { DriverTestConfigWithTransport, waitFor, type DriverTestConfig } from "@/mod";
 import { setupDriverTest } from "@/utils";
 import { resolve } from "node:path";
 import type { App as CounterApp } from "../../fixtures/apps/counter";
 import { ConnectionError } from "actor-core/client";
 
-export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
+export function runManagerDriverTests(driverTestConfig: DriverTestConfigWithTransport) {
 	describe("Manager Driver Tests", () => {
 		describe("Client Connection Methods", () => {
 			test("connect() - finds or creates an actor", async (c) => {
