@@ -116,8 +116,7 @@ export class ActorConnRaw {
 		private readonly endpoint: string,
 		private readonly params: unknown,
 		private readonly encodingKind: Encoding,
-		private readonly supportedTransports: Transport[],
-		private readonly serverTransports: Transport[],
+		private readonly transport: Transport,
 		private readonly actorQuery: ActorQuery,
 	) {
 		this.#keepNodeAliveInterval = setInterval(() => 60_000);
@@ -349,13 +348,12 @@ enc
 			this.#onOpenPromise = Promise.withResolvers();
 
 			// Connect transport
-			const transport = this.#pickTransport();
-			if (transport === "websocket") {
+			if (this.transport === "websocket") {
 				this.#connectWebSocket();
-			} else if (transport === "sse") {
+			} else if (this.transport === "sse") {
 				this.#connectSse();
 			} else {
-				assertUnreachable(transport);
+				assertUnreachable(this.transport);
 			}
 
 			// Wait for result
@@ -363,19 +361,6 @@ enc
 		} finally {
 			this.#onOpenPromise = undefined;
 		}
-	}
-
-	#pickTransport(): Transport {
-		// Choose first supported transport from server's list that client also supports
-		const transport = this.serverTransports.find((t) =>
-			this.supportedTransports.includes(t),
-		);
-
-		if (!transport) {
-			throw new errors.NoSupportedTransport();
-		}
-
-		return transport;
 	}
 
 	#connectWebSocket() {

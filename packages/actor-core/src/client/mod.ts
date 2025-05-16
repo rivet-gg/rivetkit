@@ -24,7 +24,6 @@ export {
 	ManagerError,
 	ConnParamsTooLong,
 	MalformedResponseMessage,
-	NoSupportedTransport,
 	ActionError,
 	ConnectionError,
 } from "@/client/errors";

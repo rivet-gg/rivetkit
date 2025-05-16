@@ -63,7 +63,7 @@ export interface ActorAccessor<AD extends AnyActorDefinition> {
  */
 export interface ClientOptions {
 	encoding?: Encoding;
-	supportedTransports?: Transport[];
+	transport?: Transport;
 }
 
 /**
@@ -140,7 +140,7 @@ export class ClientRaw {
 
 	#managerEndpoint: string;
 	#encodingKind: Encoding;
-	#supportedTransports: Transport[];
+	#transport: Transport;
 
 	/**
 	 * Creates an instance of Client.
@@ -153,10 +153,7 @@ export class ClientRaw {
 		this.#managerEndpoint = managerEndpoint;
 
 		this.#encodingKind = opts?.encoding ?? "cbor";
-		this.#supportedTransports = opts?.supportedTransports ?? [
-			"websocket",
-			"sse",
-		];
+		this.#transport = opts?.transport ?? "websocket";
 	}
 
 	/**
@@ -185,12 +182,7 @@ export class ClientRaw {
 		};
 
 		const managerEndpoint = this.#managerEndpoint;
-		const conn = this.#createConn(
-			managerEndpoint,
-			opts?.params,
-			["websocket", "sse"],
-			actorQuery,
-		);
+		const conn = this.#createConn(managerEndpoint, opts?.params, actorQuery);
 		return this.#createProxy(conn) as ActorConn<AD>;
 	}
 
@@ -261,7 +253,6 @@ export class ClientRaw {
 		const conn = this.#createConn(
 			managerEndpoint,
 			opts?.params,
-			["websocket", "sse"],
 			actorQuery,
 		);
 		return this.#createProxy(conn) as ActorConn<AD>;
@@ -324,19 +315,13 @@ export class ClientRaw {
 		};
 
 		const managerEndpoint = this.#managerEndpoint;
-		const conn = this.#createConn(
-			managerEndpoint,
-			opts?.params,
-			["websocket", "sse"],
-			actorQuery,
-		);
+		const conn = this.#createConn(managerEndpoint, opts?.params, actorQuery);
 		return this.#createProxy(conn) as ActorConn<AD>;
 	}
 
 	#createConn(
 		endpoint: string,
 		params: unknown,
-		serverTransports: Transport[],
 		actorQuery: ActorQuery,
 	): ActorConnRaw {
 		const conn = new ActorConnRaw(
@@ -344,8 +329,7 @@ export class ClientRaw {
 			endpoint,
 			params,
 			this.#encodingKind,
-			this.#supportedTransports,
-			serverTransports,
+			this.#transport,
 			actorQuery,
 		);
 		this[ACTOR_CONNS_SYMBOL].add(conn);
