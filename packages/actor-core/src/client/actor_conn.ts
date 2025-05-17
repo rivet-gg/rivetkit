@@ -152,146 +152,34 @@ export class ActorConnRaw {
 
 		logger().debug("action", { name, args });
 
-		// Check if we have an active websocket connection
-		if (this.#transport) {
-			// If we have an active connection, use the websocket RPC
-			const rpcId = this.#rpcIdCounter;
-			this.#rpcIdCounter += 1;
+		// If we have an active connection, use the websocket RPC
+		const rpcId = this.#rpcIdCounter;
+		this.#rpcIdCounter += 1;
 
-			const { promise, resolve, reject } =
-				Promise.withResolvers<wsToClient.RpcResponseOk>();
-			this.#rpcInFlight.set(rpcId, { name, resolve, reject });
+		const { promise, resolve, reject } =
+			Promise.withResolvers<wsToClient.RpcResponseOk>();
+		this.#rpcInFlight.set(rpcId, { name, resolve, reject });
 
-			this.#sendMessage({
-				b: {
-					rr: {
-						i: rpcId,
-						n: name,
-						a: args,
-					},
+		this.#sendMessage({
+			b: {
+				rr: {
+					i: rpcId,
+					n: name,
+					a: args,
 				},
-			} satisfies wsToServer.ToServer);
+			},
+		} satisfies wsToServer.ToServer);
 
-			// TODO: Throw error if disconnect is called
+		// TODO: Throw error if disconnect is called
 
-			const { i: responseId, o: output } = await promise;
-			if (responseId !== rpcId)
-				throw new Error(
-					`Request ID ${rpcId} does not match response ID ${responseId}`,
-				);
+		const { i: responseId, o: output } = await promise;
+		if (responseId !== rpcId)
+			throw new Error(
+				`Request ID ${rpcId} does not match response ID ${responseId}`,
+			);
 
-			return output as Response;
-		} else {
-			// If no websocket connection, use HTTP RPC via manager
-			try {
-				// Get the manager endpoint from the endpoint provided
-				const actorQueryStr = encodeURIComponent(
-					JSON.stringify(this.actorQuery),
-				);
-
-				const url = `${this.endpoint}/actors/rpc/${name}?query=${actorQueryStr}`;
-				logger().debug("http rpc: request", {
-					url,
-					name,
-				});
-
-				try {
-					const response = await fetch(url, {
-						method: "POST",
-						headers: {
-							"Content-Type": "application/json",
-						},
-						body: JSON.stringify({
-							a: args,
-						}),
-					});
-
-					logger().debug("http rpc: response", {
-						status: response.status,
-						ok: response.ok,
-					});
-
-					if (!response.ok) {
-						try {
-							const errorData = await response.json();
-							logger().error("http rpc error response", { errorData });
-							throw new errors.ActionError(
-								errorData.c || "RPC_ERROR",
-								errorData.m || "RPC call failed",
-								errorData.md,
-							);
-						} catch (parseError) {
-							// If response is not JSON, get it as text and throw generic error
-							const errorText = await response.text();
-							logger().error("http rpc: error parsing response", {
-								errorText,
-							});
-							throw new errors.ActionError(
-								"RPC_ERROR",
-								`RPC call failed: ${errorText}`,
-								{},
-							);
-						}
-					}
-
-					// Clone response to avoid consuming it
-					const responseClone = response.clone();
-					const responseText = await responseClone.text();
-
-					// Parse response body
-					try {
-						const responseData = JSON.parse(responseText);
-						return responseData.o as Response;
-					} catch (parseError) {
-						logger().error("http rpc: error parsing json", {
-							parseError,
-						});
-						throw new errors.ActionError(
-							"RPC_ERROR",
-							`Failed to parse response: ${parseError}`,
-							{ responseText },
-						);
-					}
-				} catch (fetchError) {
-					logger().error("http rpc: fetch error", {
-						error: fetchError,
-					});
-					throw new errors.ActionError(
-						"RPC_ERROR",
-						`Fetch failed: ${fetchError}`,
-						{ cause: fetchError },
-					);
-				}
-			} catch (error) {
-				if (error instanceof errors.ActionError) {
-					throw error;
-				}
-				throw new errors.ActionError(
-					"RPC_ERROR",
-					`Failed to execute RPC ${name}: ${error}`,
-					{ cause: error },
-				);
-			}
-		}
+		return output as Response;
 	}
-
-	//async #rpcHttp<Args extends Array<unknown> = unknown[], Response = unknown>(name: string, ...args: Args): Promise<Response> {
-	//	const origin = `${resolved.isTls ? "https": "http"}://${resolved.publicHostname}:${resolved.publicPort}`;
-	//	const url = `${origin}/rpc/${encodeURIComponent(name)}`;
-	//	const res = await fetch(url, {
-	//		method: "POST",
-	//		// TODO: Import type from protocol
-	//		body: JSON.stringify({
-	//			args,
-	//		})
-	//	});
-	//	if (!res.ok) {
-	//		throw new Error(`RPC error (${res.statusText}):\n${await res.text()}`);
-	//	}
-	//	// TODO: Import type from protocol
-	//	const resJson: httpRpc.ResponseOk<Response> = await res.json();
-	//	return resJson.output;
-	//}
 
 	/**
 	 * Do not call this directly.

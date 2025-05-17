@@ -10,7 +10,8 @@ export default {
 		testTimeout: 15_000,
 		env: {
 			// Enable logging
-			_LOG_LEVEL: "DEBUG"
+			_LOG_LEVEL: "DEBUG",
+			_ACTOR_CORE_ERROR_STACK: "1"
 		}
 	},
 } satisfies ViteUserConfig;

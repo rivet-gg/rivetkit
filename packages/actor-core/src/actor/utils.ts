@@ -1,6 +1,8 @@
 import * as errors from "./errors";
+import { logger } from "./log";
 
 export function assertUnreachable(x: never): never {
+	logger().error("unreachable", { value: `${x}`, stack: new Error().stack });
 	throw new errors.Unreachable(x);
 }
 
@@ -35,7 +37,7 @@ export const throttle = <
 
 export class DeadlineError extends Error {
 	constructor() {
-		super("Promise did not complete before deadline.")
+		super("Promise did not complete before deadline.");
 	}
 }
 
@@ -49,9 +51,7 @@ export function deadline<T>(promise: Promise<T>, timeout: number): Promise<T> {
 	return Promise.race<T>([
 		promise,
 		new Promise<T>((_, reject) => {
-			signal.addEventListener("abort", () =>
-				reject(new DeadlineError()),
-			);
+			signal.addEventListener("abort", () => reject(new DeadlineError()));
 		}),
 	]).finally(() => {
 		clearTimeout(timeoutId);

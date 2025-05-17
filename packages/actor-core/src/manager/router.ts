@@ -239,7 +239,7 @@ export function createManagerRouter(
 			if ("inline" in handler.proxyMode) {
 				logger().debug("using inline proxy mode for sse connection");
 				// Use the shared SSE handler
-				return handleSseConnect(
+				return await handleSseConnect(
 					c,
 					appConfig,
 					driverConfig,
@@ -416,7 +416,6 @@ export function createManagerRouter(
 	});
 
 	if (appConfig.inspector.enabled) {
-		logger().debug("setting up inspector routes");
 		app.route(
 			"/inspect",
 			createManagerInspectorRouter(

@@ -5,7 +5,7 @@ import { assertUnreachable } from "../utils";
 import * as cbor from "cbor-x";
 
 /** Data that can be deserialized. */
-export type InputData = string | Buffer | Blob | ArrayBufferLike;
+export type InputData = string | Buffer | Blob | ArrayBufferLike | Uint8Array;
 
 /** Data that's been serialized. */
 export type OutputData = string | Uint8Array;
@@ -71,9 +71,12 @@ export async function deserialize(data: InputData, encoding: Encoding) {
 		if (data instanceof Blob) {
 			const arrayBuffer = await data.arrayBuffer();
 			return cbor.decode(new Uint8Array(arrayBuffer));
-		} else if (data instanceof ArrayBuffer) {
-			return cbor.decode(new Uint8Array(data));
-		} else if (Buffer.isBuffer(data)) {
+		} else if (data instanceof Uint8Array) {
+			return cbor.decode(data);
+		} else if (
+			data instanceof ArrayBuffer ||
+			data instanceof SharedArrayBuffer
+		) {
 			return cbor.decode(new Uint8Array(data));
 		} else {
 			logger().warn("received non-binary type for cbor parse");
