@@ -35,11 +35,10 @@ function getValueLength(value: InputData): number {
 		return value.size;
 	} else if (
 		value instanceof ArrayBuffer ||
-		value instanceof SharedArrayBuffer
+		value instanceof SharedArrayBuffer ||
+		value instanceof Uint8Array
 	) {
 		return value.byteLength;
-	} else if (Buffer.isBuffer(value)) {
-		return value.length;
 	} else {
 		assertUnreachable(value);
 	}
@@ -76,7 +75,10 @@ export interface ProcessMessageHandler<S, CP, CS, V> {
 		args: unknown[],
 	) => Promise<unknown>;
 	onSubscribe?: (eventName: string, conn: Conn<S, CP, CS, V>) => Promise<void>;
-	onUnsubscribe?: (eventName: string, conn: Conn<S, CP, CS, V>) => Promise<void>;
+	onUnsubscribe?: (
+		eventName: string,
+		conn: Conn<S, CP, CS, V>,
+	) => Promise<void>;
 }
 
 export async function processMessage<S, CP, CS, V>(
@@ -101,19 +103,23 @@ export async function processMessage<S, CP, CS, V>(
 			rpcId = id;
 			rpcName = name;
 
-			logger().debug("processing RPC request", { id, name, argsCount: args.length });
-			
+			logger().debug("processing RPC request", {
+				id,
+				name,
+				argsCount: args.length,
+			});
+
 			const ctx = new ActionContext<S, CP, CS, V>(actor.actorContext, conn);
-			
+
 			// Process the RPC request and wait for the result
 			// This will wait for async actions to complete
 			const output = await handler.onExecuteRpc(ctx, name, args);
-			
-			logger().debug("sending RPC response", { 
-				id, 
-				name, 
-				outputType: typeof output, 
-				isPromise: output instanceof Promise 
+
+			logger().debug("sending RPC response", {
+				id,
+				name,
+				outputType: typeof output,
+				isPromise: output instanceof Promise,
 			});
 
 			// Send the response back to the client
@@ -127,7 +133,7 @@ export async function processMessage<S, CP, CS, V>(
 					},
 				}),
 			);
-			
+
 			logger().debug("RPC response sent", { id, name });
 		} else if ("sr" in message.b) {
 			// Subscription request
@@ -140,15 +146,21 @@ export async function processMessage<S, CP, CS, V>(
 			}
 
 			const { e: eventName, s: subscribe } = message.b.sr;
-			logger().debug("processing subscription request", { eventName, subscribe });
+			logger().debug("processing subscription request", {
+				eventName,
+				subscribe,
+			});
 
 			if (subscribe) {
 				await handler.onSubscribe(eventName, conn);
 			} else {
 				await handler.onUnsubscribe(eventName, conn);
 			}
-			
-			logger().debug("subscription request completed", { eventName, subscribe });
+
+			logger().debug("subscription request completed", {
+				eventName,
+				subscribe,
+			});
 		} else {
 			assertUnreachable(message.b);
 		}
@@ -163,7 +175,7 @@ export async function processMessage<S, CP, CS, V>(
 			rpcId,
 			rpcName,
 			code,
-			message
+			message,
 		});
 
 		// Build response
@@ -193,7 +205,7 @@ export async function processMessage<S, CP, CS, V>(
 				}),
 			);
 		}
-		
+
 		logger().debug("error response sent", { rpcId, rpcName });
 	}
 }

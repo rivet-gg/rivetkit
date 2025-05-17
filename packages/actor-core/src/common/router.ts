@@ -15,7 +15,7 @@ export function loggerMiddleware(logger: Logger) {
 		await next();
 
 		const duration = Date.now() - startTime;
-		logger.debug("http request", {
+		logger.info("http request", {
 			method,
 			path,
 			status: c.res.status,

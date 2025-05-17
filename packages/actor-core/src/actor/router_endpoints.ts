@@ -213,13 +213,20 @@ export async function handleSseConnect(
 	return streamSSE(c, async (stream) => {
 		try {
 			await sseHandler.onOpen(stream);
+
+			// Wait for close
+			const abortResolver = Promise.withResolvers();
 			c.req.raw.signal.addEventListener("abort", async () => {
 				try {
+					abortResolver.resolve(undefined);
 					await sseHandler.onClose();
 				} catch (error) {
 					logger().error("error closing sse connection", { error });
 				}
 			});
+
+			// Wait until connection aborted
+			await abortResolver.promise;
 		} catch (error) {
 			logger().error("error opening sse connection", { error });
 			throw error;
