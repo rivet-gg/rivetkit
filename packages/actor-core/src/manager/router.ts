@@ -1,36 +1,37 @@
-import { Hono, Next, type Context as HonoContext } from "hono";
-import { cors } from "hono/cors";
-import { logger } from "./log";
+import * as errors from "@/actor/errors";
+import type * as protoHttpResolve from "@/actor/protocol/http/resolve";
+import type { ToClient } from "@/actor/protocol/message/to-client";
+import { type Encoding, serialize } from "@/actor/protocol/serde";
+import {
+	type ConnectionHandlers,
+	getRequestEncoding,
+	handleConnectionMessage,
+	handleRpc,
+	handleSseConnect,
+	handleWebSocketConnect,
+} from "@/actor/router_endpoints";
+import { assertUnreachable } from "@/actor/utils";
+import type { AppConfig } from "@/app/config";
 import {
 	handleRouteError,
 	handleRouteNotFound,
 	loggerMiddleware,
 } from "@/common/router";
-import type { DriverConfig } from "@/driver-helpers/config";
-import type { AppConfig } from "@/app/config";
-import {
-	createManagerInspectorRouter,
-	type ManagerInspectorConnHandler,
-} from "@/inspector/manager";
-import { ConnectQuerySchema } from "./protocol/query";
-import * as errors from "@/actor/errors";
-import type { ActorQuery } from "./protocol/query";
-import { assertUnreachable } from "@/actor/utils";
-import invariant from "invariant";
-import {
-	type ConnectionHandlers,
-	handleSseConnect,
-	handleRpc,
-	handleConnectionMessage,
-	getRequestEncoding,
-	handleWebSocketConnect,
-} from "@/actor/router_endpoints";
-import { ManagerDriver } from "./driver";
-import { Encoding, serialize } from "@/actor/protocol/serde";
 import { deconstructError } from "@/common/utils";
-import { WSContext } from "hono/ws";
-import { ToClient } from "@/actor/protocol/message/to-client";
+import type { DriverConfig } from "@/driver-helpers/config";
+import {
+	type ManagerInspectorConnHandler,
+	createManagerInspectorRouter,
+} from "@/inspector/manager";
+import { Hono, type Context as HonoContext, type Next } from "hono";
+import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
+import type { WSContext } from "hono/ws";
+import invariant from "invariant";
+import type { ManagerDriver } from "./driver";
+import { logger } from "./log";
+import { ConnectQuerySchema } from "./protocol/query";
+import type { ActorQuery } from "./protocol/query";
 
 type ProxyMode =
 	| {
@@ -103,6 +104,40 @@ export function createManagerRouter(
 
 	app.get("/health", (c) => {
 		return c.text("ok");
+	});
+
+	// Resolve actor ID from query
+	app.post("/actors/resolve", async (c) => {
+		const encoding = getRequestEncoding(c.req);
+		logger().debug("resolve request encoding", { encoding });
+
+		// Get query parameters for actor lookup
+		const queryParam = c.req.query("query");
+		if (!queryParam) {
+			logger().error("missing query parameter for resolve");
+			throw new errors.MissingRequiredParameters(["query"]);
+		}
+
+		// Parse the query JSON and validate with schema
+		let parsedQuery: ActorQuery;
+		try {
+			parsedQuery = JSON.parse(queryParam as string);
+		} catch (error) {
+			logger().error("invalid query json for resolve", { error });
+			throw new errors.InvalidQueryJSON(error);
+		}
+
+		// Get the actor ID and meta
+		const { actorId, meta } = await queryActor(c, parsedQuery, driver);
+		logger().debug("resolved actor", { actorId, meta });
+		invariant(actorId, "Missing actor ID");
+
+		// Format response according to protocol
+		const response: protoHttpResolve.ResolveResponse = {
+			i: actorId,
+		};
+		const serialized = serialize(response, encoding);
+		return c.body(serialized);
 	});
 
 	app.get("/actors/connect/websocket", async (c) => {
