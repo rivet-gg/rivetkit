@@ -10,7 +10,7 @@ import { importWebSocket } from "@/common/websocket";
 import type { ActorQuery } from "@/manager/protocol/query";
 import * as cbor from "cbor-x";
 import pRetry from "p-retry";
-import type { ActorDefinitionRpcs as ActorDefinitionRpcsImport } from "./actor_common";
+import type { ActorDefinitionRpcs as ActorDefinitionRpcsImport } from "./actor-common";
 import { ACTOR_CONNS_SYMBOL, type ClientRaw, TRANSPORT_SYMBOL } from "./client";
 import * as errors from "./errors";
 import { logger } from "./log";

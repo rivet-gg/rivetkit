@@ -6,7 +6,7 @@ import type {
 	GetWithKeyInput,
 	ManagerDriver,
 } from "@/driver-helpers/mod";
-import type { TestGlobalState } from "./global_state";
+import type { TestGlobalState } from "./global-state";
 import { ManagerInspector } from "@/inspector/manager";
 import type { ActorCoreApp } from "@/app/mod";
 

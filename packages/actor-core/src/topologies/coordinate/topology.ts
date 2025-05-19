@@ -21,7 +21,7 @@ import type {
 	ConnectSseOutput,
 	RpcOutput,
 	ConnectionHandlers,
-} from "@/actor/router_endpoints";
+} from "@/actor/router-endpoints";
 
 export interface GlobalState {
 	nodeId: string;

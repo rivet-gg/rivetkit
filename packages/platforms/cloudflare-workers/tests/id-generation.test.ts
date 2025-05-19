@@ -1,6 +1,6 @@
 import { describe, test, expect, vi } from "vitest";
 import { serializeNameAndKey } from "../src/util";
-import { CloudflareWorkersManagerDriver } from "../src/manager_driver";
+import { CloudflareWorkersManagerDriver } from "../src/manager-driver";
 
 describe("Deterministic ID generation", () => {
   test("should generate consistent IDs for the same name and key", () => {

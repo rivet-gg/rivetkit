@@ -1,3 +1,3 @@
-export { TestGlobalState } from "./global_state";
+export { TestGlobalState } from "./global-state";
 export { TestActorDriver } from "./actor";
 export { TestManagerDriver } from "./manager";

@@ -31,7 +31,7 @@ import type {
 	RpcOpts,
 	RpcOutput,
 	ConnectionHandlers,
-} from "@/actor/router_endpoints";
+} from "@/actor/router-endpoints";
 
 class ActorHandler {
 	/** Will be undefined if not yet loaded. */

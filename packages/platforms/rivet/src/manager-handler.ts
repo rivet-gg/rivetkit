@@ -1,10 +1,10 @@
 import { setupLogging } from "actor-core/log";
 import type { ActorContext } from "@rivet-gg/actor-core";
 import { logger } from "./log";
-import { GetActorMeta, RivetManagerDriver } from "./manager_driver";
-import type { RivetClientConfig } from "./rivet_client";
+import { GetActorMeta, RivetManagerDriver } from "./manager-driver";
+import type { RivetClientConfig } from "./rivet-client";
 import type { RivetHandler } from "./util";
-import { createWebSocketProxy } from "./ws_proxy";
+import { createWebSocketProxy } from "./ws-proxy";
 import { PartitionTopologyManager } from "actor-core/topologies/partition";
 import { type InputConfig, ConfigSchema } from "./config";
 import { proxy } from "hono/proxy";
