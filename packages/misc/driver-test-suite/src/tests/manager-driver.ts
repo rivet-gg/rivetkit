@@ -1,11 +1,17 @@
 import { describe, test, expect, vi } from "vitest";
-import { DriverTestConfigWithTransport, waitFor, type DriverTestConfig } from "@/mod";
+import {
+	DriverTestConfigWithTransport,
+	waitFor,
+	type DriverTestConfig,
+} from "@/mod";
 import { setupDriverTest } from "@/utils";
 import { resolve } from "node:path";
 import type { App as CounterApp } from "../../fixtures/apps/counter";
-import { ConnectionError } from "actor-core/client";
+import { ActorError } from "actor-core/client";
 
-export function runManagerDriverTests(driverTestConfig: DriverTestConfigWithTransport) {
+export function runManagerDriverTests(
+	driverTestConfig: DriverTestConfigWithTransport,
+) {
 	describe("Manager Driver Tests", () => {
 		describe("Client Connection Methods", () => {
 			test("connect() - finds or creates an actor", async (c) => {
@@ -89,7 +95,7 @@ export function runManagerDriverTests(driverTestConfig: DriverTestConfigWithTran
 				const nonexistentId = `nonexistent-${crypto.randomUUID()}`;
 
 				// Should fail when actor doesn't exist
-				let counter1Error: ConnectionError;
+				let counter1Error: ActorError;
 				const counter1 = client.counter.connect([nonexistentId], {
 					noCreate: true,
 				});
@@ -97,7 +103,7 @@ export function runManagerDriverTests(driverTestConfig: DriverTestConfigWithTran
 					counter1Error = e;
 				});
 				await vi.waitFor(
-					() => expect(counter1Error).toBeInstanceOf(ConnectionError),
+					() => expect(counter1Error).toBeInstanceOf(ActorError),
 					500,
 				);
 				await counter1.dispose();

@@ -58,6 +58,13 @@ export class ActionContext<S, CP, CS, V> {
 	}
 
 	/**
+	 * Gets actor ID.
+	 */
+	get actorId(): string {
+		return this.#actorContext.actorId;
+	}
+
+	/**
 	 * Gets the actor name.
 	 */
 	get name(): string {

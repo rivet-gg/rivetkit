@@ -20,7 +20,7 @@ export type Encoding = z.infer<typeof EncodingSchema>;
 /**
  * Helper class that helps serialize data without re-serializing for the same encoding.
  */
-export class CachedSerializer<T = unknown> {
+export class CachedSerializer<T> {
 	#data: T;
 	#cache = new Map<Encoding, OutputData>();
 

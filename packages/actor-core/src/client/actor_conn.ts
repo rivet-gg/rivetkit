@@ -9,16 +9,20 @@ import * as errors from "./errors";
 import { logger } from "./log";
 import { type WebSocketMessage as ConnMessage, messageLength } from "./utils";
 import { ACTOR_CONNS_SYMBOL, type ClientRaw } from "./client";
-import type { ActorDefinition, AnyActorDefinition } from "@/actor/definition";
+import type { AnyActorDefinition } from "@/actor/definition";
 import pRetry from "p-retry";
 import { importWebSocket } from "@/common/websocket";
 import { importEventSource } from "@/common/eventsource";
-import invariant from "invariant";
 import type { ActorQuery } from "@/manager/protocol/query";
+import { ActorDefinitionRpcs as ActorDefinitionRpcsImport } from "./actor_common";
+
+// Re-export the type with the original name to maintain compatibility
+type ActorDefinitionRpcs<AD extends AnyActorDefinition> =
+	ActorDefinitionRpcsImport<AD>;
 
 interface RpcInFlight {
 	name: string;
-	resolve: (response: wsToClient.RpcResponseOk) => void;
+	resolve: (response: wsToClient.RpcResponse) => void;
 	reject: (error: Error) => void;
 }
 
@@ -37,9 +41,9 @@ export type EventUnsubscribe = () => void;
 /**
  * A function that handles connection errors.
  *
- * @typedef {Function} ConnectionErrorCallback
+ * @typedef {Function} ActorErrorCallback
  */
-export type ConnectionErrorCallback = (error: errors.ConnectionError) => void;
+export type ActorErrorCallback = (error: errors.ActorError) => void;
 
 interface SendOpts {
 	ephemeral: boolean;
@@ -80,7 +84,7 @@ export class ActorConnRaw {
 	// biome-ignore lint/suspicious/noExplicitAny: Unknown subscription type
 	#eventSubscriptions = new Map<string, Set<EventSubscriptions<any[]>>>();
 
-	#errorHandlers = new Set<ConnectionErrorCallback>();
+	#errorHandlers = new Set<ActorErrorCallback>();
 
 	#rpcIdCounter = 0;
 
@@ -157,7 +161,7 @@ export class ActorConnRaw {
 		this.#rpcIdCounter += 1;
 
 		const { promise, resolve, reject } =
-			Promise.withResolvers<wsToClient.RpcResponseOk>();
+			Promise.withResolvers<wsToClient.RpcResponse>();
 		this.#rpcInFlight.set(rpcId, { name, resolve, reject });
 
 		this.#sendMessage({
@@ -359,42 +363,52 @@ enc
 				connectionId: this.#connectionId,
 			});
 			this.#handleOnOpen();
-		} else if ("ce" in response.b) {
+		} else if ("e" in response.b) {
 			// Connection error
-			const { c: code, m: message, md: metadata } = response.b.ce;
+			const { c: code, m: message, md: metadata, ri: rpcId } = response.b.e;
 
-			logger().warn("actor connection error", {
-				code,
-				message,
-				metadata,
-			});
+			if (rpcId) {
+				const inFlight = this.#takeRpcInFlight(rpcId);
 
-			// Create a connection error
-			const connectionError = new errors.ConnectionError(
-				code,
-				message,
-				metadata,
-			);
+				logger().warn("rpc error", {
+					actionId: rpcId,
+					actionName: inFlight?.name,
+					code,
+					message,
+					metadata,
+				});
 
-			// If we have an onOpenPromise, reject it with the error
-			if (this.#onOpenPromise) {
-				this.#onOpenPromise.reject(connectionError);
+				inFlight.reject(new errors.ActorError(code, message, metadata));
+			} else {
+				logger().warn("connection error", {
+					code,
+					message,
+					metadata,
+				});
+
+				// Create a connection error
+				const actorError = new errors.ActorError(code, message, metadata);
+
+				// If we have an onOpenPromise, reject it with the error
+				if (this.#onOpenPromise) {
+					this.#onOpenPromise.reject(actorError);
+				}
+
+				// Reject any in-flight requests
+				for (const [id, inFlight] of this.#rpcInFlight.entries()) {
+					inFlight.reject(actorError);
+					this.#rpcInFlight.delete(id);
+				}
+
+				// Dispatch to error handler if registered
+				this.#dispatchActorError(actorError);
 			}
-
-			// Reject any in-flight requests
-			for (const [id, inFlight] of this.#rpcInFlight.entries()) {
-				inFlight.reject(connectionError);
-				this.#rpcInFlight.delete(id);
-			}
-
-			// Dispatch to error handler if registered
-			this.#dispatchConnectionError(connectionError);
-		} else if ("ro" in response.b) {
+		} else if ("rr" in response.b) {
 			// RPC response OK
-			const { i: rpcId } = response.b.ro;
+			const { i: rpcId, o: outputType } = response.b.rr;
 			logger().trace("received RPC response", {
 				rpcId,
-				outputType: typeof response.b.ro.o,
+				outputType,
 			});
 
 			const inFlight = this.#takeRpcInFlight(rpcId);
@@ -402,38 +416,13 @@ enc
 				rpcId,
 				actionName: inFlight?.name,
 			});
-			inFlight.resolve(response.b.ro);
-		} else if ("re" in response.b) {
-			// RPC response error
-			const { i: rpcId, c: code, m: message, md: metadata } = response.b.re;
-			logger().trace("received RPC error", { rpcId, code, message });
-
-			const inFlight = this.#takeRpcInFlight(rpcId);
-
-			logger().warn("actor error", {
-				actionId: rpcId,
-				actionName: inFlight?.name,
-				code,
-				message,
-				metadata,
-			});
-
-			inFlight.reject(new errors.ActionError(code, message, metadata));
+			inFlight.resolve(response.b.rr);
 		} else if ("ev" in response.b) {
 			logger().trace("received event", {
 				name: response.b.ev.n,
 				argsCount: response.b.ev.a?.length,
 			});
 			this.#dispatchEvent(response.b.ev);
-		} else if ("er" in response.b) {
-			const { c: code, m: message, md: metadata } = response.b.er;
-			logger().trace("received error", { code, message });
-
-			logger().warn("actor error", {
-				code,
-				message,
-				metadata,
-			});
 		} else {
 			assertUnreachable(response.b);
 		}
@@ -525,7 +514,7 @@ enc
 		return inFlight;
 	}
 
-	#dispatchEvent(event: wsToClient.ToClientEvent) {
+	#dispatchEvent(event: wsToClient.Event) {
 		const { n: name, a: args } = event;
 
 		const listeners = this.#eventSubscriptions.get(name);
@@ -547,7 +536,7 @@ enc
 		}
 	}
 
-	#dispatchConnectionError(error: errors.ConnectionError) {
+	#dispatchActorError(error: errors.ActorError) {
 		// Call all registered error handlers
 		for (const handler of [...this.#errorHandlers]) {
 			try {
@@ -626,10 +615,10 @@ enc
 	/**
 	 * Subscribes to connection errors.
 	 *
-	 * @param {ConnectionErrorCallback} callback - The callback function to execute when a connection error occurs.
+	 * @param {ActorErrorCallback} callback - The callback function to execute when a connection error occurs.
 	 * @returns {() => void} - A function to unsubscribe from the error handler.
 	 */
-	onError(callback: ConnectionErrorCallback): () => void {
+	onError(callback: ActorErrorCallback): () => void {
 		this.#errorHandlers.add(callback);
 
 		// Return unsubscribe function
@@ -840,17 +829,6 @@ enc
 	}
 }
 
-type ExtractActorDefinitionRpcs<AD extends AnyActorDefinition> =
-	AD extends ActorDefinition<any, any, any, any, infer R> ? R : never;
-
-type ActorDefinitionRpcs<AD extends AnyActorDefinition> = {
-	[K in keyof ExtractActorDefinitionRpcs<AD>]: ExtractActorDefinitionRpcs<AD>[K] extends (
-		...args: infer Args
-	) => infer Return
-		? ActorRPCFunction<Args, Return>
-		: never;
-};
-
 /**
  * Connection to an actor. Allows calling actor's remote procedure calls with inferred types. See {@link ActorConnRaw} for underlying methods.
  *
@@ -869,23 +847,3 @@ type ActorDefinitionRpcs<AD extends AnyActorDefinition> = {
 
 export type ActorConn<AD extends AnyActorDefinition> = ActorConnRaw &
 	ActorDefinitionRpcs<AD>;
-
-//{
-//	[K in keyof A as K extends string ? K extends `_${string}` ? never : K : K]: A[K] extends (...args: infer Args) => infer Return ? ActorRPCFunction<Args, Return> : never;
-//};
-/**
- * RPC function returned by `ActorConn`. This will call `ActorConn.rpc` when triggered.
- *
- * @typedef {Function} ActorRPCFunction
- * @template Args
- * @template Response
- * @param {...Args} args - Arguments for the RPC function.
- * @returns {Promise<Response>}
- */
-
-export type ActorRPCFunction<
-	Args extends Array<unknown> = unknown[],
-	Response = unknown,
-> = (
-	...args: Args extends [unknown, ...infer Rest] ? Rest : Args
-) => Promise<Response>;

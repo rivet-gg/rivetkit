@@ -5,6 +5,7 @@ import { CachedSerializer } from "./protocol/serde";
 import type { ConnDriver } from "./driver";
 import * as messageToClient from "@/actor/protocol/message/to-client";
 import type { PersistedConn } from "./persisted";
+import * as wsToClient from "@/actor/protocol/message/to-client";
 
 export function generateConnId(): string {
 	return crypto.randomUUID();
@@ -135,7 +136,7 @@ export class Conn<S, CP, CS, V> {
 	 */
 	public send(eventName: string, ...args: unknown[]) {
 		this._sendMessage(
-			new CachedSerializer({
+			new CachedSerializer<wsToClient.ToClient>({
 				b: {
 					ev: {
 						n: eventName,

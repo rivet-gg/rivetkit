@@ -1,6 +1,9 @@
 import type { Context as HonoContext, Next } from "hono";
 import { getLogger, Logger } from "./log";
 import { deconstructError } from "./utils";
+import { getRequestEncoding } from "@/actor/router_endpoints";
+import { serialize } from "@/actor/protocol/serde";
+import { ResponseError } from "@/actor/protocol/http/error";
 
 export function logger() {
 	return getLogger("router");
@@ -41,5 +44,15 @@ export function handleRouteError(error: unknown, c: HonoContext) {
 		},
 	);
 
-	return c.json({ code, message, metadata }, { status: statusCode });
+	const encoding = getRequestEncoding(c.req);
+	const output = serialize(
+		{
+			c: code,
+			m: message,
+			md: metadata,
+		} satisfies ResponseError,
+		encoding,
+	);
+
+	return c.body(output, { status: statusCode });
 }

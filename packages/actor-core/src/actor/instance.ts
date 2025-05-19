@@ -15,6 +15,7 @@ import { instanceLogger, logger } from "./log";
 import type { ActionContext } from "./action";
 import { DeadlineError, Lock, deadline } from "./utils";
 import { Schedule } from "./schedule";
+import * as wsToClient from "@/actor/protocol/message/to-client";
 import type * as wsToServer from "@/actor/protocol/message/to-server";
 import { CachedSerializer } from "./protocol/serde";
 import { ActorInspector } from "@/inspector/actor";
@@ -716,7 +717,7 @@ export class ActorInstance<S, CP, CS, V> {
 
 		// Send init message
 		conn._sendMessage(
-			new CachedSerializer({
+			new CachedSerializer<wsToClient.ToClient>({
 				b: {
 					i: {
 						ci: `${conn.id}`,
@@ -1019,7 +1020,7 @@ export class ActorInstance<S, CP, CS, V> {
 		const subscriptions = this.#subscriptionIndex.get(name);
 		if (!subscriptions) return;
 
-		const toClientSerializer = new CachedSerializer({
+		const toClientSerializer = new CachedSerializer<wsToClient.ToClient>({
 			b: {
 				ev: {
 					n: name,
