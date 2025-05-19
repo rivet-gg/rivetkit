@@ -1,5 +1,5 @@
 import type { ActorDriver, AnyActorInstance } from "actor-core/driver-helpers";
-import type { FileSystemGlobalState } from "./global_state";
+import type { FileSystemGlobalState } from "./global-state";
 
 export type ActorDriverContext = Record<never, never>;
 

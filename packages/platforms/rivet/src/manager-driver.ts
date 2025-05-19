@@ -7,7 +7,7 @@ import type {
 	GetActorOutput,
 } from "actor-core/driver-helpers";
 import { logger } from "./log";
-import { type RivetClientConfig, rivetRequest } from "./rivet_client";
+import { type RivetClientConfig, rivetRequest } from "./rivet-client";
 import { serializeKeyForTag, deserializeKeyFromTag } from "./util";
 
 export interface ActorState {

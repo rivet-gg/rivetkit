@@ -2,13 +2,13 @@ import {
 	type DurableObjectConstructor,
 	type ActorHandlerInterface,
 	createActorDurableObject,
-} from "./actor_handler_do";
+} from "./actor-handler-do";
 import { ConfigSchema, type InputConfig } from "./config";
 import { assertUnreachable } from "actor-core/utils";
 import type { Hono } from "hono";
 import { PartitionTopologyManager } from "actor-core/topologies/partition";
 import { logger } from "./log";
-import { CloudflareWorkersManagerDriver } from "./manager_driver";
+import { CloudflareWorkersManagerDriver } from "./manager-driver";
 import { ActorCoreApp } from "actor-core";
 import { upgradeWebSocket } from "./websocket";
 

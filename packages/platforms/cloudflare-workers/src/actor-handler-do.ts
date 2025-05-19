@@ -6,7 +6,7 @@ import { PartitionTopologyActor } from "actor-core/topologies/partition";
 import {
 	CloudflareDurableObjectGlobalState,
 	CloudflareWorkersActorDriver,
-} from "./actor_driver";
+} from "./actor-driver";
 import { upgradeWebSocket } from "./websocket";
 
 const KEYS = {

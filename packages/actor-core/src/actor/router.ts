@@ -27,7 +27,7 @@ import {
 	handleSseConnect,
 	handleRpc,
 	handleConnectionMessage,
-} from "./router_endpoints";
+} from "./router-endpoints";
 
 export type {
 	ConnectWebSocketOpts,

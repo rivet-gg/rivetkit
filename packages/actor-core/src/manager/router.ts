@@ -9,7 +9,7 @@ import {
 	handleRpc,
 	handleSseConnect,
 	handleWebSocketConnect,
-} from "@/actor/router_endpoints";
+} from "@/actor/router-endpoints";
 import { assertUnreachable } from "@/actor/utils";
 import type { AppConfig } from "@/app/config";
 import {

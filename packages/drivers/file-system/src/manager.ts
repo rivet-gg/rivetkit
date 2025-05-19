@@ -8,7 +8,7 @@ import type {
 	ManagerDriver,
 } from "actor-core/driver-helpers";
 import { logger } from "./log";
-import type { FileSystemGlobalState } from "./global_state";
+import type { FileSystemGlobalState } from "./global-state";
 import type { ActorCoreApp } from "actor-core";
 import { ManagerInspector } from "actor-core/inspector";
 

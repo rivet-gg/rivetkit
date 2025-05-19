@@ -6,8 +6,8 @@ import type { RivetHandler } from "./util";
 import { deserializeKeyFromTag } from "./util";
 import { PartitionTopologyActor } from "actor-core/topologies/partition";
 import { ConfigSchema, type InputConfig } from "./config";
-import { RivetActorDriver } from "./actor_driver";
-import { rivetRequest } from "./rivet_client";
+import { RivetActorDriver } from "./actor-driver";
+import { rivetRequest } from "./rivet-client";
 import invariant from "invariant";
 
 export function createActorHandler(inputConfig: InputConfig): RivetHandler {

@@ -6,7 +6,7 @@ import type {
 	GetWithKeyInput,
 	ManagerDriver,
 } from "actor-core/driver-helpers";
-import type { MemoryGlobalState } from "./global_state";
+import type { MemoryGlobalState } from "./global-state";
 import { ManagerInspector } from "actor-core/inspector";
 import type { ActorCoreApp } from "actor-core";
 

@@ -1,5 +1,5 @@
 import type { ActorDriver, AnyActorInstance } from "@/driver-helpers/mod";
-import type { TestGlobalState } from "./global_state";
+import type { TestGlobalState } from "./global-state";
 
 export interface ActorDriverContext {
 	// Used to test that the actor context works from tests

@@ -1,7 +1,7 @@
 import type { Context as HonoContext, Next } from "hono";
 import { getLogger, Logger } from "./log";
 import { deconstructError } from "./utils";
-import { getRequestEncoding } from "@/actor/router_endpoints";
+import { getRequestEncoding } from "@/actor/router-endpoints";
 import { serialize } from "@/actor/protocol/serde";
 import { ResponseError } from "@/actor/protocol/http/error";
 

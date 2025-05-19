@@ -1,3 +1,3 @@
-export { createActorHandler } from "./actor_handler";
-export { createManagerHandler } from "./manager_handler";
+export { createActorHandler } from "./actor-handler";
+export { createManagerHandler } from "./manager-handler";
 export type { InputConfig as Config } from "./config";

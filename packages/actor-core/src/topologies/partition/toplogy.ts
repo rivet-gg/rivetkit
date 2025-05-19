@@ -38,7 +38,7 @@ import type {
 	ConnectWebSocketOutput,
 	ConnectSseOutput,
 	RpcOutput,
-} from "@/actor/router_endpoints";
+} from "@/actor/router-endpoints";
 
 export class PartitionTopologyManager {
 	router: Hono;
