@@ -126,7 +126,7 @@ export async function processMessage<S, CP, CS, V>(
 			conn._sendMessage(
 				new CachedSerializer<wsToClient.ToClient>({
 					b: {
-						ro: {
+						rr: {
 							i: id,
 							o: output,
 						},
@@ -179,32 +179,18 @@ export async function processMessage<S, CP, CS, V>(
 		});
 
 		// Build response
-		if (rpcId !== undefined) {
-			conn._sendMessage(
-				new CachedSerializer({
-					b: {
-						re: {
-							i: rpcId,
-							c: code,
-							m: message,
-							md: metadata,
-						},
+		conn._sendMessage(
+			new CachedSerializer<wsToClient.ToClient>({
+				b: {
+					e: {
+						c: code,
+						m: message,
+						md: metadata,
+						ri: rpcId,
 					},
-				}),
-			);
-		} else {
-			conn._sendMessage(
-				new CachedSerializer({
-					b: {
-						er: {
-							c: code,
-							m: message,
-							md: metadata,
-						},
-					},
-				}),
-			);
-		}
+				},
+			}),
+		);
 
 		logger().debug("error response sent", { rpcId, rpcName });
 	}

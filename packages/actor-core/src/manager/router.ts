@@ -179,7 +179,7 @@ export function createManagerRouter(
 							// Serialize and send the connection error
 							const errorMsg: ToClient = {
 								b: {
-									ce: {
+									e: {
 										c: code,
 										m: message,
 										md: metadata,
@@ -278,7 +278,7 @@ export function createManagerRouter(
 						// Serialize and send the connection error
 						const errorMsg: ToClient = {
 							b: {
-								ce: {
+								e: {
 									c: code,
 									m: message,
 									md: metadata,

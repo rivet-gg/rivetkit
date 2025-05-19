@@ -109,5 +109,53 @@ export function runActorDriverTests(driverTestConfig: DriverTestConfigWithTransp
 				expect(scheduledCount).toBe(1);
 			});
 		});
+		
+		describe("Actor Handle", () => {
+			test("stateless handle can perform RPC calls", async (c) => {
+				const { client } = await setupDriverTest<CounterApp>(
+					c,
+					driverTestConfig,
+					resolve(__dirname, "../fixtures/apps/counter.ts"),
+				);
+				
+				// Get a handle to an actor
+				const counterHandle = client.counter.get("test-handle");
+				await counterHandle.increment(1);
+				await counterHandle.increment(2);
+				const count = await counterHandle.getCount();
+				expect(count).toBe(3);
+			});
+			
+			test("stateless handles to same actor share state", async (c) => {
+				const { client } = await setupDriverTest<CounterApp>(
+					c,
+					driverTestConfig,
+					resolve(__dirname, "../fixtures/apps/counter.ts"),
+				);
+				
+				// Get a handle to an actor
+				const handle1 = client.counter.get("test-handle-shared");
+				await handle1.increment(5);
+				
+				// Get another handle to same actor
+				const handle2 = client.counter.get("test-handle-shared");
+				const count = await handle2.getCount();
+				expect(count).toBe(5);
+			});
+			
+			test("create new actor with handle", async (c) => {
+				const { client } = await setupDriverTest<CounterApp>(
+					c,
+					driverTestConfig,
+					resolve(__dirname, "../fixtures/apps/counter.ts"),
+				);
+				
+				// Create a new actor with handle
+				const createdHandle = client.counter.create("test-handle-create");
+				await createdHandle.increment(5);
+				const count = await createdHandle.getCount();
+				expect(count).toBe(5);
+			});
+		});
 	});
 }

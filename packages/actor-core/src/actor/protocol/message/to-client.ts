@@ -9,64 +9,42 @@ export const InitSchema = z.object({
 });
 
 // Used for connection errors (both during initialization and afterwards)
-export const ConnectionErrorSchema = z.object({
+export const ErrorSchema = z.object({
 	// Code
 	c: z.string(),
 	// Message
 	m: z.string(),
 	// Metadata
 	md: z.unknown().optional(),
+	// RPC ID
+	ri: z.number().int().optional(),
 });
 
-export const RpcResponseOkSchema = z.object({
+export const RpcResponseSchema = z.object({
 	// ID
 	i: z.number().int(),
 	// Output
 	o: z.unknown(),
 });
 
-export const RpcResponseErrorSchema = z.object({
-	// ID
-	i: z.number().int(),
-	// Code
-	c: z.string(),
-	// Message
-	m: z.string(),
-	// Metadata
-	md: z.unknown().optional(),
-});
-
-export const ToClientEventSchema = z.object({
+export const EventSchema = z.object({
 	// Name
 	n: z.string(),
 	// Args
 	a: z.array(z.unknown()),
 });
 
-export const ToClientErrorSchema = z.object({
-	// Code
-	c: z.string(),
-	// Message
-	m: z.string(),
-	// Metadata
-	md: z.unknown().optional(),
-});
-
 export const ToClientSchema = z.object({
 	// Body
 	b: z.union([
 		z.object({ i: InitSchema }),
-		z.object({ ce: ConnectionErrorSchema }),
-		z.object({ ro: RpcResponseOkSchema }),
-		z.object({ re: RpcResponseErrorSchema }),
-		z.object({ ev: ToClientEventSchema }),
-		z.object({ er: ToClientErrorSchema }),
+		z.object({ e: ErrorSchema }),
+		z.object({ rr: RpcResponseSchema }),
+		z.object({ ev: EventSchema }),
 	]),
 });
 
 export type ToClient = z.infer<typeof ToClientSchema>;
-export type ConnectionError = z.infer<typeof ConnectionErrorSchema>;
-export type RpcResponseOk = z.infer<typeof RpcResponseOkSchema>;
-export type RpcResponseError = z.infer<typeof RpcResponseErrorSchema>;
-export type ToClientEvent = z.infer<typeof ToClientEventSchema>;
-export type ToClientError = z.infer<typeof ToClientErrorSchema>;
+export type Error = z.infer<typeof ErrorSchema>;
+export type RpcResponse = z.infer<typeof RpcResponseSchema>;
+export type Event = z.infer<typeof EventSchema>;

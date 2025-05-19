@@ -249,6 +249,8 @@ export async function handleRpc(
 		const encoding = getRequestEncoding(c.req);
 		const parameters = getRequestConnParams(c.req, appConfig, driverConfig);
 
+		logger().debug("handling rpc", { rpcName, encoding });
+
 		// Validate incoming request
 		let rpcArgs: unknown[];
 		if (encoding === "json") {
@@ -271,7 +273,7 @@ export async function handleRpc(
 				);
 
 				// Validate using the RPC schema
-				const result = protoHttpRpc.RequestSchema.safeParse(deserialized);
+				const result = protoHttpRpc.RpcRequestSchema.safeParse(deserialized);
 				if (!result.success) {
 					throw new errors.InvalidRpcRequest("Invalid RPC request format");
 				}

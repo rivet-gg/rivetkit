@@ -24,7 +24,7 @@ export class MalformedResponseMessage extends ActorClientError {
 	}
 }
 
-export class ActionError extends ActorClientError {
+export class ActorError extends ActorClientError {
 	constructor(
 		public readonly code: string,
 		message: string,
@@ -34,15 +34,8 @@ export class ActionError extends ActorClientError {
 	}
 }
 
-/**
- * Error thrown when a connection error occurs.
- */
-export class ConnectionError extends ActorClientError {
-	constructor(
-		public readonly code: string,
-		message: string,
-		public readonly metadata?: unknown,
-	) {
-		super(message);
+export class HttpRequestError extends ActorClientError {
+	constructor(message: string, opts?: { cause?: unknown }) {
+		super(`HTTP request error: ${message}`, { cause: opts?.cause });
 	}
 }

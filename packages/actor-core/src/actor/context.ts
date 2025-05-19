@@ -5,7 +5,6 @@ import { Conn, ConnId } from "./connection";
 import { ActorKey } from "@/common/utils";
 import { Schedule } from "./schedule";
 
-
 /**
  * ActorContext class that provides access to actor methods and state
  */
@@ -36,7 +35,6 @@ export class ActorContext<S, CP, CS, V> {
 	 * @param args - The arguments to send with the event.
 	 */
 	broadcast<Args extends Array<unknown>>(name: string, ...args: Args): void {
-		// @ts-ignore - Access protected method
 		this.#actor._broadcast(name, ...args);
 		return;
 	}
@@ -45,15 +43,20 @@ export class ActorContext<S, CP, CS, V> {
 	 * Gets the logger instance.
 	 */
 	get log(): Logger {
-		// @ts-ignore - Access protected method
 		return this.#actor.log;
+	}
+
+	/**
+	 * Gets actor ID.
+	 */
+	get actorId(): string {
+		return this.#actor.id;
 	}
 
 	/**
 	 * Gets the actor name.
 	 */
 	get name(): string {
-		// @ts-ignore - Access protected method
 		return this.#actor.name;
 	}
 
@@ -61,7 +64,6 @@ export class ActorContext<S, CP, CS, V> {
 	 * Gets the actor key.
 	 */
 	get key(): ActorKey {
-		// @ts-ignore - Access protected method
 		return this.#actor.key;
 	}
 
@@ -69,7 +71,6 @@ export class ActorContext<S, CP, CS, V> {
 	 * Gets the region.
 	 */
 	get region(): string {
-		// @ts-ignore - Access protected method
 		return this.#actor.region;
 	}
 
@@ -77,7 +78,6 @@ export class ActorContext<S, CP, CS, V> {
 	 * Gets the scheduler.
 	 */
 	get schedule(): Schedule {
-		// @ts-ignore - Access protected method
 		return this.#actor.schedule;
 	}
 
@@ -85,7 +85,6 @@ export class ActorContext<S, CP, CS, V> {
 	 * Gets the map of connections.
 	 */
 	get conns(): Map<ConnId, Conn<S, CP, CS, V>> {
-		// @ts-ignore - Access protected method
 		return this.#actor.conns;
 	}
 
@@ -95,7 +94,6 @@ export class ActorContext<S, CP, CS, V> {
 	 * @param opts - Options for saving the state.
 	 */
 	async saveState(opts: SaveStateOptions): Promise<void> {
-		// @ts-ignore - Access protected method
 		return this.#actor.saveState(opts);
 	}
 
@@ -105,7 +103,6 @@ export class ActorContext<S, CP, CS, V> {
 	 * @param promise - The promise to run in the background.
 	 */
 	runInBackground(promise: Promise<void>): void {
-		// @ts-ignore - Access protected method
 		this.#actor._runInBackground(promise);
 		return;
 	}
