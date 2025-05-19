@@ -5,6 +5,8 @@ import type { AnyActorDefinition } from "@/actor/definition";
 import type { ActorQuery } from "@/manager/protocol/query";
 import type { ActorDefinitionRpcs } from "./actor_common";
 import type { RpcRequest, RpcResponse } from "@/actor/protocol/http/rpc";
+import { type ActorConn, ActorConnRaw } from "./actor_conn";
+import { CREATE_ACTOR_CONN_PROXY, type ClientRaw } from "./client";
 
 /**
  * Provides underlying functions for stateless {@link ActorHandle} for RPC calls.
@@ -13,6 +15,7 @@ import type { RpcRequest, RpcResponse } from "@/actor/protocol/http/rpc";
  * @see {@link ActorHandle}
  */
 export class ActorHandleRaw {
+	#client: ClientRaw;
 	#endpoint: string;
 	#encodingKind: Encoding;
 	#actorQuery: ActorQuery;
@@ -27,11 +30,13 @@ export class ActorHandleRaw {
 	 * @protected
 	 */
 	public constructor(
+		client: any,
 		endpoint: string,
 		private readonly params: unknown,
 		encodingKind: Encoding,
 		actorQuery: ActorQuery,
 	) {
+		this.#client = client;
 		this.#endpoint = endpoint;
 		this.#encodingKind = encodingKind;
 		this.#actorQuery = actorQuery;
@@ -82,6 +87,30 @@ export class ActorHandleRaw {
 
 		return responseData.o as Response;
 	}
+
+	/**
+	 * Establishes a persistent connection to the actor.
+	 *
+	 * @template AD The actor class that this connection is for.
+	 * @returns {ActorConn<AD>} A connection to the actor.
+	 */
+	connect(): ActorConn<AnyActorDefinition> {
+		logger().debug("establishing connection from handle", {
+			query: this.#actorQuery,
+		});
+
+		const conn = new ActorConnRaw(
+			this.#client,
+			this.#endpoint,
+			this.params,
+			this.#encodingKind,
+			this.#actorQuery,
+		);
+
+		return this.#client[CREATE_ACTOR_CONN_PROXY](
+			conn,
+		) as ActorConn<AnyActorDefinition>;
+	}
 }
 
 /**
@@ -100,5 +129,10 @@ export class ActorHandleRaw {
  * @template AD The actor class that this handle is for.
  * @see {@link ActorHandleRaw}
  */
-export type ActorHandle<AD extends AnyActorDefinition> = ActorHandleRaw &
-	ActorDefinitionRpcs<AD>;
+export type ActorHandle<AD extends AnyActorDefinition> = Omit<
+	ActorHandleRaw,
+	"connect"
+> & {
+	// Add typed version of ActorConn (instead of using AnyActorDefinition)
+	connect(): ActorConn<AD>;
+} & ActorDefinitionRpcs<AD>;
