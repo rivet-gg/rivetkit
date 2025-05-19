@@ -1,12 +1,14 @@
-import type { Encoding } from "@/actor/protocol/serde";
-import { logger } from "./log";
-import { sendHttpRequest } from "./utils";
 import type { AnyActorDefinition } from "@/actor/definition";
-import type { ActorQuery } from "@/manager/protocol/query";
-import type { ActorDefinitionRpcs } from "./actor_common";
 import type { RpcRequest, RpcResponse } from "@/actor/protocol/http/rpc";
+import type { Encoding } from "@/actor/protocol/serde";
+import type { ActorQuery } from "@/manager/protocol/query";
+import { type ActorDefinitionRpcs, resolveActorId } from "./actor_common";
 import { type ActorConn, ActorConnRaw } from "./actor_conn";
 import { CREATE_ACTOR_CONN_PROXY, type ClientRaw } from "./client";
+import { logger } from "./log";
+import { sendHttpRequest } from "./utils";
+import invariant from "invariant";
+import { assertUnreachable } from "@/actor/utils";
 
 /**
  * Provides underlying functions for stateless {@link ActorHandle} for RPC calls.
@@ -111,6 +113,34 @@ export class ActorHandleRaw {
 			conn,
 		) as ActorConn<AnyActorDefinition>;
 	}
+
+	/**
+	 * Resolves the actor to get its unique actor ID
+	 *
+	 * @returns {Promise<string>} - A promise that resolves to the actor's ID
+	 */
+	async resolve(): Promise<string> {
+		if (
+			"getForKey" in this.#actorQuery ||
+			"getOrCreateForKey" in this.#actorQuery
+		) {
+			const actorId = await resolveActorId(
+				this.#endpoint,
+				this.#actorQuery,
+				this.#encodingKind,
+			);
+			this.#actorQuery = { getForId: { actorId } };
+			return actorId;
+		} else if ("getForId" in this.#actorQuery) {
+			// SKip since it's already resolved
+			return this.#actorQuery.getForId.actorId;
+		} else if ("create" in this.#actorQuery) {
+			// Cannot create a handle with this query
+			invariant(false, "actorQuery cannot be create");
+		} else {
+			assertUnreachable(this.#actorQuery);
+		}
+	}
 }
 
 /**
@@ -135,4 +165,6 @@ export type ActorHandle<AD extends AnyActorDefinition> = Omit<
 > & {
 	// Add typed version of ActorConn (instead of using AnyActorDefinition)
 	connect(): ActorConn<AD>;
+	// Resolve method returns the actor ID
+	resolve(): Promise<string>;
 } & ActorDefinitionRpcs<AD>;

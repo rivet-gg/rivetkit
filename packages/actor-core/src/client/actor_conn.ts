@@ -1,20 +1,20 @@
+import type { AnyActorDefinition } from "@/actor/definition";
 import type { Transport } from "@/actor/protocol/message/mod";
-import type { Encoding } from "@/actor/protocol/serde";
 import type * as wsToClient from "@/actor/protocol/message/to-client";
 import type * as wsToServer from "@/actor/protocol/message/to-server";
+import type { Encoding } from "@/actor/protocol/serde";
+import { importEventSource } from "@/common/eventsource";
 import { MAX_CONN_PARAMS_SIZE } from "@/common/network";
 import { assertUnreachable, stringifyError } from "@/common/utils";
+import { importWebSocket } from "@/common/websocket";
+import type { ActorQuery } from "@/manager/protocol/query";
 import * as cbor from "cbor-x";
+import pRetry from "p-retry";
+import type { ActorDefinitionRpcs as ActorDefinitionRpcsImport } from "./actor_common";
+import { ACTOR_CONNS_SYMBOL, type ClientRaw, TRANSPORT_SYMBOL } from "./client";
 import * as errors from "./errors";
 import { logger } from "./log";
 import { type WebSocketMessage as ConnMessage, messageLength } from "./utils";
-import { ACTOR_CONNS_SYMBOL, TRANSPORT_SYMBOL, type ClientRaw } from "./client";
-import type { AnyActorDefinition } from "@/actor/definition";
-import pRetry from "p-retry";
-import { importWebSocket } from "@/common/websocket";
-import { importEventSource } from "@/common/eventsource";
-import type { ActorQuery } from "@/manager/protocol/query";
-import { ActorDefinitionRpcs as ActorDefinitionRpcsImport } from "./actor_common";
 
 // Re-export the type with the original name to maintain compatibility
 type ActorDefinitionRpcs<AD extends AnyActorDefinition> =
@@ -679,7 +679,7 @@ enc
 			// Get the manager endpoint from the endpoint provided
 			const actorQueryStr = encodeURIComponent(JSON.stringify(this.actorQuery));
 
-			let url = `${this.endpoint}/actors/connections/${this.#connectionId}/message?encoding=${this.encodingKind}&connectionToken=${encodeURIComponent(this.#connectionToken)}&query=${actorQueryStr}`;
+			const url = `${this.endpoint}/actors/connections/${this.#connectionId}/message?encoding=${this.encodingKind}&connectionToken=${encodeURIComponent(this.#connectionToken)}&query=${actorQueryStr}`;
 
 			// TODO: Implement ordered messages, this is not guaranteed order. Needs to use an index in order to ensure we can pipeline requests efficiently.
 			// TODO: Validate that we're using HTTP/3 whenever possible for pipelining requests

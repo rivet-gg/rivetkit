@@ -25,6 +25,7 @@
 - **Build:** `yarn build` - Production build using Turbopack
 - **Build specific package:** `yarn build -F actor-core` - Build only specified package
 - **Format:** `yarn fmt` - Format code with Biome
+- Do not run the format command automatically.
 
 ## Core Concepts
 

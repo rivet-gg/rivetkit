@@ -4,7 +4,7 @@ import type { ActorQuery } from "@/manager/protocol/query";
 import * as errors from "./errors";
 import { ActorConn, ActorConnRaw, CONNECT_SYMBOL } from "./actor_conn";
 import { ActorHandle, ActorHandleRaw } from "./actor_handle";
-import { ActorRPCFunction } from "./actor_common";
+import { ActorRPCFunction, resolveActorId } from "./actor_common";
 import { logger } from "./log";
 import type { ActorCoreApp } from "@/mod";
 import type { AnyActorDefinition } from "@/actor/definition";
@@ -55,14 +55,17 @@ export interface ActorAccessor<AD extends AnyActorDefinition> {
 
 	/**
 	 * Creates a new actor with the name automatically injected from the property accessor,
-	 * and returns a stateless handle to it.
+	 * and returns a stateless handle to it with the actor ID resolved.
 	 *
 	 * @template AD The actor class that this handle is for.
 	 * @param {string | string[]} key - The key to identify the actor. Can be a single string or an array of strings.
 	 * @param {CreateOptions} [opts] - Options for creating the actor (excluding name and key).
-	 * @returns {ActorHandle<AD>} - A handle to the actor.
+	 * @returns {Promise<ActorHandle<AD>>} - A promise that resolves to a handle to the actor.
 	 */
-	create(key: string | string[], opts?: CreateOptions): ActorHandle<AD>;
+	create(
+		key: string | string[],
+		opts?: CreateOptions,
+	): Promise<ActorHandle<AD>>;
 }
 
 /**
@@ -286,18 +289,19 @@ export class ClientRaw {
 
 	/**
 	 * Creates a new actor with the provided key and returns a stateless handle to it.
+	 * Resolves the actor ID and returns a handle with getForId query.
 	 *
 	 * @template AD The actor class that this handle is for.
 	 * @param {string} name - The name of the actor.
 	 * @param {string | string[]} key - The key to identify the actor. Can be a single string or an array of strings.
 	 * @param {CreateOptions} [opts] - Options for creating the actor (excluding name and key).
-	 * @returns {ActorHandle<AD>} - A handle to the actor.
+	 * @returns {Promise<ActorHandle<AD>>} - A promise that resolves to a handle to the actor.
 	 */
-	create<AD extends AnyActorDefinition>(
+	async create<AD extends AnyActorDefinition>(
 		name: string,
 		key: string | string[],
 		opts: CreateOptions = {},
-	): ActorHandle<AD> {
+	): Promise<ActorHandle<AD>> {
 		// Convert string to array of strings
 		const keyArray: string[] = typeof key === "string" ? [key] : key;
 
@@ -316,17 +320,36 @@ export class ClientRaw {
 			create,
 		});
 
-		const actorQuery = {
+		// Create the actor
+		const createQuery = {
 			create,
-		};
-
-		const managerEndpoint = this.#managerEndpoint;
-		const handle = this.#createHandle(
-			managerEndpoint,
-			opts?.params,
-			actorQuery,
+		} satisfies ActorQuery;
+		const actorId = await resolveActorId(
+			this.#managerEndpoint,
+			createQuery,
+			this.#encodingKind,
 		);
-		return createActorProxy(handle) as ActorHandle<AD>;
+		logger().debug("created actor with ID", {
+			name,
+			key: keyArray,
+			actorId,
+		});
+
+		// Create handle with actor ID
+		const getForIdQuery = {
+			getForId: {
+				actorId,
+			},
+		} satisfies ActorQuery;
+		const handle = this.#createHandle(
+			this.#managerEndpoint,
+			opts?.params,
+			getForIdQuery,
+		);
+
+		const proxy = createActorProxy(handle) as ActorHandle<AD>;
+
+		return proxy;
 	}
 
 	#createHandle(
@@ -454,11 +477,11 @@ export function createClient<A extends ActorCoreApp<any>>(
 							opts,
 						);
 					},
-					create: (
+					create: async (
 						key: string | string[],
 						opts: CreateOptions = {},
-					): ActorHandle<ExtractActorsFromApp<A>[typeof prop]> => {
-						return target.create<ExtractActorsFromApp<A>[typeof prop]>(
+					): Promise<ActorHandle<ExtractActorsFromApp<A>[typeof prop]>> => {
+						return await target.create<ExtractActorsFromApp<A>[typeof prop]>(
 							prop,
 							key,
 							opts,
@@ -499,6 +522,9 @@ function createActorProxy<AD extends AnyActorDefinition>(
 
 			// Create RPC function that preserves 'this' context
 			if (typeof prop === "string") {
+				// If JS is attempting to calling this as a promise, ignore it
+				if (prop === "then") return undefined;
+
 				let method = methodCache.get(prop);
 				if (!method) {
 					method = (...args: unknown[]) => target.action(prop, ...args);
