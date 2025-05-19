@@ -20,6 +20,6 @@ test("basic actor setup", async (c) => {
 
 	const { client } = await setupTest<typeof app>(c, app);
 
-	const counterInstance = client.counter.connect();
+	const counterInstance = client.counter.getOrCreate();
 	await counterInstance.increment(1);
 });

@@ -2,15 +2,8 @@ import type { Transport } from "@/actor/protocol/message/mod";
 import type { Encoding } from "@/actor/protocol/serde";
 import type { ActorQuery } from "@/manager/protocol/query";
 import * as errors from "./errors";
-import {
-	ActorConn,
-	ActorConnRaw,
-	CONNECT_SYMBOL,
-} from "./actor_conn";
-import {
-	ActorHandle,
-	ActorHandleRaw
-} from "./actor_handle";
+import { ActorConn, ActorConnRaw, CONNECT_SYMBOL } from "./actor_conn";
+import { ActorHandle, ActorHandleRaw } from "./actor_handle";
 import { ActorRPCFunction } from "./actor_common";
 import { logger } from "./log";
 import type { ActorCoreApp } from "@/mod";
@@ -29,19 +22,30 @@ export type ExtractAppFromClient<C extends Client<ActorCoreApp<{}>>> =
  */
 export interface ActorAccessor<AD extends AnyActorDefinition> {
 	/**
-	 * Gets a stateless handle to an actor by its key.
+	 * Gets a stateless handle to an actor by its key, but does not create the actor if it doesn't exist.
 	 * The actor name is automatically injected from the property accessor.
-	 * 
+	 *
+	 * @template AD The actor class that this handle is for.
+	 * @param {string | string[]} [key=[]] - The key to identify the actor. Can be a single string or an array of strings.
+	 * @param {GetWithIdOptions} [opts] - Options for getting the actor.
+	 * @returns {ActorHandle<AD>} - A handle to the actor.
+	 */
+	get(key?: string | string[], opts?: GetWithIdOptions): ActorHandle<AD>;
+
+	/**
+	 * Gets a stateless handle to an actor by its key, creating it if necessary.
+	 * The actor name is automatically injected from the property accessor.
+	 *
 	 * @template AD The actor class that this handle is for.
 	 * @param {string | string[]} [key=[]] - The key to identify the actor. Can be a single string or an array of strings.
 	 * @param {GetOptions} [opts] - Options for getting the actor.
 	 * @returns {ActorHandle<AD>} - A handle to the actor.
 	 */
-	get(key?: string | string[], opts?: GetOptions): ActorHandle<AD>;
+	getOrCreate(key?: string | string[], opts?: GetOptions): ActorHandle<AD>;
 
 	/**
 	 * Gets a stateless handle to an actor by its ID.
-	 * 
+	 *
 	 * @template AD The actor class that this handle is for.
 	 * @param {string} actorId - The ID of the actor.
 	 * @param {GetWithIdOptions} [opts] - Options for getting the actor.
@@ -52,45 +56,13 @@ export interface ActorAccessor<AD extends AnyActorDefinition> {
 	/**
 	 * Creates a new actor with the name automatically injected from the property accessor,
 	 * and returns a stateless handle to it.
-	 * 
+	 *
 	 * @template AD The actor class that this handle is for.
 	 * @param {string | string[]} key - The key to identify the actor. Can be a single string or an array of strings.
 	 * @param {CreateOptions} [opts] - Options for creating the actor (excluding name and key).
 	 * @returns {ActorHandle<AD>} - A handle to the actor.
 	 */
 	create(key: string | string[], opts?: CreateOptions): ActorHandle<AD>;
-
-	/**
-	 * Connects to an actor by its key, creating it if necessary.
-	 * The actor name is automatically injected from the property accessor.
-	 *
-	 * @template A The actor class that this connection is for.
-	 * @param {string | string[]} [key=[]] - The key to identify the actor. Can be a single string or an array of strings.
-	 * @param {GetOptions} [opts] - Options for getting the actor.
-	 * @returns {ActorConn<AD>} - A promise resolving to the actor connection.
-	 */
-	connect(key?: string | string[], opts?: GetOptions): ActorConn<AD>;
-
-	/**
-	 * Creates a new actor with the name automatically injected from the property accessor,
-	 * and connects to it.
-	 *
-	 * @template A The actor class that this connection is for.
-	 * @param {string | string[]} key - The key to identify the actor. Can be a single string or an array of strings.
-	 * @param {CreateOptions} [opts] - Options for creating the actor (excluding name and key).
-	 * @returns {ActorConn<AD>} - A promise resolving to the actor connection.
-	 */
-	createAndConnect(key: string | string[], opts?: CreateOptions): ActorConn<AD>;
-
-	/**
-	 * Connects to an actor by its ID.
-	 *
-	 * @template A The actor class that this connection is for.
-	 * @param {string} actorId - The ID of the actor.
-	 * @param {GetWithIdOptions} [opts] - Options for getting the actor.
-	 * @returns {ActorConn<AD>} - A promise resolving to the actor connection.
-	 */
-	connectForId(actorId: string, opts?: GetWithIdOptions): ActorConn<AD>;
 }
 
 /**
@@ -121,12 +93,15 @@ export interface GetWithIdOptions extends QueryOptions {}
 /**
  * Options for getting an actor.
  * @typedef {QueryOptions} GetOptions
- * @property {boolean} [noCreate] - Prevents creating a new actor if one does not exist.
+ */
+export interface GetOptions extends QueryOptions {}
+
+/**
+ * Options for getting or creating an actor.
+ * @typedef {QueryOptions} GetOrCreateOptions
  * @property {string} [createInRegion] - Region to create the actor in if it doesn't exist.
  */
 export interface GetOptions extends QueryOptions {
-	/** Prevents creating a new actor if one does not exist. */
-	noCreate?: boolean;
 	/** Region to create the actor in if it doesn't exist. */
 	createInRegion?: string;
 }
@@ -162,6 +137,8 @@ export interface Region {
 }
 
 export const ACTOR_CONNS_SYMBOL = Symbol("actorConns");
+export const CREATE_ACTOR_CONN_PROXY = Symbol("createActorConnProxy");
+export const TRANSPORT_SYMBOL = Symbol("transport");
 
 /**
  * Client for managing & connecting to actors.
@@ -176,7 +153,7 @@ export class ClientRaw {
 
 	#managerEndpoint: string;
 	#encodingKind: Encoding;
-	#transport: Transport;
+	[TRANSPORT_SYMBOL]: Transport;
 
 	/**
 	 * Creates an instance of Client.
@@ -189,170 +166,7 @@ export class ClientRaw {
 		this.#managerEndpoint = managerEndpoint;
 
 		this.#encodingKind = opts?.encoding ?? "cbor";
-		this.#transport = opts?.transport ?? "websocket";
-	}
-
-	/**
-	 * Connects to an actor by its ID.
-	 * @template AD The actor class that this connection is for.
-	 * @param {string} name - The name of the actor.
-	 * @param {string} actorId - The ID of the actor.
-	 * @param {GetWithIdOptions} [opts] - Options for getting the actor.
-	 * @returns {Promise<ActorConn<AD>>} - A promise resolving to the actor connection.
-	 */
-	connectForId<AD extends AnyActorDefinition>(
-		name: string,
-		actorId: string,
-		opts?: GetWithIdOptions,
-	): ActorConn<AD> {
-		logger().debug("connect to actor with id ", {
-			name,
-			actorId,
-			params: opts?.params,
-		});
-
-		const actorQuery = {
-			getForId: {
-				actorId,
-			},
-		};
-
-		const managerEndpoint = this.#managerEndpoint;
-		const conn = this.#createConn(managerEndpoint, opts?.params, actorQuery);
-		return this.#createProxy(conn) as ActorConn<AD>;
-	}
-
-	/**
-	 * Connects to an actor by its key, creating it if necessary.
-	 *
-	 * @example
-	 * ```
-	 * const room = client.connect<ChatRoom>(
-	 *   'chat-room',
-	 *   // Get or create the actor for the channel `random`
-	 *   'random',
-	 * );
-	 *
-	 * // Or using an array of strings as key
-	 * const room = client.connect<ChatRoom>(
-	 *   'chat-room',
-	 *   ['user123', 'room456'],
-	 * );
-	 *
-	 * await room.sendMessage('Hello, world!');
-	 * ```
-	 *
-	 * @template AD The actor class that this connection is for.
-	 * @param {string} name - The name of the actor.
-	 * @param {string | string[]} [key=[]] - The key to identify the actor. Can be a single string or an array of strings.
-	 * @param {GetOptions} [opts] - Options for getting the actor.
-	 * @returns {Promise<ActorConn<AD>>} - A promise resolving to the actor connection.
-	 * @see {@link https://rivet.gg/docs/manage#client.connect}
-	 */
-	connect<AD extends AnyActorDefinition>(
-		name: string,
-		key?: string | string[],
-		opts?: GetOptions,
-	): ActorConn<AD> {
-		// Convert string to array of strings
-		const keyArray: string[] = typeof key === "string" ? [key] : key || [];
-
-		logger().debug("connect to actor", {
-			name,
-			key: keyArray,
-			parameters: opts?.params,
-			noCreate: opts?.noCreate,
-			createInRegion: opts?.createInRegion,
-		});
-
-		let actorQuery: ActorQuery;
-		if (opts?.noCreate) {
-			// Use getForKey endpoint if noCreate is specified
-			actorQuery = {
-				getForKey: {
-					name,
-					key: keyArray,
-				},
-			};
-		} else {
-			// Use getOrCreateForKey endpoint
-			actorQuery = {
-				getOrCreateForKey: {
-					name,
-					key: keyArray,
-					region: opts?.createInRegion,
-				},
-			};
-		}
-
-		const managerEndpoint = this.#managerEndpoint;
-		const conn = this.#createConn(
-			managerEndpoint,
-			opts?.params,
-			actorQuery,
-		);
-		return this.#createProxy(conn) as ActorConn<AD>;
-	}
-
-	/**
-	 * Creates a new actor with the provided key and connects to it.
-	 *
-	 * @example
-	 * ```
-	 * // Create a new document actor with a single string key
-	 * const doc = await client.createAndConnect<MyDocument>(
-	 *   'document',
-	 *   'doc123',
-	 *   { region: 'us-east-1' }
-	 * );
-	 *
-	 * // Or with an array of strings as key
-	 * const doc = await client.createAndConnect<MyDocument>(
-	 *   'document',
-	 *   ['user123', 'document456'],
-	 *   { region: 'us-east-1' }
-	 * );
-	 *
-	 * await doc.doSomething();
-	 * ```
-	 *
-	 * @template AD The actor class that this connection is for.
-	 * @param {string} name - The name of the actor.
-	 * @param {string | string[]} key - The key to identify the actor. Can be a single string or an array of strings.
-	 * @param {CreateOptions} [opts] - Options for creating the actor (excluding name and key).
-	 * @returns {Promise<ActorConn<AD>>} - A promise resolving to the actor connection.
-	 * @see {@link https://rivet.gg/docs/manage#client.createAndConnect}
-	 */
-	createAndConnect<AD extends AnyActorDefinition>(
-		name: string,
-		key: string | string[],
-		opts: CreateOptions = {},
-	): ActorConn<AD> {
-		// Convert string to array of strings
-		const keyArray: string[] = typeof key === "string" ? [key] : key;
-
-		// Build create config
-		const create = {
-			...opts,
-			// Do these last to override `opts`
-			name,
-			key: keyArray,
-		};
-
-		logger().debug("create actor and connect", {
-			name,
-			key: keyArray,
-			parameters: opts?.params,
-			create,
-		});
-
-		const actorQuery = {
-			create,
-		};
-
-		const managerEndpoint = this.#managerEndpoint;
-		const conn = this.#createConn(managerEndpoint, opts?.params, actorQuery);
-		return this.#createProxy(conn) as ActorConn<AD>;
+		this[TRANSPORT_SYMBOL] = opts?.transport ?? "websocket";
 	}
 
 	/**
@@ -382,23 +196,27 @@ export class ClientRaw {
 		};
 
 		const managerEndpoint = this.#managerEndpoint;
-		const handle = this.#createHandle(managerEndpoint, opts?.params, actorQuery);
-		return this.#createHandleProxy(handle) as ActorHandle<AD>;
+		const handle = this.#createHandle(
+			managerEndpoint,
+			opts?.params,
+			actorQuery,
+		);
+		return createActorProxy(handle) as ActorHandle<AD>;
 	}
 
 	/**
-	 * Gets a stateless handle to an actor by its key.
+	 * Gets a stateless handle to an actor by its key, but does not create the actor if it doesn't exist.
 	 *
 	 * @template AD The actor class that this handle is for.
 	 * @param {string} name - The name of the actor.
 	 * @param {string | string[]} [key=[]] - The key to identify the actor. Can be a single string or an array of strings.
-	 * @param {GetOptions} [opts] - Options for getting the actor.
+	 * @param {GetWithIdOptions} [opts] - Options for getting the actor.
 	 * @returns {ActorHandle<AD>} - A handle to the actor.
 	 */
 	get<AD extends AnyActorDefinition>(
 		name: string,
 		key?: string | string[],
-		opts?: GetOptions,
+		opts?: GetWithIdOptions,
 	): ActorHandle<AD> {
 		// Convert string to array of strings
 		const keyArray: string[] = typeof key === "string" ? [key] : key || [];
@@ -407,29 +225,14 @@ export class ClientRaw {
 			name,
 			key: keyArray,
 			parameters: opts?.params,
-			noCreate: opts?.noCreate,
-			createInRegion: opts?.createInRegion,
 		});
 
-		let actorQuery: ActorQuery;
-		if (opts?.noCreate) {
-			// Use getForKey endpoint if noCreate is specified
-			actorQuery = {
-				getForKey: {
-					name,
-					key: keyArray,
-				},
-			};
-		} else {
-			// Use getOrCreateForKey endpoint
-			actorQuery = {
-				getOrCreateForKey: {
-					name,
-					key: keyArray,
-					region: opts?.createInRegion,
-				},
-			};
-		}
+		const actorQuery: ActorQuery = {
+			getForKey: {
+				name,
+				key: keyArray,
+			},
+		};
 
 		const managerEndpoint = this.#managerEndpoint;
 		const handle = this.#createHandle(
@@ -437,7 +240,48 @@ export class ClientRaw {
 			opts?.params,
 			actorQuery,
 		);
-		return this.#createHandleProxy(handle) as ActorHandle<AD>;
+		return createActorProxy(handle) as ActorHandle<AD>;
+	}
+
+	/**
+	 * Gets a stateless handle to an actor by its key, creating it if necessary.
+	 *
+	 * @template AD The actor class that this handle is for.
+	 * @param {string} name - The name of the actor.
+	 * @param {string | string[]} [key=[]] - The key to identify the actor. Can be a single string or an array of strings.
+	 * @param {GetOptions} [opts] - Options for getting the actor.
+	 * @returns {ActorHandle<AD>} - A handle to the actor.
+	 */
+	getOrCreate<AD extends AnyActorDefinition>(
+		name: string,
+		key?: string | string[],
+		opts?: GetOptions,
+	): ActorHandle<AD> {
+		// Convert string to array of strings
+		const keyArray: string[] = typeof key === "string" ? [key] : key || [];
+
+		logger().debug("get or create handle to actor", {
+			name,
+			key: keyArray,
+			parameters: opts?.params,
+			createInRegion: opts?.createInRegion,
+		});
+
+		const actorQuery: ActorQuery = {
+			getOrCreateForKey: {
+				name,
+				key: keyArray,
+				region: opts?.createInRegion,
+			},
+		};
+
+		const managerEndpoint = this.#managerEndpoint;
+		const handle = this.#createHandle(
+			managerEndpoint,
+			opts?.params,
+			actorQuery,
+		);
+		return createActorProxy(handle) as ActorHandle<AD>;
 	}
 
 	/**
@@ -477,26 +321,12 @@ export class ClientRaw {
 		};
 
 		const managerEndpoint = this.#managerEndpoint;
-		const handle = this.#createHandle(managerEndpoint, opts?.params, actorQuery);
-		return this.#createHandleProxy(handle) as ActorHandle<AD>;
-	}
-
-	#createConn(
-		endpoint: string,
-		params: unknown,
-		actorQuery: ActorQuery,
-	): ActorConnRaw {
-		const conn = new ActorConnRaw(
-			this,
-			endpoint,
-			params,
-			this.#encodingKind,
-			this.#transport,
+		const handle = this.#createHandle(
+			managerEndpoint,
+			opts?.params,
 			actorQuery,
 		);
-		this[ACTOR_CONNS_SYMBOL].add(conn);
-		conn[CONNECT_SYMBOL]();
-		return conn;
+		return createActorProxy(handle) as ActorHandle<AD>;
 	}
 
 	#createHandle(
@@ -505,6 +335,7 @@ export class ClientRaw {
 		actorQuery: ActorQuery,
 	): ActorHandleRaw {
 		return new ActorHandleRaw(
+			this,
 			endpoint,
 			params,
 			this.#encodingKind,
@@ -512,195 +343,16 @@ export class ClientRaw {
 		);
 	}
 
-	#createProxy<AD extends AnyActorDefinition>(
+	[CREATE_ACTOR_CONN_PROXY]<AD extends AnyActorDefinition>(
 		conn: ActorConnRaw,
 	): ActorConn<AD> {
-		// Stores returned RPC functions for faster calls
-		const methodCache = new Map<string, ActorRPCFunction>();
-		return new Proxy(conn, {
-			get(target: ActorConnRaw, prop: string | symbol, receiver: unknown) {
-				// Handle built-in Symbol properties
-				if (typeof prop === "symbol") {
-					return Reflect.get(target, prop, receiver);
-				}
+		// Save to connection list
+		this[ACTOR_CONNS_SYMBOL].add(conn);
 
-				// Handle built-in Promise methods and existing properties
-				if (
-					prop === "then" ||
-					prop === "catch" ||
-					prop === "finally" ||
-					prop === "constructor" ||
-					prop in target
-				) {
-					const value = Reflect.get(target, prop, receiver);
-					// Preserve method binding
-					if (typeof value === "function") {
-						return value.bind(target);
-					}
-					return value;
-				}
+		// Start connection
+		conn[CONNECT_SYMBOL]();
 
-				// Create RPC function that preserves 'this' context
-				if (typeof prop === "string") {
-					let method = methodCache.get(prop);
-					if (!method) {
-						method = (...args: unknown[]) => target.action(prop, ...args);
-						methodCache.set(prop, method);
-					}
-					return method;
-				}
-			},
-
-			// Support for 'in' operator
-			has(target: ActorConnRaw, prop: string | symbol) {
-				// All string properties are potentially RPC functions
-				if (typeof prop === "string") {
-					return true;
-				}
-				// For symbols, defer to the target's own has behavior
-				return Reflect.has(target, prop);
-			},
-
-			// Support instanceof checks
-			getPrototypeOf(target: ActorConnRaw) {
-				return Reflect.getPrototypeOf(target);
-			},
-
-			// Prevent property enumeration of non-existent RPC methods
-			ownKeys(target: ActorConnRaw) {
-				return Reflect.ownKeys(target);
-			},
-
-			// Support proper property descriptors
-			getOwnPropertyDescriptor(target: ActorConnRaw, prop: string | symbol) {
-				const targetDescriptor = Reflect.getOwnPropertyDescriptor(target, prop);
-				if (targetDescriptor) {
-					return targetDescriptor;
-				}
-				if (typeof prop === "string") {
-					// Make RPC methods appear non-enumerable
-					return {
-						configurable: true,
-						enumerable: false,
-						writable: false,
-						value: (...args: unknown[]) => target.action(prop, ...args),
-					};
-				}
-				return undefined;
-			},
-		}) as ActorConn<AD>;
-	}
-
-	#createHandleProxy<AD extends AnyActorDefinition>(
-		handle: ActorHandleRaw,
-	): ActorHandle<AD> {
-		// Stores returned RPC functions for faster calls
-		const methodCache = new Map<string, ActorRPCFunction>();
-		return new Proxy(handle, {
-			get(target: ActorHandleRaw, prop: string | symbol, receiver: unknown) {
-				// Handle built-in Symbol properties
-				if (typeof prop === "symbol") {
-					return Reflect.get(target, prop, receiver);
-				}
-
-				// Handle built-in Promise methods and existing properties
-				if (
-					prop === "constructor" ||
-					prop in target
-				) {
-					const value = Reflect.get(target, prop, receiver);
-					// Preserve method binding
-					if (typeof value === "function") {
-						return value.bind(target);
-					}
-					return value;
-				}
-
-				// Create RPC function that preserves 'this' context
-				if (typeof prop === "string") {
-					let method = methodCache.get(prop);
-					if (!method) {
-						method = (...args: unknown[]) => target.action(prop, ...args);
-						methodCache.set(prop, method);
-					}
-					return method;
-				}
-			},
-
-			// Support for 'in' operator
-			has(target: ActorHandleRaw, prop: string | symbol) {
-				// All string properties are potentially RPC functions
-				if (typeof prop === "string") {
-					return true;
-				}
-				// For symbols, defer to the target's own has behavior
-				return Reflect.has(target, prop);
-			},
-
-			// Support instanceof checks
-			getPrototypeOf(target: ActorHandleRaw) {
-				return Reflect.getPrototypeOf(target);
-			},
-
-			// Prevent property enumeration of non-existent RPC methods
-			ownKeys(target: ActorHandleRaw) {
-				return Reflect.ownKeys(target);
-			},
-
-			// Support proper property descriptors
-			getOwnPropertyDescriptor(target: ActorHandleRaw, prop: string | symbol) {
-				const targetDescriptor = Reflect.getOwnPropertyDescriptor(target, prop);
-				if (targetDescriptor) {
-					return targetDescriptor;
-				}
-				if (typeof prop === "string") {
-					// Make RPC methods appear non-enumerable
-					return {
-						configurable: true,
-						enumerable: false,
-						writable: false,
-						value: (...args: unknown[]) => target.action(prop, ...args),
-					};
-				}
-				return undefined;
-			},
-		}) as ActorHandle<AD>;
-	}
-
-	/**
-	 * Sends an HTTP request to the manager actor.
-	 * @private
-	 * @template Request
-	 * @template Response
-	 * @param {string} method - The HTTP method.
-	 * @param {string} path - The path for the request.
-	 * @param {Request} [body] - The request body.
-	 * @returns {Promise<Response>} - A promise resolving to the response.
-	 * @see {@link https://rivet.gg/docs/manage#client}
-	 */
-	async #sendManagerRequest<Request, Response>(
-		method: string,
-		path: string,
-		body?: Request,
-	): Promise<Response> {
-		try {
-			const managerEndpoint = this.#managerEndpoint;
-			const res = await fetch(`${managerEndpoint}${path}`, {
-				method,
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: body ? JSON.stringify(body) : undefined,
-			});
-
-			if (!res.ok) {
-				throw new errors.ManagerError(`${res.statusText}: ${await res.text()}`);
-			}
-
-			return res.json();
-		} catch (error) {
-			throw new errors.ManagerError(String(error), { cause: error });
-		}
+		return createActorProxy(conn) as ActorConn<AD>;
 	}
 
 	/**
@@ -718,12 +370,12 @@ export class ClientRaw {
 		logger().debug("disposing client");
 
 		const disposePromises = [];
-		
+
 		// Dispose all connections
 		for (const conn of this[ACTOR_CONNS_SYMBOL].values()) {
 			disposePromises.push(conn.dispose());
 		}
-		
+
 		await Promise.all(disposePromises);
 	}
 }
@@ -774,9 +426,19 @@ export function createClient<A extends ActorCoreApp<any>>(
 					// Handle methods (stateless RPC)
 					get: (
 						key?: string | string[],
-						opts?: GetOptions,
+						opts?: GetWithIdOptions,
 					): ActorHandle<ExtractActorsFromApp<A>[typeof prop]> => {
 						return target.get<ExtractActorsFromApp<A>[typeof prop]>(
+							prop,
+							key,
+							opts,
+						);
+					},
+					getOrCreate: (
+						key?: string | string[],
+						opts?: GetOptions,
+					): ActorHandle<ExtractActorsFromApp<A>[typeof prop]> => {
+						return target.getOrCreate<ExtractActorsFromApp<A>[typeof prop]>(
 							prop,
 							key,
 							opts,
@@ -802,40 +464,86 @@ export function createClient<A extends ActorCoreApp<any>>(
 							opts,
 						);
 					},
-					
-					// Connection methods
-					connect: (
-						key?: string | string[],
-						opts?: GetOptions,
-					): ActorConn<ExtractActorsFromApp<A>[typeof prop]> => {
-						return target.connect<ExtractActorsFromApp<A>[typeof prop]>(
-							prop,
-							key,
-							opts,
-						);
-					},
-					createAndConnect: (
-						key: string | string[],
-						opts: CreateOptions = {},
-					): ActorConn<ExtractActorsFromApp<A>[typeof prop]> => {
-						return target.createAndConnect<
-							ExtractActorsFromApp<A>[typeof prop]
-						>(prop, key, opts);
-					},
-					connectForId: (
-						actorId: string,
-						opts?: GetWithIdOptions,
-					): ActorConn<ExtractActorsFromApp<A>[typeof prop]> => {
-						return target.connectForId<ExtractActorsFromApp<A>[typeof prop]>(
-							prop,
-							actorId,
-							opts,
-						);
-					},
 				} as ActorAccessor<ExtractActorsFromApp<A>[typeof prop]>;
 			}
 
 			return undefined;
 		},
 	}) as Client<A>;
+}
+
+/**
+ * Creates a proxy for an actor that enables calling actions without explicitly using `.action`.
+ **/
+function createActorProxy<AD extends AnyActorDefinition>(
+	handle: ActorHandleRaw | ActorConnRaw,
+): ActorHandle<AD> | ActorConn<AD> {
+	// Stores returned RPC functions for faster calls
+	const methodCache = new Map<string, ActorRPCFunction>();
+	return new Proxy(handle, {
+		get(target: ActorHandleRaw, prop: string | symbol, receiver: unknown) {
+			// Handle built-in Symbol properties
+			if (typeof prop === "symbol") {
+				return Reflect.get(target, prop, receiver);
+			}
+
+			// Handle built-in Promise methods and existing properties
+			if (prop === "constructor" || prop in target) {
+				const value = Reflect.get(target, prop, receiver);
+				// Preserve method binding
+				if (typeof value === "function") {
+					return value.bind(target);
+				}
+				return value;
+			}
+
+			// Create RPC function that preserves 'this' context
+			if (typeof prop === "string") {
+				let method = methodCache.get(prop);
+				if (!method) {
+					method = (...args: unknown[]) => target.action(prop, ...args);
+					methodCache.set(prop, method);
+				}
+				return method;
+			}
+		},
+
+		// Support for 'in' operator
+		has(target: ActorHandleRaw, prop: string | symbol) {
+			// All string properties are potentially RPC functions
+			if (typeof prop === "string") {
+				return true;
+			}
+			// For symbols, defer to the target's own has behavior
+			return Reflect.has(target, prop);
+		},
+
+		// Support instanceof checks
+		getPrototypeOf(target: ActorHandleRaw) {
+			return Reflect.getPrototypeOf(target);
+		},
+
+		// Prevent property enumeration of non-existent RPC methods
+		ownKeys(target: ActorHandleRaw) {
+			return Reflect.ownKeys(target);
+		},
+
+		// Support proper property descriptors
+		getOwnPropertyDescriptor(target: ActorHandleRaw, prop: string | symbol) {
+			const targetDescriptor = Reflect.getOwnPropertyDescriptor(target, prop);
+			if (targetDescriptor) {
+				return targetDescriptor;
+			}
+			if (typeof prop === "string") {
+				// Make RPC methods appear non-enumerable
+				return {
+					configurable: true,
+					enumerable: false,
+					writable: false,
+					value: (...args: unknown[]) => target.action(prop, ...args),
+				};
+			}
+			return undefined;
+		},
+	}) as ActorHandle<AD> | ActorConn<AD>;
 }

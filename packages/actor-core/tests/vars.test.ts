@@ -25,7 +25,7 @@ describe("Actor Vars", () => {
 			});
 
 			const { client } = await setupTest<typeof app>(c, app);
-			const instance = client.varActor.connect();
+			const instance = client.varActor.getOrCreate();
 
 			// Test accessing vars
 			const result = await instance.getVars();
@@ -72,12 +72,8 @@ describe("Actor Vars", () => {
 			const { client } = await setupTest<typeof app>(c, app);
 
 			// Create two separate instances
-			const instance1 = client.nestedVarActor.connect(
-				["instance1"]
-			);
-			const instance2 = client.nestedVarActor.connect(
-				["instance2"]
-			);
+			const instance1 = client.nestedVarActor.getOrCreate(["instance1"]);
+			const instance2 = client.nestedVarActor.getOrCreate(["instance2"]);
 
 			// Modify vars in the first instance
 			const modifiedVars = await instance1.modifyNested();
@@ -119,7 +115,7 @@ describe("Actor Vars", () => {
 			const { client } = await setupTest<typeof app>(c, app);
 
 			// Create an instance
-			const instance = client.dynamicVarActor.connect();
+			const instance = client.dynamicVarActor.getOrCreate();
 
 			// Test accessing dynamically created vars
 			const vars = await instance.getVars();
@@ -154,12 +150,8 @@ describe("Actor Vars", () => {
 			const { client } = await setupTest<typeof app>(c, app);
 
 			// Create two separate instances
-			const instance1 = client.uniqueVarActor.connect(
-				["test1"]
-			);
-			const instance2 = client.uniqueVarActor.connect(
-				["test2"]
-			);
+			const instance1 = client.uniqueVarActor.getOrCreate(["test1"]);
+			const instance2 = client.uniqueVarActor.getOrCreate(["test2"]);
 
 			// Get vars from both instances
 			const vars1 = await instance1.getVars();
@@ -204,7 +196,7 @@ describe("Actor Vars", () => {
 			const { client } = await setupTest<typeof app>(c, app);
 
 			// Create an instance
-			const instance = client.driverCtxActor.connect();
+			const instance = client.driverCtxActor.getOrCreate();
 
 			// Test accessing driver context through vars
 			const vars = await instance.getVars();

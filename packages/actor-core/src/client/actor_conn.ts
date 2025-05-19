@@ -8,7 +8,7 @@ import * as cbor from "cbor-x";
 import * as errors from "./errors";
 import { logger } from "./log";
 import { type WebSocketMessage as ConnMessage, messageLength } from "./utils";
-import { ACTOR_CONNS_SYMBOL, type ClientRaw } from "./client";
+import { ACTOR_CONNS_SYMBOL, TRANSPORT_SYMBOL, type ClientRaw } from "./client";
 import type { AnyActorDefinition } from "@/actor/definition";
 import pRetry from "p-retry";
 import { importWebSocket } from "@/common/websocket";
@@ -120,7 +120,6 @@ export class ActorConnRaw {
 		private readonly endpoint: string,
 		private readonly params: unknown,
 		private readonly encodingKind: Encoding,
-		private readonly transport: Transport,
 		private readonly actorQuery: ActorQuery,
 	) {
 		this.#keepNodeAliveInterval = setInterval(() => 60_000);
@@ -240,12 +239,12 @@ enc
 			this.#onOpenPromise = Promise.withResolvers();
 
 			// Connect transport
-			if (this.transport === "websocket") {
+			if (this.client[TRANSPORT_SYMBOL] === "websocket") {
 				this.#connectWebSocket();
-			} else if (this.transport === "sse") {
+			} else if (this.client[TRANSPORT_SYMBOL] === "sse") {
 				this.#connectSse();
 			} else {
-				assertUnreachable(this.transport);
+				assertUnreachable(this.client[TRANSPORT_SYMBOL]);
 			}
 
 			// Wait for result
