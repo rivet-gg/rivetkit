@@ -1,4 +1,5 @@
 import { assertUnreachable } from "actor-core/utils";
+import { ActorAlreadyExists } from "actor-core/actor/errors";
 import type {
 	ManagerDriver,
 	GetForIdInput,
@@ -121,6 +122,12 @@ export class RivetManagerDriver implements ManagerDriver {
 		key,
 		region,
 	}: CreateActorInput): Promise<GetActorOutput> {
+		// Check if actor with the same name and key already exists
+		const existingActor = await this.getWithKey({ name, key });
+		if (existingActor) {
+			throw new ActorAlreadyExists(name, key);
+		}
+
 		// Create the actor request
 		let actorLogLevel: string | undefined = undefined;
 		if (typeof Deno !== "undefined") {
