@@ -6,8 +6,6 @@ export default {
 		sequence: {
 			concurrent: true,
 		},
-		// Increase timeout for proxy tests
-		testTimeout: 15_000,
 		env: {
 			// Enable logging
 			_LOG_LEVEL: "DEBUG",

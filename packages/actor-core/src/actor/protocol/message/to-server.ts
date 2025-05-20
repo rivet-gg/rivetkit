@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+const InitSchema = z.object({
+	// Conn Params
+	p: z.unknown({}).optional(),
+});
+
 const RpcRequestSchema = z.object({
 	// ID
 	i: z.number().int(),
@@ -19,6 +24,7 @@ const SubscriptionRequestSchema = z.object({
 export const ToServerSchema = z.object({
 	// Body
 	b: z.union([
+		z.object({ i: InitSchema }),
 		z.object({ rr: RpcRequestSchema }),
 		z.object({ sr: SubscriptionRequestSchema }),
 	]),

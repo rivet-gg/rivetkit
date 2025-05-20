@@ -9,6 +9,11 @@ import { logger } from "./log";
 import { sendHttpRequest } from "./utils";
 import invariant from "invariant";
 import { assertUnreachable } from "@/actor/utils";
+import {
+	HEADER_ACTOR_QUERY,
+	HEADER_CONN_PARAMS,
+	HEADER_ENCODING,
+} from "@/actor/router-endpoints";
 
 /**
  * Provides underlying functions for stateless {@link ActorHandle} for RPC calls.
@@ -73,16 +78,16 @@ export class ActorHandleRaw {
 			query: this.#actorQuery,
 		});
 
-		// Build query parameters
-		let baseUrl = `${this.#endpoint}/actors/rpc/${encodeURIComponent(name)}?encoding=${this.#encodingKind}&query=${encodeURIComponent(JSON.stringify(this.#actorQuery))}`;
-		if (this.params !== undefined) {
-			baseUrl += `&params=${encodeURIComponent(JSON.stringify(this.params))}`;
-		}
-
-		// Use the shared HTTP request utility with integrated serialization
 		const responseData = await sendHttpRequest<RpcRequest, RpcResponse>({
-			url: baseUrl,
+			url: `${this.#endpoint}/actors/rpc/${encodeURIComponent(name)}`,
 			method: "POST",
+			headers: {
+				[HEADER_ENCODING]: this.#encodingKind,
+				[HEADER_ACTOR_QUERY]: JSON.stringify(this.#actorQuery),
+				...(this.params !== undefined
+					? { [HEADER_CONN_PARAMS]: JSON.stringify(this.params) }
+					: {}),
+			},
 			body: { a: args } satisfies RpcRequest,
 			encoding: this.#encodingKind,
 		});

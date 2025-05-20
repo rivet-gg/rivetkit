@@ -9,6 +9,14 @@ import {
 	handleRpc,
 	handleSseConnect,
 	handleWebSocketConnect,
+	HEADER_ACTOR_ID,
+	HEADER_CONN_ID,
+	HEADER_CONN_PARAMS,
+	HEADER_CONN_TOKEN,
+	HEADER_ENCODING,
+	HEADER_ACTOR_QUERY,
+	ALL_HEADERS,
+	getRequestQuery,
 } from "@/actor/router-endpoints";
 import { assertUnreachable } from "@/actor/utils";
 import type { AppConfig } from "@/app/config";
@@ -30,7 +38,12 @@ import type { WSContext } from "hono/ws";
 import invariant from "invariant";
 import type { ManagerDriver } from "./driver";
 import { logger } from "./log";
-import { ConnectQuerySchema } from "./protocol/query";
+import {
+	ConnectRequestSchema,
+	ConnectWebSocketRequestSchema,
+	ConnMessageRequestSchema,
+	ResolveRequestSchema,
+} from "./protocol/query";
 import type { ActorQuery } from "./protocol/query";
 
 type ProxyMode =
@@ -84,15 +97,20 @@ export function createManagerRouter(
 	app.use("*", loggerMiddleware(logger()));
 
 	if (appConfig.cors) {
+		const corsConfig = appConfig.cors;
+
 		app.use("*", async (c, next) => {
 			const path = c.req.path;
 
 			// Don't apply to WebSocket routes
-			if (path === "/actors/connect/websocket") {
+			if (path === "/actors/connect/websocket" || path === "/inspect") {
 				return next();
 			}
 
-			return cors(appConfig.cors)(c, next);
+			return cors({
+				...corsConfig,
+				allowHeaders: [...(appConfig.cors?.allowHeaders ?? []), ...ALL_HEADERS],
+			})(c, next);
 		});
 	}
 
@@ -108,27 +126,21 @@ export function createManagerRouter(
 
 	// Resolve actor ID from query
 	app.post("/actors/resolve", async (c) => {
-		const encoding = getRequestEncoding(c.req);
+		const encoding = getRequestEncoding(c.req, false);
 		logger().debug("resolve request encoding", { encoding });
 
-		// Get query parameters for actor lookup
-		const queryParam = c.req.query("query");
-		if (!queryParam) {
-			logger().error("missing query parameter for resolve");
-			throw new errors.MissingRequiredParameters(["query"]);
-		}
-
-		// Parse the query JSON and validate with schema
-		let parsedQuery: ActorQuery;
-		try {
-			parsedQuery = JSON.parse(queryParam as string);
-		} catch (error) {
-			logger().error("invalid query json for resolve", { error });
-			throw new errors.InvalidQueryJSON(error);
+		const params = ResolveRequestSchema.safeParse({
+			query: getRequestQuery(c, false),
+		});
+		if (!params.success) {
+			logger().error("invalid connection parameters", {
+				error: params.error,
+			});
+			throw new errors.InvalidRequest(params.error);
 		}
 
 		// Get the actor ID and meta
-		const { actorId, meta } = await queryActor(c, parsedQuery, driver);
+		const { actorId, meta } = await queryActor(c, params.data.query, driver);
 		logger().debug("resolved actor", { actorId, meta });
 		invariant(actorId, "Missing actor ID");
 
@@ -145,19 +157,20 @@ export function createManagerRouter(
 
 		let encoding: Encoding | undefined;
 		try {
-			encoding = getRequestEncoding(c.req);
-			logger().debug("websocket connection request received", { encoding });
+			logger().debug("websocket connection request received");
 
-			const params = ConnectQuerySchema.safeParse({
-				query: parseQuery(c),
+			// We can't use the standard headers with WebSockets
+			//
+			// All other information will be sent over the socket itself, since that data needs to be E2EE
+			const params = ConnectWebSocketRequestSchema.safeParse({
+				query: getRequestQuery(c, true),
 				encoding: c.req.query("encoding"),
-				params: c.req.query("params"),
 			});
 			if (!params.success) {
 				logger().error("invalid connection parameters", {
 					error: params.error,
 				});
-				throw new errors.InvalidQueryFormat(params.error);
+				throw new errors.InvalidRequest(params.error);
 			}
 
 			// Get the actor ID and meta
@@ -185,13 +198,9 @@ export function createManagerRouter(
 				})(c, noopNext());
 			} else if ("custom" in handler.proxyMode) {
 				logger().debug("using custom proxy mode for websocket connection");
-				let pathname = `/connect/websocket?encoding=${params.data.encoding}`;
-				if (params.data.params) {
-					pathname += `&params=${params.data.params}`;
-				}
 				return await handler.proxyMode.custom.onProxyWebSocket(
 					c,
-					pathname,
+					`/connect/websocket?encoding=${params.data.encoding}`,
 					actorId,
 					meta,
 				);
@@ -247,20 +256,20 @@ export function createManagerRouter(
 	app.get("/actors/connect/sse", async (c) => {
 		let encoding: Encoding | undefined;
 		try {
-			encoding = getRequestEncoding(c.req);
+			encoding = getRequestEncoding(c.req, false);
 			logger().debug("sse connection request received", { encoding });
 
-			const params = ConnectQuerySchema.safeParse({
-				query: parseQuery(c),
-				encoding: c.req.query("encoding"),
-				params: c.req.query("params"),
+			const params = ConnectRequestSchema.safeParse({
+				query: getRequestQuery(c, false),
+				encoding: c.req.header(HEADER_ENCODING),
+				params: c.req.header(HEADER_CONN_PARAMS),
 			});
 
 			if (!params.success) {
 				logger().error("invalid connection parameters", {
 					error: params.error,
 				});
-				throw new errors.InvalidQueryFormat(params.error);
+				throw new errors.InvalidRequest(params.error);
 			}
 
 			const query = params.data.query;
@@ -284,11 +293,11 @@ export function createManagerRouter(
 			} else if ("custom" in handler.proxyMode) {
 				logger().debug("using custom proxy mode for sse connection");
 				const url = new URL("http://actor/connect/sse");
-				url.searchParams.set("encoding", params.data.encoding);
-				if (params.data.params) {
-					url.searchParams.set("params", params.data.params);
-				}
 				const proxyRequest = new Request(url, c.req.raw);
+				proxyRequest.headers.set(HEADER_ENCODING, params.data.encoding);
+				if (params.data.connParams) {
+					proxyRequest.headers.set(HEADER_CONN_PARAMS, params.data.connParams);
+				}
 				return await handler.proxyMode.custom.onProxyRequest(
 					c,
 					proxyRequest,
@@ -357,24 +366,21 @@ export function createManagerRouter(
 			const rpcName = c.req.param("rpc");
 			logger().debug("rpc call received", { rpcName });
 
-			// Get query parameters for actor lookup
-			const queryParam = c.req.query("query");
-			if (!queryParam) {
-				logger().error("missing query parameter for rpc");
-				throw new errors.MissingRequiredParameters(["query"]);
-			}
+			const params = ConnectRequestSchema.safeParse({
+				query: getRequestQuery(c, false),
+				encoding: c.req.header(HEADER_ENCODING),
+				params: c.req.header(HEADER_CONN_PARAMS),
+			});
 
-			// Parse the query JSON and validate with schema
-			let parsedQuery: ActorQuery;
-			try {
-				parsedQuery = JSON.parse(queryParam as string);
-			} catch (error) {
-				logger().error("invalid query json for rpc", { error });
-				throw new errors.InvalidQueryJSON(error);
+			if (!params.success) {
+				logger().error("invalid connection parameters", {
+					error: params.error,
+				});
+				throw new errors.InvalidRequest(params.error);
 			}
 
 			// Get the actor ID and meta
-			const { actorId, meta } = await queryActor(c, parsedQuery, driver);
+			const { actorId, meta } = await queryActor(c, params.data.query, driver);
 			logger().debug("found actor for rpc", { actorId, meta });
 			invariant(actorId, "Missing actor ID");
 
@@ -416,41 +422,22 @@ export function createManagerRouter(
 	});
 
 	// Proxy connection messages to actor
-	app.post("/actors/connections/:conn/message", async (c) => {
+	app.post("/actors/message", async (c) => {
 		logger().debug("connection message request received");
 		try {
-			const connId = c.req.param("conn");
-			const connToken = c.req.query("connectionToken");
-			const encoding = c.req.query("encoding");
-
-			// Get query parameters for actor lookup
-			const queryParam = c.req.query("query");
-			if (!queryParam) {
-				throw new errors.MissingRequiredParameters(["query"]);
+			const params = ConnMessageRequestSchema.safeParse({
+				actorId: c.req.header(HEADER_ACTOR_ID),
+				connId: c.req.header(HEADER_CONN_ID),
+				encoding: c.req.header(HEADER_ENCODING),
+				connToken: c.req.header(HEADER_CONN_TOKEN),
+			});
+			if (!params.success) {
+				logger().error("invalid connection parameters", {
+					error: params.error,
+				});
+				throw new errors.InvalidRequest(params.error);
 			}
-
-			// Check other required parameters
-			const missingParams: string[] = [];
-			if (!connToken) missingParams.push("connectionToken");
-			if (!encoding) missingParams.push("encoding");
-
-			if (missingParams.length > 0) {
-				throw new errors.MissingRequiredParameters(missingParams);
-			}
-
-			// Parse the query JSON and validate with schema
-			let parsedQuery: ActorQuery;
-			try {
-				parsedQuery = JSON.parse(queryParam as string);
-			} catch (error) {
-				logger().error("invalid query json", { error });
-				throw new errors.InvalidQueryJSON(error);
-			}
-
-			// Get the actor ID and meta
-			const { actorId, meta } = await queryActor(c, parsedQuery, driver);
-			invariant(actorId, "Missing actor ID");
-			logger().debug("connection message to actor", { connId, actorId, meta });
+			const { actorId, connId, encoding, connToken } = params.data;
 
 			// Handle based on mode
 			if ("inline" in handler.proxyMode) {
@@ -467,14 +454,16 @@ export function createManagerRouter(
 			} else if ("custom" in handler.proxyMode) {
 				logger().debug("using custom proxy mode for connection message");
 				const url = new URL(`http://actor/connections/${connId}/message`);
-				url.searchParams.set("connectionToken", connToken!);
-				url.searchParams.set("encoding", encoding!);
+
 				const proxyRequest = new Request(url, c.req.raw);
+				proxyRequest.headers.set(HEADER_ENCODING, encoding);
+				proxyRequest.headers.set(HEADER_CONN_ID, connId);
+				proxyRequest.headers.set(HEADER_CONN_TOKEN, connToken);
+
 				return await handler.proxyMode.custom.onProxyRequest(
 					c,
 					proxyRequest,
 					actorId,
-					meta,
 				);
 			} else {
 				assertUnreachable(handler.proxyMode);
@@ -571,7 +560,7 @@ export async function queryActor(
 			meta: createOutput.meta,
 		};
 	} else {
-		throw new errors.InvalidQueryFormat("Invalid query format");
+		throw new errors.InvalidRequest("Invalid query format");
 	}
 
 	logger().debug("actor query result", {
@@ -584,22 +573,4 @@ export async function queryActor(
 /** Generates a `Next` handler to pass to middleware in order to be able to call arbitrary middleware. */
 function noopNext(): Next {
 	return async () => {};
-}
-
-function parseQuery(c: HonoContext): unknown {
-	// Get query parameters for actor lookup
-	const queryParam = c.req.query("query");
-	if (!queryParam) {
-		logger().error("missing query parameter for rpc");
-		throw new errors.MissingRequiredParameters(["query"]);
-	}
-
-	// Parse the query JSON and validate with schema
-	try {
-		const parsed = JSON.parse(queryParam as string);
-		return parsed;
-	} catch (error) {
-		logger().error("invalid query json for rpc", { error });
-		throw new errors.InvalidQueryJSON(error);
-	}
 }

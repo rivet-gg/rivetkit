@@ -18,7 +18,6 @@ import { assertUnreachable } from "./utils";
 import { deconstructError, stringifyError } from "@/common/utils";
 import type { AppConfig } from "@/app/config";
 import type { DriverConfig } from "@/driver-helpers/config";
-import { ToClient } from "./protocol/message/to-client";
 import invariant from "invariant";
 
 export interface ConnectWebSocketOpts {
@@ -89,52 +88,88 @@ export function handleWebSocketConnect(
 	actorId: string,
 ) {
 	return async () => {
-		const encoding = getRequestEncoding(context.req);
+		const encoding = getRequestEncoding(context.req, true);
 
-		const parameters = getRequestConnParams(
-			context.req,
-			appConfig,
-			driverConfig,
-		);
+		let sharedWs: WSContext | undefined = undefined;
 
-		// Continue with normal connection setup
-		const wsHandler = await handler({
-			req: context.req,
-			encoding,
-			params: parameters,
-			actorId,
-		});
+		// Setup promise for the init message since all other behavior depends on this
+		const {
+			promise: onInitPromise,
+			resolve: onInitResolve,
+			reject: onInitReject,
+		} = Promise.withResolvers<ConnectWebSocketOutput>();
 
-		const { promise: onOpenPromise, resolve: onOpenResolve } =
-			Promise.withResolvers<undefined>();
+		let didTimeOut = false;
+		let didInit = false;
+
+		// Add timeout waiting for init
+		const initTimeout = setTimeout(() => {
+			logger().warn("timed out waiting for init");
+
+			sharedWs?.close(1001, "timed out waiting for init message");
+			didTimeOut = true;
+			onInitReject("init timed out");
+		}, appConfig.webSocketInitTimeout);
 
 		return {
 			onOpen: async (_evt: any, ws: WSContext) => {
-				try {
-					// TODO: maybe timeout this!
-					await wsHandler.onOpen(ws);
-					onOpenResolve(undefined);
-				} catch (error) {
-					deconstructError(error, logger(), { wsEvent: "open" });
-					onOpenResolve(undefined);
-					ws.close(1011, "internal error");
-				}
+				sharedWs = ws;
+
+				logger().debug("websocket open");
+
+				// Close WS immediately if init timed out. This indicates a long delay at the protocol level in sending the init message.
+				if (didTimeOut) ws.close(1001, "timed out waiting for init message");
 			},
 			onMessage: async (evt: { data: any }, ws: WSContext) => {
 				try {
-					invariant(encoding, "encoding should be defined");
-
-					await onOpenPromise;
-
-					logger().debug("received message");
-
 					const value = evt.data.valueOf() as InputData;
 					const message = await parseMessage(value, {
 						encoding: encoding,
 						maxIncomingMessageSize: appConfig.maxIncomingMessageSize,
 					});
 
-					await wsHandler.onMessage(message);
+					if ("i" in message.b) {
+						// Handle init message
+						//
+						// Parameters must go over the init message instead of a query parameter so it receives full E2EE
+
+						logger().debug("received init ws message");
+
+						invariant(
+							!didInit,
+							"should not have already received init message",
+						);
+						didInit = true;
+						clearTimeout(initTimeout);
+
+						try {
+							// Create connection handler
+							const wsHandler = await handler({
+								req: context.req,
+								encoding,
+								params: message.b.i.p,
+								actorId,
+							});
+
+							// Notify socket open
+							// TODO: Add timeout to this
+							await wsHandler.onOpen(ws);
+
+							// Allow all other events to proceed
+							onInitResolve(wsHandler);
+						} catch (error) {
+							deconstructError(error, logger(), { wsEvent: "open" });
+							onInitReject(error);
+							ws.close(1011, "internal error");
+						}
+					} else {
+						// Handle all other messages
+
+						logger().debug("received regular ws message");
+
+						const wsHandler = await onInitPromise;
+						await wsHandler.onMessage(message);
+					}
 				} catch (error) {
 					const { code } = deconstructError(error, logger(), {
 						wsEvent: "message",
@@ -150,36 +185,33 @@ export function handleWebSocketConnect(
 				},
 				ws: WSContext,
 			) => {
+				if (event.wasClean) {
+					logger().info("websocket closed", {
+						code: event.code,
+						reason: event.reason,
+						wasClean: event.wasClean,
+					});
+				} else {
+					logger().warn("websocket closed", {
+						code: event.code,
+						reason: event.reason,
+						wasClean: event.wasClean,
+					});
+				}
+
+				// HACK: Close socket in order to fix bug with Cloudflare Durable Objects leaving WS in closing state
+				// https://github.com/cloudflare/workerd/issues/2569
+				ws.close(1000, "hack_force_close");
+
 				try {
-					await onOpenPromise;
-
-					// HACK: Close socket in order to fix bug with Cloudflare Durable Objects leaving WS in closing state
-					// https://github.com/cloudflare/workerd/issues/2569
-					ws.close(1000, "hack_force_close");
-
-					if (event.wasClean) {
-						logger().info("websocket closed", {
-							code: event.code,
-							reason: event.reason,
-							wasClean: event.wasClean,
-						});
-					} else {
-						logger().warn("websocket closed", {
-							code: event.code,
-							reason: event.reason,
-							wasClean: event.wasClean,
-						});
-					}
-
+					const wsHandler = await onInitPromise;
 					await wsHandler.onClose();
 				} catch (error) {
 					deconstructError(error, logger(), { wsEvent: "close" });
 				}
 			},
-			onError: async (error: unknown) => {
+			onError: async (_error: unknown) => {
 				try {
-					await onOpenPromise;
-
 					// Actors don't need to know about this, since it's abstracted away
 					logger().warn("websocket error");
 				} catch (error) {
@@ -200,7 +232,7 @@ export async function handleSseConnect(
 	handler: (opts: ConnectSseOpts) => Promise<ConnectSseOutput>,
 	actorId: string,
 ) {
-	const encoding = getRequestEncoding(c.req);
+	const encoding = getRequestEncoding(c.req, false);
 	const parameters = getRequestConnParams(c.req, appConfig, driverConfig);
 
 	const sseHandler = await handler({
@@ -246,7 +278,7 @@ export async function handleRpc(
 	actorId: string,
 ) {
 	try {
-		const encoding = getRequestEncoding(c.req);
+		const encoding = getRequestEncoding(c.req, false);
 		const parameters = getRequestConnParams(c.req, appConfig, driverConfig);
 
 		logger().debug("handling rpc", { rpcName, encoding });
@@ -343,7 +375,7 @@ export async function handleConnectionMessage(
 	actorId: string,
 ) {
 	try {
-		const encoding = getRequestEncoding(c.req);
+		const encoding = getRequestEncoding(c.req, false);
 
 		// Validate incoming request
 		let message: messageToServer.ToServer;
@@ -398,8 +430,13 @@ export async function handleConnectionMessage(
 }
 
 // Helper to get the connection encoding from a request
-export function getRequestEncoding(req: HonoRequest): Encoding {
-	const encodingParam = req.query("encoding");
+export function getRequestEncoding(
+	req: HonoRequest,
+	useQuery: boolean,
+): Encoding {
+	const encodingParam = useQuery
+		? req.query("encoding")
+		: req.header(HEADER_ENCODING);
 	if (!encodingParam) {
 		return "json";
 	}
@@ -412,13 +449,55 @@ export function getRequestEncoding(req: HonoRequest): Encoding {
 	return result.data;
 }
 
+export function getRequestQuery(c: HonoContext, useQuery: boolean): unknown {
+	// Get query parameters for actor lookup
+	const queryParam = useQuery
+		? c.req.query("query")
+		: c.req.header(HEADER_ACTOR_QUERY);
+	if (!queryParam) {
+		logger().error("missing query parameter");
+		throw new errors.InvalidRequest("missing query");
+	}
+
+	// Parse the query JSON and validate with schema
+	try {
+		const parsed = JSON.parse(queryParam);
+		return parsed;
+	} catch (error) {
+		logger().error("invalid query json", { error });
+		throw new errors.InvalidQueryJSON(error);
+	}
+}
+
+export const HEADER_ACTOR_QUERY = "X-AC-Query";
+
+export const HEADER_ENCODING = "X-AC-Encoding";
+
+// IMPORTANT: Params must be in headers or in an E2EE part of the request (i.e. NOT the URL or query string) in order to ensure that tokens can be securely passed in params.
+export const HEADER_CONN_PARAMS = "X-AC-Conn-Params";
+
+export const HEADER_ACTOR_ID = "X-AC-Actor";
+
+export const HEADER_CONN_ID = "X-AC-Conn";
+
+export const HEADER_CONN_TOKEN = "X-AC-Conn-Token";
+
+export const ALL_HEADERS = [
+	HEADER_ACTOR_QUERY,
+	HEADER_ENCODING,
+	HEADER_CONN_PARAMS,
+	HEADER_ACTOR_ID,
+	HEADER_CONN_ID,
+	HEADER_CONN_TOKEN,
+];
+
 // Helper to get connection parameters for the request
 export function getRequestConnParams(
 	req: HonoRequest,
 	appConfig: AppConfig,
 	driverConfig: DriverConfig,
 ): unknown {
-	const paramsParam = req.query("params");
+	const paramsParam = req.header(HEADER_CONN_PARAMS);
 	if (!paramsParam) {
 		return null;
 	}

@@ -5,7 +5,7 @@ import {
 	DriverConfig,
 	ManagerDriver,
 } from "@/driver-helpers/mod";
-import { runActorDriverTests, waitFor } from "./tests/actor-driver";
+import { runActorDriverTests } from "./tests/actor-driver";
 import { runManagerDriverTests } from "./tests/manager-driver";
 import { describe } from "vitest";
 import {
@@ -18,6 +18,7 @@ import invariant from "invariant";
 import { bundleRequire } from "bundle-require";
 import { getPort } from "@/test/mod";
 import { Transport } from "@/client/mod";
+import { runActorConnTests } from "./tests/actor-conn";
 
 export interface DriverTestConfig {
 	/** Deploys an app and returns the connection endpoint. */
@@ -31,10 +32,8 @@ export interface DriverTestConfig {
 
 	/** Cloudflare Workers has some bugs with cleanup. */
 	HACK_skipCleanupNet?: boolean;
-}
 
-export interface DriverTestConfigWithTransport extends DriverTestConfig {
-	transport: Transport;
+	transport?: Transport;
 }
 
 export interface DriverDeployOutput {
@@ -46,26 +45,18 @@ export interface DriverDeployOutput {
 
 /** Runs all Vitest tests against the provided drivers. */
 export function runDriverTests(driverTestConfig: DriverTestConfig) {
+	runActorDriverTests(driverTestConfig);
+	runManagerDriverTests(driverTestConfig);
+
 	for (const transport of ["websocket", "sse"] as Transport[]) {
-		describe(`driver tests (${transport})`, () => {
-			runActorDriverTests({
-				...driverTestConfig,
-				transport,
-			});
-			runManagerDriverTests({
+		describe(`actor connection (${transport})`, () => {
+			runActorConnTests({
 				...driverTestConfig,
 				transport,
 			});
 		});
 	}
 }
-
-/**
- * Re-export the waitFor helper for use in other tests.
- * This function handles waiting in tests, using either real timers or mocked timers
- * based on the driverTestConfig.useRealTimers setting.
- */
-export { waitFor };
 
 /**
  * Helper function to adapt the drivers to the Node.js runtime for tests.
