@@ -16,6 +16,15 @@ import { ACTOR_CONNS_SYMBOL, type ClientRaw, TRANSPORT_SYMBOL } from "./client";
 import * as errors from "./errors";
 import { logger } from "./log";
 import { type WebSocketMessage as ConnMessage, messageLength } from "./utils";
+import {
+	HEADER_ACTOR_ID,
+	HEADER_ACTOR_QUERY,
+	HEADER_CONN_ID,
+	HEADER_CONN_TOKEN,
+	HEADER_ENCODING,
+	HEADER_CONN_PARAMS,
+} from "@/actor/router-endpoints";
+import type { EventSource } from "eventsource";
 
 // Re-export the type with the original name to maintain compatibility
 type ActorDefinitionRpcs<AD extends AnyActorDefinition> =
@@ -74,6 +83,7 @@ export class ActorConnRaw {
 	#connecting = false;
 
 	// These will only be set on SSE driver
+	#actorId?: string;
 	#connectionId?: string;
 	#connectionToken?: string;
 
@@ -258,7 +268,11 @@ enc
 	#connectWebSocket() {
 		const { WebSocket } = this.#dynamicImports;
 
-		const url = this.#buildConnUrl("websocket");
+		const actorQueryStr = encodeURIComponent(JSON.stringify(this.actorQuery));
+		const endpoint = this.endpoint
+			.replace(/^http:/, "ws:")
+			.replace(/^https:/, "wss:");
+		const url = `${endpoint}/actors/connect/websocket?encoding=${this.encodingKind}&query=${actorQueryStr}`;
 
 		logger().debug("connecting to websocket", { url });
 		const ws = new WebSocket(url);
@@ -275,7 +289,16 @@ enc
 		this.#transport = { websocket: ws };
 		ws.onopen = () => {
 			logger().debug("websocket open");
-			// #handleOnOpen is called on "i" event
+
+			// Set init message
+			this.#sendMessage(
+				{
+					b: { i: { p: this.params } },
+				},
+				{ ephemeral: true },
+			);
+
+			// #handleOnOpen is called on "i" event from the server
 		};
 		ws.onmessage = async (ev) => {
 			this.#handleOnMessage(ev);
@@ -291,10 +314,25 @@ enc
 	#connectSse() {
 		const { EventSource } = this.#dynamicImports;
 
-		const url = this.#buildConnUrl("sse");
+		const url = `${this.endpoint}/actors/connect/sse`;
 
 		logger().debug("connecting to sse", { url });
-		const eventSource = new EventSource(url);
+		const eventSource = new EventSource(url, {
+			fetch: (input, init) => {
+				return fetch(input, {
+					...init,
+					headers: {
+						...init?.headers,
+						"User-Agent": httpUserAgent(),
+						[HEADER_ENCODING]: this.encodingKind,
+						[HEADER_ACTOR_QUERY]: JSON.stringify(this.actorQuery),
+						...(this.params !== undefined
+							? { [HEADER_CONN_PARAMS]: JSON.stringify(this.params) }
+							: {}),
+					},
+				});
+			},
+		});
 		this.#transport = { sse: eventSource };
 		eventSource.onopen = () => {
 			logger().debug("eventsource open");
@@ -357,9 +395,11 @@ enc
 
 		if ("i" in response.b) {
 			// This is only called for SSE
+			this.#actorId = response.b.i.ai;
 			this.#connectionId = response.b.i.ci;
 			this.#connectionToken = response.b.i.ct;
 			logger().trace("received init message", {
+				actorId: this.#actorId,
 				connectionId: this.#connectionId,
 			});
 			this.#handleOnOpen();
@@ -475,34 +515,6 @@ enc
 
 		// More detailed information will be logged in onclose
 		logger().warn("socket error", { event });
-	}
-
-	#buildConnUrl(transport: Transport): string {
-		// Get the manager endpoint from the endpoint provided
-		const actorQueryStr = encodeURIComponent(JSON.stringify(this.actorQuery));
-
-		logger().debug("building conn url", {
-			transport,
-		});
-
-		let url = `${this.endpoint}/actors/connect/${transport}?encoding=${this.encodingKind}&query=${actorQueryStr}`;
-
-		if (this.params !== undefined) {
-			const paramsStr = JSON.stringify(this.params);
-
-			// TODO: This is an imprecise count since it doesn't count the full URL length & URI encoding expansion in the URL size
-			if (paramsStr.length > MAX_CONN_PARAMS_SIZE) {
-				throw new errors.ConnParamsTooLong();
-			}
-
-			url += `&params=${encodeURIComponent(paramsStr)}`;
-		}
-
-		if (transport === "websocket") {
-			url = url.replace(/^http:/, "ws:").replace(/^https:/, "wss:");
-		}
-
-		return url;
 	}
 
 	#takeRpcInFlight(id: number): RpcInFlight {
@@ -674,21 +686,20 @@ enc
 
 	async #sendHttpMessage(message: wsToServer.ToServer, opts?: SendOpts) {
 		try {
-			if (!this.#connectionId || !this.#connectionToken)
+			if (!this.#actorId || !this.#connectionId || !this.#connectionToken)
 				throw new errors.InternalError("Missing connection ID or token.");
-
-			// Get the manager endpoint from the endpoint provided
-			const actorQueryStr = encodeURIComponent(JSON.stringify(this.actorQuery));
-
-			const url = `${this.endpoint}/actors/connections/${this.#connectionId}/message?encoding=${this.encodingKind}&connectionToken=${encodeURIComponent(this.#connectionToken)}&query=${actorQueryStr}`;
 
 			// TODO: Implement ordered messages, this is not guaranteed order. Needs to use an index in order to ensure we can pipeline requests efficiently.
 			// TODO: Validate that we're using HTTP/3 whenever possible for pipelining requests
 			const messageSerialized = this.#serialize(message);
-			const res = await fetch(url, {
+			const res = await fetch(`${this.endpoint}/actors/message`, {
 				method: "POST",
 				headers: {
 					"User-Agent": httpUserAgent(),
+					[HEADER_ENCODING]: this.encodingKind,
+					[HEADER_ACTOR_ID]: this.#actorId,
+					[HEADER_CONN_ID]: this.#connectionId,
+					[HEADER_CONN_TOKEN]: this.#connectionToken,
 				},
 				body: messageSerialized,
 			});

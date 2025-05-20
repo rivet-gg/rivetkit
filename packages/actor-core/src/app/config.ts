@@ -63,6 +63,9 @@ export const AppConfigSchema = z.object({
 
 	maxIncomingMessageSize: z.number().optional().default(65_536),
 
+	/** How long to wait for the WebSocket to send an init message before closing it. */
+	webSocketInitTimeout: z.number().optional().default(5_000),
+
 	/** Peer configuration for coordinated topology. */
 	actorPeer: ActorPeerConfigSchema.optional().default({}),
 

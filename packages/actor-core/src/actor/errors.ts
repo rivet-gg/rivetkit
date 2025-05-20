@@ -212,18 +212,6 @@ export class UserError extends ActorError {
 	}
 }
 
-// Proxy-related errors
-
-export class MissingRequiredParameters extends ActorError {
-	constructor(missingParams: string[]) {
-		super(
-			"missing_required_parameters", 
-			`Missing required parameters: ${missingParams.join(", ")}`,
-			{ public: true }
-		);
-	}
-}
-
 export class InvalidQueryJSON extends ActorError {
 	constructor(error?: unknown) {
 		super(
@@ -234,11 +222,11 @@ export class InvalidQueryJSON extends ActorError {
 	}
 }
 
-export class InvalidQueryFormat extends ActorError {
+export class InvalidRequest extends ActorError {
 	constructor(error?: unknown) {
 		super(
-			"invalid_query_format", 
-			`Invalid query format: ${error}`,
+			"invalid_request", 
+			`Invalid request: ${error}`,
 			{ public: true, cause: error }
 		);
 	}
@@ -277,12 +265,6 @@ export class ProxyError extends ActorError {
 export class InvalidRpcRequest extends ActorError {
 	constructor(message: string) {
 		super("invalid_rpc_request", message, { public: true });
-	}
-}
-
-export class InvalidRequest extends ActorError {
-	constructor(message: string) {
-		super("invalid_request", message, { public: true });
 	}
 }
 

@@ -1,6 +1,14 @@
-import { ActorKeySchema, type ActorKey } from "@/common//utils";
+import { ActorKeySchema } from "@/common//utils";
 import { z } from "zod";
 import { EncodingSchema } from "@/actor/protocol/serde";
+import {
+	HEADER_ACTOR_ID,
+	HEADER_CONN_ID,
+	HEADER_CONN_PARAMS,
+	HEADER_CONN_TOKEN,
+	HEADER_ENCODING,
+	HEADER_ACTOR_QUERY,
+} from "@/actor/router-endpoints";
 
 export const CreateRequestSchema = z.object({
 	name: z.string(),
@@ -36,16 +44,32 @@ export const ActorQuerySchema = z.union([
 	}),
 ]);
 
-export const ConnectQuerySchema = z.object({
-	query: ActorQuerySchema,
-	encoding: EncodingSchema,
-	params: z.string().optional(),
+export const ConnectRequestSchema = z.object({
+	query: ActorQuerySchema.describe(HEADER_ACTOR_QUERY),
+	encoding: EncodingSchema.describe(HEADER_ENCODING),
+	connParams: z.string().optional().describe(HEADER_CONN_PARAMS),
+});
+
+export const ConnectWebSocketRequestSchema = z.object({
+	query: ActorQuerySchema.describe("query"),
+	encoding: EncodingSchema.describe("encoding"),
+});
+
+export const ConnMessageRequestSchema = z.object({
+	actorId: z.string().describe(HEADER_ACTOR_ID),
+	connId: z.string().describe(HEADER_CONN_ID),
+	encoding: EncodingSchema.describe(HEADER_ENCODING),
+	connToken: z.string().describe(HEADER_CONN_TOKEN),
+});
+
+export const ResolveRequestSchema = z.object({
+	query: ActorQuerySchema.describe(HEADER_ACTOR_QUERY),
 });
 
 export type ActorQuery = z.infer<typeof ActorQuerySchema>;
 export type GetForKeyRequest = z.infer<typeof GetForKeyRequestSchema>;
 export type GetOrCreateRequest = z.infer<typeof GetOrCreateRequestSchema>;
-export type ConnectQuery = z.infer<typeof ConnectQuerySchema>;
+export type ConnectQuery = z.infer<typeof ConnectRequestSchema>;
 /**
  * Interface representing a request to create an actor.
  */

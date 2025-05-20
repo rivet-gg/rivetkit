@@ -27,6 +27,9 @@ import {
 	handleSseConnect,
 	handleRpc,
 	handleConnectionMessage,
+	HEADER_CONN_TOKEN,
+	HEADER_CONN_ID,
+	ALL_HEADERS,
 } from "./router-endpoints";
 
 export type {
@@ -68,6 +71,8 @@ export function createActorRouter(
 	//
 	//This is only relevant if the actor is exposed directly publicly
 	if (appConfig.cors) {
+		const corsConfig = appConfig.cors;
+
 		app.use("*", async (c, next) => {
 			const path = c.req.path;
 
@@ -76,7 +81,10 @@ export function createActorRouter(
 				return next();
 			}
 
-			return cors(appConfig.cors)(c, next);
+			return cors({
+				...corsConfig,
+				allowHeaders: [...(appConfig.cors?.allowHeaders ?? []), ...ALL_HEADERS],
+			})(c, next);
 		});
 	}
 
@@ -146,12 +154,12 @@ export function createActorRouter(
 		);
 	});
 
-	app.post("/connections/:conn/message", async (c) => {
+	app.post("/connections/message", async (c) => {
 		if (!handlers.onConnMessage) {
 			throw new Error("onConnMessage handler is required");
 		}
-		const connId = c.req.param("conn");
-		const connToken = c.req.query("connectionToken");
+		const connId = c.req.header(HEADER_CONN_ID);
+		const connToken = c.req.header(HEADER_CONN_TOKEN);
 		const actorId = await handler.getActorId();
 		if (!connId || !connToken) {
 			throw new Error("Missing required parameters");

@@ -5,6 +5,7 @@ import type { ActorQuery } from "@/manager/protocol/query";
 import { logger } from "./log";
 import * as errors from "./errors";
 import { sendHttpRequest } from "./utils";
+import { HEADER_ACTOR_QUERY, HEADER_ENCODING } from "@/actor/router-endpoints";
 
 /**
  * RPC function returned by Actor connections and handles.
@@ -49,18 +50,17 @@ export async function resolveActorId(
 ): Promise<string> {
 	logger().debug("resolving actor ID", { query: actorQuery });
 
-	// Construct the URL using the current actor query
-	const queryParam = encodeURIComponent(JSON.stringify(actorQuery));
-	const url = `${endpoint}/actors/resolve?encoding=${encodingKind}&query=${queryParam}`;
-
-	// Use the shared HTTP request utility with integrated serialization
 	try {
 		const result = await sendHttpRequest<
 			Record<never, never>,
 			protoHttpResolve.ResolveResponse
 		>({
-			url,
+			url: `${endpoint}/actors/resolve`,
 			method: "POST",
+			headers: {
+				[HEADER_ENCODING]: encodingKind,
+				[HEADER_ACTOR_QUERY]: JSON.stringify(actorQuery),
+			},
 			body: {},
 			encoding: encodingKind,
 		});

@@ -2,6 +2,8 @@ import { z } from "zod";
 
 // Only called for SSE because we don't need this for WebSockets
 export const InitSchema = z.object({
+	// Actor ID
+	ai: z.string(),
 	// Connection ID
 	ci: z.string(),
 	// Connection token

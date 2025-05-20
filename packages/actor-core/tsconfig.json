@@ -8,5 +8,5 @@
       "actor-core": ["./src/mod.ts"]
     }
   },
-  "include": ["src/**/*", "tests/**/*"]
+  "include": ["src/**/*", "tests/**/*", "fixtures/driver-test-suite/**/*"]
 }

@@ -720,7 +720,8 @@ export class ActorInstance<S, CP, CS, V> {
 			new CachedSerializer<wsToClient.ToClient>({
 				b: {
 					i: {
-						ci: `${conn.id}`,
+						ai: this.id,
+						ci: conn.id,
 						ct: conn._token,
 					},
 				},

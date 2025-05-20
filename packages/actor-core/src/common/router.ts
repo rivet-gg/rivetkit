@@ -44,7 +44,7 @@ export function handleRouteError(error: unknown, c: HonoContext) {
 		},
 	);
 
-	const encoding = getRequestEncoding(c.req);
+	const encoding = getRequestEncoding(c.req, false);
 	const output = serialize(
 		{
 			c: code,

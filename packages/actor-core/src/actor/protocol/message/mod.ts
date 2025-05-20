@@ -15,6 +15,7 @@ import {
 } from "@/actor/protocol/serde";
 import { deconstructError } from "@/common/utils";
 import { Actions } from "@/actor/config";
+import invariant from "invariant";
 
 export const TransportSchema = z.enum(["websocket", "sse"]);
 
@@ -91,7 +92,9 @@ export async function processMessage<S, CP, CS, V>(
 	let rpcName: string | undefined;
 
 	try {
-		if ("rr" in message.b) {
+		if ("i" in message.b) {
+			invariant(false, "should not be notified of init event");
+		} else if ("rr" in message.b) {
 			// RPC request
 
 			if (handler.onExecuteRpc === undefined) {

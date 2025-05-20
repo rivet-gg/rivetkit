@@ -1,6 +1,6 @@
 import { describe, test, expect, vi } from "vitest";
-import type { DriverTestConfig, DriverTestConfigWithTransport } from "../mod";
-import { setupDriverTest } from "../utils";
+import type { DriverTestConfig} from "../mod";
+import { setupDriverTest, waitFor } from "../utils";
 import {
 	COUNTER_APP_PATH,
 	SCHEDULED_APP_PATH,
@@ -8,23 +8,8 @@ import {
 	type ScheduledApp,
 } from "../test-apps";
 
-/**
- * Waits for the specified time, using either real setTimeout or vi.advanceTimersByTime
- * based on the driverTestConfig.
- */
-export async function waitFor(
-	driverTestConfig: DriverTestConfig,
-	ms: number,
-): Promise<void> {
-	if (driverTestConfig.useRealTimers) {
-		return new Promise((resolve) => setTimeout(resolve, ms));
-	} else {
-		vi.advanceTimersByTime(ms);
-		return Promise.resolve();
-	}
-}
 export function runActorDriverTests(
-	driverTestConfig: DriverTestConfigWithTransport,
+	driverTestConfig: DriverTestConfig
 ) {
 	describe("Actor Driver Tests", () => {
 		describe("State Persistence", () => {

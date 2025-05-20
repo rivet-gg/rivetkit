@@ -28,6 +28,7 @@ export function messageLength(message: WebSocketMessage): number {
 export interface HttpRequestOpts<Body> {
 	method: string;
 	url: string;
+	headers: Record<string, string>;
 	body?: Body;
 	encoding: Encoding;
 	skipParseResponse?: boolean;
@@ -64,12 +65,13 @@ export async function sendHttpRequest<
 		response = await fetch(opts.url, {
 			method: opts.method,
 			headers: {
-				"User-Agent": httpUserAgent(),
+				...opts.headers,
 				...(contentType
 					? {
 							"Content-Type": contentType,
 						}
 					: {}),
+				"User-Agent": httpUserAgent(),
 			},
 			body: bodyData,
 		});
