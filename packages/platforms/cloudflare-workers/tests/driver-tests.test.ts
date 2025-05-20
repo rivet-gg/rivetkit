@@ -1,4 +1,4 @@
-import { runDriverTests } from "@actor-core/driver-test-suite";
+import { runDriverTests } from "actor-core/driver-test-suite";
 import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";

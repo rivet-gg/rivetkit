@@ -3,7 +3,9 @@
   "compilerOptions": {
     "types": ["deno", "node"],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      // Used for test fixtures
+      "actor-core": ["./src/mod.ts"]
     }
   },
   "include": ["src/**/*", "tests/**/*"]

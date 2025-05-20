@@ -4,7 +4,7 @@ import {
 	CoordinateDriver,
 	DriverConfig,
 	ManagerDriver,
-} from "actor-core/driver-helpers";
+} from "@/driver-helpers/mod";
 import { runActorDriverTests, waitFor } from "./tests/actor-driver";
 import { runManagerDriverTests } from "./tests/manager-driver";
 import { describe } from "vitest";
@@ -12,12 +12,12 @@ import {
 	type ActorCoreApp,
 	CoordinateTopology,
 	StandaloneTopology,
-} from "actor-core";
+} from "@/mod";
 import { createNodeWebSocket, type NodeWebSocket } from "@hono/node-ws";
 import invariant from "invariant";
 import { bundleRequire } from "bundle-require";
-import { getPort } from "actor-core/test";
-import { Transport } from "actor-core/client";
+import { getPort } from "@/test/mod";
+import { Transport } from "@/client/mod";
 
 export interface DriverTestConfig {
 	/** Deploys an app and returns the connection endpoint. */

@@ -1,5 +1,5 @@
 import { assertUnreachable } from "actor-core/utils";
-import { ActorAlreadyExists } from "actor-core/actor/errors";
+import { ActorAlreadyExists } from "actor-core/errors";
 import type {
 	ManagerDriver,
 	GetForIdInput,

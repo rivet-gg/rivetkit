@@ -30,7 +30,6 @@
     "actor-core": "*"
   },
   "devDependencies": {
-    "@actor-core/driver-test-suite": "workspace:*",
     "@cloudflare/workers-types": "^4.20250129.0",
     "@types/invariant": "^2",
     "actor-core": "workspace:*",
