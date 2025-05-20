@@ -5,6 +5,7 @@ import type {
 	CreateActorInput,
 	GetActorOutput,
 } from "actor-core/driver-helpers";
+import { ActorAlreadyExists } from "actor-core/actor/errors";
 import { Bindings } from "./mod";
 import { logger } from "./log";
 import { serializeNameAndKey, serializeKey } from "./util";
@@ -111,6 +112,12 @@ export class CloudflareWorkersManagerDriver implements ManagerDriver {
 	}: CreateActorInput<{ Bindings: Bindings }>): Promise<GetActorOutput> {
 		if (!c) throw new Error("Missing Hono context");
 		const log = logger();
+
+		// Check if actor with the same name and key already exists
+		const existingActor = await this.getWithKey({ c, name, key });
+		if (existingActor) {
+			throw new ActorAlreadyExists(name, key);
+		}
 
 		// Create a deterministic ID from the actor name and key
 		// This ensures that actors with the same name and key will have the same ID

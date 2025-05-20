@@ -6,7 +6,9 @@ import type {
 	GetWithKeyInput,
 	ManagerDriver,
 } from "actor-core/driver-helpers";
+import { ActorAlreadyExists } from "actor-core/actor/errors";
 import type { MemoryGlobalState } from "./global-state";
+import * as crypto from "node:crypto";
 import { ManagerInspector } from "actor-core/inspector";
 import type { ActorCoreApp } from "actor-core";
 
@@ -86,6 +88,12 @@ export class MemoryManagerDriver implements ManagerDriver {
 		name,
 		key,
 	}: CreateActorInput): Promise<CreateActorOutput> {
+		// Check if actor with the same name and key already exists
+		const existingActor = await this.getWithKey({ name, key });
+		if (existingActor) {
+			throw new ActorAlreadyExists(name, key);
+		}
+
 		const actorId = crypto.randomUUID();
 		this.#state.createActor(actorId, name, key);
 

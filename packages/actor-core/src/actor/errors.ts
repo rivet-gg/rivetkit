@@ -254,6 +254,16 @@ export class ActorNotFound extends ActorError {
 	}
 }
 
+export class ActorAlreadyExists extends ActorError {
+	constructor(name: string, key: string[]) {
+		super(
+			"actor_already_exists", 
+			`Actor already exists with name "${name}" and key ${JSON.stringify(key)}`,
+			{ public: true }
+		);
+	}
+}
+
 export class ProxyError extends ActorError {
 	constructor(operation: string, error?: unknown) {
 		super(
