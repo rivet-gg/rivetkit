@@ -1,5 +1,6 @@
 import { deserialize } from "@/actor/protocol/serde";
 import { assertUnreachable, stringifyError } from "@/common/utils";
+import { httpUserAgent } from "@/utils";
 import { Encoding } from "@/mod";
 import * as cbor from "cbor-x";
 import { ActorError, HttpRequestError } from "./errors";
@@ -62,11 +63,14 @@ export async function sendHttpRequest<
 		// Make the HTTP request
 		response = await fetch(opts.url, {
 			method: opts.method,
-			headers: contentType
-				? {
-						"Content-Type": contentType,
-					}
-				: {},
+			headers: {
+				"User-Agent": httpUserAgent(),
+				...(contentType
+					? {
+							"Content-Type": contentType,
+						}
+					: {}),
+			},
 			body: bodyData,
 		});
 	} catch (error) {

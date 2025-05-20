@@ -5,6 +5,7 @@ import type * as wsToServer from "@/actor/protocol/message/to-server";
 import type { Encoding } from "@/actor/protocol/serde";
 import { importEventSource } from "@/common/eventsource";
 import { MAX_CONN_PARAMS_SIZE } from "@/common/network";
+import { httpUserAgent } from "@/utils";
 import { assertUnreachable, stringifyError } from "@/common/utils";
 import { importWebSocket } from "@/common/websocket";
 import type { ActorQuery } from "@/manager/protocol/query";
@@ -686,6 +687,9 @@ enc
 			const messageSerialized = this.#serialize(message);
 			const res = await fetch(url, {
 				method: "POST",
+				headers: {
+					"User-Agent": httpUserAgent(),
+				},
 				body: messageSerialized,
 			});
 

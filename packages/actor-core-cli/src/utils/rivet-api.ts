@@ -1,4 +1,5 @@
 import { z, type ZodTypeAny } from "zod";
+import { httpUserAgent } from "actor-core/utils";
 
 export async function getServiceToken(
 	api: ReturnType<typeof createRivetApi>,
@@ -75,6 +76,7 @@ export function createRivetApi(endpoint: string, accessToken: string) {
 			headers: {
 				...opts.headers,
 				"Content-Type": "application/json",
+				"User-Agent": httpUserAgent(),
 				Authorization: `Bearer ${accessToken}`,
 			},
 		});

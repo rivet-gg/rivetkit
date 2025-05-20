@@ -1,3 +1,5 @@
+import { httpUserAgent } from "actor-core/utils";
+
 export interface RivetClientConfig {
 	endpoint: string;
 	token: string;
@@ -23,6 +25,7 @@ export async function rivetRequest<RequestBody, ResponseBody>(
 		method,
 		headers: {
 			"Content-Type": "application/json",
+			"User-Agent": httpUserAgent(),
 			Authorization: `Bearer ${config.token}`,
 		},
 		body: body ? JSON.stringify(body) : undefined,
