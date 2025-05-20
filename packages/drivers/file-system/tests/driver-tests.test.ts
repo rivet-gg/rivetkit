@@ -1,7 +1,7 @@
 import {
 	runDriverTests,
 	createTestRuntime,
-} from "@actor-core/driver-test-suite";
+} from "actor-core/driver-test-suite";
 import {
 	FileSystemActorDriver,
 	FileSystemManagerDriver,

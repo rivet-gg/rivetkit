@@ -1,13 +1,8 @@
 import { describe, test, expect, vi } from "vitest";
-import {
-	DriverTestConfigWithTransport,
-	waitFor,
-	type DriverTestConfig,
-} from "@/mod";
-import { setupDriverTest } from "@/utils";
-import { resolve } from "node:path";
-import type { App as CounterApp } from "../../fixtures/apps/counter";
-import { ActorError } from "actor-core/client";
+import type { DriverTestConfigWithTransport } from "../mod";
+import { setupDriverTest } from "../utils";
+import { ActorError } from "@/client/mod";
+import { COUNTER_APP_PATH, type CounterApp } from "../test-apps";
 
 export function runManagerDriverTests(
 	driverTestConfig: DriverTestConfigWithTransport,
@@ -18,7 +13,7 @@ export function runManagerDriverTests(
 				const { client } = await setupDriverTest<CounterApp>(
 					c,
 					driverTestConfig,
-					resolve(__dirname, "../fixtures/apps/counter.ts"),
+					COUNTER_APP_PATH,
 				);
 
 				// Basic connect() with no parameters creates a default actor
@@ -38,49 +33,31 @@ export function runManagerDriverTests(
 				expect(countB).toBe(10);
 			});
 
-			// TODO: Add back, createAndConnect is not valid logic
-			//test("create() - always creates a new actor", async (c) => {
-			//	const { client } = await setupDriverTest<CounterApp>(
-			//		c,
-			//		driverTestConfig,
-			//		resolve(__dirname, "../fixtures/apps/counter.ts"),
-			//	);
-			//
-			//	// Create with basic options
-			//	const counterA = await client.counter.createAndConnect([
-			//		"explicit-create",
-			//	]);
-			//	await counterA.increment(7);
-			//
-			//	// Create with the same ID should overwrite or return a conflict
-			//	try {
-			//		// Should either create a new actor with the same ID (overwriting)
-			//		// or throw an error (if the driver prevents ID conflicts)
-			//		const counterADuplicate = client.counter.createAndConnect([
-			//			"explicit-create",
-			//		]);
-			//		await counterADuplicate.increment(1);
-			//
-			//		// If we get here, the driver allows ID overwrites
-			//		// Verify that state was reset or overwritten
-			//		const newCount = await counterADuplicate.increment(0);
-			//		expect(newCount).toBe(1); // Not 8 (7+1) if it's a new instance
-			//	} catch (error) {
-			//		// This is also valid behavior if the driver prevents ID conflicts
-			//		// No assertion needed
-			//	}
-			//
-			//	// Create with full options
-			//	const counterB = await client.counter.createAndConnect([
-			//		"full-options",
-			//		"testing",
-			//		"counter",
-			//	]);
-			//
-			//	await counterB.increment(3);
-			//	const countB = await counterB.increment(0);
-			//	expect(countB).toBe(3);
-			//});
+			test("throws ActorAlreadyExists when creating duplicate actors", async (c) => {
+				const { client } = await setupDriverTest<CounterApp>(
+					c,
+					driverTestConfig,
+					COUNTER_APP_PATH,
+				);
+
+				// Create a unique actor with specific key
+				const uniqueKey = ["duplicate-actor-test", crypto.randomUUID()];
+				const counter = client.counter.getOrCreate(uniqueKey);
+				await counter.increment(5);
+
+				// Expect duplicate actor
+				try {
+					await client.counter.create(uniqueKey);
+					expect.fail("did not error on duplicate create");
+				} catch (err) {
+					expect(err).toBeInstanceOf(ActorError);
+					expect((err as ActorError).code).toBe("actor_already_exists");
+				}
+
+				// Verify the original actor still works and has its state
+				const count = await counter.increment(0);
+				expect(count).toBe(5);
+			});
 		});
 
 		describe("Connection Options", () => {
@@ -88,7 +65,7 @@ export function runManagerDriverTests(
 				const { client } = await setupDriverTest<CounterApp>(
 					c,
 					driverTestConfig,
-					resolve(__dirname, "../fixtures/apps/counter.ts"),
+					COUNTER_APP_PATH,
 				);
 
 				// Try to get a nonexistent actor with no create
@@ -121,7 +98,7 @@ export function runManagerDriverTests(
 				const { client } = await setupDriverTest<CounterApp>(
 					c,
 					driverTestConfig,
-					resolve(__dirname, "../fixtures/apps/counter.ts"),
+					COUNTER_APP_PATH,
 				);
 
 				// Create an actor with connection params
@@ -147,7 +124,7 @@ export function runManagerDriverTests(
 				const { client } = await setupDriverTest<CounterApp>(
 					c,
 					driverTestConfig,
-					resolve(__dirname, "../fixtures/apps/counter.ts"),
+					COUNTER_APP_PATH,
 				);
 
 				// Create a unique ID for this test
@@ -167,7 +144,7 @@ export function runManagerDriverTests(
 			//test("creates and retrieves actors with region", async (c) => {
 			//	const { client } = await setupDriverTest<CounterApp>(c,
 			//		driverTestConfig,
-			//		resolve(__dirname, "../fixtures/apps/counter.ts"),
+			//		COUNTER_APP_PATH
 			//	);
 			//
 			//	// Create actor with a specific region
@@ -195,7 +172,7 @@ export function runManagerDriverTests(
 				const { client } = await setupDriverTest<CounterApp>(
 					c,
 					driverTestConfig,
-					resolve(__dirname, "../fixtures/apps/counter.ts"),
+					COUNTER_APP_PATH,
 				);
 
 				// Create actor with multiple keys
@@ -233,7 +210,7 @@ export function runManagerDriverTests(
 				const { client } = await setupDriverTest<CounterApp>(
 					c,
 					driverTestConfig,
-					resolve(__dirname, "../fixtures/apps/counter.ts"),
+					COUNTER_APP_PATH,
 				);
 
 				// Create actor with string key
@@ -250,7 +227,7 @@ export function runManagerDriverTests(
 				const { client } = await setupDriverTest<CounterApp>(
 					c,
 					driverTestConfig,
-					resolve(__dirname, "../fixtures/apps/counter.ts"),
+					COUNTER_APP_PATH,
 				);
 
 				// Create actor with undefined key
@@ -272,7 +249,7 @@ export function runManagerDriverTests(
 				const { client } = await setupDriverTest<CounterApp>(
 					c,
 					driverTestConfig,
-					resolve(__dirname, "../fixtures/apps/counter.ts"),
+					COUNTER_APP_PATH,
 				);
 
 				// Create counter with keys
@@ -292,7 +269,7 @@ export function runManagerDriverTests(
 				const { client } = await setupDriverTest<CounterApp>(
 					c,
 					driverTestConfig,
-					resolve(__dirname, "../fixtures/apps/counter.ts"),
+					COUNTER_APP_PATH,
 				);
 
 				// Create a counter with no keys
@@ -313,38 +290,39 @@ export function runManagerDriverTests(
 
 		describe("Multiple Actor Instances", () => {
 			// TODO: This test is flakey https://github.com/rivet-gg/actor-core/issues/873
-			//test("creates multiple actor instances of the same type", async (c) => {
-			//	const { client } = await setupDriverTest<CounterApp>(c,
-			//		driverTestConfig,
-			//		resolve(__dirname, "../fixtures/apps/counter.ts"),
-			//	);
-			//
-			//	// Create multiple instances with different IDs
-			//	const instance1 = client.counter.getOrCreate(["multi-1"]);
-			//	const instance2 = client.counter.getOrCreate(["multi-2"]);
-			//	const instance3 = client.counter.getOrCreate(["multi-3"]);
-			//
-			//	// Set different states
-			//	await instance1.increment(1);
-			//	await instance2.increment(2);
-			//	await instance3.increment(3);
-			//
-			//	// Retrieve all instances again
-			//	const retrieved1 = client.counter.getOrCreate(["multi-1"]);
-			//	const retrieved2 = client.counter.getOrCreate(["multi-2"]);
-			//	const retrieved3 = client.counter.getOrCreate(["multi-3"]);
-			//
-			//	// Verify separate state
-			//	expect(await retrieved1.increment(0)).toBe(1);
-			//	expect(await retrieved2.increment(0)).toBe(2);
-			//	expect(await retrieved3.increment(0)).toBe(3);
-			//});
+			test("creates multiple actor instances of the same type", async (c) => {
+				const { client } = await setupDriverTest<CounterApp>(
+					c,
+					driverTestConfig,
+					COUNTER_APP_PATH,
+				);
+
+				// Create multiple instances with different IDs
+				const instance1 = client.counter.getOrCreate(["multi-1"]);
+				const instance2 = client.counter.getOrCreate(["multi-2"]);
+				const instance3 = client.counter.getOrCreate(["multi-3"]);
+
+				// Set different states
+				await instance1.increment(1);
+				await instance2.increment(2);
+				await instance3.increment(3);
+
+				// Retrieve all instances again
+				const retrieved1 = client.counter.getOrCreate(["multi-1"]);
+				const retrieved2 = client.counter.getOrCreate(["multi-2"]);
+				const retrieved3 = client.counter.getOrCreate(["multi-3"]);
+
+				// Verify separate state
+				expect(await retrieved1.increment(0)).toBe(1);
+				expect(await retrieved2.increment(0)).toBe(2);
+				expect(await retrieved3.increment(0)).toBe(3);
+			});
 
 			test("handles default instance with no explicit ID", async (c) => {
 				const { client } = await setupDriverTest<CounterApp>(
 					c,
 					driverTestConfig,
-					resolve(__dirname, "../fixtures/apps/counter.ts"),
+					COUNTER_APP_PATH,
 				);
 
 				// Get default instance (no ID specified)

@@ -59,7 +59,6 @@
     "actor-core": "workspace:*"
   },
   "devDependencies": {
-    "@actor-core/driver-test-suite": "workspace:*",
     "@types/node": "^22.13.1",
     "actor-core": "workspace:*",
     "tsup": "^8.4.0",

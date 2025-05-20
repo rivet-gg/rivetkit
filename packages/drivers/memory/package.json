@@ -27,7 +27,6 @@
     "actor-core": "*"
   },
   "devDependencies": {
-    "@actor-core/driver-test-suite": "workspace:*",
     "actor-core": "workspace:*",
     "tsup": "^8.4.0",
     "typescript": "^5.5.2"

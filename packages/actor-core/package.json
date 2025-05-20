@@ -2,13 +2,7 @@
   "name": "actor-core",
   "version": "0.8.0",
   "license": "Apache-2.0",
-  "files": [
-    "dist",
-    "src",
-    "deno.json",
-    "bun.json",
-    "package.json"
-  ],
+  "files": ["dist", "src", "deno.json", "bun.json", "package.json"],
   "type": "module",
   "bin": "./dist/cli/mod.cjs",
   "exports": {
@@ -70,6 +64,16 @@
       "require": {
         "types": "./dist/driver-helpers/mod.d.cts",
         "default": "./dist/driver-helpers/mod.cjs"
+      }
+    },
+    "./driver-test-suite": {
+      "import": {
+        "types": "./dist/driver-test-suite/mod.d.ts",
+        "default": "./dist/driver-test-suite/mod.js"
+      },
+      "require": {
+        "types": "./dist/driver-test-suite/mod.d.cts",
+        "default": "./dist/driver-test-suite/mod.cjs"
       }
     },
     "./topologies/coordinate": {
@@ -159,7 +163,7 @@
   "sideEffects": false,
   "scripts": {
     "dev": "yarn build --watch",
-    "build": "tsup src/mod.ts src/client/mod.ts src/common/log.ts src/actor/errors.ts src/topologies/coordinate/mod.ts src/topologies/partition/mod.ts src/utils.ts src/driver-helpers/mod.ts src/cli/mod.ts src/actor/protocol/inspector/mod.ts src/actor/protocol/http/rpc.ts src/test/mod.ts src/inspector/protocol/actor/mod.ts src/inspector/protocol/manager/mod.ts src/inspector/mod.ts",
+    "build": "tsup src/mod.ts src/client/mod.ts src/common/log.ts src/actor/errors.ts src/topologies/coordinate/mod.ts src/topologies/partition/mod.ts src/utils.ts src/driver-helpers/mod.ts src/driver-test-suite/mod.ts src/cli/mod.ts src/actor/protocol/inspector/mod.ts src/actor/protocol/http/rpc.ts src/test/mod.ts src/inspector/protocol/actor/mod.ts src/inspector/protocol/manager/mod.ts src/inspector/mod.ts",
     "check-types": "tsc --noEmit",
     "boop": "tsc --outDir dist/test -d",
     "test": "vitest run",
@@ -181,7 +185,10 @@
     "tsup": "^8.4.0",
     "typescript": "^5.7.3",
     "vitest": "^3.1.1",
-    "ws": "^8.18.1"
+    "ws": "^8.18.1",
+    "@hono/node-server": "^1.14.0",
+    "@hono/node-ws": "^1.1.1",
+    "bundle-require": "^5.1.0"
   },
   "peerDependencies": {
     "eventsource": "^3.0.5",

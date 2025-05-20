@@ -1,7 +1,7 @@
-import type { ActorCoreApp } from "actor-core";
+import type { ActorCoreApp } from "@/mod";
 import { type TestContext, vi } from "vitest";
-import { createClient, Transport, type Client } from "actor-core/client";
-import type { DriverTestConfig, DriverTestConfigWithTransport } from "./mod";
+import { createClient, type Client } from "@/client/mod";
+import type { DriverTestConfigWithTransport } from "./mod";
 
 // Must use `TestContext` since global hooks do not work when running concurrently
 export async function setupDriverTest<A extends ActorCoreApp<any>>(

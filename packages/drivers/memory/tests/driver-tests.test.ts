@@ -1,4 +1,4 @@
-import { runDriverTests, createTestRuntime } from "@actor-core/driver-test-suite";
+import { runDriverTests, createTestRuntime } from "actor-core/driver-test-suite";
 import {
 	MemoryActorDriver,
 	MemoryManagerDriver,

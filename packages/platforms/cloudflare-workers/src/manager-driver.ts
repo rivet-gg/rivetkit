@@ -5,7 +5,7 @@ import type {
 	CreateActorInput,
 	GetActorOutput,
 } from "actor-core/driver-helpers";
-import { ActorAlreadyExists } from "actor-core/actor/errors";
+import { ActorAlreadyExists } from "actor-core/errors";
 import { Bindings } from "./mod";
 import { logger } from "./log";
 import { serializeNameAndKey, serializeKey } from "./util";

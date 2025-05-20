@@ -6,7 +6,7 @@ import type {
 	GetWithKeyInput,
 	ManagerDriver,
 } from "actor-core/driver-helpers";
-import { ActorAlreadyExists } from "actor-core/actor/errors";
+import { ActorAlreadyExists } from "actor-core/errors";
 import type Redis from "ioredis";
 import * as crypto from "node:crypto";
 import { KEYS } from "./keys";

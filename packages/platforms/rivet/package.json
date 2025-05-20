@@ -30,7 +30,6 @@
     "actor-core": "*"
   },
   "devDependencies": {
-    "@actor-core/driver-test-suite": "workspace:*",
     "@rivet-gg/actor-core": "^25.1.0",
     "@types/deno": "^2.0.0",
     "@types/invariant": "^2",
