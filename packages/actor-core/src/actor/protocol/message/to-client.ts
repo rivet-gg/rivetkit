@@ -18,11 +18,11 @@ export const ErrorSchema = z.object({
 	m: z.string(),
 	// Metadata
 	md: z.unknown().optional(),
-	// RPC ID
-	ri: z.number().int().optional(),
+	// Action ID
+	ai: z.number().int().optional(),
 });
 
-export const RpcResponseSchema = z.object({
+export const ActionResponseSchema = z.object({
 	// ID
 	i: z.number().int(),
 	// Output
@@ -41,12 +41,12 @@ export const ToClientSchema = z.object({
 	b: z.union([
 		z.object({ i: InitSchema }),
 		z.object({ e: ErrorSchema }),
-		z.object({ rr: RpcResponseSchema }),
+		z.object({ ar: ActionResponseSchema }),
 		z.object({ ev: EventSchema }),
 	]),
 });
 
 export type ToClient = z.infer<typeof ToClientSchema>;
 export type Error = z.infer<typeof ErrorSchema>;
-export type RpcResponse = z.infer<typeof RpcResponseSchema>;
+export type ActionResponse = z.infer<typeof ActionResponseSchema>;
 export type Event = z.infer<typeof EventSchema>;

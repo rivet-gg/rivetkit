@@ -11,7 +11,7 @@ import {
 	CachedSerializer,
 } from "@/actor/protocol/serde";
 import { parseMessage } from "@/actor/protocol/message/mod";
-import * as protoHttpRpc from "@/actor/protocol/http/rpc";
+import * as protoHttpAction from "@/actor/protocol/http/action";
 import type * as messageToServer from "@/actor/protocol/message/to-server";
 import type { InputData, OutputData } from "@/actor/protocol/serde";
 import { assertUnreachable } from "./utils";
@@ -45,15 +45,15 @@ export interface ConnectSseOutput {
 	onClose: () => Promise<void>;
 }
 
-export interface RpcOpts {
+export interface ActionOpts {
 	req: HonoRequest;
 	params: unknown;
-	rpcName: string;
-	rpcArgs: unknown[];
+	actionName: string;
+	actionArgs: unknown[];
 	actorId: string;
 }
 
-export interface RpcOutput {
+export interface ActionOutput {
 	output: unknown;
 }
 
@@ -73,7 +73,7 @@ export interface ConnectionHandlers {
 		opts: ConnectWebSocketOpts,
 	): Promise<ConnectWebSocketOutput>;
 	onConnectSse(opts: ConnectSseOpts): Promise<ConnectSseOutput>;
-	onRpc(opts: RpcOpts): Promise<RpcOutput>;
+	onAction(opts: ActionOpts): Promise<ActionOutput>;
 	onConnMessage(opts: ConnsMessageOpts): Promise<void>;
 }
 
@@ -267,32 +267,32 @@ export async function handleSseConnect(
 }
 
 /**
- * Creates an RPC handler
+ * Creates an action handler
  */
-export async function handleRpc(
+export async function handleAction(
 	c: HonoContext,
 	appConfig: AppConfig,
 	driverConfig: DriverConfig,
-	handler: (opts: RpcOpts) => Promise<RpcOutput>,
-	rpcName: string,
+	handler: (opts: ActionOpts) => Promise<ActionOutput>,
+	actionName: string,
 	actorId: string,
 ) {
 	const encoding = getRequestEncoding(c.req, false);
 	const parameters = getRequestConnParams(c.req, appConfig, driverConfig);
 
-	logger().debug("handling rpc", { rpcName, encoding });
+	logger().debug("handling action", {  actionName, encoding });
 
 	// Validate incoming request
-	let rpcArgs: unknown[];
+	let actionArgs: unknown[];
 	if (encoding === "json") {
 		try {
-			rpcArgs = await c.req.json();
+			actionArgs = await c.req.json();
 		} catch (err) {
-			throw new errors.InvalidRpcRequest("Invalid JSON");
+			throw new errors.InvalidActionRequest("Invalid JSON");
 		}
 
-		if (!Array.isArray(rpcArgs)) {
-			throw new errors.InvalidRpcRequest("RPC arguments must be an array");
+		if (!Array.isArray(actionArgs)) {
+			throw new errors.InvalidActionRequest("Action arguments must be an array");
 		}
 	} else if (encoding === "cbor") {
 		try {
@@ -303,15 +303,15 @@ export async function handleRpc(
 				encoding,
 			);
 
-			// Validate using the RPC schema
-			const result = protoHttpRpc.RpcRequestSchema.safeParse(deserialized);
+			// Validate using the action schema
+			const result = protoHttpAction.ActionRequestSchema.safeParse(deserialized);
 			if (!result.success) {
-				throw new errors.InvalidRpcRequest("Invalid RPC request format");
+				throw new errors.InvalidActionRequest("Invalid action request format");
 			}
 
-			rpcArgs = result.data.a;
+			actionArgs = result.data.a;
 		} catch (err) {
-			throw new errors.InvalidRpcRequest(
+			throw new errors.InvalidActionRequest(
 				`Invalid binary format: ${stringifyError(err)}`,
 			);
 		}
@@ -319,12 +319,12 @@ export async function handleRpc(
 		return assertUnreachable(encoding);
 	}
 
-	// Invoke the RPC
+	// Invoke the action
 	const result = await handler({
 		req: c.req,
 		params: parameters,
-		rpcName,
-		rpcArgs,
+		actionName: actionName,
+		actionArgs: actionArgs,
 		actorId,
 	});
 

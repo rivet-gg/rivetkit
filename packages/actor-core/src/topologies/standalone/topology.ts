@@ -28,8 +28,8 @@ import type {
 	ConnectSseOpts,
 	ConnectSseOutput,
 	ConnsMessageOpts,
-	RpcOpts,
-	RpcOutput,
+	ActionOpts,
+	ActionOutput,
 	ConnectionHandlers,
 } from "@/actor/router-endpoints";
 
@@ -208,7 +208,7 @@ export class StandaloneTopology {
 					},
 				};
 			},
-			onRpc: async (opts: RpcOpts): Promise<RpcOutput> => {
+			onAction: async (opts: ActionOpts): Promise<ActionOutput> => {
 				let conn: AnyConn | undefined;
 				try {
 					const { actor } = await this.#getActor(opts.actorId);
@@ -224,12 +224,12 @@ export class StandaloneTopology {
 						{} satisfies GenericHttpDriverState,
 					);
 
-					// Call RPC
+					// Call action
 					const ctx = new ActionContext(actor.actorContext!, conn);
-					const output = await actor.executeRpc(
+					const output = await actor.executeAction(
 						ctx,
-						opts.rpcName,
-						opts.rpcArgs,
+						opts.actionName,
+						opts.actionArgs,
 					);
 
 					return { output };

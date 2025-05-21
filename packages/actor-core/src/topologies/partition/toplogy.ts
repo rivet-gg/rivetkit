@@ -33,11 +33,11 @@ import type { ManagerInspectorConnection } from "@/inspector/manager";
 import type {
 	ConnectWebSocketOpts,
 	ConnectSseOpts,
-	RpcOpts,
+	ActionOpts,
 	ConnsMessageOpts,
 	ConnectWebSocketOutput,
 	ConnectSseOutput,
-	RpcOutput,
+	ActionOutput,
 } from "@/actor/router-endpoints";
 
 export class PartitionTopologyManager {
@@ -204,7 +204,7 @@ export class PartitionTopologyActor {
 						},
 					};
 				},
-				onRpc: async (opts: RpcOpts): Promise<RpcOutput> => {
+				onAction: async (opts: ActionOpts): Promise<ActionOutput> => {
 					let conn: AnyConn | undefined;
 					try {
 						// Wait for init to finish
@@ -228,12 +228,12 @@ export class PartitionTopologyActor {
 							{} satisfies GenericHttpDriverState,
 						);
 
-						// Call RPC
+						// Call action
 						const ctx = new ActionContext(actor.actorContext!, conn!);
-						const output = await actor.executeRpc(
+						const output = await actor.executeAction(
 							ctx,
-							opts.rpcName,
-							opts.rpcArgs,
+							opts.actionName,
+							opts.actionArgs,
 						);
 
 						return { output };

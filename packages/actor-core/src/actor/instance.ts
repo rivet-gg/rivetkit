@@ -458,7 +458,7 @@ export class ActorInstance<S, CP, CS, V> {
 					}
 				}
 
-				// State will be flushed at the end of the RPC
+				// State will be flushed at the end of the action
 			},
 			{ ignoreDetached: true },
 		);
@@ -734,8 +734,8 @@ export class ActorInstance<S, CP, CS, V> {
 	// MARK: Messages
 	async processMessage(message: wsToServer.ToServer, conn: Conn<S, CP, CS, V>) {
 		await processMessage(message, this, conn, {
-			onExecuteRpc: async (ctx, name, args) => {
-				return await this.executeRpc(ctx, name, args);
+			onExecuteAction: async (ctx, name, args) => {
+				return await this.executeAction(ctx, name, args);
 			},
 			onSubscribe: async (eventName, conn) => {
 				this.#addSubscription(eventName, conn, false);
@@ -820,56 +820,56 @@ export class ActorInstance<S, CP, CS, V> {
 	}
 
 	/**
-	 * Execute an RPC call from a client.
+	 * Execute an action call from a client.
 	 *
 	 * This method handles:
-	 * 1. Validating the RPC name
-	 * 2. Executing the RPC function
-	 * 3. Processing the result through onBeforeRpcResponse (if configured)
+	 * 1. Validating the action name
+	 * 2. Executing the action function
+	 * 3. Processing the result through onBeforeActionResponse (if configured)
 	 * 4. Handling timeouts and errors
 	 * 5. Saving state changes
 	 *
-	 * @param ctx The RPC context
-	 * @param rpcName The name of the RPC being called
-	 * @param args The arguments passed to the RPC
-	 * @returns The result of the RPC call
-	 * @throws {RpcNotFound} If the RPC doesn't exist
-	 * @throws {RpcTimedOut} If the RPC times out
+	 * @param ctx The action context
+	 * @param actionName The name of the action being called
+	 * @param args The arguments passed to the action
+	 * @returns The result of the action call
+	 * @throws {ActionNotFound} If the action doesn't exist
+	 * @throws {ActionTimedOut} If the action times out
 	 * @internal
 	 */
-	async executeRpc(
+	async executeAction(
 		ctx: ActionContext<S, CP, CS, V>,
-		rpcName: string,
+		actionName: string,
 		args: unknown[],
 	): Promise<unknown> {
-		invariant(this.#ready, "exucuting rpc before ready");
+		invariant(this.#ready, "exucuting action before ready");
 
 		// Prevent calling private or reserved methods
-		if (!(rpcName in this.#config.actions)) {
-			logger().warn("rpc does not exist", { rpcName });
+		if (!(actionName in this.#config.actions)) {
+			logger().warn("action does not exist", {  actionName });
 			throw new errors.ActionNotFound();
 		}
 
 		// Check if the method exists on this object
-		// biome-ignore lint/suspicious/noExplicitAny: RPC name is dynamic from client
-		const rpcFunction = this.#config.actions[rpcName];
-		if (typeof rpcFunction !== "function") {
-			logger().warn("action not found", { actionName: rpcName });
+		// biome-ignore lint/suspicious/noExplicitAny: action name is dynamic from client
+		const actionFunction = this.#config.actions[actionName];
+		if (typeof actionFunction !== "function") {
+			logger().warn("action not found", { actionName: actionName });
 			throw new errors.ActionNotFound();
 		}
 
-		// TODO: pass abortable to the rpc to decide when to abort
+		// TODO: pass abortable to the action to decide when to abort
 		// TODO: Manually call abortable for better error handling
 		// Call the function on this object with those arguments
 		try {
 			// Log when we start executing the action
-			logger().debug("executing action", { actionName: rpcName, args });
+			logger().debug("executing action", { actionName: actionName, args });
 
-			const outputOrPromise = rpcFunction.call(undefined, ctx, ...args);
+			const outputOrPromise = actionFunction.call(undefined, ctx, ...args);
 			let output: unknown;
 			if (outputOrPromise instanceof Promise) {
 				// Log that we're waiting for an async action
-				logger().debug("awaiting async action", { actionName: rpcName });
+				logger().debug("awaiting async action", { actionName: actionName });
 
 				output = await deadline(
 					outputOrPromise,
@@ -877,33 +877,33 @@ export class ActorInstance<S, CP, CS, V> {
 				);
 
 				// Log that async action completed
-				logger().debug("async action completed", { actionName: rpcName });
+				logger().debug("async action completed", { actionName: actionName });
 			} else {
 				output = outputOrPromise;
 			}
 
-			// Process the output through onBeforeRpcResponse if configured
+			// Process the output through onBeforeActionResponse if configured
 			if (this.#config.onBeforeActionResponse) {
 				try {
 					const processedOutput = this.#config.onBeforeActionResponse(
 						this.actorContext,
-						rpcName,
+						actionName,
 						args,
 						output,
 					);
 					if (processedOutput instanceof Promise) {
 						logger().debug("awaiting onBeforeActionResponse", {
-							actionName: rpcName,
+							actionName: actionName,
 						});
 						output = await processedOutput;
 						logger().debug("onBeforeActionResponse completed", {
-							actionName: rpcName,
+							actionName: actionName,
 						});
 					} else {
 						output = processedOutput;
 					}
 				} catch (error) {
-					logger().error("error in `onBeforeRpcResponse`", {
+					logger().error("error in `onBeforeActionResponse`", {
 						error: stringifyError(error),
 					});
 				}
@@ -911,7 +911,7 @@ export class ActorInstance<S, CP, CS, V> {
 
 			// Log the output before returning
 			logger().debug("action completed", {
-				actionName: rpcName,
+				actionName: actionName,
 				outputType: typeof output,
 				isPromise: output instanceof Promise,
 			});
@@ -922,7 +922,7 @@ export class ActorInstance<S, CP, CS, V> {
 				throw new errors.ActionTimedOut();
 			}
 			logger().error("action error", {
-				actionName: rpcName,
+				actionName: actionName,
 				error: stringifyError(error),
 			});
 			throw error;
@@ -932,9 +932,9 @@ export class ActorInstance<S, CP, CS, V> {
 	}
 
 	/**
-	 * Returns a list of RPC methods available on this actor.
+	 * Returns a list of action methods available on this actor.
 	 */
-	get rpcs(): string[] {
+	get actions(): string[] {
 		return Object.keys(this.#config.actions);
 	}
 
@@ -1040,7 +1040,7 @@ export class ActorInstance<S, CP, CS, V> {
 	 * Runs a promise in the background.
 	 *
 	 * This allows the actor runtime to ensure that a promise completes while
-	 * returning from an RPC request early.
+	 * returning from an action request early.
 	 *
 	 * @param promise - The promise to run in the background.
 	 */

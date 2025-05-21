@@ -70,7 +70,7 @@ export async function parseMessage(
 }
 
 export interface ProcessMessageHandler<S, CP, CS, V> {
-	onExecuteRpc?: (
+	onExecuteAction?: (
 		ctx: ActionContext<S, CP, CS, V>,
 		name: string,
 		args: unknown[],
@@ -88,25 +88,25 @@ export async function processMessage<S, CP, CS, V>(
 	conn: Conn<S, CP, CS, V>,
 	handler: ProcessMessageHandler<S, CP, CS, V>,
 ) {
-	let rpcId: number | undefined;
-	let rpcName: string | undefined;
+	let actionId: number | undefined;
+	let actionName: string | undefined;
 
 	try {
 		if ("i" in message.b) {
 			invariant(false, "should not be notified of init event");
-		} else if ("rr" in message.b) {
-			// RPC request
+		} else if ("ar" in message.b) {
+			// Action request
 
-			if (handler.onExecuteRpc === undefined) {
-				throw new errors.Unsupported("RPC");
+			if (handler.onExecuteAction === undefined) {
+				throw new errors.Unsupported("Action");
 			}
 
-			const { i: id, n: name, a: args = [] } = message.b.rr;
+			const { i: id, n: name, a: args = [] } = message.b.ar;
 
-			rpcId = id;
-			rpcName = name;
+			actionId = id;
+			actionName = name;
 
-			logger().debug("processing RPC request", {
+			logger().debug("processing action request", {
 				id,
 				name,
 				argsCount: args.length,
@@ -114,11 +114,11 @@ export async function processMessage<S, CP, CS, V>(
 
 			const ctx = new ActionContext<S, CP, CS, V>(actor.actorContext, conn);
 
-			// Process the RPC request and wait for the result
+			// Process the action request and wait for the result
 			// This will wait for async actions to complete
-			const output = await handler.onExecuteRpc(ctx, name, args);
+			const output = await handler.onExecuteAction(ctx, name, args);
 
-			logger().debug("sending RPC response", {
+			logger().debug("sending action response", {
 				id,
 				name,
 				outputType: typeof output,
@@ -129,7 +129,7 @@ export async function processMessage<S, CP, CS, V>(
 			conn._sendMessage(
 				new CachedSerializer<wsToClient.ToClient>({
 					b: {
-						rr: {
+						ar: {
 							i: id,
 							o: output,
 						},
@@ -137,7 +137,7 @@ export async function processMessage<S, CP, CS, V>(
 				}),
 			);
 
-			logger().debug("RPC response sent", { id, name });
+			logger().debug("action response sent", { id, name });
 		} else if ("sr" in message.b) {
 			// Subscription request
 
@@ -170,13 +170,13 @@ export async function processMessage<S, CP, CS, V>(
 	} catch (error) {
 		const { code, message, metadata } = deconstructError(error, logger(), {
 			connectionId: conn.id,
-			rpcId,
-			rpcName,
+			actionId,
+			actionName,
 		});
 
 		logger().debug("sending error response", {
-			rpcId,
-			rpcName,
+			actionId,
+			actionName,
 			code,
 			message,
 		});
@@ -189,12 +189,12 @@ export async function processMessage<S, CP, CS, V>(
 						c: code,
 						m: message,
 						md: metadata,
-						ri: rpcId,
+						ai: actionId,
 					},
 				},
 			}),
 		);
 
-		logger().debug("error response sent", { rpcId, rpcName });
+		logger().debug("error response sent", { actionId, actionName });
 	}
 }
