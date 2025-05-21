@@ -7,7 +7,7 @@
 ///**
 // * A React Server Components (RSC) actor.
 // *
-// * Supports rendering React elements as RPC responses.
+// * Supports rendering React elements as action responses.
 // *
 // * @see [Documentation](https://rivet.gg/docs/client/react)
 // * @experimental
@@ -39,13 +39,13 @@
 //	 * @private
 //	 * @internal
 //	 */
-//	protected override _onBeforeRpcResponse<Out>(
+//	protected override _onBeforeActionResponse<Out>(
 //		_name: string,
 //		_args: unknown[],
 //		output: Out,
 //	): Out {
 //		if (!isValidElement(output)) {
-//			return super._onBeforeRpcResponse(_name, _args, output);
+//			return super._onBeforeActionResponse(_name, _args, output);
 //		}
 //
 //		// The output is a React element, so we need to transform it into a valid rsc message

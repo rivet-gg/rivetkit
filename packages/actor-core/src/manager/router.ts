@@ -6,7 +6,7 @@ import {
 	type ConnectionHandlers,
 	getRequestEncoding,
 	handleConnectionMessage,
-	handleRpc,
+	handleAction,
 	handleSseConnect,
 	handleWebSocketConnect,
 	HEADER_ACTOR_ID,
@@ -360,11 +360,11 @@ export function createManagerRouter(
 		}
 	});
 
-	// Proxy RPC calls to actor
-	app.post("/actors/rpc/:rpc", async (c) => {
+	// Proxy action calls to actor
+	app.post("/actors/action/:action", async (c) => {
 		try {
-			const rpcName = c.req.param("rpc");
-			logger().debug("rpc call received", { rpcName });
+			const actionName = c.req.param("action");
+			logger().debug("action call received", { actionName });
 
 			const params = ConnectRequestSchema.safeParse({
 				query: getRequestQuery(c, false),
@@ -381,24 +381,24 @@ export function createManagerRouter(
 
 			// Get the actor ID and meta
 			const { actorId, meta } = await queryActor(c, params.data.query, driver);
-			logger().debug("found actor for rpc", { actorId, meta });
+			logger().debug("found actor for action", { actorId, meta });
 			invariant(actorId, "Missing actor ID");
 
 			// Handle based on mode
 			if ("inline" in handler.proxyMode) {
-				logger().debug("using inline proxy mode for rpc call");
-				// Use shared RPC handler with direct parameter
-				return handleRpc(
+				logger().debug("using inline proxy mode for action call");
+				// Use shared action handler with direct parameter
+				return handleAction(
 					c,
 					appConfig,
 					driverConfig,
-					handler.proxyMode.inline.handlers.onRpc,
-					rpcName,
+					handler.proxyMode.inline.handlers.onAction,
+					actionName,
 					actorId,
 				);
 			} else if ("custom" in handler.proxyMode) {
-				logger().debug("using custom proxy mode for rpc call");
-				const url = new URL(`http://actor/rpc/${encodeURIComponent(rpcName)}`);
+				logger().debug("using custom proxy mode for action call");
+				const url = new URL(`http://actor/action/${encodeURIComponent(actionName)}`);
 				const proxyRequest = new Request(url, c.req.raw);
 				return await handler.proxyMode.custom.onProxyRequest(
 					c,
@@ -410,11 +410,11 @@ export function createManagerRouter(
 				assertUnreachable(handler.proxyMode);
 			}
 		} catch (error) {
-			logger().error("error in rpc handler", { error });
+			logger().error("error in action handler", { error });
 
 			// Use ProxyError if it's not already an ActorError
 			if (!errors.ActorError.isActorError(error)) {
-				throw new errors.ProxyError("RPC call", error);
+				throw new errors.ProxyError("Action call", error);
 			} else {
 				throw error;
 			}

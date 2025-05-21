@@ -60,32 +60,20 @@ export function runDriverTests(driverTestConfig: DriverTestConfig) {
 				...driverTestConfig,
 				transport,
 			});
+
+			runActorConnStateTests({ ...driverTestConfig, transport });
 		});
 	}
 
-	describe("actor handle", () => {
-		runActorHandleTests(driverTestConfig);
-	});
+	runActorHandleTests(driverTestConfig);
 
-	describe("action features", () => {
-		runActionFeaturesTests(driverTestConfig);
-	});
+	runActionFeaturesTests(driverTestConfig);
 
-	describe("actor variables", () => {
-		runActorVarsTests(driverTestConfig);
-	});
+	runActorVarsTests(driverTestConfig);
 
-	describe("connection state", () => {
-		runActorConnStateTests(driverTestConfig);
-	});
+	runActorMetadataTests(driverTestConfig);
 
-	describe("actor metadata", () => {
-		runActorMetadataTests(driverTestConfig);
-	});
-
-	describe("error handling", () => {
-		runActorErrorHandlingTests(driverTestConfig);
-	});
+	runActorErrorHandlingTests(driverTestConfig);
 }
 
 /**

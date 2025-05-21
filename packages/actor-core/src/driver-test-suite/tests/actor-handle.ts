@@ -24,7 +24,7 @@ export function runActorHandleTests(driverTestConfig: DriverTestConfig) {
 				// Access using get
 				const handle = client.counter.get(["test-get-handle"]);
 
-				// Verify RPC works
+				// Verify Action works
 				const count = await handle.increment(5);
 				expect(count).toBe(5);
 
@@ -47,7 +47,7 @@ export function runActorHandleTests(driverTestConfig: DriverTestConfig) {
 				// Access using getForId
 				const idHandle = client.counter.getForId(actorId);
 
-				// Verify RPC works and state is preserved
+				// Verify Action works and state is preserved
 				const count = await idHandle.getCount();
 				expect(count).toBe(3);
 
@@ -67,7 +67,7 @@ export function runActorHandleTests(driverTestConfig: DriverTestConfig) {
 					"test-get-or-create-handle",
 				]);
 
-				// Verify RPC works
+				// Verify Action works
 				const count = await handle.increment(7);
 				expect(count).toBe(7);
 
@@ -89,7 +89,7 @@ export function runActorHandleTests(driverTestConfig: DriverTestConfig) {
 				// Create actor and get handle
 				const handle = await client.counter.create(["test-create-handle"]);
 
-				// Verify RPC works
+				// Verify Action works
 				const count = await handle.increment(9);
 				expect(count).toBe(9);
 
@@ -98,7 +98,7 @@ export function runActorHandleTests(driverTestConfig: DriverTestConfig) {
 			});
 		});
 
-		describe("RPC Functionality", () => {
+		describe("Action Functionality", () => {
 			test("should call actions directly on the handle", async (c) => {
 				const { client } = await setupDriverTest<CounterApp>(
 					c,
@@ -106,7 +106,7 @@ export function runActorHandleTests(driverTestConfig: DriverTestConfig) {
 					COUNTER_APP_PATH,
 				);
 
-				const handle = client.counter.getOrCreate(["test-rpc-handle"]);
+				const handle = client.counter.getOrCreate(["test-action-handle"]);
 
 				// Call multiple actions in sequence
 				const count1 = await handle.increment(3);
@@ -197,105 +197,90 @@ export function runActorHandleTests(driverTestConfig: DriverTestConfig) {
 				expect(events.filter((e) => e === "onStart").length).toBe(1);
 			});
 
-			test("should trigger connect/disconnect hooks when using connections", async (c) => {
+			test("should trigger lifecycle hooks for each Action call", async (c) => {
 				const { client } = await setupDriverTest<LifecycleApp>(
 					c,
 					driverTestConfig,
 					LIFECYCLE_APP_PATH,
 				);
 
-				// Create the actor handle
-				const handle = client.counter.getOrCreate([
-					"test-lifecycle-connections",
-				]);
-
+				// Create a normal handle to view events
+				const viewHandle = client.counter.getOrCreate(["test-lifecycle-action"]);
+				
 				// Initial state should only have onStart
-				const initialEvents = await handle.getEvents();
+				const initialEvents = await viewHandle.getEvents();
 				expect(initialEvents).toContain("onStart");
+				expect(initialEvents).not.toContain("onBeforeConnect");
 				expect(initialEvents).not.toContain("onConnect");
 				expect(initialEvents).not.toContain("onDisconnect");
 
-				// Create a connection
-				const connHandle = client.counter.getOrCreate(
-					["test-lifecycle-connections"],
-					{ params: { trackLifecycle: true } },
+				// Create a handle with trackLifecycle enabled for testing Action calls
+				const trackingHandle = client.counter.getOrCreate(
+					["test-lifecycle-action"],
+					{ params: { trackLifecycle: true } }
 				);
-				const connection = connHandle.connect();
-
-				// HACK: Send action to check that it's fully connected and can make a RTT
-				await connection.getEvents();
-
-				// Should now have onBeforeConnect and onConnect events
-				const eventsAfterConnect = await handle.getEvents();
-				expect(eventsAfterConnect).toContain("onBeforeConnect");
-				expect(eventsAfterConnect).toContain("onConnect");
-				expect(eventsAfterConnect).not.toContain("onDisconnect");
-
-				// Dispose the connection
-				await connection.dispose();
-
-				// Should now include onDisconnect
-				const eventsAfterDisconnect = await handle.getEvents();
-				expect(eventsAfterDisconnect).toContain("onDisconnect");
+				
+				// Make an Action call
+				await trackingHandle.increment(5);
+				
+				// Check that it triggered the lifecycle hooks
+				const eventsAfterAction = await viewHandle.getEvents();
+				
+				// Should have onBeforeConnect, onConnect, and onDisconnect for the Action call
+				expect(eventsAfterAction).toContain("onBeforeConnect");
+				expect(eventsAfterAction).toContain("onConnect");
+				expect(eventsAfterAction).toContain("onDisconnect");
+				
+				// Each should have count 1
+				expect(eventsAfterAction.filter(e => e === "onBeforeConnect").length).toBe(1);
+				expect(eventsAfterAction.filter(e => e === "onConnect").length).toBe(1);
+				expect(eventsAfterAction.filter(e => e === "onDisconnect").length).toBe(1);
+				
+				// Make another Action call
+				await trackingHandle.increment(10);
+				
+				// Check that it triggered another set of lifecycle hooks
+				const eventsAfterSecondAction = await viewHandle.getEvents();
+				
+				// Each hook should now have count 2
+				expect(eventsAfterSecondAction.filter(e => e === "onBeforeConnect").length).toBe(2);
+				expect(eventsAfterSecondAction.filter(e => e === "onConnect").length).toBe(2);
+				expect(eventsAfterSecondAction.filter(e => e === "onDisconnect").length).toBe(2);
 			});
 
-			test("should allow multiple connections with correct lifecycle hooks", async (c) => {
+			test("should trigger lifecycle hooks for each Action call across multiple handles", async (c) => {
 				const { client } = await setupDriverTest<LifecycleApp>(
 					c,
 					driverTestConfig,
 					LIFECYCLE_APP_PATH,
 				);
 
-				// Create the actor handle
-				const handle = client.counter.getOrCreate(["test-lifecycle-multiple"]);
-
-				// Create two connections
-				const connHandle = client.counter.getOrCreate(
-					["test-lifecycle-multiple"],
-					{ params: { trackLifecycle: true } },
+				// Create a normal handle to view events
+				const viewHandle = client.counter.getOrCreate(["test-lifecycle-multi-handle"]);
+				
+				// Create two tracking handles to the same actor
+				const trackingHandle1 = client.counter.getOrCreate(
+					["test-lifecycle-multi-handle"],
+					{ params: { trackLifecycle: true } }
 				);
-				const conn1 = connHandle.connect();
-				const conn2 = connHandle.connect();
-
-				// HACK: Send action to check that it's fully connected and can make a RTT
-				await conn1.getEvents();
-				await conn2.getEvents();
-
-				// Get events - should have 1 onStart, 2 each of onBeforeConnect and onConnect
-				const events = await handle.getEvents();
-				const startCount = events.filter((e) => e === "onStart").length;
-				const beforeConnectCount = events.filter(
-					(e) => e === "onBeforeConnect",
-				).length;
-				const connectCount = events.filter((e) => e === "onConnect").length;
-
-				expect(startCount).toBe(1); // Only one onStart
-				expect(beforeConnectCount).toBe(2); // Two onBeforeConnect
-				expect(connectCount).toBe(2); // Two onConnect
-
-				// Disconnect one connection
-				await conn1.dispose();
-
-				// Check events - should have 1 onDisconnect
-				await vi.waitFor(async () => {
-					const eventsAfterOneDisconnect = await handle.getEvents();
-					const disconnectCount = eventsAfterOneDisconnect.filter(
-						(e) => e === "onDisconnect",
-					).length;
-					expect(disconnectCount).toBe(1);
-				});
-
-				// Disconnect the second connection
-				await conn2.dispose();
-
-				// Check events - should have 2 onDisconnect
-				await vi.waitFor(async () => {
-					const eventsAfterAllDisconnect = await handle.getEvents();
-					const finalDisconnectCount = eventsAfterAllDisconnect.filter(
-						(e) => e === "onDisconnect",
-					).length;
-					expect(finalDisconnectCount).toBe(2);
-				});
+				
+				const trackingHandle2 = client.counter.getOrCreate(
+					["test-lifecycle-multi-handle"],
+					{ params: { trackLifecycle: true } }
+				);
+				
+				// Make Action calls on both handles
+				await trackingHandle1.increment(5);
+				await trackingHandle2.increment(10);
+				
+				// Check lifecycle hooks
+				const events = await viewHandle.getEvents();
+				
+				// Should have 1 onStart, 2 each of onBeforeConnect, onConnect, and onDisconnect
+				expect(events.filter(e => e === "onStart").length).toBe(1);
+				expect(events.filter(e => e === "onBeforeConnect").length).toBe(2);
+				expect(events.filter(e => e === "onConnect").length).toBe(2);
+				expect(events.filter(e => e === "onDisconnect").length).toBe(2);
 			});
 		});
 	});

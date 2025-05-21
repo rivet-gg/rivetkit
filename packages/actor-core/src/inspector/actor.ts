@@ -108,7 +108,7 @@ export class ActorInspector extends Inspector<ToClient, ToServer> {
 					enabled: connection._stateEnabled,
 				},
 			})),
-			rpcs: this.actor.rpcs,
+			actions: this.actor.actions,
 			state: {
 				value: this.actor.stateEnabled ? this.actor.state : undefined,
 				enabled: this.actor.stateEnabled,

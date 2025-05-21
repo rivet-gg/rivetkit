@@ -19,13 +19,13 @@ import {
 	type ConnectWebSocketOutput,
 	type ConnectSseOpts,
 	type ConnectSseOutput,
-	type RpcOpts,
-	type RpcOutput,
+	type ActionOpts,
+	type ActionOutput,
 	type ConnsMessageOpts,
 	type ConnectionHandlers,
 	handleWebSocketConnect,
 	handleSseConnect,
-	handleRpc,
+	handleAction,
 	handleConnectionMessage,
 	HEADER_CONN_TOKEN,
 	HEADER_CONN_ID,
@@ -37,8 +37,8 @@ export type {
 	ConnectWebSocketOutput,
 	ConnectSseOpts,
 	ConnectSseOutput,
-	RpcOpts,
-	RpcOutput,
+	ActionOpts,
+	ActionOutput,
 	ConnsMessageOpts,
 };
 
@@ -138,18 +138,18 @@ export function createActorRouter(
 		);
 	});
 
-	app.post("/rpc/:rpc", async (c) => {
-		if (!handlers.onRpc) {
-			throw new Error("onRpc handler is required");
+	app.post("/action/:action", async (c) => {
+		if (!handlers.onAction) {
+			throw new Error("onAction handler is required");
 		}
-		const rpcName = c.req.param("rpc");
+		const actionName = c.req.param("action");
 		const actorId = await handler.getActorId();
-		return handleRpc(
+		return handleAction(
 			c,
 			appConfig,
 			driverConfig,
-			handlers.onRpc,
-			rpcName,
+			handlers.onAction,
+			actionName,
 			actorId,
 		);
 	});

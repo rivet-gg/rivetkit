@@ -272,9 +272,9 @@ export class ProxyError extends ActorError {
 	}
 }
 
-export class InvalidRpcRequest extends ActorError {
+export class InvalidActionRequest extends ActorError {
 	constructor(message: string) {
-		super("invalid_rpc_request", message, { public: true });
+		super("invalid_action_request", message, { public: true });
 	}
 }
 

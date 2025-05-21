@@ -11,7 +11,6 @@ import { importWebSocket } from "@/common/websocket";
 import type { ActorQuery } from "@/manager/protocol/query";
 import * as cbor from "cbor-x";
 import pRetry from "p-retry";
-import type { ActorDefinitionRpcs as ActorDefinitionRpcsImport } from "./actor-common";
 import { ACTOR_CONNS_SYMBOL, type ClientRaw, TRANSPORT_SYMBOL } from "./client";
 import * as errors from "./errors";
 import { logger } from "./log";
@@ -25,14 +24,11 @@ import {
 	HEADER_CONN_PARAMS,
 } from "@/actor/router-endpoints";
 import type { EventSource } from "eventsource";
+import { ActorDefinitionActions } from "./actor-common";
 
-// Re-export the type with the original name to maintain compatibility
-type ActorDefinitionRpcs<AD extends AnyActorDefinition> =
-	ActorDefinitionRpcsImport<AD>;
-
-interface RpcInFlight {
+interface ActionInFlight {
 	name: string;
-	resolve: (response: wsToClient.RpcResponse) => void;
+	resolve: (response: wsToClient.ActionResponse) => void;
 	reject: (error: Error) => void;
 }
 
@@ -90,14 +86,14 @@ export class ActorConnRaw {
 	#transport?: ConnTransport;
 
 	#messageQueue: wsToServer.ToServer[] = [];
-	#rpcInFlight = new Map<number, RpcInFlight>();
+	#actionsInFlight = new Map<number, ActionInFlight>();
 
 	// biome-ignore lint/suspicious/noExplicitAny: Unknown subscription type
 	#eventSubscriptions = new Map<string, Set<EventSubscriptions<any[]>>>();
 
 	#errorHandlers = new Set<ActorErrorCallback>();
 
-	#rpcIdCounter = 0;
+	#actionIdCounter = 0;
 
 	/**
 	 * Interval that keeps the NodeJS process alive if this is the only thing running.
@@ -149,14 +145,14 @@ export class ActorConnRaw {
 	}
 
 	/**
-	 * Call a raw RPC connection. See {@link ActorConn} for type-safe RPC calls.
+	 * Call a raw action connection. See {@link ActorConn} for type-safe action calls.
 	 *
 	 * @see {@link ActorConn}
-	 * @template Args - The type of arguments to pass to the RPC function.
-	 * @template Response - The type of the response returned by the RPC function.
-	 * @param {string} name - The name of the RPC function to call.
-	 * @param {...Args} args - The arguments to pass to the RPC function.
-	 * @returns {Promise<Response>} - A promise that resolves to the response of the RPC function.
+	 * @template Args - The type of arguments to pass to the action function.
+	 * @template Response - The type of the response returned by the action function.
+	 * @param {string} name - The name of the action function to call.
+	 * @param {...Args} args - The arguments to pass to the action function.
+	 * @returns {Promise<Response>} - A promise that resolves to the response of the action function.
 	 */
 	async action<Args extends Array<unknown> = unknown[], Response = unknown>(
 		name: string,
@@ -166,18 +162,18 @@ export class ActorConnRaw {
 
 		logger().debug("action", { name, args });
 
-		// If we have an active connection, use the websocket RPC
-		const rpcId = this.#rpcIdCounter;
-		this.#rpcIdCounter += 1;
+		// If we have an active connection, use the websockactionId
+		const actionId = this.#actionIdCounter;
+		this.#actionIdCounter += 1;
 
 		const { promise, resolve, reject } =
-			Promise.withResolvers<wsToClient.RpcResponse>();
-		this.#rpcInFlight.set(rpcId, { name, resolve, reject });
+			Promise.withResolvers<wsToClient.ActionResponse>();
+		this.#actionsInFlight.set(actionId, { name, resolve, reject });
 
 		this.#sendMessage({
 			b: {
-				rr: {
-					i: rpcId,
+				ar: {
+					i: actionId,
 					n: name,
 					a: args,
 				},
@@ -187,9 +183,9 @@ export class ActorConnRaw {
 		// TODO: Throw error if disconnect is called
 
 		const { i: responseId, o: output } = await promise;
-		if (responseId !== rpcId)
+		if (responseId !== actionId)
 			throw new Error(
-				`Request ID ${rpcId} does not match response ID ${responseId}`,
+				`Request ID ${actionId} does not match response ID ${responseId}`,
 			);
 
 		return output as Response;
@@ -405,13 +401,13 @@ enc
 			this.#handleOnOpen();
 		} else if ("e" in response.b) {
 			// Connection error
-			const { c: code, m: message, md: metadata, ri: rpcId } = response.b.e;
+			const { c: code, m: message, md: metadata, ai: actionId } = response.b.e;
 
-			if (rpcId) {
-				const inFlight = this.#takeRpcInFlight(rpcId);
+			if (actionId) {
+				const inFlight = this.#takeActionInFlight(actionId);
 
-				logger().warn("rpc error", {
-					actionId: rpcId,
+				logger().warn("action error", {
+					actionId: actionId,
 					actionName: inFlight?.name,
 					code,
 					message,
@@ -435,28 +431,28 @@ enc
 				}
 
 				// Reject any in-flight requests
-				for (const [id, inFlight] of this.#rpcInFlight.entries()) {
+				for (const [id, inFlight] of this.#actionsInFlight.entries()) {
 					inFlight.reject(actorError);
-					this.#rpcInFlight.delete(id);
+					this.#actionsInFlight.delete(id);
 				}
 
 				// Dispatch to error handler if registered
 				this.#dispatchActorError(actorError);
 			}
-		} else if ("rr" in response.b) {
-			// RPC response OK
-			const { i: rpcId, o: outputType } = response.b.rr;
-			logger().trace("received RPC response", {
-				rpcId,
+		} else if ("ar" in response.b) {
+			// Action response OK
+			const { i: actionId, o: outputType } = response.b.ar;
+			logger().trace("received action response", {
+				actionId,
 				outputType,
 			});
 
-			const inFlight = this.#takeRpcInFlight(rpcId);
-			logger().trace("resolving RPC promise", {
-				rpcId,
+			const inFlight = this.#takeActionInFlight(actionId);
+			logger().trace("resolving action promise", {
+				actionId,
 				actionName: inFlight?.name,
 			});
-			inFlight.resolve(response.b.rr);
+			inFlight.resolve(response.b.ar);
 		} else if ("ev" in response.b) {
 			logger().trace("received event", {
 				name: response.b.ev.n,
@@ -517,12 +513,12 @@ enc
 		logger().warn("socket error", { event });
 	}
 
-	#takeRpcInFlight(id: number): RpcInFlight {
-		const inFlight = this.#rpcInFlight.get(id);
+	#takeActionInFlight(id: number): ActionInFlight {
+		const inFlight = this.#actionsInFlight.get(id);
 		if (!inFlight) {
 			throw new errors.InternalError(`No in flight response for ${id}`);
 		}
-		this.#rpcInFlight.delete(id);
+		this.#actionsInFlight.delete(id);
 		return inFlight;
 	}
 
@@ -717,7 +713,7 @@ enc
 			// Dispose of the response body, we don't care about it
 			await res.json();
 		} catch (error) {
-			// TODO: This will not automatically trigger a re-broadcast of HTTP events since SSE is separate from the HTTP RPC
+			// TODO: This will not automatically trigger a re-broadcast of HTTP events since SSE is separate from the HTTP action
 
 			logger().warn("failed to send message, added to queue", {
 				error,
@@ -853,7 +849,7 @@ enc
  * @example
  * ```
  * const room = client.connect<ChatRoom>(...etc...);
- * // This calls the rpc named `sendMessage` on the `ChatRoom` actor.
+ * // This calls the action named `sendMessage` on the `ChatRoom` actor.
  * await room.sendMessage('Hello, world!');
  * ```
  *
@@ -862,6 +858,5 @@ enc
  * @template AD The actor class that this connection is for.
  * @see {@link ActorConnRaw}
  */
-
 export type ActorConn<AD extends AnyActorDefinition> = ActorConnRaw &
-	ActorDefinitionRpcs<AD>;
+	ActorDefinitionActions<AD>;

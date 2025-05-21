@@ -4,7 +4,7 @@ import type { ActorQuery } from "@/manager/protocol/query";
 import * as errors from "./errors";
 import { ActorConn, ActorConnRaw, CONNECT_SYMBOL } from "./actor-conn";
 import { ActorHandle, ActorHandleRaw } from "./actor-handle";
-import { ActorRPCFunction, resolveActorId } from "./actor-common";
+import { ActorActionFunction, resolveActorId } from "./actor-common";
 import { logger } from "./log";
 import type { ActorCoreApp } from "@/mod";
 import type { AnyActorDefinition } from "@/actor/definition";
@@ -446,7 +446,7 @@ export function createClient<A extends ActorCoreApp<any>>(
 			if (typeof prop === "string") {
 				// Return actor accessor object with methods
 				return {
-					// Handle methods (stateless RPC)
+					// Handle methods (stateless action)
 					get: (
 						key?: string | string[],
 						opts?: GetWithIdOptions,
@@ -501,8 +501,8 @@ export function createClient<A extends ActorCoreApp<any>>(
 function createActorProxy<AD extends AnyActorDefinition>(
 	handle: ActorHandleRaw | ActorConnRaw,
 ): ActorHandle<AD> | ActorConn<AD> {
-	// Stores returned RPC functions for faster calls
-	const methodCache = new Map<string, ActorRPCFunction>();
+	// Stores returned action functions for faster calls
+	const methodCache = new Map<string, ActorActionFunction>();
 	return new Proxy(handle, {
 		get(target: ActorHandleRaw, prop: string | symbol, receiver: unknown) {
 			// Handle built-in Symbol properties
@@ -520,7 +520,7 @@ function createActorProxy<AD extends AnyActorDefinition>(
 				return value;
 			}
 
-			// Create RPC function that preserves 'this' context
+			// Create action function that preserves 'this' context
 			if (typeof prop === "string") {
 				// If JS is attempting to calling this as a promise, ignore it
 				if (prop === "then") return undefined;
@@ -536,7 +536,7 @@ function createActorProxy<AD extends AnyActorDefinition>(
 
 		// Support for 'in' operator
 		has(target: ActorHandleRaw, prop: string | symbol) {
-			// All string properties are potentially RPC functions
+			// All string properties are potentially action functions
 			if (typeof prop === "string") {
 				return true;
 			}
@@ -549,7 +549,7 @@ function createActorProxy<AD extends AnyActorDefinition>(
 			return Reflect.getPrototypeOf(target);
 		},
 
-		// Prevent property enumeration of non-existent RPC methods
+		// Prevent property enumeration of non-existent action methods
 		ownKeys(target: ActorHandleRaw) {
 			return Reflect.ownKeys(target);
 		},
@@ -561,7 +561,7 @@ function createActorProxy<AD extends AnyActorDefinition>(
 				return targetDescriptor;
 			}
 			if (typeof prop === "string") {
-				// Make RPC methods appear non-enumerable
+				// Make action methods appear non-enumerable
 				return {
 					configurable: true,
 					enumerable: false,

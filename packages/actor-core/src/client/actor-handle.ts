@@ -1,8 +1,8 @@
 import type { AnyActorDefinition } from "@/actor/definition";
-import type { RpcRequest, RpcResponse } from "@/actor/protocol/http/rpc";
+import type { ActionRequest, ActionResponse } from "@/actor/protocol/http/action";
 import type { Encoding } from "@/actor/protocol/serde";
 import type { ActorQuery } from "@/manager/protocol/query";
-import { type ActorDefinitionRpcs, resolveActorId } from "./actor-common";
+import { type ActorDefinitionActions, resolveActorId } from "./actor-common";
 import { type ActorConn, ActorConnRaw } from "./actor-conn";
 import { CREATE_ACTOR_CONN_PROXY, type ClientRaw } from "./client";
 import { logger } from "./log";
@@ -16,7 +16,7 @@ import {
 } from "@/actor/router-endpoints";
 
 /**
- * Provides underlying functions for stateless {@link ActorHandle} for RPC calls.
+ * Provides underlying functions for stateless {@link ActorHandle} for action calls.
  * Similar to ActorConnRaw but doesn't maintain a connection.
  *
  * @see {@link ActorHandle}
@@ -50,23 +50,14 @@ export class ActorHandleRaw {
 	}
 
 	/**
-	 * Call a raw RPC. This method sends an HTTP request to invoke the named RPC.
-	 *
-	 * NOTE on Implementation:
-	 * The implementation here faces some challenges with the test environment:
-	 * 1. The endpoint path is /actors/rpc/:rpc in the manager router
-	 * 2. The test uses the standalone topology which doesn't properly set up the route
-	 * 3. The server expects specifically formatted JSON array as the request body
-	 *
-	 * In a production environment, this would communicate properly with the endpoints
-	 * defined in manager/router.ts.
+	 * Call a raw action. This method sends an HTTP request to invoke the named action.
 	 *
 	 * @see {@link ActorHandle}
-	 * @template Args - The type of arguments to pass to the RPC function.
-	 * @template Response - The type of the response returned by the RPC function.
-	 * @param {string} name - The name of the RPC function to call.
-	 * @param {...Args} args - The arguments to pass to the RPC function.
-	 * @returns {Promise<Response>} - A promise that resolves to the response of the RPC function.
+	 * @template Args - The type of arguments to pass to the action function.
+	 * @template Response - The type of the response returned by the action function.
+	 * @param {string} name - The name of the action function to call.
+	 * @param {...Args} args - The arguments to pass to the action function.
+	 * @returns {Promise<Response>} - A promise that resolves to the response of the action function.
 	 */
 	async action<Args extends Array<unknown> = unknown[], Response = unknown>(
 		name: string,
@@ -78,8 +69,8 @@ export class ActorHandleRaw {
 			query: this.#actorQuery,
 		});
 
-		const responseData = await sendHttpRequest<RpcRequest, RpcResponse>({
-			url: `${this.#endpoint}/actors/rpc/${encodeURIComponent(name)}`,
+		const responseData = await sendHttpRequest<ActionRequest, ActionResponse>({
+			url: `${this.#endpoint}/actors/actions/${encodeURIComponent(name)}`,
 			method: "POST",
 			headers: {
 				[HEADER_ENCODING]: this.#encodingKind,
@@ -88,7 +79,7 @@ export class ActorHandleRaw {
 					? { [HEADER_CONN_PARAMS]: JSON.stringify(this.params) }
 					: {}),
 			},
-			body: { a: args } satisfies RpcRequest,
+			body: { a: args } satisfies ActionRequest,
 			encoding: this.#encodingKind,
 		});
 
@@ -155,7 +146,7 @@ export class ActorHandleRaw {
  * @example
  * ```
  * const room = client.get<ChatRoom>(...etc...);
- * // This calls the rpc named `sendMessage` on the `ChatRoom` actor without a connection.
+ * // This calls the action named `sendMessage` on the `ChatRoom` actor without a connection.
  * await room.sendMessage('Hello, world!');
  * ```
  *
@@ -172,4 +163,4 @@ export type ActorHandle<AD extends AnyActorDefinition> = Omit<
 	connect(): ActorConn<AD>;
 	// Resolve method returns the actor ID
 	resolve(): Promise<string>;
-} & ActorDefinitionRpcs<AD>;
+} & ActorDefinitionActions<AD>;

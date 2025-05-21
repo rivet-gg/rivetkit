@@ -15,11 +15,11 @@ import { createManagerRouter } from "@/manager/router";
 import type {
 	ConnectWebSocketOpts,
 	ConnectSseOpts,
-	RpcOpts,
+	ActionOpts,
 	ConnsMessageOpts,
 	ConnectWebSocketOutput,
 	ConnectSseOutput,
-	RpcOutput,
+	ActionOutput,
 	ConnectionHandlers,
 } from "@/actor/router-endpoints";
 
@@ -89,7 +89,7 @@ export class CoordinateTopology {
 					opts,
 				);
 			},
-			onRpc: async (opts: RpcOpts): Promise<RpcOutput> => {
+			onAction: async (opts: ActionOpts): Promise<ActionOutput> => {
 				// TODO:
 				throw new errors.InternalError("UNIMPLEMENTED");
 			},

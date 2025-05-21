@@ -11,7 +11,7 @@ const ConnSchema = z.object({
 
 export const InspectDataSchema = z.object({
 	connections: z.array(ConnSchema),
-	rpcs: z.array(z.string()),
+	actions: z.array(z.string()),
 	state: z.object({
 		enabled: z.boolean(),
 		value: z.any().optional(),

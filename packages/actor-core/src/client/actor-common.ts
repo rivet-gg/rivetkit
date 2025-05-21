@@ -8,15 +8,15 @@ import { sendHttpRequest } from "./utils";
 import { HEADER_ACTOR_QUERY, HEADER_ENCODING } from "@/actor/router-endpoints";
 
 /**
- * RPC function returned by Actor connections and handles.
+ * Action function returned by Actor connections and handles.
  *
- * @typedef {Function} ActorRPCFunction
+ * @typedef {Function} ActorActionFunction
  * @template Args
  * @template Response
- * @param {...Args} args - Arguments for the RPC function.
+ * @param {...Args} args - Arguments for the action function.
  * @returns {Promise<Response>}
  */
-export type ActorRPCFunction<
+export type ActorActionFunction<
 	Args extends Array<unknown> = unknown[],
 	Response = unknown,
 > = (
@@ -24,13 +24,13 @@ export type ActorRPCFunction<
 ) => Promise<Response>;
 
 /**
- * Maps RPC methods from actor definition to typed function signatures.
+ * Maps action methods from actor definition to typed function signatures.
  */
-export type ActorDefinitionRpcs<AD extends AnyActorDefinition> =
+export type ActorDefinitionActions<AD extends AnyActorDefinition> =
 	AD extends ActorDefinition<any, any, any, any, infer R>
 		? {
 				[K in keyof R]: R[K] extends (...args: infer Args) => infer Return
-					? ActorRPCFunction<Args, Return>
+					? ActorActionFunction<Args, Return>
 					: never;
 			}
 		: never;
