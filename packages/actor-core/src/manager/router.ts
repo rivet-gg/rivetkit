@@ -48,6 +48,7 @@ import {
 	ResolveRequestSchema,
 } from "./protocol/query";
 import type { ActorQuery } from "./protocol/query";
+import { VERSION } from "@/utils";
 
 type ProxyMode =
 	| {
@@ -83,30 +84,30 @@ type ManagerRouterHandler = {
 	proxyMode: ProxyMode;
 };
 
-const OPENAPI_ENCODING_HEADER = z.string().openapi({
+const OPENAPI_ENCODING = z.string().openapi({
 	description: "The encoding format to use for the response (json, cbor)",
 	example: "json",
 });
 
-const OPENAPI_ACTOR_QUERY_HEADER = z.string().openapi({
+const OPENAPI_ACTOR_QUERY = z.string().openapi({
 	description: "Actor query information",
 });
 
-const OPENAPI_CONN_PARAMS_HEADER = z.string().openapi({
+const OPENAPI_CONN_PARAMS = z.string().openapi({
 	description: "Connection parameters",
 });
 
-const OPENAPI_ACTOR_ID_HEADER = z.string().openapi({
+const OPENAPI_ACTOR_ID = z.string().openapi({
 	description: "Actor ID (used in some endpoints)",
 	example: "actor-123456",
 });
 
-const OPENAPI_CONN_ID_HEADER = z.string().openapi({
+const OPENAPI_CONN_ID = z.string().openapi({
 	description: "Connection ID",
 	example: "conn-123456",
 });
 
-const OPENAPI_CONN_TOKEN_HEADER = z.string().openapi({
+const OPENAPI_CONN_TOKEN = z.string().openapi({
 	description: "Connection token",
 });
 
@@ -207,7 +208,7 @@ export function createManagerRouter(
 					},
 				},
 				headers: z.object({
-					[HEADER_ENCODING]: OPENAPI_ENCODING_HEADER,
+					[HEADER_ACTOR_QUERY]: OPENAPI_ACTOR_QUERY,
 				}),
 			},
 			responses: buildOpenApiResponses(ResolveResponseSchema),
@@ -217,21 +218,63 @@ export function createManagerRouter(
 	}
 
 	// GET /actors/connect/websocket
-	app.get("/actors/connect/websocket", (c) =>
-		handleWebSocketConnectRequest(
-			c,
-			upgradeWebSocket,
-			appConfig,
-			driverConfig,
-			driver,
-			handler,
-		),
-	);
+	{
+		const wsRoute = createRoute({
+			method: "get",
+			path: "/actors/connect/websocket",
+			request: {
+				query: z.object({
+					encoding: OPENAPI_ENCODING,
+					query: OPENAPI_ACTOR_QUERY,
+				}),
+			},
+			responses: {
+				101: {
+					description: "WebSocket upgrade",
+				},
+			},
+		});
+
+		app.openapi(wsRoute, (c) =>
+			handleWebSocketConnectRequest(
+				c,
+				upgradeWebSocket,
+				appConfig,
+				driverConfig,
+				driver,
+				handler,
+			),
+		);
+	}
 
 	// GET /actors/connect/sse
-	app.get("/actors/connect/sse", (c) =>
-		handleSseConnectRequest(c, appConfig, driverConfig, driver, handler),
-	);
+	{
+		const sseRoute = createRoute({
+			method: "get",
+			path: "/actors/connect/sse",
+			request: {
+				headers: z.object({
+					[HEADER_ENCODING]: OPENAPI_ENCODING,
+					[HEADER_ACTOR_QUERY]: OPENAPI_ACTOR_QUERY,
+					[HEADER_CONN_PARAMS]: OPENAPI_CONN_PARAMS.optional(),
+				}),
+			},
+			responses: {
+				200: {
+					description: "SSE stream",
+					content: {
+						"text/event-stream": {
+							schema: z.unknown(),
+						},
+					},
+				},
+			},
+		});
+
+		app.openapi(sseRoute, (c) =>
+			handleSseConnectRequest(c, appConfig, driverConfig, driver, handler),
+		);
+	}
 
 	// POST /actors/action/:action
 	{
@@ -263,10 +306,9 @@ export function createManagerRouter(
 
 		const ActionResponseSchema = z.any().openapi("ActionResponse");
 
-		// Define action route
 		const actionRoute = createRoute({
 			method: "post",
-			path: "/actors/action/{action}",
+			path: "/actors/actions/{action}",
 			request: {
 				params: ActionParamsSchema,
 				body: {
@@ -277,8 +319,8 @@ export function createManagerRouter(
 					},
 				},
 				headers: z.object({
-					[HEADER_ENCODING]: OPENAPI_ENCODING_HEADER,
-					[HEADER_CONN_PARAMS]: OPENAPI_CONN_PARAMS_HEADER,
+					[HEADER_ENCODING]: OPENAPI_ENCODING,
+					[HEADER_CONN_PARAMS]: OPENAPI_CONN_PARAMS.optional(),
 				}),
 			},
 			responses: buildOpenApiResponses(ActionResponseSchema),
@@ -315,13 +357,13 @@ export function createManagerRouter(
 					},
 				},
 				headers: z.object({
-					[HEADER_ACTOR_ID]: OPENAPI_ACTOR_ID_HEADER,
-					[HEADER_CONN_ID]: OPENAPI_CONN_ID_HEADER,
-					[HEADER_ENCODING]: OPENAPI_ENCODING_HEADER,
-					[HEADER_CONN_TOKEN]: OPENAPI_CONN_TOKEN_HEADER,
+					[HEADER_ACTOR_ID]: OPENAPI_ACTOR_ID,
+					[HEADER_CONN_ID]: OPENAPI_CONN_ID,
+					[HEADER_ENCODING]: OPENAPI_ENCODING,
+					[HEADER_CONN_TOKEN]: OPENAPI_CONN_TOKEN,
 				}),
 			},
-			responses: buildOpenApiResponses(ConnMessageRequestSchema),
+			responses: buildOpenApiResponses(ConnectionMessageResponseSchema),
 		});
 
 		app.openapi(messageRoute, (c) =>
@@ -340,11 +382,11 @@ export function createManagerRouter(
 		);
 	}
 
-	app.doc("/doc", {
+	app.doc("/openapi.json", {
 		openapi: "3.0.0",
 		info: {
-			version: "1.0.0",
-			title: "My API",
+			version: VERSION,
+			title: "ActorCore API",
 		},
 	});
 
