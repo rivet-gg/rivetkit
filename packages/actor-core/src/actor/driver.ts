@@ -21,7 +21,7 @@ export interface ActorDriver {
 }
 
 export interface ConnDriver<ConnDriverState = unknown> {
-	sendMessage(
+	sendMessage?(
 		actor: AnyActorInstance,
 		conn: AnyConn,
 		state: ConnDriverState,

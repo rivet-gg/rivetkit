@@ -232,9 +232,13 @@ export function runActorConnTests(driverTestConfig: DriverTestConfig) {
 					LIFECYCLE_APP_PATH,
 				);
 
-				// Create and connect
 				const handle = client.counter.getOrCreate(["test-lifecycle"]);
-				const connection = handle.connect();
+
+				// Create and connect
+				const connHandle = client.counter.getOrCreate(["test-lifecycle"], {
+					params: { trackLifecycle: true },
+				});
+				const connection = connHandle.connect();
 
 				// Verify lifecycle events were triggered
 				const events = await connection.getEvents();

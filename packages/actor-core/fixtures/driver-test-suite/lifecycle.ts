@@ -5,19 +5,23 @@ const lifecycleActor = actor({
 		count: 0,
 		events: [] as string[],
 	},
-	createConnState: () => ({ joinTime: Date.now() }),
+	createConnState: (
+		c,
+		opts: { params: { trackLifecycle?: boolean } | undefined },
+	) => ({
+		joinTime: Date.now(),
+	}),
 	onStart: (c) => {
 		c.state.events.push("onStart");
 	},
-	onBeforeConnect: (c, { params }: { params: any }) => {
-		c.state.events.push("onBeforeConnect");
-		// Could throw here to reject connection
+	onBeforeConnect: (c, conn) => {
+		if (conn.params?.trackLifecycle) c.state.events.push("onBeforeConnect");
 	},
-	onConnect: (c) => {
-		c.state.events.push("onConnect");
+	onConnect: (c, conn) => {
+		if (conn.params?.trackLifecycle) c.state.events.push("onConnect");
 	},
-	onDisconnect: (c) => {
-		c.state.events.push("onDisconnect");
+	onDisconnect: (c, conn) => {
+		if (conn.params?.trackLifecycle) c.state.events.push("onDisconnect");
 	},
 	actions: {
 		getEvents: (c) => {
@@ -35,4 +39,3 @@ export const app = setup({
 });
 
 export type App = typeof app;
-
