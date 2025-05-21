@@ -1,4 +1,14 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "extends": ["//"]
+  "extends": ["//"],
+  "tasks": {
+    "dump-openapi": {
+      "inputs": ["package.json", "packages/actor-core/src/manager/router.ts"]
+    },
+    "build": {
+      "dependsOn": ["^build", "dump-openapi"],
+      "inputs": ["src/**", "tsconfig.json", "tsup.config.ts", "package.json"],
+      "outputs": ["dist/**"]
+    }
+  }
 }
