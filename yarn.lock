@@ -75,7 +75,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@actor-core/cloudflare-workers@workspace:packages/platforms/cloudflare-workers"
   dependencies:
-    "@actor-core/driver-test-suite": "workspace:*"
     "@cloudflare/workers-types": "npm:^4.20250129.0"
     "@types/invariant": "npm:^2"
     actor-core: "workspace:*"
@@ -91,28 +90,10 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@actor-core/driver-test-suite@workspace:*, @actor-core/driver-test-suite@workspace:packages/misc/driver-test-suite":
-  version: 0.0.0-use.local
-  resolution: "@actor-core/driver-test-suite@workspace:packages/misc/driver-test-suite"
-  dependencies:
-    "@hono/node-server": "npm:^1.14.0"
-    "@hono/node-ws": "npm:^1.1.1"
-    "@types/node": "npm:^22.13.1"
-    actor-core: "workspace:*"
-    bundle-require: "npm:^5.1.0"
-    tsup: "npm:^8.4.0"
-    typescript: "npm:^5.7.3"
-    vitest: "npm:^3.1.1"
-  peerDependencies:
-    actor-core: "workspace:*"
-  languageName: unknown
-  linkType: soft
-
 "@actor-core/file-system@workspace:*, @actor-core/file-system@workspace:^, @actor-core/file-system@workspace:packages/drivers/file-system":
   version: 0.0.0-use.local
   resolution: "@actor-core/file-system@workspace:packages/drivers/file-system"
   dependencies:
-    "@actor-core/driver-test-suite": "workspace:*"
     "@types/invariant": "npm:^2"
     "@types/node": "npm:^22.14.0"
     actor-core: "workspace:*"
@@ -144,7 +125,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@actor-core/memory@workspace:packages/drivers/memory"
   dependencies:
-    "@actor-core/driver-test-suite": "workspace:*"
     "@types/node": "npm:^22.13.1"
     actor-core: "workspace:*"
     hono: "npm:^4.7.0"
@@ -196,7 +176,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@actor-core/redis@workspace:packages/drivers/redis"
   dependencies:
-    "@actor-core/driver-test-suite": "workspace:*"
     "@types/node": "npm:^22.13.1"
     actor-core: "workspace:*"
     dedent: "npm:^1.5.3"
@@ -216,7 +195,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@actor-core/rivet@workspace:packages/platforms/rivet"
   dependencies:
-    "@actor-core/driver-test-suite": "workspace:*"
     "@rivet-gg/actor-core": "npm:^25.1.0"
     "@types/deno": "npm:^2.0.0"
     "@types/invariant": "npm:^2"
@@ -331,6 +309,17 @@ __metadata:
     "@jridgewell/gen-mapping": "npm:^0.3.5"
     "@jridgewell/trace-mapping": "npm:^0.3.24"
   checksum: 10c0/81d63cca5443e0f0c72ae18b544cc28c7c0ec2cea46e7cb888bb0e0f411a1191d0d6b7af798d54e30777d8d1488b2ec0732aac2be342d3d7d3ffd271c6f489ed
+  languageName: node
+  linkType: hard
+
+"@asteasolutions/zod-to-openapi@npm:^7.3.0":
+  version: 7.3.0
+  resolution: "@asteasolutions/zod-to-openapi@npm:7.3.0"
+  dependencies:
+    openapi3-ts: "npm:^4.1.2"
+  peerDependencies:
+    zod: ^3.20.2
+  checksum: 10c0/f0a68a89929cdeaa3e21d2027489689f982824d676a9332c680e119f60881dd39b571324b24ad4837fda49bf6fe7c3e2af2199268b281bf1aec923d7a7cbfc40
   languageName: node
   linkType: hard
 
@@ -1357,6 +1346,29 @@ __metadata:
     "@hono/node-server": ^1.11.1
     hono: ^4.6.0
   checksum: 10c0/d99505da2048500ba8e6d075af6e88a306e99ad30df7c3cbc3199b2068ca85e8730e9124a29ec429abf4b294da51fc4a17ed760186e60eb68337c223ddff6e6f
+  languageName: node
+  linkType: hard
+
+"@hono/zod-openapi@npm:^0.19.6":
+  version: 0.19.6
+  resolution: "@hono/zod-openapi@npm:0.19.6"
+  dependencies:
+    "@asteasolutions/zod-to-openapi": "npm:^7.3.0"
+    "@hono/zod-validator": "npm:^0.5.0"
+  peerDependencies:
+    hono: ">=4.3.6"
+    zod: 3.*
+  checksum: 10c0/3a3313ba56f68829616263c25841633ff9390f2c5bedd16f454a46a12c98ab1dea708bb3a9dc9810a5fe33e291bc4e9c6d312c44cb2f24dd4e53934aebd3a724
+  languageName: node
+  linkType: hard
+
+"@hono/zod-validator@npm:^0.5.0":
+  version: 0.5.0
+  resolution: "@hono/zod-validator@npm:0.5.0"
+  peerDependencies:
+    hono: ">=3.9.0"
+    zod: ^3.19.1
+  checksum: 10c0/fe941a6ea6fb9e05ed4fc6f4e00aa8ca3bf34e582b5a79dcdbeae965927eaf944f1894e7bae2d9f16e17a57f94f8432d2811f34397254af1c454f3efd798a093
   languageName: node
   linkType: hard
 
@@ -3295,9 +3307,13 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "actor-core@workspace:packages/actor-core"
   dependencies:
+    "@hono/node-server": "npm:^1.14.0"
+    "@hono/node-ws": "npm:^1.1.1"
+    "@hono/zod-openapi": "npm:^0.19.6"
     "@types/invariant": "npm:^2"
     "@types/node": "npm:^22.13.1"
     "@types/ws": "npm:^8"
+    bundle-require: "npm:^5.1.0"
     cbor-x: "npm:^1.6.0"
     eventsource: "npm:^3.0.5"
     hono: "npm:^4.7.0"
@@ -7142,6 +7158,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"openapi3-ts@npm:^4.1.2":
+  version: 4.4.0
+  resolution: "openapi3-ts@npm:4.4.0"
+  dependencies:
+    yaml: "npm:^2.5.0"
+  checksum: 10c0/900b834279fc8a43c545728ad75ec7c26934ec5344225b60d1e1c0df44d742d7e7379aea18d9034e03031f079d3308ba5a68600682eece3ed41cdbdd10346a9e
+  languageName: node
+  linkType: hard
+
 "p-limit@npm:^3.0.2":
   version: 3.1.0
   resolution: "p-limit@npm:3.1.0"
@@ -9911,6 +9936,15 @@ __metadata:
   bin:
     yaml: bin.mjs
   checksum: 10c0/ee2126398ab7d1fdde566b4013b68e36930b9e6d8e68b6db356875c99614c10d678b6f45597a145ff6d63814961221fc305bf9242af8bf7450177f8a68537590
+  languageName: node
+  linkType: hard
+
+"yaml@npm:^2.5.0":
+  version: 2.8.0
+  resolution: "yaml@npm:2.8.0"
+  bin:
+    yaml: bin.mjs
+  checksum: 10c0/f6f7310cf7264a8107e72c1376f4de37389945d2fb4656f8060eca83f01d2d703f9d1b925dd8f39852a57034fafefde6225409ddd9f22aebfda16c6141b71858
   languageName: node
   linkType: hard
 
