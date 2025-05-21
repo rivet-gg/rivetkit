@@ -49,7 +49,7 @@ Each unit of compute is like a tiny server that remembers things between request
 
 <img src=".github/media/icons/database-regular.svg" height="16" />&nbsp;&nbsp;**Durable State Without a Database**  
 
-Your code's state is saved automatically—no database, ORM, or config needed. Just use regular JavaScript objects or SQLite (available in April).
+Your code's state is saved automatically—no database, ORM, or config needed. Just use regular JavaScript objects or SQLite (available in June).
 
 <br/>
 
@@ -96,7 +96,7 @@ Browse snippets for how to use ActorCore with different use cases.
 | Multiplayer Game | [actor.ts](/examples/snippets/game/actor-json.ts) | [actor.ts](/examples/snippets/game/actor-sqlite.ts) | [App.tsx](/examples/snippets/game/App.tsx) |
 | Rate Limiter | [actor.ts](/examples/snippets/rate/actor-json.ts) | [actor.ts](/examples/snippets/rate/actor-sqlite.ts) | [App.tsx](/examples/snippets/rate/App.tsx) |
 
-_SQLite will be available in late April. We’re working on publishing full examples related to these snippets. If you find an error, please create an issue._
+_SQLite will be available in June. We’re working on publishing full examples related to these snippets. If you find an error, please create an issue._
 
 ## Runs On Your Stack
 
@@ -142,7 +142,7 @@ Seamlessly integrate ActorCore with your favorite frameworks, languages, and too
 - <img src="docs/images/platforms/vercel.svg" height="16" alt="AI SDK" />&nbsp;&nbsp;[AI SDK](https://github.com/rivet-gg/actor-core/issues/907) *(On The Roadmap)*
 
 ### Local-First Sync
-- <img src="docs/images/integrations/livestore.svg" height="16" alt="LiveStore" />&nbsp;&nbsp;[LiveStore](https://github.com/rivet-gg/actor-core/issues/908) *(Available In May)*
+- <img src="docs/images/integrations/livestore.svg" height="16" alt="LiveStore" />&nbsp;&nbsp;[LiveStore](https://github.com/rivet-gg/actor-core/issues/908) *(Available In June)*
 - <img src="docs/images/integrations/zerosync.svg" height="16" alt="ZeroSync" />&nbsp;&nbsp;[ZeroSync](https://github.com/rivet-gg/actor-core/issues/909) *(Help Wanted)*
 - <img src="docs/images/integrations/tinybase.svg" height="16" alt="TinyBase" />&nbsp;&nbsp;[TinyBase](https://github.com/rivet-gg/actor-core/issues/910) *(Help Wanted)*
 - <img src="docs/images/integrations/yjs.svg" height="16" alt="Yjs" />&nbsp;&nbsp;[Yjs](https://github.com/rivet-gg/actor-core/issues/911) *(Help Wanted)*
