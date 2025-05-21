@@ -13,9 +13,17 @@ interface ActorErrorOptions extends ErrorOptions {
 }
 
 export class ActorError extends Error {
+	__type = "ActorError";
+
 	public public: boolean;
 	public metadata?: unknown;
 	public statusCode: number = 500;
+
+	public static isActorError(error: unknown): error is ActorError {
+		return (
+			typeof error === "object" && (error as ActorError).__type === "ActorError"
+		);
+	}
 
 	constructor(
 		public readonly code: string,
@@ -25,11 +33,16 @@ export class ActorError extends Error {
 		super(message, { cause: opts?.cause });
 		this.public = opts?.public ?? false;
 		this.metadata = opts?.metadata;
-		
+
 		// Set status code based on error type
 		if (opts?.public) {
 			this.statusCode = 400; // Bad request for public errors
 		}
+	}
+
+	toString() {
+		// Force stringify to return the message
+		return this.message;
 	}
 
 	/**
@@ -214,30 +227,28 @@ export class UserError extends ActorError {
 
 export class InvalidQueryJSON extends ActorError {
 	constructor(error?: unknown) {
-		super(
-			"invalid_query_json", 
-			`Invalid query JSON: ${error}`,
-			{ public: true, cause: error }
-		);
+		super("invalid_query_json", `Invalid query JSON: ${error}`, {
+			public: true,
+			cause: error,
+		});
 	}
 }
 
 export class InvalidRequest extends ActorError {
 	constructor(error?: unknown) {
-		super(
-			"invalid_request", 
-			`Invalid request: ${error}`,
-			{ public: true, cause: error }
-		);
+		super("invalid_request", `Invalid request: ${error}`, {
+			public: true,
+			cause: error,
+		});
 	}
 }
 
 export class ActorNotFound extends ActorError {
 	constructor(identifier?: string) {
 		super(
-			"actor_not_found", 
+			"actor_not_found",
 			identifier ? `Actor not found: ${identifier}` : "Actor not found",
-			{ public: true }
+			{ public: true },
 		);
 	}
 }
@@ -245,20 +256,19 @@ export class ActorNotFound extends ActorError {
 export class ActorAlreadyExists extends ActorError {
 	constructor(name: string, key: string[]) {
 		super(
-			"actor_already_exists", 
+			"actor_already_exists",
 			`Actor already exists with name "${name}" and key ${JSON.stringify(key)}`,
-			{ public: true }
+			{ public: true },
 		);
 	}
 }
 
 export class ProxyError extends ActorError {
 	constructor(operation: string, error?: unknown) {
-		super(
-			"proxy_error", 
-			`Error proxying ${operation}: ${error}`,
-			{ public: true, cause: error }
-		);
+		super("proxy_error", `Error proxying ${operation}: ${error}`, {
+			public: true,
+			cause: error,
+		});
 	}
 }
 

@@ -124,7 +124,7 @@ export class Conn<S, CP, CS, V> {
 	 * @protected
 	 */
 	public _sendMessage(message: CachedSerializer<messageToClient.ToClient>) {
-		this.#driver.sendMessage(this.#actor, this, this.__persist.ds, message);
+		this.#driver.sendMessage?.(this.#actor, this, this.__persist.ds, message);
 	}
 
 	/**

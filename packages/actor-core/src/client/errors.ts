@@ -39,3 +39,9 @@ export class HttpRequestError extends ActorClientError {
 		super(`HTTP request error: ${message}`, { cause: opts?.cause });
 	}
 }
+
+export class ActorConnDisposed extends ActorClientError {
+	constructor() {
+		super("Attempting to interact with a disposed actor connection.");
+	}
+}

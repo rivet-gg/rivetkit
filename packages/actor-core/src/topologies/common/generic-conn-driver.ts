@@ -137,10 +137,6 @@ export type GenericHttpDriverState = Record<never, never>;
 
 export function createGeneircHttpDriver() {
 	return {
-		sendMessage: () => {
-			logger().warn("attempting to send message to http connection");
-		},
-
 		disconnect: async () => {
 			// Noop
 		},

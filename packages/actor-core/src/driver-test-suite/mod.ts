@@ -19,6 +19,12 @@ import { bundleRequire } from "bundle-require";
 import { getPort } from "@/test/mod";
 import { Transport } from "@/client/mod";
 import { runActorConnTests } from "./tests/actor-conn";
+import { runActorHandleTests } from "./tests/actor-handle";
+import { runActionFeaturesTests } from "./tests/action-features";
+import { runActorVarsTests } from "./tests/actor-vars";
+import { runActorConnStateTests } from "./tests/actor-conn-state";
+import { runActorMetadataTests } from "./tests/actor-metadata";
+import { runActorErrorHandlingTests } from "./tests/actor-error-handling";
 
 export interface DriverTestConfig {
 	/** Deploys an app and returns the connection endpoint. */
@@ -56,6 +62,30 @@ export function runDriverTests(driverTestConfig: DriverTestConfig) {
 			});
 		});
 	}
+
+	describe("actor handle", () => {
+		runActorHandleTests(driverTestConfig);
+	});
+
+	describe("action features", () => {
+		runActionFeaturesTests(driverTestConfig);
+	});
+
+	describe("actor variables", () => {
+		runActorVarsTests(driverTestConfig);
+	});
+
+	describe("connection state", () => {
+		runActorConnStateTests(driverTestConfig);
+	});
+
+	describe("actor metadata", () => {
+		runActorMetadataTests(driverTestConfig);
+	});
+
+	describe("error handling", () => {
+		runActorErrorHandlingTests(driverTestConfig);
+	});
 }
 
 /**

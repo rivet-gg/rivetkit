@@ -277,89 +277,72 @@ export async function handleRpc(
 	rpcName: string,
 	actorId: string,
 ) {
-	try {
-		const encoding = getRequestEncoding(c.req, false);
-		const parameters = getRequestConnParams(c.req, appConfig, driverConfig);
+	const encoding = getRequestEncoding(c.req, false);
+	const parameters = getRequestConnParams(c.req, appConfig, driverConfig);
 
-		logger().debug("handling rpc", { rpcName, encoding });
+	logger().debug("handling rpc", { rpcName, encoding });
 
-		// Validate incoming request
-		let rpcArgs: unknown[];
-		if (encoding === "json") {
-			try {
-				rpcArgs = await c.req.json();
-			} catch (err) {
-				throw new errors.InvalidRpcRequest("Invalid JSON");
-			}
-
-			if (!Array.isArray(rpcArgs)) {
-				throw new errors.InvalidRpcRequest("RPC arguments must be an array");
-			}
-		} else if (encoding === "cbor") {
-			try {
-				const value = await c.req.arrayBuffer();
-				const uint8Array = new Uint8Array(value);
-				const deserialized = await deserialize(
-					uint8Array as unknown as InputData,
-					encoding,
-				);
-
-				// Validate using the RPC schema
-				const result = protoHttpRpc.RpcRequestSchema.safeParse(deserialized);
-				if (!result.success) {
-					throw new errors.InvalidRpcRequest("Invalid RPC request format");
-				}
-
-				rpcArgs = result.data.a;
-			} catch (err) {
-				throw new errors.InvalidRpcRequest(
-					`Invalid binary format: ${stringifyError(err)}`,
-				);
-			}
-		} else {
-			return assertUnreachable(encoding);
+	// Validate incoming request
+	let rpcArgs: unknown[];
+	if (encoding === "json") {
+		try {
+			rpcArgs = await c.req.json();
+		} catch (err) {
+			throw new errors.InvalidRpcRequest("Invalid JSON");
 		}
 
-		// Invoke the RPC
-		const result = await handler({
-			req: c.req,
-			params: parameters,
-			rpcName,
-			rpcArgs,
-			actorId,
-		});
-
-		// Encode the response
-		if (encoding === "json") {
-			return c.json(result.output as Record<string, unknown>);
-		} else if (encoding === "cbor") {
-			// Use serialize from serde.ts instead of custom encoder
-			const responseData = {
-				o: result.output, // Use the format expected by ResponseOkSchema
-			};
-			const serialized = serialize(responseData, encoding);
-
-			return c.body(serialized as Uint8Array, 200, {
-				"Content-Type": "application/octet-stream",
-			});
-		} else {
-			return assertUnreachable(encoding);
+		if (!Array.isArray(rpcArgs)) {
+			throw new errors.InvalidRpcRequest("RPC arguments must be an array");
 		}
-	} catch (err) {
-		if (err instanceof errors.ActorError) {
-			return c.json({ error: err.serializeForHttp() }, 400);
-		} else {
-			logger().error("error executing rpc", { err });
-			return c.json(
-				{
-					error: {
-						type: "internal_error",
-						message: "An internal error occurred",
-					},
-				},
-				500,
+	} else if (encoding === "cbor") {
+		try {
+			const value = await c.req.arrayBuffer();
+			const uint8Array = new Uint8Array(value);
+			const deserialized = await deserialize(
+				uint8Array as unknown as InputData,
+				encoding,
+			);
+
+			// Validate using the RPC schema
+			const result = protoHttpRpc.RpcRequestSchema.safeParse(deserialized);
+			if (!result.success) {
+				throw new errors.InvalidRpcRequest("Invalid RPC request format");
+			}
+
+			rpcArgs = result.data.a;
+		} catch (err) {
+			throw new errors.InvalidRpcRequest(
+				`Invalid binary format: ${stringifyError(err)}`,
 			);
 		}
+	} else {
+		return assertUnreachable(encoding);
+	}
+
+	// Invoke the RPC
+	const result = await handler({
+		req: c.req,
+		params: parameters,
+		rpcName,
+		rpcArgs,
+		actorId,
+	});
+
+	// Encode the response
+	if (encoding === "json") {
+		return c.json(result.output as Record<string, unknown>);
+	} else if (encoding === "cbor") {
+		// Use serialize from serde.ts instead of custom encoder
+		const responseData = {
+			o: result.output, // Use the format expected by ResponseOkSchema
+		};
+		const serialized = serialize(responseData, encoding);
+
+		return c.body(serialized as Uint8Array, 200, {
+			"Content-Type": "application/octet-stream",
+		});
+	} else {
+		return assertUnreachable(encoding);
 	}
 }
 
@@ -374,59 +357,42 @@ export async function handleConnectionMessage(
 	connToken: string,
 	actorId: string,
 ) {
-	try {
-		const encoding = getRequestEncoding(c.req, false);
+	const encoding = getRequestEncoding(c.req, false);
 
-		// Validate incoming request
-		let message: messageToServer.ToServer;
-		if (encoding === "json") {
-			try {
-				message = await c.req.json();
-			} catch (err) {
-				throw new errors.InvalidRequest("Invalid JSON");
-			}
-		} else if (encoding === "cbor") {
-			try {
-				const value = await c.req.arrayBuffer();
-				const uint8Array = new Uint8Array(value);
-				message = await parseMessage(uint8Array as unknown as InputData, {
-					encoding,
-					maxIncomingMessageSize: appConfig.maxIncomingMessageSize,
-				});
-			} catch (err) {
-				throw new errors.InvalidRequest(
-					`Invalid binary format: ${stringifyError(err)}`,
-				);
-			}
-		} else {
-			return assertUnreachable(encoding);
+	// Validate incoming request
+	let message: messageToServer.ToServer;
+	if (encoding === "json") {
+		try {
+			message = await c.req.json();
+		} catch (err) {
+			throw new errors.InvalidRequest("Invalid JSON");
 		}
-
-		await handler({
-			req: c.req,
-			connId,
-			connToken,
-			message,
-			actorId,
-		});
-
-		return c.json({});
-	} catch (err) {
-		if (err instanceof errors.ActorError) {
-			return c.json({ error: err.serializeForHttp() }, 400);
-		} else {
-			logger().error("error processing connection message", { err });
-			return c.json(
-				{
-					error: {
-						type: "internal_error",
-						message: "An internal error occurred",
-					},
-				},
-				500,
+	} else if (encoding === "cbor") {
+		try {
+			const value = await c.req.arrayBuffer();
+			const uint8Array = new Uint8Array(value);
+			message = await parseMessage(uint8Array as unknown as InputData, {
+				encoding,
+				maxIncomingMessageSize: appConfig.maxIncomingMessageSize,
+			});
+		} catch (err) {
+			throw new errors.InvalidRequest(
+				`Invalid binary format: ${stringifyError(err)}`,
 			);
 		}
+	} else {
+		return assertUnreachable(encoding);
 	}
+
+	await handler({
+		req: c.req,
+		connId,
+		connToken,
+		message,
+		actorId,
+	});
+
+	return c.json({});
 }
 
 // Helper to get the connection encoding from a request

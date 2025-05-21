@@ -413,7 +413,7 @@ export function createManagerRouter(
 			logger().error("error in rpc handler", { error });
 
 			// Use ProxyError if it's not already an ActorError
-			if (!(error instanceof errors.ActorError)) {
+			if (!errors.ActorError.isActorError(error)) {
 				throw new errors.ProxyError("RPC call", error);
 			} else {
 				throw error;
@@ -472,7 +472,7 @@ export function createManagerRouter(
 			logger().error("error proxying connection message", { error });
 
 			// Use ProxyError if it's not already an ActorError
-			if (!(error instanceof errors.ActorError)) {
+			if (!errors.ActorError.isActorError(error)) {
 				throw new errors.ProxyError("connection message", error);
 			} else {
 				throw error;

@@ -640,6 +640,10 @@ enc
 	}
 
 	#sendMessage(message: wsToServer.ToServer, opts?: SendOpts) {
+		if (this.#disposed) {
+			throw new errors.ActorConnDisposed();
+		}
+
 		let queueMessage = false;
 		if (!this.#transport) {
 			// No transport connected yet

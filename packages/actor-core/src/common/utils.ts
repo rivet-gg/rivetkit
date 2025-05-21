@@ -135,7 +135,7 @@ export function deconstructError(
 	let code: string;
 	let message: string;
 	let metadata: unknown = undefined;
-	if (error instanceof errors.ActorError && error.public) {
+	if (errors.ActorError.isActorError(error) && error.public) {
 		statusCode = 400;
 		code = error.code;
 		message = String(error);
