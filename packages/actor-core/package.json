@@ -2,7 +2,13 @@
   "name": "actor-core",
   "version": "0.8.0",
   "license": "Apache-2.0",
-  "files": ["dist", "src", "deno.json", "bun.json", "package.json"],
+  "files": [
+    "dist",
+    "src",
+    "deno.json",
+    "bun.json",
+    "package.json"
+  ],
   "type": "module",
   "bin": "./dist/cli/mod.cjs",
   "exports": {
@@ -160,6 +166,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@hono/zod-openapi": "^0.19.6",
     "cbor-x": "^1.6.0",
     "hono": "^4.7.0",
     "invariant": "^2.2.4",
@@ -168,17 +175,17 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@hono/node-server": "^1.14.0",
+    "@hono/node-ws": "^1.1.1",
     "@types/invariant": "^2",
     "@types/node": "^22.13.1",
     "@types/ws": "^8",
+    "bundle-require": "^5.1.0",
     "eventsource": "^3.0.5",
     "tsup": "^8.4.0",
     "typescript": "^5.7.3",
     "vitest": "^3.1.1",
-    "ws": "^8.18.1",
-    "@hono/node-server": "^1.14.0",
-    "@hono/node-ws": "^1.1.1",
-    "bundle-require": "^5.1.0"
+    "ws": "^8.18.1"
   },
   "peerDependencies": {
     "eventsource": "^3.0.5",

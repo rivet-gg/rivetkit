@@ -32,6 +32,9 @@ import {
 	createManagerInspectorRouter,
 } from "@/inspector/manager";
 import { Hono, type Context as HonoContext, type Next } from "hono";
+import { OpenAPIHono } from "@hono/zod-openapi";
+import { z } from "@hono/zod-openapi";
+import { createRoute } from "@hono/zod-openapi";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
 import type { WSContext } from "hono/ws";
@@ -80,6 +83,52 @@ type ManagerRouterHandler = {
 	proxyMode: ProxyMode;
 };
 
+const OPENAPI_ENCODING_HEADER = z.string().openapi({
+	description: "The encoding format to use for the response (json, cbor)",
+	example: "json",
+});
+
+const OPENAPI_ACTOR_QUERY_HEADER = z.string().openapi({
+	description: "Actor query information",
+});
+
+const OPENAPI_CONN_PARAMS_HEADER = z.string().openapi({
+	description: "Connection parameters",
+});
+
+const OPENAPI_ACTOR_ID_HEADER = z.string().openapi({
+	description: "Actor ID (used in some endpoints)",
+	example: "actor-123456",
+});
+
+const OPENAPI_CONN_ID_HEADER = z.string().openapi({
+	description: "Connection ID",
+	example: "conn-123456",
+});
+
+const OPENAPI_CONN_TOKEN_HEADER = z.string().openapi({
+	description: "Connection token",
+});
+
+function buildOpenApiResponses<T>(schema: T) {
+	return {
+		200: {
+			description: "Success",
+			content: {
+				"application/json": {
+					schema,
+				},
+			},
+		},
+		400: {
+			description: "User error",
+		},
+		500: {
+			description: "Internal error",
+		},
+	};
+}
+
 export function createManagerRouter(
 	appConfig: AppConfig,
 	driverConfig: DriverConfig,
@@ -90,9 +139,11 @@ export function createManagerRouter(
 		throw new Error("config.drivers.manager is not defined.");
 	}
 	const driver = driverConfig.drivers.manager;
-	const app = new Hono();
+	const app = new OpenAPIHono();
 
-	const upgradeWebSocket = driverConfig.getUpgradeWebSocket?.(app);
+	const upgradeWebSocket = driverConfig.getUpgradeWebSocket?.(
+		app as unknown as Hono,
+	);
 
 	app.use("*", loggerMiddleware(logger()));
 
@@ -114,371 +165,169 @@ export function createManagerRouter(
 		});
 	}
 
+	// GET /
 	app.get("/", (c) => {
 		return c.text(
 			"This is an ActorCore server.\n\nLearn more at https://actorcore.org",
 		);
 	});
 
+	// GET /health
 	app.get("/health", (c) => {
 		return c.text("ok");
 	});
 
-	// Resolve actor ID from query
-	app.post("/actors/resolve", async (c) => {
-		const encoding = getRequestEncoding(c.req, false);
-		logger().debug("resolve request encoding", { encoding });
+	// POST /actors/resolve
+	{
+		const ResolveQuerySchema = z
+			.object({
+				query: z.any().openapi({
+					example: { getForId: { actorId: "actor-123" } },
+				}),
+			})
+			.openapi("ResolveQuery");
 
-		const params = ResolveRequestSchema.safeParse({
-			query: getRequestQuery(c, false),
-		});
-		if (!params.success) {
-			logger().error("invalid connection parameters", {
-				error: params.error,
-			});
-			throw new errors.InvalidRequest(params.error);
-		}
+		const ResolveResponseSchema = z
+			.object({
+				i: z.string().openapi({
+					example: "actor-123",
+				}),
+			})
+			.openapi("ResolveResponse");
 
-		// Get the actor ID and meta
-		const { actorId, meta } = await queryActor(c, params.data.query, driver);
-		logger().debug("resolved actor", { actorId, meta });
-		invariant(actorId, "Missing actor ID");
-
-		// Format response according to protocol
-		const response: protoHttpResolve.ResolveResponse = {
-			i: actorId,
-		};
-		const serialized = serialize(response, encoding);
-		return c.body(serialized);
-	});
-
-	app.get("/actors/connect/websocket", async (c) => {
-		invariant(upgradeWebSocket, "WebSockets not supported");
-
-		let encoding: Encoding | undefined;
-		try {
-			logger().debug("websocket connection request received");
-
-			// We can't use the standard headers with WebSockets
-			//
-			// All other information will be sent over the socket itself, since that data needs to be E2EE
-			const params = ConnectWebSocketRequestSchema.safeParse({
-				query: getRequestQuery(c, true),
-				encoding: c.req.query("encoding"),
-			});
-			if (!params.success) {
-				logger().error("invalid connection parameters", {
-					error: params.error,
-				});
-				throw new errors.InvalidRequest(params.error);
-			}
-
-			// Get the actor ID and meta
-			const { actorId, meta } = await queryActor(c, params.data.query, driver);
-			logger().debug("found actor for websocket connection", { actorId, meta });
-			invariant(actorId, "missing actor id");
-
-			if ("inline" in handler.proxyMode) {
-				logger().debug("using inline proxy mode for websocket connection");
-				invariant(
-					handler.proxyMode.inline.handlers.onConnectWebSocket,
-					"onConnectWebSocket not provided",
-				);
-
-				const onConnectWebSocket =
-					handler.proxyMode.inline.handlers.onConnectWebSocket;
-				return upgradeWebSocket((c) => {
-					return handleWebSocketConnect(
-						c,
-						appConfig,
-						driverConfig,
-						onConnectWebSocket,
-						actorId,
-					)();
-				})(c, noopNext());
-			} else if ("custom" in handler.proxyMode) {
-				logger().debug("using custom proxy mode for websocket connection");
-				return await handler.proxyMode.custom.onProxyWebSocket(
-					c,
-					`/connect/websocket?encoding=${params.data.encoding}`,
-					actorId,
-					meta,
-				);
-			} else {
-				assertUnreachable(handler.proxyMode);
-			}
-		} catch (error) {
-			// If we receive an error during setup, we send the error and close the socket immediately
-			//
-			// We have to return the error over WS since WebSocket clients cannot read vanilla HTTP responses
-
-			const { code, message, metadata } = deconstructError(error, logger(), {
-				wsEvent: "setup",
-			});
-
-			return await upgradeWebSocket(() => ({
-				onOpen: async (_evt: unknown, ws: WSContext) => {
-					if (encoding) {
-						try {
-							// Serialize and send the connection error
-							const errorMsg: ToClient = {
-								b: {
-									e: {
-										c: code,
-										m: message,
-										md: metadata,
-									},
-								},
-							};
-
-							// Send the error message to the client
-							const serialized = serialize(errorMsg, encoding);
-							ws.send(serialized);
-
-							// Close the connection with an error code
-							ws.close(1011, code);
-						} catch (serializeError) {
-							logger().error("failed to send error to websocket client", {
-								error: serializeError,
-							});
-							ws.close(1011, "internal error during error handling");
-						}
-					} else {
-						// We don't know the encoding so we send what we can
-						ws.close(1011, code);
-					}
+		const resolveRoute = createRoute({
+			method: "post",
+			path: "/actors/resolve",
+			request: {
+				body: {
+					content: {
+						"application/json": {
+							schema: ResolveQuerySchema,
+						},
+					},
 				},
-			}))(c, noopNext());
-		}
-	});
+				headers: z.object({
+					[HEADER_ENCODING]: OPENAPI_ENCODING_HEADER,
+				}),
+			},
+			responses: buildOpenApiResponses(ResolveResponseSchema),
+		});
 
-	// Proxy SSE connection to actor
-	app.get("/actors/connect/sse", async (c) => {
-		let encoding: Encoding | undefined;
-		try {
-			encoding = getRequestEncoding(c.req, false);
-			logger().debug("sse connection request received", { encoding });
+		app.openapi(resolveRoute, (c) => handleResolveRequest(c, driver));
+	}
 
-			const params = ConnectRequestSchema.safeParse({
-				query: getRequestQuery(c, false),
-				encoding: c.req.header(HEADER_ENCODING),
-				params: c.req.header(HEADER_CONN_PARAMS),
-			});
+	// GET /actors/connect/websocket
+	app.get("/actors/connect/websocket", (c) =>
+		handleWebSocketConnectRequest(
+			c,
+			upgradeWebSocket,
+			appConfig,
+			driverConfig,
+			driver,
+			handler,
+		),
+	);
 
-			if (!params.success) {
-				logger().error("invalid connection parameters", {
-					error: params.error,
-				});
-				throw new errors.InvalidRequest(params.error);
-			}
+	// GET /actors/connect/sse
+	app.get("/actors/connect/sse", (c) =>
+		handleSseConnectRequest(c, appConfig, driverConfig, driver, handler),
+	);
 
-			const query = params.data.query;
+	// POST /actors/action/:action
+	{
+		const ActionParamsSchema = z
+			.object({
+				action: z.string().openapi({
+					param: {
+						name: "action",
+						in: "path",
+					},
+					example: "myAction",
+				}),
+			})
+			.openapi("ActionParams");
 
-			// Get the actor ID and meta
-			const { actorId, meta } = await queryActor(c, query, driver);
-			invariant(actorId, "Missing actor ID");
-			logger().debug("sse connection to actor", { actorId, meta });
+		const ActionRequestSchema = z
+			.object({
+				query: z.any().openapi({
+					example: { getForId: { actorId: "actor-123" } },
+				}),
+				body: z
+					.any()
+					.optional()
+					.openapi({
+						example: { param1: "value1", param2: 123 },
+					}),
+			})
+			.openapi("ActionRequest");
 
-			// Handle based on mode
-			if ("inline" in handler.proxyMode) {
-				logger().debug("using inline proxy mode for sse connection");
-				// Use the shared SSE handler
-				return await handleSseConnect(
-					c,
-					appConfig,
-					driverConfig,
-					handler.proxyMode.inline.handlers.onConnectSse,
-					actorId,
-				);
-			} else if ("custom" in handler.proxyMode) {
-				logger().debug("using custom proxy mode for sse connection");
-				const url = new URL("http://actor/connect/sse");
-				const proxyRequest = new Request(url, c.req.raw);
-				proxyRequest.headers.set(HEADER_ENCODING, params.data.encoding);
-				if (params.data.connParams) {
-					proxyRequest.headers.set(HEADER_CONN_PARAMS, params.data.connParams);
-				}
-				return await handler.proxyMode.custom.onProxyRequest(
-					c,
-					proxyRequest,
-					actorId,
-					meta,
-				);
-			} else {
-				assertUnreachable(handler.proxyMode);
-			}
-		} catch (error) {
-			// If we receive an error during setup, we send the error and close the socket immediately
-			//
-			// We have to return the error over SSE since SSE clients cannot read vanilla HTTP responses
+		const ActionResponseSchema = z.any().openapi("ActionResponse");
 
-			const { code, message, metadata } = deconstructError(error, logger(), {
-				sseEvent: "setup",
-			});
+		// Define action route
+		const actionRoute = createRoute({
+			method: "post",
+			path: "/actors/action/{action}",
+			request: {
+				params: ActionParamsSchema,
+				body: {
+					content: {
+						"application/json": {
+							schema: ActionRequestSchema,
+						},
+					},
+				},
+				headers: z.object({
+					[HEADER_ENCODING]: OPENAPI_ENCODING_HEADER,
+					[HEADER_CONN_PARAMS]: OPENAPI_CONN_PARAMS_HEADER,
+				}),
+			},
+			responses: buildOpenApiResponses(ActionResponseSchema),
+		});
 
-			return streamSSE(c, async (stream) => {
-				try {
-					if (encoding) {
-						// Serialize and send the connection error
-						const errorMsg: ToClient = {
-							b: {
-								e: {
-									c: code,
-									m: message,
-									md: metadata,
-								},
-							},
-						};
+		app.openapi(actionRoute, (c) =>
+			handleActionRequest(c, appConfig, driverConfig, driver, handler),
+		);
+	}
 
-						// Send the error message to the client
-						const serialized = serialize(errorMsg, encoding);
-						await stream.writeSSE({
-							data:
-								typeof serialized === "string"
-									? serialized
-									: Buffer.from(serialized).toString("base64"),
-						});
-					} else {
-						// We don't know the encoding, send an error and close
-						await stream.writeSSE({
-							data: code,
-							event: "error",
-						});
-					}
-				} catch (serializeError) {
-					logger().error("failed to send error to sse client", {
-						error: serializeError,
-					});
-					await stream.writeSSE({
-						data: "internal error during error handling",
-						event: "error",
-					});
-				}
+	// POST /actors/message
+	{
+		const ConnectionMessageRequestSchema = z
+			.object({
+				message: z.any().openapi({
+					example: { type: "message", content: "Hello, actor!" },
+				}),
+			})
+			.openapi("ConnectionMessageRequest");
 
-				// Stream will exit completely once function exits
-			});
-		}
-	});
+		const ConnectionMessageResponseSchema = z
+			.any()
+			.openapi("ConnectionMessageResponse");
 
-	// Proxy action calls to actor
-	app.post("/actors/action/:action", async (c) => {
-		try {
-			const actionName = c.req.param("action");
-			logger().debug("action call received", { actionName });
+		const messageRoute = createRoute({
+			method: "post",
+			path: "/actors/message",
+			request: {
+				body: {
+					content: {
+						"application/json": {
+							schema: ConnectionMessageRequestSchema,
+						},
+					},
+				},
+				headers: z.object({
+					[HEADER_ACTOR_ID]: OPENAPI_ACTOR_ID_HEADER,
+					[HEADER_CONN_ID]: OPENAPI_CONN_ID_HEADER,
+					[HEADER_ENCODING]: OPENAPI_ENCODING_HEADER,
+					[HEADER_CONN_TOKEN]: OPENAPI_CONN_TOKEN_HEADER,
+				}),
+			},
+			responses: buildOpenApiResponses(ConnMessageRequestSchema),
+		});
 
-			const params = ConnectRequestSchema.safeParse({
-				query: getRequestQuery(c, false),
-				encoding: c.req.header(HEADER_ENCODING),
-				params: c.req.header(HEADER_CONN_PARAMS),
-			});
-
-			if (!params.success) {
-				logger().error("invalid connection parameters", {
-					error: params.error,
-				});
-				throw new errors.InvalidRequest(params.error);
-			}
-
-			// Get the actor ID and meta
-			const { actorId, meta } = await queryActor(c, params.data.query, driver);
-			logger().debug("found actor for action", { actorId, meta });
-			invariant(actorId, "Missing actor ID");
-
-			// Handle based on mode
-			if ("inline" in handler.proxyMode) {
-				logger().debug("using inline proxy mode for action call");
-				// Use shared action handler with direct parameter
-				return handleAction(
-					c,
-					appConfig,
-					driverConfig,
-					handler.proxyMode.inline.handlers.onAction,
-					actionName,
-					actorId,
-				);
-			} else if ("custom" in handler.proxyMode) {
-				logger().debug("using custom proxy mode for action call");
-				const url = new URL(`http://actor/action/${encodeURIComponent(actionName)}`);
-				const proxyRequest = new Request(url, c.req.raw);
-				return await handler.proxyMode.custom.onProxyRequest(
-					c,
-					proxyRequest,
-					actorId,
-					meta,
-				);
-			} else {
-				assertUnreachable(handler.proxyMode);
-			}
-		} catch (error) {
-			logger().error("error in action handler", { error });
-
-			// Use ProxyError if it's not already an ActorError
-			if (!errors.ActorError.isActorError(error)) {
-				throw new errors.ProxyError("Action call", error);
-			} else {
-				throw error;
-			}
-		}
-	});
-
-	// Proxy connection messages to actor
-	app.post("/actors/message", async (c) => {
-		logger().debug("connection message request received");
-		try {
-			const params = ConnMessageRequestSchema.safeParse({
-				actorId: c.req.header(HEADER_ACTOR_ID),
-				connId: c.req.header(HEADER_CONN_ID),
-				encoding: c.req.header(HEADER_ENCODING),
-				connToken: c.req.header(HEADER_CONN_TOKEN),
-			});
-			if (!params.success) {
-				logger().error("invalid connection parameters", {
-					error: params.error,
-				});
-				throw new errors.InvalidRequest(params.error);
-			}
-			const { actorId, connId, encoding, connToken } = params.data;
-
-			// Handle based on mode
-			if ("inline" in handler.proxyMode) {
-				logger().debug("using inline proxy mode for connection message");
-				// Use shared connection message handler with direct parameters
-				return handleConnectionMessage(
-					c,
-					appConfig,
-					handler.proxyMode.inline.handlers.onConnMessage,
-					connId,
-					connToken as string,
-					actorId,
-				);
-			} else if ("custom" in handler.proxyMode) {
-				logger().debug("using custom proxy mode for connection message");
-				const url = new URL(`http://actor/connections/${connId}/message`);
-
-				const proxyRequest = new Request(url, c.req.raw);
-				proxyRequest.headers.set(HEADER_ENCODING, encoding);
-				proxyRequest.headers.set(HEADER_CONN_ID, connId);
-				proxyRequest.headers.set(HEADER_CONN_TOKEN, connToken);
-
-				return await handler.proxyMode.custom.onProxyRequest(
-					c,
-					proxyRequest,
-					actorId,
-				);
-			} else {
-				assertUnreachable(handler.proxyMode);
-			}
-		} catch (error) {
-			logger().error("error proxying connection message", { error });
-
-			// Use ProxyError if it's not already an ActorError
-			if (!errors.ActorError.isActorError(error)) {
-				throw new errors.ProxyError("connection message", error);
-			} else {
-				throw error;
-			}
-		}
-	});
+		app.openapi(messageRoute, (c) =>
+			handleMessageRequest(c, appConfig, handler),
+		);
+	}
 
 	if (appConfig.inspector.enabled) {
 		app.route(
@@ -491,10 +340,18 @@ export function createManagerRouter(
 		);
 	}
 
+	app.doc("/doc", {
+		openapi: "3.0.0",
+		info: {
+			version: "1.0.0",
+			title: "My API",
+		},
+	});
+
 	app.notFound(handleRouteNotFound);
 	app.onError(handleRouteError);
 
-	return app;
+	return app as unknown as Hono;
 }
 
 /**
@@ -568,6 +425,405 @@ export async function queryActor(
 		meta: actorOutput.meta,
 	});
 	return { actorId: actorOutput.actorId, meta: actorOutput.meta };
+}
+
+/**
+ * Handle SSE connection request
+ */
+async function handleSseConnectRequest(
+	c: HonoContext,
+	appConfig: AppConfig,
+	driverConfig: DriverConfig,
+	driver: ManagerDriver,
+	handler: ManagerRouterHandler,
+): Promise<Response> {
+	let encoding: Encoding | undefined;
+	try {
+		encoding = getRequestEncoding(c.req, false);
+		logger().debug("sse connection request received", { encoding });
+
+		const params = ConnectRequestSchema.safeParse({
+			query: getRequestQuery(c, false),
+			encoding: c.req.header(HEADER_ENCODING),
+			params: c.req.header(HEADER_CONN_PARAMS),
+		});
+
+		if (!params.success) {
+			logger().error("invalid connection parameters", {
+				error: params.error,
+			});
+			throw new errors.InvalidRequest(params.error);
+		}
+
+		const query = params.data.query;
+
+		// Get the actor ID and meta
+		const { actorId, meta } = await queryActor(c, query, driver);
+		invariant(actorId, "Missing actor ID");
+		logger().debug("sse connection to actor", { actorId, meta });
+
+		// Handle based on mode
+		if ("inline" in handler.proxyMode) {
+			logger().debug("using inline proxy mode for sse connection");
+			// Use the shared SSE handler
+			return await handleSseConnect(
+				c,
+				appConfig,
+				driverConfig,
+				handler.proxyMode.inline.handlers.onConnectSse,
+				actorId,
+			);
+		} else if ("custom" in handler.proxyMode) {
+			logger().debug("using custom proxy mode for sse connection");
+			const url = new URL("http://actor/connect/sse");
+			const proxyRequest = new Request(url, c.req.raw);
+			proxyRequest.headers.set(HEADER_ENCODING, params.data.encoding);
+			if (params.data.connParams) {
+				proxyRequest.headers.set(HEADER_CONN_PARAMS, params.data.connParams);
+			}
+			return await handler.proxyMode.custom.onProxyRequest(
+				c,
+				proxyRequest,
+				actorId,
+				meta,
+			);
+		} else {
+			assertUnreachable(handler.proxyMode);
+		}
+	} catch (error) {
+		// If we receive an error during setup, we send the error and close the socket immediately
+		//
+		// We have to return the error over SSE since SSE clients cannot read vanilla HTTP responses
+
+		const { code, message, metadata } = deconstructError(error, logger(), {
+			sseEvent: "setup",
+		});
+
+		return streamSSE(c, async (stream) => {
+			try {
+				if (encoding) {
+					// Serialize and send the connection error
+					const errorMsg: ToClient = {
+						b: {
+							e: {
+								c: code,
+								m: message,
+								md: metadata,
+							},
+						},
+					};
+
+					// Send the error message to the client
+					const serialized = serialize(errorMsg, encoding);
+					await stream.writeSSE({
+						data:
+							typeof serialized === "string"
+								? serialized
+								: Buffer.from(serialized).toString("base64"),
+					});
+				} else {
+					// We don't know the encoding, send an error and close
+					await stream.writeSSE({
+						data: code,
+						event: "error",
+					});
+				}
+			} catch (serializeError) {
+				logger().error("failed to send error to sse client", {
+					error: serializeError,
+				});
+				await stream.writeSSE({
+					data: "internal error during error handling",
+					event: "error",
+				});
+			}
+
+			// Stream will exit completely once function exits
+		});
+	}
+}
+
+/**
+ * Handle WebSocket connection request
+ */
+async function handleWebSocketConnectRequest(
+	c: HonoContext,
+	upgradeWebSocket:
+		| ((
+				createEvents: (c: HonoContext) => any,
+		  ) => (c: HonoContext, next: Next) => Promise<Response>)
+		| undefined,
+	appConfig: AppConfig,
+	driverConfig: DriverConfig,
+	driver: ManagerDriver,
+	handler: ManagerRouterHandler,
+): Promise<Response> {
+	invariant(upgradeWebSocket, "WebSockets not supported");
+
+	let encoding: Encoding | undefined;
+	try {
+		logger().debug("websocket connection request received");
+
+		// We can't use the standard headers with WebSockets
+		//
+		// All other information will be sent over the socket itself, since that data needs to be E2EE
+		const params = ConnectWebSocketRequestSchema.safeParse({
+			query: getRequestQuery(c, true),
+			encoding: c.req.query("encoding"),
+		});
+		if (!params.success) {
+			logger().error("invalid connection parameters", {
+				error: params.error,
+			});
+			throw new errors.InvalidRequest(params.error);
+		}
+
+		// Get the actor ID and meta
+		const { actorId, meta } = await queryActor(c, params.data.query, driver);
+		logger().debug("found actor for websocket connection", { actorId, meta });
+		invariant(actorId, "missing actor id");
+
+		if ("inline" in handler.proxyMode) {
+			logger().debug("using inline proxy mode for websocket connection");
+			invariant(
+				handler.proxyMode.inline.handlers.onConnectWebSocket,
+				"onConnectWebSocket not provided",
+			);
+
+			const onConnectWebSocket =
+				handler.proxyMode.inline.handlers.onConnectWebSocket;
+			return upgradeWebSocket((c) => {
+				return handleWebSocketConnect(
+					c,
+					appConfig,
+					driverConfig,
+					onConnectWebSocket,
+					actorId,
+				)();
+			})(c, noopNext());
+		} else if ("custom" in handler.proxyMode) {
+			logger().debug("using custom proxy mode for websocket connection");
+			return await handler.proxyMode.custom.onProxyWebSocket(
+				c,
+				`/connect/websocket?encoding=${params.data.encoding}`,
+				actorId,
+				meta,
+			);
+		} else {
+			assertUnreachable(handler.proxyMode);
+		}
+	} catch (error) {
+		// If we receive an error during setup, we send the error and close the socket immediately
+		//
+		// We have to return the error over WS since WebSocket clients cannot read vanilla HTTP responses
+
+		const { code, message, metadata } = deconstructError(error, logger(), {
+			wsEvent: "setup",
+		});
+
+		return await upgradeWebSocket(() => ({
+			onOpen: async (_evt: unknown, ws: WSContext) => {
+				if (encoding) {
+					try {
+						// Serialize and send the connection error
+						const errorMsg: ToClient = {
+							b: {
+								e: {
+									c: code,
+									m: message,
+									md: metadata,
+								},
+							},
+						};
+
+						// Send the error message to the client
+						const serialized = serialize(errorMsg, encoding);
+						ws.send(serialized);
+
+						// Close the connection with an error code
+						ws.close(1011, code);
+					} catch (serializeError) {
+						logger().error("failed to send error to websocket client", {
+							error: serializeError,
+						});
+						ws.close(1011, "internal error during error handling");
+					}
+				} else {
+					// We don't know the encoding so we send what we can
+					ws.close(1011, code);
+				}
+			},
+		}))(c, noopNext());
+	}
+}
+
+/**
+ * Handle a connection message request to an actor
+ */
+async function handleMessageRequest(
+	c: HonoContext,
+	appConfig: AppConfig,
+	handler: ManagerRouterHandler,
+): Promise<Response> {
+	logger().debug("connection message request received");
+	try {
+		const params = ConnMessageRequestSchema.safeParse({
+			actorId: c.req.header(HEADER_ACTOR_ID),
+			connId: c.req.header(HEADER_CONN_ID),
+			encoding: c.req.header(HEADER_ENCODING),
+			connToken: c.req.header(HEADER_CONN_TOKEN),
+		});
+		if (!params.success) {
+			logger().error("invalid connection parameters", {
+				error: params.error,
+			});
+			throw new errors.InvalidRequest(params.error);
+		}
+		const { actorId, connId, encoding, connToken } = params.data;
+
+		// Handle based on mode
+		if ("inline" in handler.proxyMode) {
+			logger().debug("using inline proxy mode for connection message");
+			// Use shared connection message handler with direct parameters
+			return handleConnectionMessage(
+				c,
+				appConfig,
+				handler.proxyMode.inline.handlers.onConnMessage,
+				connId,
+				connToken as string,
+				actorId,
+			);
+		} else if ("custom" in handler.proxyMode) {
+			logger().debug("using custom proxy mode for connection message");
+			const url = new URL(`http://actor/connections/${connId}/message`);
+
+			const proxyRequest = new Request(url, c.req.raw);
+			proxyRequest.headers.set(HEADER_ENCODING, encoding);
+			proxyRequest.headers.set(HEADER_CONN_ID, connId);
+			proxyRequest.headers.set(HEADER_CONN_TOKEN, connToken);
+
+			return await handler.proxyMode.custom.onProxyRequest(
+				c,
+				proxyRequest,
+				actorId,
+			);
+		} else {
+			assertUnreachable(handler.proxyMode);
+		}
+	} catch (error) {
+		logger().error("error proxying connection message", { error });
+
+		// Use ProxyError if it's not already an ActorError
+		if (!errors.ActorError.isActorError(error)) {
+			throw new errors.ProxyError("connection message", error);
+		} else {
+			throw error;
+		}
+	}
+}
+
+/**
+ * Handle an action request to an actor
+ */
+async function handleActionRequest(
+	c: HonoContext,
+	appConfig: AppConfig,
+	driverConfig: DriverConfig,
+	driver: ManagerDriver,
+	handler: ManagerRouterHandler,
+): Promise<Response> {
+	try {
+		const actionName = c.req.param("action");
+		logger().debug("action call received", { actionName });
+
+		const params = ConnectRequestSchema.safeParse({
+			query: getRequestQuery(c, false),
+			encoding: c.req.header(HEADER_ENCODING),
+			params: c.req.header(HEADER_CONN_PARAMS),
+		});
+
+		if (!params.success) {
+			logger().error("invalid connection parameters", {
+				error: params.error,
+			});
+			throw new errors.InvalidRequest(params.error);
+		}
+
+		// Get the actor ID and meta
+		const { actorId, meta } = await queryActor(c, params.data.query, driver);
+		logger().debug("found actor for action", { actorId, meta });
+		invariant(actorId, "Missing actor ID");
+
+		// Handle based on mode
+		if ("inline" in handler.proxyMode) {
+			logger().debug("using inline proxy mode for action call");
+			// Use shared action handler with direct parameter
+			return handleAction(
+				c,
+				appConfig,
+				driverConfig,
+				handler.proxyMode.inline.handlers.onAction,
+				actionName,
+				actorId,
+			);
+		} else if ("custom" in handler.proxyMode) {
+			logger().debug("using custom proxy mode for action call");
+			const url = new URL(
+				`http://actor/action/${encodeURIComponent(actionName)}`,
+			);
+			const proxyRequest = new Request(url, c.req.raw);
+			return await handler.proxyMode.custom.onProxyRequest(
+				c,
+				proxyRequest,
+				actorId,
+				meta,
+			);
+		} else {
+			assertUnreachable(handler.proxyMode);
+		}
+	} catch (error) {
+		logger().error("error in action handler", { error });
+
+		// Use ProxyError if it's not already an ActorError
+		if (!errors.ActorError.isActorError(error)) {
+			throw new errors.ProxyError("Action call", error);
+		} else {
+			throw error;
+		}
+	}
+}
+
+/**
+ * Handle the resolve request to get an actor ID from a query
+ */
+async function handleResolveRequest(
+	c: HonoContext,
+	driver: ManagerDriver,
+): Promise<Response> {
+	const encoding = getRequestEncoding(c.req, false);
+	logger().debug("resolve request encoding", { encoding });
+
+	const params = ResolveRequestSchema.safeParse({
+		query: getRequestQuery(c, false),
+	});
+	if (!params.success) {
+		logger().error("invalid connection parameters", {
+			error: params.error,
+		});
+		throw new errors.InvalidRequest(params.error);
+	}
+
+	// Get the actor ID and meta
+	const { actorId, meta } = await queryActor(c, params.data.query, driver);
+	logger().debug("resolved actor", { actorId, meta });
+	invariant(actorId, "Missing actor ID");
+
+	// Format response according to protocol
+	const response: protoHttpResolve.ResolveResponse = {
+		i: actorId,
+	};
+	const serialized = serialize(response, encoding);
+	return c.body(serialized);
 }
 
 /** Generates a `Next` handler to pass to middleware in order to be able to call arbitrary middleware. */
