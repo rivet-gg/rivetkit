@@ -115,6 +115,7 @@ export class CloudflareWorkersManagerDriver implements ManagerDriver {
 		c,
 		name,
 		key,
+		input,
 	}: CreateInput<{ Bindings: Bindings }>): Promise<ActorOutput> {
 		if (!c) throw new Error("Missing Hono context");
 		const log = logger();
@@ -136,6 +137,7 @@ export class CloudflareWorkersManagerDriver implements ManagerDriver {
 		await actor.initialize({
 			name,
 			key,
+			input,
 		});
 
 		// Store combined actor metadata (name and key)

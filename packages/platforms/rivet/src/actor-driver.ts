@@ -16,6 +16,22 @@ export class RivetActorDriver implements ActorDriver {
 		return { ctx: this.#ctx };
 	}
 
+	async readInput(_actorId: string): Promise<unknown | undefined> {
+		// Read input
+		//
+		// We need to have a separate exists flag in order to represent `undefined`
+		const entries = await this.#ctx.kv.getBatch([
+			["actor-core", "input", "exists"],
+			["actor-core", "input", "data"],
+		]);
+
+		if (entries.get(["actor-core", "input", "exists"]) === true) {
+			return await entries.get(["actor-core", "input", "data"]);
+		} else {
+			return undefined;
+		}
+	}
+
 	async readPersistedData(_actorId: string): Promise<unknown | undefined> {
 		let data = await this.#ctx.kv.get(["actor-core", "data"]);
 

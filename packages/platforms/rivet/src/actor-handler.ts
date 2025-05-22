@@ -1,4 +1,5 @@
 import { setupLogging } from "actor-core/log";
+import { stringifyError } from "actor-core/utils";
 import type { ActorContext } from "@rivet-gg/actor-core";
 import { upgradeWebSocket } from "hono/deno";
 import { logger } from "./log";
@@ -11,6 +12,15 @@ import { rivetRequest } from "./rivet-client";
 import invariant from "invariant";
 
 export function createActorHandler(inputConfig: InputConfig): RivetHandler {
+	try {
+		return createActorHandlerInner(inputConfig);
+	} catch (error) {
+		logger().error("failed to start actor", { error: stringifyError(error) });
+		Deno.exit(1);
+	}
+}
+
+function createActorHandlerInner(inputConfig: InputConfig): RivetHandler {
 	const driverConfig = ConfigSchema.parse(inputConfig);
 
 	const handler = {
@@ -28,6 +38,12 @@ export function createActorHandler(inputConfig: InputConfig): RivetHandler {
 
 			const endpoint = Deno.env.get("RIVET_API_ENDPOINT");
 			if (!endpoint) throw new Error("missing RIVET_API_ENDPOINT");
+
+			// Initialization promise
+			const initializedPromise = Promise.withResolvers<void>();
+			if ((await ctx.kv.get(["actor-core", "initialized"])) === true) {
+				initializedPromise.resolve(undefined);
+			}
 
 			// Setup actor driver
 			if (!driverConfig.drivers) driverConfig.drivers = {};
@@ -96,6 +112,32 @@ export function createActorHandler(inputConfig: InputConfig): RivetHandler {
 			// Set a catch-all route
 			const router = actorTopology.router;
 
+			// TODO: This needs to be secured
+			// TODO: This needs to assert this has only been called once
+			// Initialize with data
+			router.post("/initialize", async (c) => {
+				const body = await c.req.json();
+
+				logger().debug("received initialize request", {
+					hasInput: !!body.input,
+				});
+
+				// Write input
+				if (body.input) {
+					await ctx.kv.putBatch(
+						new Map([
+							[["actor-core", "input", "exists"], true],
+							[["actor-core", "input", "data"], body.input],
+						]),
+					);
+				}
+
+				// Finish initialization
+				initializedPromise.resolve(undefined);
+
+				return c.json({}, 200);
+			});
+
 			// Start server
 			logger().info("server running", { port });
 			const server = Deno.serve(
@@ -118,7 +160,8 @@ export function createActorHandler(inputConfig: InputConfig): RivetHandler {
 			// Extract key from Rivet's tag format
 			const key = extractKeyFromRivetTags(ctx.metadata.actor.tags);
 
-			// Start actor
+			// Start actor after initialized
+			await initializedPromise.promise;
 			await actorTopology.start(
 				ctx.metadata.actor.id,
 				ctx.metadata.actor.tags.name,

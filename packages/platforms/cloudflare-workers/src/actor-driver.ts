@@ -1,8 +1,6 @@
-import {
-	ActorDriver,
-	AnyActorInstance,
-} from "actor-core/driver-helpers";
+import { ActorDriver, AnyActorInstance } from "actor-core/driver-helpers";
 import invariant from "invariant";
+import { KEYS } from "./actor-handler-do";
 
 interface DurableObjectGlobalState {
 	ctx: DurableObjectState;
@@ -50,12 +48,16 @@ export class CloudflareWorkersActorDriver implements ActorDriver {
 		return { ctx: state.ctx, env: state.env };
 	}
 
+	async readInput(actorId: string): Promise<unknown | undefined> {
+		return await this.#getDOCtx(actorId).storage.get(KEYS.INPUT);
+	}
+
 	async readPersistedData(actorId: string): Promise<unknown | undefined> {
-		return await this.#getDOCtx(actorId).storage.get("persisted_data");
+		return await this.#getDOCtx(actorId).storage.get(KEYS.PERSISTED_DATA);
 	}
 
 	async writePersistedData(actorId: string, data: unknown): Promise<void> {
-		await this.#getDOCtx(actorId).storage.put("persisted_data", data);
+		await this.#getDOCtx(actorId).storage.put(KEYS.PERSISTED_DATA, data);
 	}
 
 	async setAlarm(actor: AnyActorInstance, timestamp: number): Promise<void> {

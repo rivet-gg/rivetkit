@@ -1,21 +1,13 @@
 import type { ActorKey } from "actor-core";
 
-/**
- * Interface representing an actor's state
- */
 export interface ActorState {
-	// Basic actor information
 	id: string;
 	name: string;
 	key: ActorKey;
-
-	// Persisted data
 	persistedData: unknown;
+	input?: unknown;
 }
 
-/**
- * Global state singleton for the memory driver
- */
 export class MemoryGlobalState {
 	#actors: Map<string, ActorState> = new Map();
 
@@ -27,6 +19,10 @@ export class MemoryGlobalState {
 		return actor;
 	}
 
+	readInput(actorId: string): unknown | undefined {
+		return this.#getActor(actorId).input;
+	}
+
 	readPersistedData(actorId: string): unknown | undefined {
 		return this.#getActor(actorId).persistedData;
 	}
@@ -35,14 +31,20 @@ export class MemoryGlobalState {
 		this.#getActor(actorId).persistedData = data;
 	}
 
-	createActor(actorId: string, name: string, key: ActorKey): void {
+	createActor(
+		actorId: string,
+		name: string,
+		key: ActorKey,
+		input?: unknown,
+	): void {
 		// Create actor state if it doesn't exist
 		if (!this.#actors.has(actorId)) {
 			this.#actors.set(actorId, {
 				id: actorId,
 				name,
 				key,
-				persistedData: undefined
+				persistedData: undefined,
+				input,
 			});
 		} else {
 			throw new Error(`Actor already exists for ID: ${actorId}`);

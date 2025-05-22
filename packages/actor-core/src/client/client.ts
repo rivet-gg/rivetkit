@@ -41,7 +41,10 @@ export interface ActorAccessor<AD extends AnyActorDefinition> {
 	 * @param {GetOptions} [opts] - Options for getting the actor.
 	 * @returns {ActorHandle<AD>} - A handle to the actor.
 	 */
-	getOrCreate(key?: string | string[], opts?: GetOptions): ActorHandle<AD>;
+	getOrCreate(
+		key?: string | string[],
+		opts?: GetOrCreateOptions,
+	): ActorHandle<AD>;
 
 	/**
 	 * Gets a stateless handle to an actor by its ID.
@@ -63,7 +66,7 @@ export interface ActorAccessor<AD extends AnyActorDefinition> {
 	 * @returns {Promise<ActorHandle<AD>>} - A promise that resolves to a handle to the actor.
 	 */
 	create(
-		key: string | string[],
+		key?: string | string[],
 		opts?: CreateOptions,
 	): Promise<ActorHandle<AD>>;
 }
@@ -104,9 +107,11 @@ export interface GetOptions extends QueryOptions {}
  * @typedef {QueryOptions} GetOrCreateOptions
  * @property {string} [createInRegion] - Region to create the actor in if it doesn't exist.
  */
-export interface GetOptions extends QueryOptions {
+export interface GetOrCreateOptions extends QueryOptions {
 	/** Region to create the actor in if it doesn't exist. */
 	createInRegion?: string;
+	/** Input data to pass to the actor. */
+	createWithInput?: unknown;
 }
 
 /**
@@ -117,6 +122,8 @@ export interface GetOptions extends QueryOptions {
 export interface CreateOptions extends QueryOptions {
 	/** The region to create the actor in. */
 	region?: string;
+	/** Input data to pass to the actor. */
+	input?: unknown;
 }
 
 /**
@@ -258,7 +265,7 @@ export class ClientRaw {
 	getOrCreate<AD extends AnyActorDefinition>(
 		name: string,
 		key?: string | string[],
-		opts?: GetOptions,
+		opts?: GetOrCreateOptions,
 	): ActorHandle<AD> {
 		// Convert string to array of strings
 		const keyArray: string[] = typeof key === "string" ? [key] : key || [];
@@ -274,6 +281,7 @@ export class ClientRaw {
 			getOrCreateForKey: {
 				name,
 				key: keyArray,
+				input: opts?.createWithInput,
 				region: opts?.createInRegion,
 			},
 		};
@@ -299,31 +307,29 @@ export class ClientRaw {
 	 */
 	async create<AD extends AnyActorDefinition>(
 		name: string,
-		key: string | string[],
-		opts: CreateOptions = {},
+		key?: string | string[],
+		opts?: CreateOptions,
 	): Promise<ActorHandle<AD>> {
 		// Convert string to array of strings
-		const keyArray: string[] = typeof key === "string" ? [key] : key;
+		const keyArray: string[] = typeof key === "string" ? [key] : key || [];
 
-		// Build create config
-		const create = {
-			...opts,
-			// Do these last to override `opts`
-			name,
-			key: keyArray,
-		};
+		const createQuery = {
+			create: {
+				...opts,
+				// Do these last to override `opts`
+				name,
+				key: keyArray,
+			},
+		} satisfies ActorQuery;
 
 		logger().debug("create actor handle", {
 			name,
 			key: keyArray,
 			parameters: opts?.params,
-			create,
+			create: createQuery.create,
 		});
 
 		// Create the actor
-		const createQuery = {
-			create,
-		} satisfies ActorQuery;
 		const actorId = await resolveActorId(
 			this.#managerEndpoint,
 			createQuery,

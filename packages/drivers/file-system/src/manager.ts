@@ -85,7 +85,7 @@ export class FileSystemManagerDriver implements ManagerDriver {
 		}
 	}
 
-	async createActor({ name, key }: CreateInput): Promise<ActorOutput> {
+	async createActor({ name, key, input }: CreateInput): Promise<ActorOutput> {
 		// Check if actor with the same name and key already exists
 		const existingActor = await this.getWithKey({ name, key });
 		if (existingActor) {
@@ -93,7 +93,7 @@ export class FileSystemManagerDriver implements ManagerDriver {
 		}
 
 		const actorId = crypto.randomUUID();
-		await this.#state.createActor(actorId, name, key);
+		await this.#state.createActor(actorId, name, key, input);
 
 		// Notify inspector about actor changes
 		this.inspector.onActorsChange(this.#state.getAllActors());

@@ -25,6 +25,7 @@ export interface GetOrCreateWithKeyInput<E extends Env = any> {
 	c?: HonoContext<E>;
 	name: string;
 	key: ActorKey;
+	input?: unknown;
 	region?: string;
 }
 
@@ -32,6 +33,7 @@ export interface CreateInput<E extends Env = any> {
 	c?: HonoContext<E>;
 	name: string;
 	key: ActorKey;
+	input?: unknown;
 	region?: string;
 }
 

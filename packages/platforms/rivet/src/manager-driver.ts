@@ -1,5 +1,5 @@
 import { assertUnreachable } from "actor-core/utils";
-import { ActorAlreadyExists } from "actor-core/errors";
+import { ActorAlreadyExists, InternalError } from "actor-core/errors";
 import type {
 	ManagerDriver,
 	GetForIdInput,
@@ -127,7 +127,12 @@ export class RivetManagerDriver implements ManagerDriver {
 		}
 	}
 
-	async createActor({ name, key, region }: CreateInput): Promise<ActorOutput> {
+	async createActor({
+		name,
+		key,
+		region,
+		input,
+	}: CreateInput): Promise<ActorOutput> {
 		// Check if actor with the same name and key already exists
 		const existingActor = await this.getWithKey({ name, key });
 		if (existingActor) {
@@ -179,6 +184,40 @@ export class RivetManagerDriver implements ManagerDriver {
 			typeof createRequest,
 			{ actor: RivetActor }
 		>(this.#clientConfig, "POST", "/actors", createRequest);
+
+		// Initialize the actor
+		try {
+			const endpoint = buildActorEndpoint(actor);
+			const url = `${endpoint}/initialize`;
+			logger().debug("initializing actor", { url, input: JSON.stringify(input) });
+
+			const res = await fetch(url, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ input }),
+			});
+			if (!res.ok) {
+				throw new InternalError(
+					`Actor initialize request failed (${res.status}):\n${await res.text()}`,
+				);
+			}
+		} catch (error) {
+			logger().error("failed to initialize actor, destroying actor", {
+				actorId: actor.id,
+				error,
+			});
+
+			// Destroy the actor since it failed to initialize
+			await rivetRequest<typeof createRequest, { actor: RivetActor }>(
+				this.#clientConfig,
+				"DELETE",
+				`/actors/${actor.id}`,
+			);
+
+			throw error;
+		}
 
 		return {
 			actorId: actor.id,

@@ -9,6 +9,8 @@ export interface ActorDriver {
 	//load(): Promise<LoadOutput>;
 	getContext(actorId: string): unknown;
 
+	readInput(actorId: string): Promise<unknown | undefined>;
+
 	readPersistedData(actorId: string): Promise<unknown | undefined>;
 	writePersistedData(actorId: string, unknown: unknown): Promise<void>;
 

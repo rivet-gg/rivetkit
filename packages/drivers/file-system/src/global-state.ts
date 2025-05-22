@@ -19,6 +19,7 @@ export interface ActorState {
 	name: string;
 	key: ActorKey;
 	persistedData: unknown;
+	input?: unknown;
 }
 
 /**
@@ -106,6 +107,11 @@ export class FileSystemGlobalState {
 		return cachedActor;
 	}
 
+	readInput(actorId: string): unknown | undefined {
+		const state = this.loadActorState(actorId);
+		return state.input;
+	}
+
 	/**
 	 * Read persisted data for an actor
 	 */
@@ -176,6 +182,7 @@ export class FileSystemGlobalState {
 		actorId: string,
 		name: string,
 		key: ActorKey,
+		input?: unknown,
 	): Promise<void> {
 		// Check if actor already exists
 		if (this.hasActor(actorId)) {
@@ -187,7 +194,8 @@ export class FileSystemGlobalState {
 			id: actorId,
 			name,
 			key,
-			persistedData: undefined
+			persistedData: undefined,
+			input,
 		};
 
 		// Cache the state

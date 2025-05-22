@@ -17,6 +17,13 @@ export class RedisActorDriver implements ActorDriver {
 		return { redis: this.#redis };
 	}
 
+	async readInput(actorId: string): Promise<unknown | undefined> {
+		// TODO: We should read this all in one batch, this will require multiple RTT to Redis
+		const data = await this.#redis.get(KEYS.ACTOR.input(actorId));
+		if (data !== null) return JSON.parse(data);
+		return undefined;
+	}
+
 	async readPersistedData(actorId: string): Promise<unknown | undefined> {
 		const data = await this.#redis.get(KEYS.ACTOR.persistedData(actorId));
 		if (data !== null) return JSON.parse(data);

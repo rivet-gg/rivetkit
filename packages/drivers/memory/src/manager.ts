@@ -93,7 +93,7 @@ export class MemoryManagerDriver implements ManagerDriver {
 		}
 	}
 
-	async createActor({ name, key }: CreateInput): Promise<ActorOutput> {
+	async createActor({ name, key, input }: CreateInput): Promise<ActorOutput> {
 		// Check if actor with the same name and key already exists
 		const existingActor = await this.getWithKey({ name, key });
 		if (existingActor) {
@@ -101,7 +101,7 @@ export class MemoryManagerDriver implements ManagerDriver {
 		}
 
 		const actorId = crypto.randomUUID();
-		this.#state.createActor(actorId, name, key);
+		this.#state.createActor(actorId, name, key, input);
 
 		this.inspector.onActorsChange(this.#state.getAllActors());
 

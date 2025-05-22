@@ -430,6 +430,7 @@ export async function queryActor(
 			c,
 			name: query.getOrCreateForKey.name,
 			key: query.getOrCreateForKey.key,
+			input: query.getOrCreateForKey.input,
 			region: query.getOrCreateForKey.region,
 		});
 		actorOutput = {
@@ -441,6 +442,7 @@ export async function queryActor(
 			c,
 			name: query.create.name,
 			key: query.create.key,
+			input: query.create.input,
 			region: query.create.region,
 		});
 		actorOutput = {

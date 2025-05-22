@@ -5,7 +5,7 @@ import { spawn, exec } from "node:child_process";
 import crypto from "node:crypto";
 import { promisify } from "node:util";
 import invariant from "invariant";
-import type { RivetClientConfig } from "../src/rivet_client";
+import type { RivetClientConfig } from "../src/rivet-client";
 
 const execPromise = promisify(exec);
 //const RIVET_API_ENDPOINT = "https://api.rivet.gg";

@@ -1,7 +1,12 @@
 import { describe, test, expect, vi } from "vitest";
 import { setupDriverTest } from "../utils";
 import { ActorError } from "@/client/mod";
-import { COUNTER_APP_PATH, type CounterApp } from "../test-apps";
+import {
+	COUNTER_APP_PATH,
+	ACTION_INPUTS_APP_PATH,
+	type CounterApp,
+	type ActionInputsApp,
+} from "../test-apps";
 import { DriverTestConfig } from "../mod";
 
 export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
@@ -133,6 +138,96 @@ export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
 				const retrievedCounter = client.counter.getOrCreate([uniqueId]);
 				const count = await retrievedCounter.increment(0); // Get current value
 				expect(count).toBe(10);
+			});
+
+			test("passes input to actor during creation", async (c) => {
+				const { client } = await setupDriverTest<ActionInputsApp>(
+					c,
+					driverTestConfig,
+					ACTION_INPUTS_APP_PATH,
+				);
+
+				// Test data to pass as input
+				const testInput = {
+					name: "test-actor",
+					value: 42,
+					nested: { foo: "bar" },
+				};
+
+				// Create actor with input
+				const actor = await client.inputActor.create(undefined, {
+					input: testInput,
+				});
+
+				// Verify both createState and onCreate received the input
+				const inputs = await actor.getInputs();
+
+				// Input should be available in createState
+				expect(inputs.initialInput).toEqual(testInput);
+
+				// Input should also be available in onCreate lifecycle hook
+				expect(inputs.onCreateInput).toEqual(testInput);
+			});
+
+			test("input is undefined when not provided", async (c) => {
+				const { client } = await setupDriverTest<ActionInputsApp>(
+					c,
+					driverTestConfig,
+					ACTION_INPUTS_APP_PATH,
+				);
+
+				// Create actor without providing input
+				const actor = await client.inputActor.create();
+
+				// Get inputs and verify they're undefined
+				const inputs = await actor.getInputs();
+
+				// Should be undefined in createState
+				expect(inputs.initialInput).toBeUndefined();
+
+				// Should be undefined in onCreate lifecycle hook too
+				expect(inputs.onCreateInput).toBeUndefined();
+			});
+
+			test("getOrCreate passes input to actor during creation", async (c) => {
+				const { client } = await setupDriverTest<ActionInputsApp>(
+					c,
+					driverTestConfig,
+					ACTION_INPUTS_APP_PATH,
+				);
+
+				// Create a unique key for this test
+				const uniqueKey = [`input-test-${crypto.randomUUID()}`];
+
+				// Test data to pass as input
+				const testInput = {
+					name: "getorcreate-test",
+					value: 100,
+					nested: { baz: "qux" },
+				};
+
+				// Use getOrCreate with input
+				const actor = client.inputActor.getOrCreate(uniqueKey, {
+					createWithInput: testInput,
+				});
+
+				// Verify both createState and onCreate received the input
+				const inputs = await actor.getInputs();
+
+				// Input should be available in createState
+				expect(inputs.initialInput).toEqual(testInput);
+
+				// Input should also be available in onCreate lifecycle hook
+				expect(inputs.onCreateInput).toEqual(testInput);
+
+				// Verify that calling getOrCreate again with the same key
+				// returns the existing actor and doesn't create a new one
+				const existingActor = client.inputActor.getOrCreate(uniqueKey);
+				const existingInputs = await existingActor.getInputs();
+
+				// Should still have the original inputs
+				expect(existingInputs.initialInput).toEqual(testInput);
+				expect(existingInputs.onCreateInput).toEqual(testInput);
 			});
 
 			// TODO: Correctly test region for each provider

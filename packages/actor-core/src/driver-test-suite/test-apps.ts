@@ -10,6 +10,7 @@ export type { App as VarsApp } from "../../fixtures/driver-test-suite/vars";
 export type { App as ConnStateApp } from "../../fixtures/driver-test-suite/conn-state";
 export type { App as MetadataApp } from "../../fixtures/driver-test-suite/metadata";
 export type { App as ErrorHandlingApp } from "../../fixtures/driver-test-suite/error-handling";
+export type { App as ActionInputsApp } from "../../fixtures/driver-test-suite/action-inputs";
 
 export const COUNTER_APP_PATH = resolve(
 	__dirname,
@@ -50,4 +51,8 @@ export const METADATA_APP_PATH = resolve(
 export const ERROR_HANDLING_APP_PATH = resolve(
 	__dirname,
 	"../../fixtures/driver-test-suite/error-handling.ts",
+);
+export const ACTION_INPUTS_APP_PATH = resolve(
+	__dirname,
+	"../../fixtures/driver-test-suite/action-inputs.ts",
 );

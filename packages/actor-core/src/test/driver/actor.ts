@@ -19,6 +19,10 @@ export class TestActorDriver implements ActorDriver {
 		};
 	}
 
+	async readInput(actorId: string): Promise<unknown | undefined> {
+		return this.#state.readInput(actorId);
+	}
+
 	async readPersistedData(actorId: string): Promise<unknown | undefined> {
 		return this.#state.readPersistedData(actorId);
 	}

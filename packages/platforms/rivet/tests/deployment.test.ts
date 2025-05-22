@@ -31,42 +31,21 @@ export const app = setup({
 export type App = typeof app;
 `;
 
-describe.skip("Rivet deployment tests", () => {
-	let tmpDir: string;
-	let cleanup: () => Promise<void>;
+test("Rivet deployment tests", async () => {
+	// Create a temporary path for the counter actor
+	const tempFilePath = path.join(
+		__dirname,
+		"../../../..",
+		"target",
+		"temp-counter-app.ts",
+	);
 
-	// Set up test environment before all tests
-	beforeAll(async () => {
-		// Create a temporary path for the counter actor
-		const tempFilePath = path.join(
-			__dirname,
-			"../../../..",
-			"target",
-			"temp-counter-app.ts",
-		);
+	// Ensure target directory exists
+	await fs.mkdir(path.dirname(tempFilePath), { recursive: true });
 
-		// Ensure target directory exists
-		await fs.mkdir(path.dirname(tempFilePath), { recursive: true });
+	// Write the counter actor file
+	await fs.writeFile(tempFilePath, COUNTER_ACTOR);
 
-		// Write the counter actor file
-		await fs.writeFile(tempFilePath, COUNTER_ACTOR);
-
-		// Run the deployment
-		const result = await deployToRivet(tempFilePath);
-		tmpDir = result.tmpDir;
-		cleanup = result.cleanup;
-	});
-
-	// Clean up after all tests
-	afterAll(async () => {
-		if (cleanup) {
-			await cleanup();
-		}
-	});
-
-	test("deploys counter actor to Rivet and retrieves endpoint", async () => {
-		// This test just verifies that the deployment was successful
-		// The actual deployment work is done in the beforeAll hook
-		expect(tmpDir).toBeTruthy();
-	}, 180000); // Increased timeout to 3 minutes for the full deployment
+	// Run the deployment
+	const result = await deployToRivet(tempFilePath, true);
 });

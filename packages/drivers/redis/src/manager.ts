@@ -101,7 +101,7 @@ export class RedisManagerDriver implements ManagerDriver {
 		}
 	}
 
-	async createActor({ name, key }: CreateInput): Promise<ActorOutput> {
+	async createActor({ name, key, input }: CreateInput): Promise<ActorOutput> {
 		// Check if actor with the same name and key already exists
 		const existingActor = await this.getWithKey({ name, key });
 		if (existingActor) {
@@ -117,6 +117,7 @@ export class RedisManagerDriver implements ManagerDriver {
 		// Store basic actor information
 		pipeline.set(KEYS.ACTOR.initialized(actorId), "1");
 		pipeline.set(KEYS.ACTOR.metadata(actorId), JSON.stringify({ name, key }));
+		pipeline.set(KEYS.ACTOR.input(actorId), JSON.stringify(input));
 
 		// Create direct lookup by name+key -> actorId
 		pipeline.set(actorKeyRedisKey, actorId);

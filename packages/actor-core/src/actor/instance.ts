@@ -498,9 +498,7 @@ export class ActorInstance<S, CP, CS, V> {
 		} else {
 			logger().info("actor creating");
 
-			if (this.#config.onCreate) {
-				await this.#config.onCreate(this.actorContext);
-			}
+			const input = await this.#actorDriver.readInput(this.#actorId);
 
 			// Initialize actor state
 			let stateData: unknown = undefined;
@@ -518,6 +516,7 @@ export class ActorInstance<S, CP, CS, V> {
 							undefined,
 							undefined
 						>,
+						{ input },
 					);
 				} else if ("state" in this.#config) {
 					stateData = structuredClone(this.#config.state);
@@ -539,6 +538,11 @@ export class ActorInstance<S, CP, CS, V> {
 			await this.#actorDriver.writePersistedData(this.#actorId, persist);
 
 			this.#setPersist(persist);
+
+			// Notify creation
+			if (this.#config.onCreate) {
+				await this.#config.onCreate(this.actorContext, { input });
+			}
 		}
 	}
 
@@ -846,7 +850,7 @@ export class ActorInstance<S, CP, CS, V> {
 
 		// Prevent calling private or reserved methods
 		if (!(actionName in this.#config.actions)) {
-			logger().warn("action does not exist", {  actionName });
+			logger().warn("action does not exist", { actionName });
 			throw new errors.ActionNotFound();
 		}
 

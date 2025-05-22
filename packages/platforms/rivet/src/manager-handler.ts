@@ -1,4 +1,5 @@
 import { setupLogging } from "actor-core/log";
+import { stringifyError } from "actor-core/utils";
 import type { ActorContext } from "@rivet-gg/actor-core";
 import { logger } from "./log";
 import { GetActorMeta, RivetManagerDriver } from "./manager-driver";
@@ -12,6 +13,17 @@ import invariant from "invariant";
 import { upgradeWebSocket } from "hono/deno";
 
 export function createManagerHandler(inputConfig: InputConfig): RivetHandler {
+	try {
+		return createManagerHandlerInner(inputConfig);
+	} catch (error) {
+		logger().error("failed to start manager", { error: stringifyError(error) });
+		Deno.exit(1);
+	}
+}
+
+export function createManagerHandlerInner(
+	inputConfig: InputConfig,
+): RivetHandler {
 	const driverConfig = ConfigSchema.parse(inputConfig);
 
 	const handler = {

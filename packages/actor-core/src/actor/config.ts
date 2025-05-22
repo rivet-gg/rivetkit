@@ -74,6 +74,14 @@ export const ActorConfigSchema = z
 		},
 	);
 
+export interface OnCreateOptions {
+	input?: unknown;
+}
+
+export interface CreateStateOptions {
+	input?: unknown;
+}
+
 export interface OnConnectOptions<CP> {
 	/**
 	 * The request object associated with the connection.
@@ -92,6 +100,7 @@ type CreateState<S, CP, CS, V> =
 	| {
 			createState: (
 				c: ActorContext<undefined, undefined, undefined, undefined>,
+				opts: CreateStateOptions,
 			) => S | Promise<S>;
 	  }
 	| Record<never, never>;
@@ -149,7 +158,10 @@ interface BaseActorConfig<S, CP, CS, V, R extends Actions<S, CP, CS, V>> {
 	 * Use this hook to initialize your actor's state.
 	 * This is called before any other lifecycle hooks.
 	 */
-	onCreate?: (c: ActorContext<S, CP, CS, V>) => void | Promise<void>;
+	onCreate?: (
+		c: ActorContext<S, CP, CS, V>,
+		opts: OnCreateOptions,
+	) => void | Promise<void>;
 
 	/**
 	 * Called when the actor is started and ready to receive connections and action.

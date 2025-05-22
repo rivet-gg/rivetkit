@@ -7,14 +7,13 @@ import {
 	CloudflareDurableObjectGlobalState,
 	CloudflareWorkersActorDriver,
 } from "./actor-driver";
-import { upgradeWebSocket } from "./websocket";
 
-const KEYS = {
-	STATE: {
-		INITIALIZED: "actor:state:initialized",
-		NAME: "actor:state:name",
-		KEY: "actor:state:key",
-	},
+export const KEYS = {
+	INITIALIZED: "actor-core:initialized",
+	NAME: "actor-core:name",
+	KEY: "actor-core:key",
+	INPUT: "actor-core:input",
+	PERSISTED_DATA: "actor-core:data",
 };
 
 export interface ActorHandlerInterface extends DurableObject {
@@ -24,6 +23,7 @@ export interface ActorHandlerInterface extends DurableObject {
 export interface ActorInitRequest {
 	name: string;
 	key: ActorKey;
+	input?: unknown;
 }
 
 interface InitializedData {
@@ -69,14 +69,14 @@ export function createActorDurableObject(
 				} else {
 					this.#initializedPromise = Promise.withResolvers();
 					const res = await this.ctx.storage.get([
-						KEYS.STATE.INITIALIZED,
-						KEYS.STATE.NAME,
-						KEYS.STATE.KEY,
+						KEYS.INITIALIZED,
+						KEYS.NAME,
+						KEYS.KEY,
 					]);
-					if (res.get(KEYS.STATE.INITIALIZED)) {
-						const name = res.get(KEYS.STATE.NAME) as string;
+					if (res.get(KEYS.INITIALIZED)) {
+						const name = res.get(KEYS.NAME) as string;
 						if (!name) throw new Error("missing actor name");
-						const key = res.get(KEYS.STATE.KEY) as ActorKey;
+						const key = res.get(KEYS.KEY) as ActorKey;
 						if (!key) throw new Error("missing actor key");
 
 						logger().debug("already initialized", { name, key });
@@ -132,9 +132,10 @@ export function createActorDurableObject(
 			// TODO: Need to add this to a core promise that needs to be resolved before start
 
 			await this.ctx.storage.put({
-				[KEYS.STATE.INITIALIZED]: true,
-				[KEYS.STATE.NAME]: req.name,
-				[KEYS.STATE.KEY]: req.key,
+				[KEYS.INITIALIZED]: true,
+				[KEYS.NAME]: req.name,
+				[KEYS.KEY]: req.key,
+				[KEYS.INPUT]: req.input,
 			});
 			this.#initialized = {
 				name: req.name,

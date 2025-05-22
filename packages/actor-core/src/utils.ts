@@ -1,4 +1,6 @@
 export { assertUnreachable } from "./common/utils";
+export { stringifyError } from "@/common/utils";
+
 import pkgJson from "../package.json" with { type: "json" };
 
 export const VERSION = pkgJson.version;

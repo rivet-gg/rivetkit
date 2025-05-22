@@ -13,6 +13,7 @@ import {
 export const CreateRequestSchema = z.object({
 	name: z.string(),
 	key: ActorKeySchema,
+	input: z.unknown().optional(),
 	region: z.string().optional(),
 });
 
@@ -24,6 +25,7 @@ export const GetForKeyRequestSchema = z.object({
 export const GetOrCreateRequestSchema = z.object({
 	name: z.string(),
 	key: ActorKeySchema,
+	input: z.unknown().optional(),
 	region: z.string().optional(),
 });
 
