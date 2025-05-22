@@ -211,6 +211,10 @@ export function runActorConnTests(driverTestConfig: DriverTestConfig) {
 				const conn1 = handle1.connect();
 				const conn2 = handle2.connect();
 
+				// HACK: Call an action to wait for the connections to be established
+				await conn1.getInitializers();
+				await conn2.getInitializers();
+
 				// Get initializers to verify connection params were used
 				const initializers = await conn1.getInitializers();
 

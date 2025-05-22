@@ -426,27 +426,16 @@ export async function queryActor(
 		}
 		actorOutput = existingActor;
 	} else if ("getOrCreateForKey" in query) {
-		const existingActor = await driver.getWithKey({
+		const getOrCreateOutput = await driver.getOrCreateWithKey({
 			c,
 			name: query.getOrCreateForKey.name,
 			key: query.getOrCreateForKey.key,
+			region: query.getOrCreateForKey.region,
 		});
-		if (existingActor) {
-			// Actor exists
-			actorOutput = existingActor;
-		} else {
-			// Create if needed
-			const createOutput = await driver.createActor({
-				c,
-				name: query.getOrCreateForKey.name,
-				key: query.getOrCreateForKey.key,
-				region: query.getOrCreateForKey.region,
-			});
-			actorOutput = {
-				actorId: createOutput.actorId,
-				meta: createOutput.meta,
-			};
-		}
+		actorOutput = {
+			actorId: getOrCreateOutput.actorId,
+			meta: getOrCreateOutput.meta,
+		};
 	} else if ("create" in query) {
 		const createOutput = await driver.createActor({
 			c,
@@ -737,7 +726,7 @@ async function handleMessageRequest(
 			);
 		} else if ("custom" in handler.proxyMode) {
 			logger().debug("using custom proxy mode for connection message");
-			const url = new URL(`http://actor/connections/${connId}/message`);
+			const url = new URL(`http://actor/connections/message`);
 
 			const proxyRequest = new Request(url, c.req.raw);
 			proxyRequest.headers.set(HEADER_ENCODING, encoding);

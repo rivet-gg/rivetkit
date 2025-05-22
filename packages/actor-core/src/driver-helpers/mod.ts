@@ -1,5 +1,3 @@
-import { ToServer } from "@/actor/protocol/message/to-server";
-
 export { type DriverConfig, DriverConfigSchema } from "./config";
 export type { ActorInstance, AnyActorInstance } from "@/actor/instance";
 export {
@@ -13,9 +11,9 @@ export {
 export { ActorDriver } from "@/actor/driver";
 export {
 	ManagerDriver,
-	CreateActorInput,
-	CreateActorOutput,
-	GetActorOutput,
+	CreateInput,
 	GetForIdInput,
 	GetWithKeyInput,
+	GetOrCreateWithKeyInput,
+	ActorOutput,
 } from "@/manager/driver";

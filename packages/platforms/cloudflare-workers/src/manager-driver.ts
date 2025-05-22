@@ -2,18 +2,14 @@ import type {
 	ManagerDriver,
 	GetForIdInput,
 	GetWithKeyInput,
-	CreateActorInput,
-	GetActorOutput,
+	ActorOutput,
+	CreateInput,
+	GetOrCreateWithKeyInput,
 } from "actor-core/driver-helpers";
 import { ActorAlreadyExists } from "actor-core/errors";
 import { Bindings } from "./mod";
 import { logger } from "./log";
 import { serializeNameAndKey, serializeKey } from "./util";
-
-// Define metadata type for CloudflareKV
-interface KVMetadata {
-	actorId: string;
-}
 
 // Actor metadata structure
 interface ActorData {
@@ -39,9 +35,7 @@ export class CloudflareWorkersManagerDriver implements ManagerDriver {
 	async getForId({
 		c,
 		actorId,
-	}: GetForIdInput<{ Bindings: Bindings }>): Promise<
-		GetActorOutput | undefined
-	> {
+	}: GetForIdInput<{ Bindings: Bindings }>): Promise<ActorOutput | undefined> {
 		if (!c) throw new Error("Missing Hono context");
 
 		// Get actor metadata from KV (combined name and key)
@@ -70,7 +64,7 @@ export class CloudflareWorkersManagerDriver implements ManagerDriver {
 		name,
 		key,
 	}: GetWithKeyInput<{ Bindings: Bindings }>): Promise<
-		GetActorOutput | undefined
+		ActorOutput | undefined
 	> {
 		if (!c) throw new Error("Missing Hono context");
 		const log = logger();
@@ -105,11 +99,23 @@ export class CloudflareWorkersManagerDriver implements ManagerDriver {
 		return this.#buildActorOutput(c, actorId);
 	}
 
+	async getOrCreateWithKey(
+		input: GetOrCreateWithKeyInput,
+	): Promise<ActorOutput> {
+		// TODO: Prevent race condition here
+		const getOutput = await this.getWithKey(input);
+		if (getOutput) {
+			return getOutput;
+		} else {
+			return await this.createActor(input);
+		}
+	}
+
 	async createActor({
 		c,
 		name,
 		key,
-	}: CreateActorInput<{ Bindings: Bindings }>): Promise<GetActorOutput> {
+	}: CreateInput<{ Bindings: Bindings }>): Promise<ActorOutput> {
 		if (!c) throw new Error("Missing Hono context");
 		const log = logger();
 
@@ -154,7 +160,7 @@ export class CloudflareWorkersManagerDriver implements ManagerDriver {
 	async #buildActorOutput(
 		c: any,
 		actorId: string,
-	): Promise<GetActorOutput | undefined> {
+	): Promise<ActorOutput | undefined> {
 		const actorData = (await c.env.ACTOR_KV.get(KEYS.ACTOR.metadata(actorId), {
 			type: "json",
 		})) as ActorData | null;

@@ -1,15 +1,16 @@
 import * as crypto from "node:crypto";
 import type {
-	CreateActorInput,
-	CreateActorOutput,
-	GetActorOutput,
+	GetOrCreateWithKeyInput,
 	GetForIdInput,
 	GetWithKeyInput,
 	ManagerDriver,
+	ActorOutput,
+	CreateInput,
 } from "actor-core/driver-helpers";
 import { ActorAlreadyExists } from "actor-core/errors";
 import { logger } from "./log";
 import type { FileSystemGlobalState } from "./global-state";
+import { ActorState } from "./global-state";
 import type { ActorCoreApp } from "actor-core";
 import { ManagerInspector } from "actor-core/inspector";
 
@@ -31,9 +32,7 @@ export class FileSystemManagerDriver implements ManagerDriver {
 		this.#state = state;
 	}
 
-	async getForId({
-		actorId,
-	}: GetForIdInput): Promise<GetActorOutput | undefined> {
+	async getForId({ actorId }: GetForIdInput): Promise<ActorOutput | undefined> {
 		// Validate the actor exists
 		if (!this.#state.hasActor(actorId)) {
 			return undefined;
@@ -58,27 +57,9 @@ export class FileSystemManagerDriver implements ManagerDriver {
 	async getWithKey({
 		name,
 		key,
-	}: GetWithKeyInput): Promise<GetActorOutput | undefined> {
-		// NOTE: This is a slow implementation that checks each actor individually.
-		// This can be optimized with an index in the future.
-
+	}: GetWithKeyInput): Promise<ActorOutput | undefined> {
 		// Search through all actors to find a match
-		const actor = this.#state.findActor((actor) => {
-			if (actor.name !== name) return false;
-
-			// If actor doesn't have a key, it's not a match
-			if (!actor.key || actor.key.length !== key.length) {
-				return false;
-			}
-
-			// Check if all elements in key are in actor.key
-			for (let i = 0; i < key.length; i++) {
-				if (key[i] !== actor.key[i]) {
-					return false;
-				}
-			}
-			return true;
-		});
+		const actor = this.#state.findActorByNameAndKey(name, key);
 
 		if (actor) {
 			return {
@@ -92,10 +73,19 @@ export class FileSystemManagerDriver implements ManagerDriver {
 		return undefined;
 	}
 
-	async createActor({
-		name,
-		key,
-	}: CreateActorInput): Promise<CreateActorOutput> {
+	async getOrCreateWithKey(
+		input: GetOrCreateWithKeyInput,
+	): Promise<ActorOutput> {
+		// First try to get the actor without locking
+		const getOutput = await this.getWithKey(input);
+		if (getOutput) {
+			return getOutput;
+		} else {
+			return await this.createActor(input);
+		}
+	}
+
+	async createActor({ name, key }: CreateInput): Promise<ActorOutput> {
 		// Check if actor with the same name and key already exists
 		const existingActor = await this.getWithKey({ name, key });
 		if (existingActor) {
@@ -110,6 +100,8 @@ export class FileSystemManagerDriver implements ManagerDriver {
 
 		return {
 			actorId,
+			name,
+			key,
 			meta: undefined,
 		};
 	}

@@ -1,16 +1,16 @@
 import type {
-	CreateActorInput,
-	CreateActorOutput,
-	GetActorOutput,
 	GetForIdInput,
 	GetWithKeyInput,
+	GetOrCreateWithKeyInput,
 	ManagerDriver,
+    CreateInput,
 } from "@/driver-helpers/mod";
 import { ActorAlreadyExists } from "@/actor/errors";
 import type { TestGlobalState } from "./global-state";
 import * as crypto from "node:crypto";
 import { ManagerInspector } from "@/inspector/manager";
 import type { ActorCoreApp } from "@/app/mod";
+import { ActorOutput } from "@/manager/driver";
 
 export class TestManagerDriver implements ManagerDriver {
 	#state: TestGlobalState;
@@ -30,9 +30,7 @@ export class TestManagerDriver implements ManagerDriver {
 		this.#state = state;
 	}
 
-	async getForId({
-		actorId,
-	}: GetForIdInput): Promise<GetActorOutput | undefined> {
+	async getForId({ actorId }: GetForIdInput): Promise<ActorOutput | undefined> {
 		// Validate the actor exists
 		const actor = this.#state.getActor(actorId);
 		if (!actor) {
@@ -49,7 +47,7 @@ export class TestManagerDriver implements ManagerDriver {
 	async getWithKey({
 		name,
 		key,
-	}: GetWithKeyInput): Promise<GetActorOutput | undefined> {
+	}: GetWithKeyInput): Promise<ActorOutput | undefined> {
 		// NOTE: This is a slow implementation that checks each actor individually.
 		// This can be optimized with an index in the future.
 
@@ -115,10 +113,18 @@ export class TestManagerDriver implements ManagerDriver {
 		return undefined;
 	}
 
-	async createActor({
-		name,
-		key,
-	}: CreateActorInput): Promise<CreateActorOutput> {
+	async getOrCreateWithKey(
+		input: GetOrCreateWithKeyInput,
+	): Promise<ActorOutput> {
+		const getOutput = await this.getWithKey(input);
+		if (getOutput) {
+			return getOutput;
+		} else {
+			return await this.createActor(input);
+		}
+	}
+
+	async createActor({ name, key }: CreateInput): Promise<ActorOutput> {
 		// Check if actor with the same name and key already exists
 		const existingActor = await this.getWithKey({ name, key });
 		if (existingActor) {
@@ -132,6 +138,8 @@ export class TestManagerDriver implements ManagerDriver {
 
 		return {
 			actorId,
+			name,
+			key,
 		};
 	}
 }

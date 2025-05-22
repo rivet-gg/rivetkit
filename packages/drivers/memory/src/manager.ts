@@ -1,9 +1,9 @@
 import type {
-	CreateActorInput,
-	CreateActorOutput,
-	GetActorOutput,
+	CreateInput,
 	GetForIdInput,
 	GetWithKeyInput,
+	GetOrCreateWithKeyInput,
+	ActorOutput,
 	ManagerDriver,
 } from "actor-core/driver-helpers";
 import { ActorAlreadyExists } from "actor-core/errors";
@@ -30,9 +30,7 @@ export class MemoryManagerDriver implements ManagerDriver {
 		this.#state = state;
 	}
 
-	async getForId({
-		actorId,
-	}: GetForIdInput): Promise<GetActorOutput | undefined> {
+	async getForId({ actorId }: GetForIdInput): Promise<ActorOutput | undefined> {
 		// Validate the actor exists
 		const actor = this.#state.getActor(actorId);
 		if (!actor) {
@@ -50,7 +48,7 @@ export class MemoryManagerDriver implements ManagerDriver {
 	async getWithKey({
 		name,
 		key,
-	}: GetWithKeyInput): Promise<GetActorOutput | undefined> {
+	}: GetWithKeyInput): Promise<ActorOutput | undefined> {
 		// NOTE: This is a slow implementation that checks each actor individually.
 		// This can be optimized with an index in the future.
 
@@ -84,10 +82,18 @@ export class MemoryManagerDriver implements ManagerDriver {
 		return undefined;
 	}
 
-	async createActor({
-		name,
-		key,
-	}: CreateActorInput): Promise<CreateActorOutput> {
+	async getOrCreateWithKey(
+		input: GetOrCreateWithKeyInput,
+	): Promise<ActorOutput> {
+		const getOutput = await this.getWithKey(input);
+		if (getOutput) {
+			return getOutput;
+		} else {
+			return await this.createActor(input);
+		}
+	}
+
+	async createActor({ name, key }: CreateInput): Promise<ActorOutput> {
 		// Check if actor with the same name and key already exists
 		const existingActor = await this.getWithKey({ name, key });
 		if (existingActor) {
@@ -99,6 +105,6 @@ export class MemoryManagerDriver implements ManagerDriver {
 
 		this.inspector.onActorsChange(this.#state.getAllActors());
 
-		return { actorId, meta: undefined };
+		return { actorId, name, key, meta: undefined };
 	}
 }

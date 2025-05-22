@@ -1,8 +1,8 @@
 import type {
-	CreateActorInput,
-	CreateActorOutput,
-	GetActorOutput,
+	CreateInput,
+	ActorOutput,
 	GetForIdInput,
+	GetOrCreateWithKeyInput,
 	GetWithKeyInput,
 	ManagerDriver,
 } from "actor-core/driver-helpers";
@@ -54,9 +54,7 @@ export class RedisManagerDriver implements ManagerDriver {
 		this.#app = app;
 	}
 
-	async getForId({
-		actorId,
-	}: GetForIdInput): Promise<GetActorOutput | undefined> {
+	async getForId({ actorId }: GetForIdInput): Promise<ActorOutput | undefined> {
 		// Get metadata from Redis
 		const metadataStr = await this.#redis.get(KEYS.ACTOR.metadata(actorId));
 
@@ -79,7 +77,7 @@ export class RedisManagerDriver implements ManagerDriver {
 	async getWithKey({
 		name,
 		key,
-	}: GetWithKeyInput): Promise<GetActorOutput | undefined> {
+	}: GetWithKeyInput): Promise<ActorOutput | undefined> {
 		// Since keys are 1:1 with actor IDs, we can directly look up by key
 		const lookupKey = this.#generateActorKeyRedisKey(name, key);
 		const actorId = await this.#redis.get(lookupKey);
@@ -91,10 +89,19 @@ export class RedisManagerDriver implements ManagerDriver {
 		return this.getForId({ actorId });
 	}
 
-	async createActor({
-		name,
-		key,
-	}: CreateActorInput): Promise<CreateActorOutput> {
+	async getOrCreateWithKey(
+		input: GetOrCreateWithKeyInput,
+	): Promise<ActorOutput> {
+		// TODO: Prevent race condition here
+		const getOutput = await this.getWithKey(input);
+		if (getOutput) {
+			return getOutput;
+		} else {
+			return await this.createActor(input);
+		}
+	}
+
+	async createActor({ name, key }: CreateInput): Promise<ActorOutput> {
 		// Check if actor with the same name and key already exists
 		const existingActor = await this.getWithKey({ name, key });
 		if (existingActor) {
@@ -128,6 +135,8 @@ export class RedisManagerDriver implements ManagerDriver {
 
 		return {
 			actorId,
+			name,
+			key,
 			meta: undefined,
 		};
 	}

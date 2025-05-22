@@ -4,8 +4,9 @@ import type {
 	ManagerDriver,
 	GetForIdInput,
 	GetWithKeyInput,
-	CreateActorInput,
-	GetActorOutput,
+	ActorOutput,
+	GetOrCreateWithKeyInput,
+	CreateInput,
 } from "actor-core/driver-helpers";
 import { logger } from "./log";
 import { type RivetClientConfig, rivetRequest } from "./rivet-client";
@@ -27,9 +28,7 @@ export class RivetManagerDriver implements ManagerDriver {
 		this.#clientConfig = clientConfig;
 	}
 
-	async getForId({
-		actorId,
-	}: GetForIdInput): Promise<GetActorOutput | undefined> {
+	async getForId({ actorId }: GetForIdInput): Promise<ActorOutput | undefined> {
 		try {
 			// Get actor
 			const res = await rivetRequest<void, { actor: RivetActor }>(
@@ -71,7 +70,7 @@ export class RivetManagerDriver implements ManagerDriver {
 	async getWithKey({
 		name,
 		key,
-	}: GetWithKeyInput): Promise<GetActorOutput | undefined> {
+	}: GetWithKeyInput): Promise<ActorOutput | undefined> {
 		// Convert key array to Rivet's tag format
 		const rivetTags = this.#convertKeyToRivetTags(name, key);
 
@@ -117,11 +116,18 @@ export class RivetManagerDriver implements ManagerDriver {
 		};
 	}
 
-	async createActor({
-		name,
-		key,
-		region,
-	}: CreateActorInput): Promise<GetActorOutput> {
+	async getOrCreateWithKey(
+		input: GetOrCreateWithKeyInput,
+	): Promise<ActorOutput> {
+		const getOutput = await this.getWithKey(input);
+		if (getOutput) {
+			return getOutput;
+		} else {
+			return await this.createActor(input);
+		}
+	}
+
+	async createActor({ name, key, region }: CreateInput): Promise<ActorOutput> {
 		// Check if actor with the same name and key already exists
 		const existingActor = await this.getWithKey({ name, key });
 		if (existingActor) {

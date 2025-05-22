@@ -12,23 +12,13 @@ import {
 import invariant from "invariant";
 
 /**
- * Class representing an actor's state
+ * Interface representing an actor's state
  */
-export class ActorState {
-	// Basic actor information
-	initialized = true;
+export interface ActorState {
 	id: string;
 	name: string;
 	key: ActorKey;
-
-	// Persisted data
-	persistedData: unknown = undefined;
-
-	constructor(id: string, name: string, key: ActorKey) {
-		this.id = id;
-		this.name = name;
-		this.key = key;
-	}
+	persistedData: unknown;
 }
 
 /**
@@ -51,7 +41,7 @@ export class FileSystemGlobalState {
 
 		logger().info("file system loaded", {
 			dir: this.#storagePath,
-			actorCount: this.#stateCache.size
+			actorCount: this.#stateCache.size,
 		});
 	}
 
@@ -61,33 +51,25 @@ export class FileSystemGlobalState {
 	 */
 	#loadAllActorsIntoCache(): void {
 		const actorsDir = path.join(this.#storagePath, "actors");
-		
+
 		try {
-			// Use synchronous filesystem operations for initialization
+			// HACK: Use synchronous filesystem operations for initialization
 			const actorIds = fsSync.readdirSync(actorsDir);
-			
+
 			for (const actorId of actorIds) {
 				const stateFilePath = this.getStateFilePath(actorId);
-				
+
 				if (fsSync.existsSync(stateFilePath)) {
 					try {
 						const stateData = fsSync.readFileSync(stateFilePath, "utf8");
-						const rawState = JSON.parse(stateData);
-						
-						// Create actor state with persistedData
-						// Handle new key format or create empty array if not present
-						const actorKey = Array.isArray(rawState.key) ? rawState.key : [];
-						
-						const state = new ActorState(
-							rawState.id,
-							rawState.name,
-							actorKey
-						);
-						state.persistedData = rawState.persistedData;
-						
+						const state = JSON.parse(stateData) as ActorState;
+
 						this.#stateCache.set(actorId, state);
 					} catch (error) {
-						logger().error("failed to read actor state during cache initialization", { actorId, error });
+						logger().error(
+							"failed to read actor state during cache initialization",
+							{ actorId, error },
+						);
 					}
 				}
 			}
@@ -120,7 +102,7 @@ export class FileSystemGlobalState {
 		// Get actor state from cache
 		const cachedActor = this.#stateCache.get(actorId);
 		invariant(cachedActor, `actor state should exist in cache for ${actorId}`);
-		
+
 		return cachedActor;
 	}
 
@@ -149,18 +131,22 @@ export class FileSystemGlobalState {
 			return;
 		}
 
+		const actorDir = getActorStoragePath(this.#storagePath, actorId);
 		const stateFilePath = this.getStateFilePath(actorId);
 
 		try {
-			// Create serializable object
-			const serializedState = {
-				id: state.id,
-				name: state.name,
-				key: state.key,
-				persistedData: state.persistedData
-			};
+			// Create actor directory
+			await ensureDirectoryExists(actorDir);
 
-			await fs.writeFile(stateFilePath, JSON.stringify(serializedState), "utf8");
+			// Create serializable object
+			// State is already in serializable format
+			const serializedState = state;
+
+			await fs.writeFile(
+				stateFilePath,
+				JSON.stringify(serializedState),
+				"utf8",
+			);
 		} catch (error) {
 			logger().error("failed to save actor state", { actorId, error });
 			throw new Error(`Failed to save actor state: ${error}`);
@@ -196,12 +182,13 @@ export class FileSystemGlobalState {
 			throw new Error(`Actor already exists for ID: ${actorId}`);
 		}
 
-		// Create actor directory
-		const actorDir = getActorStoragePath(this.#storagePath, actorId);
-		await ensureDirectoryExists(actorDir);
-
 		// Create initial state
-		const newState = new ActorState(actorId, name, key);
+		const newState: ActorState = {
+			id: actorId,
+			name,
+			key,
+			persistedData: undefined
+		};
 
 		// Cache the state
 		this.#stateCache.set(actorId, newState);
@@ -211,7 +198,32 @@ export class FileSystemGlobalState {
 	}
 
 	/**
-	 * Find an actor by filter function
+	 * Find actor by name and key
+	 */
+	findActorByNameAndKey(name: string, key: ActorKey): ActorState | undefined {
+		// NOTE: This is a slow implementation that checks each actor individually.
+		// This can be optimized with an index in the future.
+
+		return this.findActor((actor) => {
+			if (actor.name !== name) return false;
+
+			// If actor doesn't have a key, it's not a match
+			if (!actor.key || actor.key.length !== key.length) {
+				return false;
+			}
+
+			// Check if all elements in key are in actor.key
+			for (let i = 0; i < key.length; i++) {
+				if (key[i] !== actor.key[i]) {
+					return false;
+				}
+			}
+			return true;
+		});
+	}
+
+	/**
+	 * Find actor by filter function
 	 */
 	findActor(filter: (actor: ActorState) => boolean): ActorState | undefined {
 		for (const actor of this.#stateCache.values()) {
