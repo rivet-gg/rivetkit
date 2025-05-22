@@ -26,7 +26,7 @@ beforeEach(() => {
 
 test("streak tracking with time zone signups", async (t) => {
 	const { client } = await setupTest(t, app);
-	const actor = client.user.get().connect();
+	const actor = client.user.getOrCreate().connect();
 
 	// Sign up with specific time zone
 	const signupResult = await actor.completeSignUp(

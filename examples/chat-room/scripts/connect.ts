@@ -7,7 +7,7 @@ async function main() {
 	const client = createClient<App>(process.env.ENDPOINT ?? "http://localhost:6420");
 
 	// connect to chat room - now accessed via property
-	const chatRoom = client.chatRoom.get().connect();
+	const chatRoom = client.chatRoom.getOrCreate().connect();
 
 	// call action to get existing messages
 	const messages = await chatRoom.getHistory();

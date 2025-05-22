@@ -6,7 +6,7 @@ test("chat room should handle messages", async (test) => {
 	const { client } = await setupTest(test, app);
 
 	// Connect to chat room
-	const chatRoom = client.chatRoom.get().connect();
+	const chatRoom = client.chatRoom.getOrCreate().connect();
 
 	// Initial history should be empty
 	const initialMessages = await chatRoom.getHistory();

@@ -319,10 +319,7 @@ Add the form submit handler to your init function:
 
     async function init() {
       // Connect to chat room with channel tag
-      const chatRoom = await client.get({ 
-        name: 'chat-room',
-        channel,  // Use channel as a tag to separate different chat rooms
-      });
+      const chatRoom = await client.chatRoom.getOrCreate(channel);
       
       // Store reference for use in event handlers
       // In a production app, you'd use a more encapsulated approach

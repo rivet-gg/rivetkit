@@ -4,7 +4,7 @@ import { app } from "../actors/app";
 
 test("it should count", async (test) => {
 	const { client } = await setupTest(test, app);
-	const counter = client.counter.get().connect();
+	const counter = client.counter.getOrCreate().connect();
 
 	// Test initial count
 	expect(await counter.getCount()).toBe(0);
