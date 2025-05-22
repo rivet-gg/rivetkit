@@ -31,7 +31,16 @@ export function createManagerRouter(
 
 	// Apply CORS middleware if configured
 	if (appConfig.cors) {
-		app.use("*", cors(appConfig.cors));
+		app.use("*", async (c, next) => {
+			const path = c.req.path;
+
+			// Don't apply to WebSocket routes, see https://hono.dev/docs/helpers/websocket#upgradewebsocket
+			if (path === "/manager/inspect" && appConfig.inspector.enabled) {
+				return next();
+			}
+
+			return cors(appConfig.cors)(c, next);
+		});
 	}
 
 	app.get("/", (c) => {
