@@ -14,7 +14,7 @@ async function main() {
 	const version = getVersionFromArgs();
 	await bumpPackageVersions(version);
 	await updateRustClientVersion(version);
-	await updatePythonClientVersion(version);
+	// await updatePythonClientVersion(version);
 
 	// IMPORTANT: Do this after bumping the version
 	// Check & build
@@ -79,23 +79,23 @@ async function updateRustClientVersion(version: string) {
 	}
 }
 
-async function updatePythonClientVersion(version: string) {
-	console.log(chalk.blue(`Updating Python client version to ${version}...`));
-	const pyprojectTomlPath = "clients/python/pyproject.toml";
-	const pyCargoTomlPath = "clients/python/Cargo.toml";
+// async function updatePythonClientVersion(version: string) {
+// 	console.log(chalk.blue(`Updating Python client version to ${version}...`));
+// 	const pyprojectTomlPath = "clients/python/pyproject.toml";
+// 	const pyCargoTomlPath = "clients/python/Cargo.toml";
 
-	try {
-		// Replace version in pyproject.toml and Cargo.toml
-		await $`sed -i.bak -e 's/^version = ".*"/version = "${version}"/' ${pyprojectTomlPath}`;
-		await $`sed -i.bak -e 's/^version = ".*"/version = "${version}"/' ${pyCargoTomlPath}`;
-		await $`rm ${pyprojectTomlPath}.bak`;
-		await $`rm ${pyCargoTomlPath}.bak`;
-		console.log(chalk.green("✅ Updated Python client version"));
-	} catch (err) {
-		console.error(chalk.red("❌ Failed to update Python client version"), err);
-		process.exit(1);
-	}
-}
+// 	try {
+// 		// Replace version in pyproject.toml and Cargo.toml
+// 		await $`sed -i.bak -e 's/^version = ".*"/version = "${version}"/' ${pyprojectTomlPath}`;
+// 		await $`sed -i.bak -e 's/^version = ".*"/version = "${version}"/' ${pyCargoTomlPath}`;
+// 		await $`rm ${pyprojectTomlPath}.bak`;
+// 		await $`rm ${pyCargoTomlPath}.bak`;
+// 		console.log(chalk.green("✅ Updated Python client version"));
+// 	} catch (err) {
+// 		console.error(chalk.red("❌ Failed to update Python client version"), err);
+// 		process.exit(1);
+// 	}
+// }
 
 async function runRustCheck() {
 	console.log(chalk.blue("Running cargo check for Rust client..."));
