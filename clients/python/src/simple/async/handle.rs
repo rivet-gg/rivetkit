@@ -14,13 +14,13 @@ struct ActorEvent {
 
 #[pyclass]
 pub struct ActorHandle {
-    handle: actor_core_rs::handle::ActorHandle,
+    handle: actor_core_rs::connection::ActorHandle,
     event_rx: Option<mpsc::Receiver<ActorEvent>>,
     event_tx: mpsc::Sender<ActorEvent>,
 }
 
 impl ActorHandle {
-    pub fn new(handle: actor_core_rs::handle::ActorHandle) -> Self {
+    pub fn new(handle: actor_core_rs::connection::ActorHandle) -> Self {
         let (event_tx, event_rx) = mpsc::channel(EVENT_BUFFER_SIZE);
 
         Self {

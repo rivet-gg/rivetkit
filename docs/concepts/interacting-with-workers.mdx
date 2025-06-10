@@ -1,17 +1,17 @@
 ---
-title: Interacting with Workers
+title: Interacting with Actors
 icon: square-code
 ---
 
-This guide covers how to connect to and interact with workers from client applications.
+This guide covers how to connect to and interact with actors from client applications.
 
 ## Setting Up the Client
 
-The first step is to create a client that will connect to your worker service:
+The first step is to create a client that will connect to your actor service:
 
 <CodeGroup>
 ```typescript TypeScript
-import { createClient } from "rivetkit/client";
+import { createClient } from "actor-core/client";
 import type { App } from "../src/index";
 
 // Create a client with the connection address and app type
@@ -19,33 +19,33 @@ const client = createClient<App>(/* CONNECTION ADDRESS */);
 ```
 
 ```rust Rust
-use rivetkit_client::{Client, TransportKind, EncodingKind};
+use actor_core_client::{Client, EncodingKind, GetOrCreateOptions, TransportKind};
 
 // Create a client with connection address and configuration
 let client = Client::new(
-    "http://localhost:6420".to_string(),  // Connection address
+    "http://localhost:6420",              // Connection address
     TransportKind::WebSocket,             // Transport (WebSocket or SSE)
     EncodingKind::Cbor,                   // Encoding (Json or Cbor)
 );
 ```
 
-```python Python (Callbacks)
-from rivetkit_client import AsyncClient as WorkerClient
+```python Python
+from actor_core_client import AsyncClient as ActorClient
 
 # Create a client with the connection address
-client = WorkerClient("http://localhost:6420")
+client = ActorClient("http://localhost:6420")
 ```
 </CodeGroup>
 
 <Tip>See the setup guide for your platform for details on how to get the connection address.</Tip>
 
-## Finding & Connecting to Workers
+## Finding & Connecting to Actors
 
-RivetKit provides several methods to connect to workers:
+ActorCore provides several methods to connect to actors:
 
 ### `get(tags, opts)` - Find or Create
 
-The most common way to connect is with `get()`, which finds an existing worker matching the provided tags or creates a new one:
+The most common way to connect is with `get()`, which finds an existing actor matching the provided tags or creates a new one:
 
 <CodeGroup>
 ```typescript TypeScript
@@ -55,12 +55,12 @@ const room = await client.chatRoom.get({
   channel: "general"
 });
 
-// Now you can call methods on the worker
+// Now you can call methods on the actor
 await room.sendMessage("Alice", "Hello everyone!");
 ```
 
 ```rust Rust
-use rivetkit_client::GetOptions;
+use actor_core_client::GetOrCreateOptions;
 use serde_json::json;
 
 // Connect to a chat room for the "general" channel
@@ -69,40 +69,39 @@ let tags = vec![
     ("channel".to_string(), "general".to_string()),
 ];
 
-let mut options = GetOptions {
+let mut options = GetOrCreateOptions {
     tags: Some(tags),
     ..Default::default()
 };
 
-let room = client.get("chatRoom", options)
-    .await
-    .expect("Failed to connect to chat room");
+let room = client.get("chatRoom", options)?
+    .connect();
 
-// Now you can call methods on the worker
+// Now you can call methods on the actor
 room.action("sendMessage", vec![json!("Alice"), json!("Hello everyone!")])
     .await
     .expect("Failed to send message");
 ```
 
-```python Python (Callbacks)
+```python Python
 # Connect to a chat room for the "general" channel
 room = await client.get("chatRoom", tags=[
     ("name", "chat_room"),
     ("channel", "general")
 ])
 
-# Now you can call methods on the worker
+# Now you can call methods on the actor
 await room.action("sendMessage", ["Alice", "Hello everyone!"])
 ```
 </CodeGroup>
 
 ### `create(opts)` - Explicitly Create New
 
-When you specifically want to create a new worker instance:
+When you specifically want to create a new actor instance:
 
 <CodeGroup>
 ```typescript TypeScript
-// Create a new document worker
+// Create a new document actor
 const doc = await client.myDocument.create({
   create: {
     tags: {
@@ -116,27 +115,21 @@ await doc.initializeDocument("My New Document");
 ```
 
 ```rust Rust
-use rivetkit_client::{CreateOptions};
-use rivetkit_client::client::CreateRequestMetadata;
+use actor_core_client::CreateOptions;
+use actor_core_client::client::CreateRequestMetadata;
 use serde_json::json;
 
-// Create a new document worker
+// Create a new document actor
 let tags = vec![
     ("name".to_string(), "my_document".to_string()),
     ("docId".to_string(), "123".to_string()),
 ];
 
-let create_options = CreateOptions {
-    params: None,
-    create: CreateRequestMetadata {
-        tags,
-        region: None,
-    },
-};
+let create_options = CreateOptions::default();
 
-let doc = client.create("myDocument", create_options)
-    .await
-    .expect("Failed to create document");
+let doc = client.create("myDocument", ["tags-or-keys"].into(), create_options)
+    .expect("Failed to create document")
+    .connect();
 
 // Initialize the document
 doc.action("initializeDocument", vec![json!("My New Document")])
@@ -144,8 +137,8 @@ doc.action("initializeDocument", vec![json!("My New Document")])
     .expect("Failed to initialize document");
 ```
 
-```python Python (Callbacks)
-# Create a new document worker
+```python Python
+# Create a new document actor
 doc = await client.get("myDocument", tags=[
     ("name", "my_document"),
     ("docId", "123")
@@ -157,28 +150,26 @@ await doc.action("initializeDocument", ["My New Document"])
 
 ### `getWithId(id, opts)` - Connect by ID
 
-Connect to a worker using its internal ID:
+Connect to an actor using its internal ID:
 
 <CodeGroup>
 ```typescript TypeScript
-// Connect to a specific worker by its ID
-const myWorkerId = "55425f42-82f8-451f-82c1-6227c83c9372";
-const doc = await client.myDocument.getWithId(myWorkerId);
+// Connect to a specific actor by its ID
+const myActorId = "55425f42-82f8-451f-82c1-6227c83c9372";
+const doc = await client.myDocument.getWithId(myActorId);
 
 await doc.updateContent("Updated content");
 ```
 
 ```rust Rust
-use rivetkit_client::GetWithIdOptions;
+use actor_core_client::GetWithIdOptions;
 
-// Connect to a specific worker by its ID
-let my_worker_id = "55425f42-82f8-451f-82c1-6227c83c9372";
-let options = GetWithIdOptions {
-    params: None,
-};
-let doc = client.get_with_id(my_worker_id, options)
-    .await
-    .expect("Failed to connect to document");
+// Connect to a specific actor by its ID
+let my_actor_id = "55425f42-82f8-451f-82c1-6227c83c9372";
+let options = GetWithIdOptions::default();
+let doc = client.get_with_id(my_actor_id, [].into(), options)
+    .expect("Failed to get document")
+    .connect();
 
 // Update content
 doc.action("updateContent", vec![json!("Updated content")])
@@ -186,22 +177,22 @@ doc.action("updateContent", vec![json!("Updated content")])
     .expect("Failed to update document");
 ```
 
-```python Python (Callbacks)
-# Connect to a specific worker by its ID
-my_worker_id = "55425f42-82f8-451f-82c1-6227c83c9372"
-doc = await client.get_with_id(my_worker_id)
+```python Python
+# Connect to a specific actor by its ID
+my_actor_id = "55425f42-82f8-451f-82c1-6227c83c9372"
+doc = await client.get_with_id(my_actor_id)
 
 await doc.action("updateContent", ["Updated content"])
 ```
 </CodeGroup>
 
 <Note>
-It's usually better to use tags for discovery rather than directly using worker IDs.
+It's usually better to use tags for discovery rather than directly using actor IDs.
 </Note>
 
 ## Calling Actions
 
-Once connected, calling worker actions are straightforward:
+Once connected, calling actor actions are straightforward:
 
 <CodeGroup>
 ```typescript TypeScript
@@ -245,7 +236,7 @@ game_room.action("updateSettings", vec![settings])
     .expect("Failed to update settings");
 ```
 
-```python Python (Callbacks)
+```python Python
 # Call an action
 result = await math_utils.action("multiplyByTwo", [5])
 print(result)  # 10
@@ -263,12 +254,12 @@ await game_room.action("updateSettings", [{
 </CodeGroup>
 
 <Note>
-All worker action calls are asynchronous and require `await`, even if the worker's action is not async.
+All actor action calls are asynchronous and require `await`, even if the actor's action is not async.
 </Note>
 
 ## Listening for Events
 
-Workers can send realtime updates to clients using events:
+Actors can send realtime updates to clients using events:
 
 ### `on(eventName, callback)` - Continuous Listening
 
@@ -309,7 +300,7 @@ game_room.on_event("stateUpdate", move |args| {
 }).await;
 ```
 
-```python Python (Callbacks)
+```python Python
 # Listen for new chat messages
 def handle_message(message):
     sender = message["sender"]
@@ -335,7 +326,7 @@ For events you only need to hear once:
 <CodeGroup>
 ```typescript TypeScript
 // Listen for when a request is approved
-worker.once("requestApproved", () => {
+actor.once("requestApproved", () => {
   showApprovalNotification();
   unlockFeatures();
 });
@@ -345,13 +336,13 @@ worker.once("requestApproved", () => {
 // `once` is not implemented in Rust
 ```
 
-```python Python (Callbacks)
+```python Python
 # Listen for when a request is approved
 def handle_approval():
     show_approval_notification()
     unlock_features()
 
-worker.on_event("requestApproved", handle_approval)
+actor.on_event("requestApproved", handle_approval)
 ```
 </CodeGroup>
 
@@ -374,10 +365,10 @@ const chatRoom = await client.chatRoom.get({ channel: "super-secret" }, {
 
 ```rust Rust
 use serde_json::json;
-use rivetkit_client::GetOptions;
+use actor_core_client::GetOptions;
 
-let tags = vec![
-    ("channel".to_string(), "super-secret".to_string()),
+let key = vec![
+    "super-secret-channel".to_string(),
 ];
 
 let params = json!({
@@ -387,18 +378,15 @@ let params = json!({
 });
 
 let options = GetOptions {
-    tags: Some(tags),
     params: Some(params),
-    no_create: None,
-    create: None,
 };
 
-let chat_room = client.get("chatRoom", options)
-    .await
-    .expect("Failed to connect to chat room");
+let chat_room = client.get("chatRoom", key, options)
+    .expect("Failed to get chat room")
+    .connect();
 ```
 
-```python Python (Callbacks)
+```python Python
 chat_room = await client.get(
     "chatRoom",
     tags=[("channel", "super-secret")],
@@ -411,12 +399,12 @@ chat_room = await client.get(
 ```
 </CodeGroup>
 
-The worker can access these parameters in the `onBeforeConnect` or `createConnState` hook:
+The actor can access these parameters in the `onBeforeConnect` or `createConnState` hook:
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "actor-core";
 
-const chatRoom = worker({
+const chatRoom = actor({
   state: { messages: [] },
   
   createConnState: (c, { params }) => {
@@ -442,7 +430,7 @@ Read more about [connection parameters](/concepts/connections).
 
 #### `opts.noCreate`
 
-Connect only if a worker exists, without creating a new one:
+Connect only if an actor exists, without creating a new one:
 
 ```typescript
 try {
@@ -459,7 +447,7 @@ try {
 ```typescript TypeScript
 // Example with all client options
 const client = createClient<App>(
-  "https://workers.example.com",
+  "https://actors.example.com",
   {
     // Data serialization format
     encoding: "cbor", // or "json"
@@ -471,11 +459,11 @@ const client = createClient<App>(
 ```
 
 ```rust Rust
-use rivetkit_client::{Client, TransportKind, EncodingKind};
+use actor_core_client::{Client, EncodingKind, GetOrCreateOptions, TransportKind};
 
 // Create client with specific options
 let client = Client::new(
-    "https://workers.example.com".to_string(),
+    "https://actors.example.com",
     TransportKind::WebSocket,  // or TransportKind::Sse
     EncodingKind::Cbor,        // or EncodingKind::Json
 );
@@ -483,12 +471,12 @@ let client = Client::new(
 // Rust does not support accepting multiple transports
 ```
 
-```python Python (Callbacks)
-from rivetkit_client import AsyncClient as WorkerClient
+```python Python
+from actor_core_client import AsyncClient as ActorClient
 
 # Example with all client options
-client = WorkerClient(
-    "https://workers.example.com",
+client = ActorClient(
+    "https://actors.example.com",
     "websocket"  # or "sse"
     "cbor",      # or "json"
 )
@@ -510,7 +498,7 @@ Specifies the data encoding format used for communication:
 
 `("websocket" | "sse")[]` (optional)
 
-Configures which network transport mechanisms the client will use to communicate with workers, sorted by priority:
+Configures which network transport mechanisms the client will use to communicate with actors, sorted by priority:
 
 - `"websocket"`: Real-time bidirectional communication, best for most applications
 - `"sse"` (Server-Sent Events): Works in more restricted environments where WebSockets may be blocked
@@ -519,7 +507,7 @@ Default is `["websocket", "sse"]`, which automatically negotiates the best avail
 
 ## Error Handling
 
-RivetKit provides specific error types to help you handle different failure scenarios:
+ActorCore provides specific error types to help you handle different failure scenarios:
 
 ### Action Errors
 
@@ -527,7 +515,7 @@ When an action fails, it throws an error with details about the failure:
 
 ```typescript
 try {
-  await worker.someAction();
+  await actor.someAction();
 } catch (error) {
   console.error(`Action failed: ${error.code} - ${error.message}`);
   // Handle specific error codes
@@ -537,12 +525,12 @@ try {
 }
 ```
 
-These errors can be thrown from within the worker with `UserError`:
+These errors can be thrown from within the actor with `UserError`:
 
 ```typescript
-import { worker, UserError } from "rivetkit";
+import { actor, UserError } from "actor-core";
 
-const documentWorker = worker({
+const documentActor = actor({
   state: { content: "" },
   
   actions: {
@@ -561,14 +549,14 @@ const documentWorker = worker({
 });
 ```
 
-RivetKit doesn't expose internal errors to clients for security, helping to prevent the exposure of sensitive information or internal implementation details.
+ActorCore doesn't expose internal errors to clients for security, helping to prevent the exposure of sensitive information or internal implementation details.
 
 ### Other Errors
 
 Other common errors you might encounter:
 
-- `InternalError`: Error from your worker that's not a subclass of `UserError`
-- `ManagerError`: Issues when connecting to or communicating with the worker manager
+- `InternalError`: Error from your actor that's not a subclass of `UserError`
+- `ManagerError`: Issues when connecting to or communicating with the actor manager
 
 ## Disconnecting and Cleanup
 
@@ -578,25 +566,25 @@ If you need to explicitly disconnect:
 
 <CodeGroup>
 ```typescript TypeScript
-// Disconnect from the worker
-await worker.dispose();
+// Disconnect from the actor
+await actor.dispose();
 
 // Disconnect the entire client
 await client.dispose();
 ```
 
 ```rust Rust
-// Disconnect from the worker
-worker.disconnect().await;
+// Disconnect from the actor
+actor.disconnect().await;
 
 // The client will be cleaned up automatically when it goes out of scope
 // Or explicitly drop it with:
 drop(client);
 ```
 
-```python Python (Callbacks)
-# Disconnect from the worker
-await worker.disconnect()
+```python Python
+# Disconnect from the actor
+await actor.disconnect()
 ```
 </CodeGroup>
 
@@ -612,13 +600,13 @@ This makes your applications resilient to temporary network failures without any
 
 <CardGroup>
   <Card title="State Management" href="/concepts/state">
-    Learn how state works in workers
+    Learn how state works in actors
   </Card>
   <Card title="Events" href="/concepts/events">
-    Learn more about worker events
+    Learn more about actor events
   </Card>
   <Card title="Authentication" href="/concepts/authentication">
-    Add security to your workers
+    Add security to your actors
   </Card>
   <Card title="Connections" href="/concepts/connections">
     Manage client connections

@@ -1,12 +1,10 @@
-// cargo test -- --nocapture
-
 mod backoff;
+mod common;
 pub mod client;
 pub mod drivers;
-pub mod encoding;
+pub mod connection;
 pub mod handle;
 pub mod protocol;
 
-pub use client::{Client, CreateOptions, GetOptions, GetWithIdOptions};
-pub use drivers::TransportKind;
-pub use encoding::EncodingKind;
+pub use client::{Client, CreateOptions, GetOptions, GetOrCreateOptions, GetWithIdOptions};
+pub use common::{TransportKind, EncodingKind};

@@ -1,7 +1,8 @@
-use actor_core_client::{Client, EncodingKind, GetOptions, TransportKind};
+use actor_core_client::{Client, EncodingKind, GetOrCreateOptions, TransportKind};
 use fs_extra;
 use portpicker;
 use serde_json::json;
+use tracing_subscriber::EnvFilter;
 use std::process::{Child, Command};
 use std::time::Duration;
 use tempfile;
@@ -168,6 +169,7 @@ async fn e2e() {
     // Configure logging
     let subscriber = tracing_subscriber::fmt()
         .with_max_level(tracing::Level::DEBUG)
+        // .with_env_filter(EnvFilter::new("actor_core_client=trace,hyper=error"))
         .finish();
     let _guard = tracing::subscriber::set_default(subscriber);
 
@@ -178,25 +180,26 @@ async fn e2e() {
 
     // Start the mock server
     let _server = MockServer::start(port).await;
-
     // Wait for server to start
     info!("Waiting for server to start...");
     sleep(Duration::from_secs(2)).await;
     
     // Create the client
     info!("Creating client to endpoint: {}", endpoint);
-    let client = Client::new(endpoint, TransportKind::WebSocket, EncodingKind::Cbor);
-    let counter = client.get("counter", GetOptions::default()).await.unwrap();
-    counter
-        .on_event("newCount", |args| {
-            let new_count = args[0].as_i64().unwrap();
-            println!("New count: {:?}", new_count);
-        })
-        .await;
+    let client = Client::new(&endpoint, TransportKind::WebSocket, EncodingKind::Cbor);
+    let counter = client.get_or_create("counter", [].into(), GetOrCreateOptions::default())
+        .unwrap();
+    let conn = counter.connect();
+
+    conn.on_event("newCount", |x| {
+        info!("Received newCount event: {:?}", x);
+    }).await;
     
     let out = counter.action("increment", vec![json!(1)]).await.unwrap();
-    println!("Action: {:?}", out);
+    info!("Action 1: {:?}", out);
+    let out = conn.action("increment", vec![json!(1)]).await.unwrap();
+    info!("Action 2: {:?}", out);
     
     // Clean up
-    counter.disconnect().await;
+    client.disconnect();
 }

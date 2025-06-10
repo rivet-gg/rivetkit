@@ -5,7 +5,7 @@ use crate::util::{self, SYNC_RUNTIME};
 
 #[pyclass]
 pub struct ActorHandle {
-    pub handle: actor_core_rs::handle::ActorHandle,
+    pub handle: actor_core_rs::connection::ActorHandle,
 }
 
 #[pymethods]
