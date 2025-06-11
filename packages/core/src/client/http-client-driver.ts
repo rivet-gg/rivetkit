@@ -52,7 +52,8 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 			encoding: Encoding,
 			params: unknown,
 			name: string,
-			...args: Args
+			args: Args,
+			opts: { signal?: AbortSignal } | undefined,
 		): Promise<Response> => {
 			logger().debug("worker handle action", {
 				name,
@@ -73,6 +74,7 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 					},
 					body: { a: args } satisfies ActionRequest,
 					encoding: encoding,
+					signal: opts?.signal,
 				},
 			);
 

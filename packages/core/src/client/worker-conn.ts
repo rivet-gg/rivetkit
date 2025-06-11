@@ -23,7 +23,6 @@ import {
 	type WebSocketMessage as ConnMessage,
 	messageLength,
 	serializeWithEncoding,
-	WebSocketMessage,
 } from "./utils";
 import {
 	HEADER_WORKER_ID,
@@ -64,6 +63,7 @@ export type WorkerErrorCallback = (error: errors.WorkerError) => void;
 
 export interface SendHttpMessageOpts {
 	ephemeral: boolean;
+	signal?: AbortSignal;
 }
 
 export type ConnTransport = { websocket: WebSocket } | { sse: EventSource };
@@ -152,11 +152,15 @@ export class WorkerConnRaw {
 	 * @param {...Args} args - The arguments to pass to the action function.
 	 * @returns {Promise<Response>} - A promise that resolves to the response of the action function.
 	 */
-	async action<Args extends Array<unknown> = unknown[], Response = unknown>(
-		name: string,
-		...args: Args
-	): Promise<Response> {
-		logger().debug("action", { name, args });
+	async action<
+		Args extends Array<unknown> = unknown[],
+		Response = unknown,
+	>(opts: {
+		name: string;
+		args: Args;
+		signal?: AbortSignal;
+	}): Promise<Response> {
+		logger().debug("action", { name: opts.name, args: opts.args });
 
 		// If we have an active connection, use the websockactionId
 		const actionId = this.#actionIdCounter;
@@ -164,14 +168,14 @@ export class WorkerConnRaw {
 
 		const { promise, resolve, reject } =
 			Promise.withResolvers<wsToClient.ActionResponse>();
-		this.#actionsInFlight.set(actionId, { name, resolve, reject });
+		this.#actionsInFlight.set(actionId, { name: opts.name, resolve, reject });
 
 		this.#sendMessage({
 			b: {
 				ar: {
 					i: actionId,
-					n: name,
-					a: args,
+					n: opts.name,
+					a: opts.args,
 				},
 			},
 		} satisfies wsToServer.ToServer);
@@ -255,12 +259,13 @@ enc
 		}
 	}
 
-	async #connectWebSocket() {
+	async #connectWebSocket({ signal }: { signal?: AbortSignal } = {}) {
 		const ws = await this.#driver.connectWebSocket(
 			undefined,
 			this.#workerQuery,
 			this.#encodingKind,
 			this.#params,
+			signal ? { signal } : undefined,
 		);
 		this.#transport = { websocket: ws };
 		ws.onopen = () => {
@@ -277,12 +282,13 @@ enc
 		};
 	}
 
-	async #connectSse() {
+	async #connectSse({ signal }: { signal?: AbortSignal } = {}) {
 		const eventSource = await this.#driver.connectSse(
 			undefined,
 			this.#workerQuery,
 			this.#encodingKind,
 			this.#params,
+			signal ? { signal } : undefined,
 		);
 		this.#transport = { sse: eventSource };
 		eventSource.onopen = () => {
@@ -659,6 +665,7 @@ enc
 				this.#connectionId,
 				this.#connectionToken,
 				message,
+				opts?.signal ? { signal: opts.signal } : undefined,
 			);
 
 			if (!res.ok) {

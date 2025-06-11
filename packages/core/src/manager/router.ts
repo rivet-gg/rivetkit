@@ -429,6 +429,7 @@ export function createManagerRouter(
 						workerQuery,
 						encodingKind,
 						params,
+						undefined,
 					);
 
 					// Store a reference to the resolved WebSocket

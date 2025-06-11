@@ -91,6 +91,8 @@ export interface ClientOptions {
 export interface QueryOptions {
 	/** Parameters to pass to the connection. */
 	params?: unknown;
+	/** Signal to abort the request. */
+	signal?: AbortSignal;
 }
 
 /**
@@ -160,25 +162,29 @@ export interface ClientDriver {
 		encoding: Encoding,
 		params: unknown,
 		name: string,
-		...args: Args
+		args: Args,
+		opts: { signal?: AbortSignal } | undefined,
 	): Promise<Response>;
 	resolveWorkerId(
 		c: HonoContext | undefined,
 		workerQuery: WorkerQuery,
 		encodingKind: Encoding,
 		params: unknown,
+		opts: { signal?: AbortSignal } | undefined,
 	): Promise<string>;
 	connectWebSocket(
 		c: HonoContext | undefined,
 		workerQuery: WorkerQuery,
 		encodingKind: Encoding,
 		params: unknown,
+		opts: { signal?: AbortSignal } | undefined,
 	): Promise<WebSocket>;
 	connectSse(
 		c: HonoContext | undefined,
 		workerQuery: WorkerQuery,
 		encodingKind: Encoding,
 		params: unknown,
+		opts: { signal?: AbortSignal } | undefined,
 	): Promise<EventSource>;
 	sendHttpMessage(
 		c: HonoContext | undefined,
@@ -187,6 +193,7 @@ export interface ClientDriver {
 		connectionId: string,
 		connectionToken: string,
 		message: wsToServer.ToServer,
+		opts: { signal?: AbortSignal } | undefined,
 	): Promise<Response>;
 }
 
@@ -360,6 +367,7 @@ export class ClientRaw {
 			createQuery,
 			this.#encodingKind,
 			opts?.params,
+			opts?.signal ? { signal: opts.signal } : undefined,
 		);
 		logger().debug("created worker with ID", {
 			name,
@@ -541,7 +549,7 @@ function createWorkerProxy<AD extends AnyWorkerDefinition>(
 
 				let method = methodCache.get(prop);
 				if (!method) {
-					method = (...args: unknown[]) => target.action(prop, ...args);
+					method = (...args: unknown[]) => target.action({ name: prop, args });
 					methodCache.set(prop, method);
 				}
 				return method;
@@ -580,7 +588,7 @@ function createWorkerProxy<AD extends AnyWorkerDefinition>(
 					configurable: true,
 					enumerable: false,
 					writable: false,
-					value: (...args: unknown[]) => target.action(prop, ...args),
+					value: (...args: unknown[]) => target.action({ name: prop, args }),
 				};
 			}
 			return undefined;

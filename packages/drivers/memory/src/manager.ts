@@ -30,7 +30,9 @@ export class MemoryManagerDriver implements ManagerDriver {
 		this.#state = state;
 	}
 
-	async getForId({ workerId }: GetForIdInput): Promise<WorkerOutput | undefined> {
+	async getForId({
+		workerId,
+	}: GetForIdInput): Promise<WorkerOutput | undefined> {
 		// Validate the worker exists
 		const worker = this.#state.getWorker(workerId);
 		if (!worker) {
@@ -41,7 +43,6 @@ export class MemoryManagerDriver implements ManagerDriver {
 			workerId: worker.id,
 			name: worker.name,
 			key: worker.key,
-			meta: undefined,
 		};
 	}
 
@@ -75,7 +76,6 @@ export class MemoryManagerDriver implements ManagerDriver {
 				workerId: worker.id,
 				name,
 				key: worker.key,
-				meta: undefined,
 			};
 		}
 
@@ -105,6 +105,6 @@ export class MemoryManagerDriver implements ManagerDriver {
 
 		this.inspector.onWorkersChange(this.#state.getAllWorkers());
 
-		return { workerId, name, key, meta: undefined };
+		return { workerId, name, key };
 	}
 }

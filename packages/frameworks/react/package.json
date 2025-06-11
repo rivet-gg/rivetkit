@@ -20,11 +20,13 @@
     }
   },
   "scripts": {
-    "build": "tsup src/mod.tsx",
+    "dev": "vite",
+    "build": "tsc -p ./tsconfig.build.json && vite build",
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@rivetkit/framework-base": "workspace:*"
+    "@rivetkit/framework-base": "workspace:*",
+    "@tanstack/react-store": "^0.7.1"
   },
   "peerDependencies": {
     "react": "^18 || ^19",
@@ -32,9 +34,13 @@
     "rivetkit": "*"
   },
   "devDependencies": {
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.5.2",
     "rivetkit": "workspace:^",
-    "tsup": "^8.3.6",
     "typescript": "^5.5.2",
+    "vite": "^6.3.5",
+    "vite-plugin-dts": "^4.5.4",
     "vitest": "^3.1.1"
   },
   "stableVersion": "0.8.0"

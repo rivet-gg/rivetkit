@@ -55,7 +55,8 @@ export function createInlineClientDriver(
 			encoding: Encoding,
 			params: unknown,
 			actionName: string,
-			...args: Args
+			args: Args,
+			opts: { signal?: AbortSignal },
 		): Promise<Response> => {
 			try {
 				// Get the worker ID
@@ -115,6 +116,7 @@ export function createInlineClientDriver(
 							undefined,
 							workerId,
 						),
+						signal: opts?.signal,
 					});
 
 					return responseData.o as Response;

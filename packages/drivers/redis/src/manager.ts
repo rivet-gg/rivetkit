@@ -66,7 +66,6 @@ export class RedisManagerDriver implements ManagerDriver {
 			workerId,
 			name,
 			key,
-			meta: undefined,
 		};
 	}
 
@@ -134,7 +133,6 @@ export class RedisManagerDriver implements ManagerDriver {
 			workerId,
 			name,
 			key,
-			meta: undefined,
 		};
 	}
 

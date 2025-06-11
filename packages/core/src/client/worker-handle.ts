@@ -52,21 +52,23 @@ export class WorkerHandleRaw {
 	 * @see {@link WorkerHandle}
 	 * @template Args - The type of arguments to pass to the action function.
 	 * @template Response - The type of the response returned by the action function.
-	 * @param {string} name - The name of the action function to call.
-	 * @param {...Args} args - The arguments to pass to the action function.
-	 * @returns {Promise<Response>} - A promise that resolves to the response of the action function.
 	 */
-	async action<Args extends Array<unknown> = unknown[], Response = unknown>(
-		name: string,
-		...args: Args
-	): Promise<Response> {
+	async action<
+		Args extends Array<unknown> = unknown[],
+		Response = unknown,
+	>(opts: {
+		name: string;
+		args: Args;
+		signal?: AbortSignal;
+	}): Promise<Response> {
 		return await this.#driver.action<Args, Response>(
 			undefined,
 			this.#workerQuery,
 			this.#encodingKind,
 			this.#params,
-			name,
-			...args,
+			opts.name,
+			opts.args,
+			{ signal: opts.signal },
 		);
 	}
 
@@ -99,7 +101,7 @@ export class WorkerHandleRaw {
 	 *
 	 * @returns {Promise<string>} - A promise that resolves to the worker's ID
 	 */
-	async resolve(): Promise<string> {
+	async resolve({ signal }: { signal?: AbortSignal } = {}): Promise<string> {
 		if (
 			"getForKey" in this.#workerQuery ||
 			"getOrCreateForKey" in this.#workerQuery
@@ -110,6 +112,7 @@ export class WorkerHandleRaw {
 				this.#workerQuery,
 				this.#encodingKind,
 				this.#params,
+				signal ? { signal } : undefined,
 			);
 			this.#workerQuery = { getForId: { workerId } };
 			return workerId;

@@ -46,7 +46,6 @@ export class FileSystemManagerDriver implements ManagerDriver {
 				workerId,
 				name: state.name,
 				key: state.key,
-				meta: undefined,
 			};
 		} catch (error) {
 			logger().error("failed to read worker state", { workerId, error });
@@ -66,7 +65,6 @@ export class FileSystemManagerDriver implements ManagerDriver {
 				workerId: worker.id,
 				name,
 				key: worker.key,
-				meta: undefined,
 			};
 		}
 
@@ -102,7 +100,6 @@ export class FileSystemManagerDriver implements ManagerDriver {
 			workerId,
 			name,
 			key,
-			meta: undefined,
 		};
 	}
 }

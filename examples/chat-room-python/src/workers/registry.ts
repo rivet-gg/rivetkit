@@ -29,6 +29,11 @@ export const chatRoom = worker({
 // Create and export the app
 export const registry = setup({
 	workers: { chatRoom },
+	cors: {
+		origin: "*", // Allow all origins
+		allowMethods: ["GET", "POST", "OPTIONS"], // Allow specific methods
+		allowHeaders: ["Content-Type", "Authorization", "User-Agent"], // Allow specific headers
+	},
 });
 
 // Export type for client type checking

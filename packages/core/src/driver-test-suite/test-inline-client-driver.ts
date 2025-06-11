@@ -30,14 +30,14 @@ export function createTestInlineClientDriver(
 			encoding: Encoding,
 			params: unknown,
 			name: string,
-			...args: Args
+			args: Args
 		): Promise<Response> => {
 			return makeInlineRequest<Response>(
 				endpoint,
 				encoding,
 				transport,
 				"action",
-				[undefined, workerQuery, encoding, params, name, ...args],
+				[undefined, workerQuery, encoding, params, name, args],
 			);
 		},
 
