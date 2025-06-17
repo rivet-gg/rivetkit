@@ -7,11 +7,11 @@ import {
 
 runDriverTests({
 	async start(appPath: string) {
-		return await createTestRuntime(appPath, async (app) => {
+		return await createTestRuntime(appPath, async (registry) => {
 			const memoryState = new MemoryGlobalState();
 			return {
 				workerDriver: new MemoryWorkerDriver(memoryState),
-				managerDriver: new MemoryManagerDriver(app, memoryState),
+				managerDriver: new MemoryManagerDriver(registry, memoryState),
 			};
 		});
 	},

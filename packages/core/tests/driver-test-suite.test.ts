@@ -6,11 +6,11 @@ import { join } from "node:path";
 
 runDriverTests({
 	async start(projectPath: string) {
-		return await createTestRuntime(join(projectPath, "app.ts"), async (app) => {
+		return await createTestRuntime(join(projectPath, "registry.ts"), async (registry) => {
 			const memoryState = new TestGlobalState();
 			return {
 				workerDriver: new TestWorkerDriver(memoryState),
-				managerDriver: new TestManagerDriver(app, memoryState),
+				managerDriver: new TestManagerDriver(registry, memoryState),
 			};
 		});
 	},

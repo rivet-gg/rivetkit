@@ -1,5 +1,5 @@
 import { createManagerRouter } from "@/manager/router";
-import { AppConfig, AppConfigSchema, Encoding, setup } from "@/mod";
+import { RegistryConfig, RegistryConfigSchema, Encoding, setup } from "@/mod";
 import { ConnectionHandlers } from "@/worker/router-endpoints";
 import { DriverConfig } from "@/driver-helpers/config";
 import {
@@ -18,14 +18,14 @@ import { EventSource } from "eventsource";
 import { Context } from "hono";
 
 function main() {
-	const appConfig: AppConfig = AppConfigSchema.parse({ workers: {} });
-	const app = setup(appConfig);
+	const registryConfig: RegistryConfig = RegistryConfigSchema.parse({ workers: {} });
+	const registry = setup(registryConfig);
 
 	const memoryState = new TestGlobalState();
 	const driverConfig: DriverConfig = {
 		drivers: {
 			worker: new TestWorkerDriver(memoryState),
-			manager: new TestManagerDriver(app, memoryState),
+			manager: new TestManagerDriver(registry, memoryState),
 		},
 		getUpgradeWebSocket: () => () => unimplemented(),
 	};
@@ -54,7 +54,7 @@ function main() {
 	};
 
 	const managerRouter = createManagerRouter(
-		appConfig,
+		registryConfig,
 		driverConfig,
 		inlineClientDriver,
 		{

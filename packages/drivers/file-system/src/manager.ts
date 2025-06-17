@@ -11,7 +11,7 @@ import { WorkerAlreadyExists } from "rivetkit/errors";
 import { logger } from "./log";
 import type { FileSystemGlobalState } from "./global-state";
 import { WorkerState } from "./global-state";
-import type { App } from "rivetkit";
+import type { Registry } from "rivetkit";
 import { ManagerInspector } from "rivetkit/inspector";
 
 export class FileSystemManagerDriver implements ManagerDriver {
@@ -22,11 +22,11 @@ export class FileSystemManagerDriver implements ManagerDriver {
 	 */
 	inspector: ManagerInspector = new ManagerInspector(this, {
 		getAllWorkers: () => this.#state.getAllWorkers(),
-		getAllTypesOfWorkers: () => Object.keys(this.app.config.workers),
+		getAllTypesOfWorkers: () => Object.keys(this.registry.config.workers),
 	});
 
 	constructor(
-		private readonly app: App<any>,
+		private readonly registry: Registry<any>,
 		state: FileSystemGlobalState,
 	) {
 		this.#state = state;

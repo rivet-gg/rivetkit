@@ -8,11 +8,11 @@ import { PartitionTopologyManager } from "rivetkit/topologies/partition";
 import { proxy } from "hono/proxy";
 import invariant from "invariant";
 import { ConfigSchema, InputConfig } from "./config";
-import type { App } from "rivetkit";
+import type { Registry } from "rivetkit";
 import { createWebSocketProxy } from "./ws-proxy";
 
 export async function startManager(
-	app: App<any>,
+	registry: Registry<any>,
 	inputConfig?: InputConfig,
 ): Promise<void> {
 	setupLogging();
@@ -45,15 +45,15 @@ export async function startManager(
 	};
 
 	//// Force disable inspector
-	//driverConfig.app.config.inspector = {
+	//driverConfig.registry.config.inspector = {
 	//	enabled: false,
 	//};
 
-	//const corsConfig = driverConfig.app.config.cors;
+	//const corsConfig = driverConfig.registry.config.cors;
 	//
 	//// Enable CORS for Rivet domains
-	//driverConfig.app.config.cors = {
-	//	...driverConfig.app.config.cors,
+	//driverConfig.registry.config.cors = {
+	//	...driverConfig.registry.config.cors,
 	//	origin: (origin, c) => {
 	//		const isRivetOrigin =
 	//			origin.endsWith(".rivet.gg") || origin.includes("localhost:");
@@ -93,7 +93,7 @@ export async function startManager(
 	// Create manager topology
 	driverConfig.topology = driverConfig.topology ?? "partition";
 	const managerTopology = new PartitionTopologyManager(
-		app.config,
+		registry.config,
 		driverConfig,
 		{
 			sendRequest: async (workerId, meta, workerRequest) => {
@@ -181,7 +181,7 @@ export async function startManager(
 // import { logger as honoLogger } from "hono/logger";
 //
 // export async function startManager(
-// 	app: App<any>,
+// 	registry: Registry<any>,
 // 	inputConfig?: InputConfig,
 // ): Promise<void> {
 // 	const port = parseInt(process.env.PORT_HTTP!);

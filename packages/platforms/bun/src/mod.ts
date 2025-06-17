@@ -5,7 +5,7 @@ import { ConfigSchema, type InputConfig } from "./config";
 import { logger } from "./log";
 import { createBunWebSocket } from "hono/bun";
 import type { Hono } from "hono";
-import { type App, StandaloneTopology } from "rivetkit";
+import { type Registry, StandaloneTopology } from "rivetkit";
 import {
 	MemoryGlobalState,
 	MemoryManagerDriver,
@@ -16,7 +16,7 @@ import { FileSystemWorkerDriver, FileSystemGlobalState, FileSystemManagerDriver 
 export { InputConfig as Config } from "./config";
 
 export function createRouter(
-	app: App<any>,
+	registry: Registry<any>,
 	inputConfig?: InputConfig,
 ): {
 	router: Hono;
@@ -39,7 +39,7 @@ export function createRouter(
 		if (config.mode === "file-system") {
 			const fsState = new FileSystemGlobalState();
 			if (!config.drivers.manager) {
-				config.drivers.manager = new FileSystemManagerDriver(app, fsState);
+				config.drivers.manager = new FileSystemManagerDriver(registry, fsState);
 			}
 			if (!config.drivers.worker) {
 				config.drivers.worker = new FileSystemWorkerDriver(fsState);
@@ -47,7 +47,7 @@ export function createRouter(
 		} else if (config.mode === "memory") {
 			const memoryState = new MemoryGlobalState();
 			if (!config.drivers.manager) {
-				config.drivers.manager = new MemoryManagerDriver(app, memoryState);
+				config.drivers.manager = new MemoryManagerDriver(registry, memoryState);
 			}
 			if (!config.drivers.worker) {
 				config.drivers.worker = new MemoryWorkerDriver(memoryState);
@@ -59,12 +59,12 @@ export function createRouter(
 
 	// Setup topology
 	if (config.topology === "standalone") {
-		const topology = new StandaloneTopology(app.config, config);
+		const topology = new StandaloneTopology(registry.config, config);
 		return { router: topology.router, webSocketHandler };
 	} else if (config.topology === "partition") {
 		throw new Error("Bun only supports standalone & coordinate topology.");
 	} else if (config.topology === "coordinate") {
-		const topology = new CoordinateTopology(app.config, config);
+		const topology = new CoordinateTopology(registry.config, config);
 		return { router: topology.router, webSocketHandler };
 	} else {
 		assertUnreachable(config.topology);
@@ -72,12 +72,12 @@ export function createRouter(
 }
 
 export function createHandler(
-	app: App<any>,
+	registry: Registry<any>,
 	inputConfig?: InputConfig,
 ): Serve {
 	const config = ConfigSchema.parse(inputConfig);
 
-	const { router, webSocketHandler } = createRouter(app, config);
+	const { router, webSocketHandler } = createRouter(registry, config);
 
 	return {
 		hostname: config.hostname,
@@ -88,12 +88,12 @@ export function createHandler(
 }
 
 export function serve(
-	app: App<any>,
+	registry: Registry<any>,
 	inputConfig: InputConfig,
 ): Server {
 	const config = ConfigSchema.parse(inputConfig);
 
-	const handler = createHandler(app, config);
+	const handler = createHandler(registry, config);
 	const server = Bun.serve(handler);
 
 	logger().info("rivetkit started", {

@@ -57,15 +57,15 @@ import { setup, serve } from "rivetkit";
 import chatRoom from "./chat_room";
 
 // Create the application
-const app = setup({
+const registry = setup({
   workers: { chatRoom }
 });
 
 // Start serving on default port
-serve(app);
+serve(registry);
 
 // Export the app type for client usage
-export type App = typeof app;
+export type Registry = typeof registry;
 ```
 
 ## Key Worker Components

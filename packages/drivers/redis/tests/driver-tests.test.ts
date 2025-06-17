@@ -73,7 +73,7 @@
 //	// Causes odd connectoin issues when disabled
 //	useRealTimers: true,
 //	async start(appPath: string) {
-//		return await createTestRuntime(appPath, async (app) => {
+//		return await createTestRuntime(appPath, async (registry) => {
 //			const { port, containerId } = await startValkeyContainer();
 //
 //			// Create a new Redis client for this test (we still use ioredis for client)
@@ -88,7 +88,7 @@
 //
 //			return {
 //				workerDriver: new RedisWorkerDriver(redisClient),
-//				managerDriver: new RedisManagerDriver(redisClient, app),
+//				managerDriver: new RedisManagerDriver(redisClient, registry),
 //				coordinateDriver: new RedisCoordinateDriver(redisClient),
 //				async cleanup() {
 //					// TODO: This causes an error

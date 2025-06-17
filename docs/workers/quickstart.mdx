@@ -4,6 +4,52 @@ icon: forward
 description: Start building awesome documentation in under 5 minutes
 ---
 
+```ts registry.ts
+import { setup } from "rivetkit";
+import { worker } from "rivetkit/worker";
+import { workflow } from "rivetkit/workflow";
+import { realtime } from "rivetkit/realtime";
+
+const counter = worker({
+	state: {
+		count: 0,
+	},
+	actions: {
+		foo: (c) => c.state.count++,
+	},
+});
+
+const myWorkflow = workflow({
+	run: () => {}
+});
+
+const myRealtime = realtime({
+	run: () => {}
+});
+
+const registry = setup({
+	registry: { counter, myWorkflow, myRealtime },
+	maxConnParamLength: 123
+});
+
+export type Registry = typeof registry;
+```
+
+```ts server.ts
+import { registry } from "./registry";
+
+const registry = new Hono();
+app.route("/registry", registry.handler);
+serve(registry);
+```
+
+```ts client.ts
+import { createClient } from "rivetkit/client";
+import type { Registry } from "./registry";
+
+const client = createClient<Registry>("http://localhost:8080/registry");
+```
+
 <Steps>
 <Step title="Install">
 
@@ -51,15 +97,15 @@ const myWorker = worker({
 <CodeGroup>
 
 ```ts Hono
-const app = new Hono();
+const registry = new Hono();
 app.route("rivetkit", setup({ myWf, myWorker }));
-serve(app);
+serve(registry);
 ```
 
 ```ts Express.js
-const app = new Hono();
+const registry = new Hono();
 app.route("rivetkit", setup({ myWf, myWorker }));
-serve(app);
+serve(registry);
 ```
 
 </CodeGroup>

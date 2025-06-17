@@ -134,7 +134,7 @@ When importing from workspace packages, always check the package's `package.json
 
 ## Worker Management
 
-- App is configured with workers using `setup({ workers: { workerName }})` followed by `serve(app)`
+- App is configured with workers using `setup({ workers: { workerName }})` followed by `serve(registry)`
 - Workers are accessed by client using `client.workerName.get()`
 - Workers can pass an ID parameter or object with `client.workerName.get(id)` or `client.workerName.get({key: value})`
 - Workers can be shut down with `c.shutdown()` from within the worker

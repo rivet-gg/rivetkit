@@ -1,5 +1,5 @@
 import { WSContext } from "hono/ws";
-import { logger } from "@/app/log";
+import { logger } from "@/registry/log";
 import type { ConnectWebSocketOutput } from "@/worker/router-endpoints";
 import type * as messageToServer from "@/worker/protocol/message/to-server";
 import { parseMessage } from "@/worker/protocol/message/mod";

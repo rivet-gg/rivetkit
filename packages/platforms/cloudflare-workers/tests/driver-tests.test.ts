@@ -180,14 +180,14 @@ async function setupProject(projectPath: string) {
 
 	// Write script
 	const indexContent = `import { createHandler } from "@rivetkit/cloudflare-workers";
-import { app } from "./workers/app";
+import { registry } from "./workers/registry";
 
-// TODO: Find a cleaner way of flagging an app as test mode (ideally not in the config itself)
+// TODO: Find a cleaner way of flagging an registry as test mode (ideally not in the config itself)
 // Force enable test
-app.config.test.enabled = true;
+registry.config.test.enabled = true;
 
 // Create handlers for Cloudflare Workers
-const { handler, WorkerHandler } = createHandler(app);
+const { handler, WorkerHandler } = createHandler(registry);
 
 // Export the handlers for Cloudflare
 export { handler as default, WorkerHandler };

@@ -19,7 +19,7 @@ import {
 } from "../common/generic-conn-driver";
 import { ActionContext } from "@/worker/action";
 import type { DriverConfig } from "@/driver-helpers/config";
-import type { AppConfig } from "@/app/config";
+import type { RegistryConfig } from "@/registry/config";
 import { createManagerRouter } from "@/manager/router";
 import type { ManagerInspectorConnection } from "@/inspector/manager";
 import type {
@@ -32,7 +32,7 @@ import type {
 	ActionOutput,
 	ConnectionHandlers,
 } from "@/worker/router-endpoints";
-import { createInlineClientDriver } from "@/app/inline-client-driver";
+import { createInlineClientDriver } from "@/inline-client-driver/mod";
 import invariant from "invariant";
 import { ClientDriver } from "@/client/client";
 import { ConnRoutingHandler } from "@/worker/conn-routing-handler";
@@ -55,7 +55,7 @@ export class StandaloneTopology {
 	clientDriver: ClientDriver;
 	router: Hono;
 
-	#appConfig: AppConfig;
+	#registryConfig: RegistryConfig;
 	#driverConfig: DriverConfig;
 	#workers = new Map<string, WorkerHandler>();
 
@@ -90,7 +90,7 @@ export class StandaloneTopology {
 		if (!workerMetadata) throw new Error(`No worker found for ID ${workerId}`);
 
 		// Build worker
-		const definition = this.#appConfig.workers[workerMetadata.name];
+		const definition = this.#registryConfig.workers[workerMetadata.name];
 		if (!definition)
 			throw new Error(`no worker in registry for name ${definition}`);
 
@@ -120,17 +120,17 @@ export class StandaloneTopology {
 		return { handler, worker };
 	}
 
-	constructor(appConfig: AppConfig, driverConfig: DriverConfig) {
-		this.#appConfig = appConfig;
+	constructor(registryConfig: RegistryConfig, driverConfig: DriverConfig) {
+		this.#registryConfig = registryConfig;
 		this.#driverConfig = driverConfig;
 
 		if (!driverConfig.drivers?.worker)
 			throw new Error("config.drivers.worker not defined.");
 
 		// Build router
-		const app = new Hono();
+		const router = new Hono();
 
-		const upgradeWebSocket = driverConfig.getUpgradeWebSocket?.(app);
+		const upgradeWebSocket = driverConfig.getUpgradeWebSocket?.(router);
 
 		// Create shared connection handlers that will be used by both manager and worker routers
 		const sharedConnectionHandlers: ConnectionHandlers = {
@@ -271,7 +271,7 @@ export class StandaloneTopology {
 		this.clientDriver = createInlineClientDriver(managerDriver, routingHandler);
 
 		// Build manager router
-		const managerRouter = createManagerRouter(appConfig, driverConfig, this.clientDriver, {
+		const managerRouter = createManagerRouter(registryConfig, driverConfig, this.clientDriver, {
 			routingHandler,
 			onConnectInspector: async () => {
 				const inspector = driverConfig.drivers?.manager?.inspector;
@@ -299,8 +299,8 @@ export class StandaloneTopology {
 			},
 		});
 
-		app.route("/", managerRouter);
+		router.route("/", managerRouter);
 
-		this.router = app;
+		this.router = router;
 	}
 }

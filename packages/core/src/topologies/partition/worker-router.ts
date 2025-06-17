@@ -7,7 +7,7 @@ import {
 	loggerMiddleware,
 } from "@/common/router";
 import type { DriverConfig } from "@/driver-helpers/config";
-import type { AppConfig } from "@/app/config";
+import type { RegistryConfig } from "@/registry/config";
 import {
 	type WorkerInspectorConnHandler,
 	createWorkerInspectorRouter,
@@ -53,23 +53,23 @@ export interface WorkerRouterHandler {
  * Creates a router that runs on the partitioned instance.
  */
 export function createWorkerRouter(
-	appConfig: AppConfig,
+	registryConfig: RegistryConfig,
 	driverConfig: DriverConfig,
 	handler: WorkerRouterHandler,
 ): Hono {
-	const app = new Hono();
+	const router = new Hono();
 
-	const upgradeWebSocket = driverConfig.getUpgradeWebSocket?.(app);
+	const upgradeWebSocket = driverConfig.getUpgradeWebSocket?.(router);
 
-	app.use("*", loggerMiddleware(logger()));
+	router.use("*", loggerMiddleware(logger()));
 
 	// Apply CORS middleware if configured
 	//
 	//This is only relevant if the worker is exposed directly publicly
-	if (appConfig.cors) {
-		const corsConfig = appConfig.cors;
+	if (registryConfig.cors) {
+		const corsConfig = registryConfig.cors;
 
-		app.use("*", async (c, next) => {
+		router.use("*", async (c, next) => {
 			const path = c.req.path;
 
 			// Don't apply to WebSocket routes, see https://hono.dev/docs/helpers/websocket#upgradewebsocket
@@ -79,18 +79,18 @@ export function createWorkerRouter(
 
 			return cors({
 				...corsConfig,
-				allowHeaders: [...(appConfig.cors?.allowHeaders ?? []), ...ALL_HEADERS],
+				allowHeaders: [...(registryConfig.cors?.allowHeaders ?? []), ...ALL_HEADERS],
 			})(c, next);
 		});
 	}
 
-	app.get("/", (c) => {
+	router.get("/", (c) => {
 		return c.text(
 			"This is an RivetKit server.\n\nLearn more at https://rivetkit.org",
 		);
 	});
 
-	app.get("/health", (c) => {
+	router.get("/health", (c) => {
 		return c.text("ok");
 	});
 
@@ -98,13 +98,13 @@ export function createWorkerRouter(
 	const handlers = handler.connectionHandlers;
 
 	if (upgradeWebSocket && handlers.onConnectWebSocket) {
-		app.get(
+		router.get(
 			"/connect/websocket",
 			upgradeWebSocket(async (c) => {
 				const workerId = await handler.getWorkerId();
 				return handleWebSocketConnect(
 					c as HonoContext,
-					appConfig,
+					registryConfig,
 					driverConfig,
 					handlers.onConnectWebSocket!,
 					workerId,
@@ -112,7 +112,7 @@ export function createWorkerRouter(
 			}),
 		);
 	} else {
-		app.get("/connect/websocket", (c) => {
+		router.get("/connect/websocket", (c) => {
 			return c.text(
 				"WebSockets are not enabled for this driver. Use SSE instead.",
 				400,
@@ -120,21 +120,21 @@ export function createWorkerRouter(
 		});
 	}
 
-	app.get("/connect/sse", async (c) => {
+	router.get("/connect/sse", async (c) => {
 		if (!handlers.onConnectSse) {
 			throw new Error("onConnectSse handler is required");
 		}
 		const workerId = await handler.getWorkerId();
 		return handleSseConnect(
 			c,
-			appConfig,
+			registryConfig,
 			driverConfig,
 			handlers.onConnectSse,
 			workerId,
 		);
 	});
 
-	app.post("/action/:action", async (c) => {
+	router.post("/action/:action", async (c) => {
 		if (!handlers.onAction) {
 			throw new Error("onAction handler is required");
 		}
@@ -142,7 +142,7 @@ export function createWorkerRouter(
 		const workerId = await handler.getWorkerId();
 		return handleAction(
 			c,
-			appConfig,
+			registryConfig,
 			driverConfig,
 			handlers.onAction,
 			actionName,
@@ -150,7 +150,7 @@ export function createWorkerRouter(
 		);
 	});
 
-	app.post("/connections/message", async (c) => {
+	router.post("/connections/message", async (c) => {
 		if (!handlers.onConnMessage) {
 			throw new Error("onConnMessage handler is required");
 		}
@@ -162,7 +162,7 @@ export function createWorkerRouter(
 		}
 		return handleConnectionMessage(
 			c,
-			appConfig,
+			registryConfig,
 			handlers.onConnMessage,
 			connId,
 			connToken,
@@ -170,24 +170,24 @@ export function createWorkerRouter(
 		);
 	});
 
-	if (appConfig.inspector.enabled) {
-		app.route(
+	if (registryConfig.inspector.enabled) {
+		router.route(
 			"/inspect",
 			createWorkerInspectorRouter(
 				upgradeWebSocket,
 				handler.onConnectInspector,
-				appConfig.inspector,
+				registryConfig.inspector,
 			),
 		);
 	}
 
-	app.notFound(handleRouteNotFound);
-	app.onError(
+	router.notFound(handleRouteNotFound);
+	router.onError(
 		handleRouteError.bind(undefined, {
 			// All headers to this endpoint are considered secure, so we can enable the expose internal error header for requests from the internal client
 			enableExposeInternalError: true,
 		}),
 	);
 
-	return app;
+	return router;
 }

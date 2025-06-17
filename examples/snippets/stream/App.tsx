@@ -1,10 +1,10 @@
 import { createClient } from "rivetkit/client";
 import { createReactActorCore } from "@rivetkit/react";
 import { useState, useEffect } from "react";
-import type { App } from "../actors/app";
+import type { Registry } from "../workers/registry";
 import type { StreamState } from "./actor"; // Import shared types from actor
 
-const client = createClient<App>("http://localhost:6420");
+const client = createClient<Registry>("http://localhost:6420");
 const { useActor, useActorEvent } = createReactActorCore(client);
 
 export function StreamExample() {

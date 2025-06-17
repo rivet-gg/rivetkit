@@ -9,7 +9,7 @@ import type { Hono } from "hono";
 import { PartitionTopologyManager } from "rivetkit/topologies/partition";
 import { logger } from "./log";
 import { CloudflareWorkersManagerDriver } from "./manager-driver";
-import { Encoding, App } from "rivetkit";
+import { Encoding, Registry } from "rivetkit";
 import { upgradeWebSocket } from "./websocket";
 import invariant from "invariant";
 import { AsyncLocalStorage } from "node:async_hooks";
@@ -35,14 +35,14 @@ export function getCloudflareAmbientEnv(): Bindings {
 }
 
 export function createHandler(
-	app: App<any>,
+	registry: Registry<any>,
 	inputConfig?: InputConfig,
 ): {
 	handler: ExportedHandler<Bindings>;
 	WorkerHandler: DurableObjectConstructor;
 } {
 	// Create router
-	const { router, WorkerHandler } = createRouter(app, inputConfig);
+	const { router, WorkerHandler } = createRouter(registry, inputConfig);
 
 	// Create Cloudflare handler
 	const handler = {
@@ -55,7 +55,7 @@ export function createHandler(
 }
 
 export function createRouter(
-	app: App<any>,
+	registry: Registry<any>,
 	inputConfig?: InputConfig,
 ): {
 	router: Hono<{ Bindings: Bindings }>;
@@ -75,12 +75,12 @@ export function createRouter(
 		driverConfig.getUpgradeWebSocket = () => upgradeWebSocket;
 
 	// Create Durable Object
-	const WorkerHandler = createWorkerDurableObject(app, driverConfig);
+	const WorkerHandler = createWorkerDurableObject(registry, driverConfig);
 
 	driverConfig.topology = driverConfig.topology ?? "partition";
 	if (driverConfig.topology === "partition") {
 		const managerTopology = new PartitionTopologyManager(
-			app.config,
+			registry.config,
 			driverConfig,
 			{
 				sendRequest: async (

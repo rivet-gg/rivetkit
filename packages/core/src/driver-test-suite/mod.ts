@@ -8,7 +8,7 @@ import {
 import { runWorkerDriverTests } from "./tests/worker-driver";
 import { runManagerDriverTests } from "./tests/manager-driver";
 import { describe } from "vitest";
-import { CoordinateTopology, StandaloneTopology, App } from "@/mod";
+import { CoordinateTopology, StandaloneTopology, Registry } from "@/mod";
 import { createNodeWebSocket, type NodeWebSocket } from "@hono/node-ws";
 import invariant from "invariant";
 import { bundleRequire } from "bundle-require";
@@ -23,8 +23,8 @@ import { runWorkerMetadataTests } from "./tests/worker-metadata";
 import { runWorkerErrorHandlingTests } from "./tests/worker-error-handling";
 
 export interface DriverTestConfig {
-	/** Deploys an app and returns the connection endpoint. */
-	start(appPath: string): Promise<DriverDeployOutput>;
+	/** Deploys an registry and returns the connection endpoint. */
+	start(projectDir: string): Promise<DriverDeployOutput>;
 
 	/**
 	 * If we're testing with an external system, we should use real timers
@@ -100,8 +100,8 @@ export function runDriverTests(
  * This is helpful for drivers that run in-process as opposed to drivers that rely on external tools.
  */
 export async function createTestRuntime(
-	appPath: string,
-	driverFactory: (app: App<any>) => Promise<{
+	registryPath: string,
+	driverFactory: (registry: Registry<any>) => Promise<{
 		workerDriver: WorkerDriver;
 		managerDriver: ManagerDriver;
 		coordinateDriver?: CoordinateDriver;
@@ -109,14 +109,14 @@ export async function createTestRuntime(
 	}>,
 ): Promise<DriverDeployOutput> {
 	const {
-		mod: { app },
-	} = await bundleRequire<{ app: App<any> }>({
-		filepath: appPath,
+		mod: { registry },
+	} = await bundleRequire<{ registry: Registry<any> }>({
+		filepath: registryPath,
 	});
 
-	// TODO: Find a cleaner way of flagging an app as test mode (ideally not in the config itself)
+	// TODO: Find a cleaner way of flagging an registry as test mode (ideally not in the config itself)
 	// Force enable test
-	app.config.test.enabled = true;
+	registry.config.test.enabled = true;
 
 	// Build drivers
 	const {
@@ -124,7 +124,7 @@ export async function createTestRuntime(
 		managerDriver,
 		coordinateDriver,
 		cleanup: driverCleanup,
-	} = await driverFactory(app);
+	} = await driverFactory(registry);
 
 	// Build driver config
 	let injectWebSocket: NodeWebSocket["injectWebSocket"] | undefined;
@@ -134,8 +134,8 @@ export async function createTestRuntime(
 			manager: managerDriver,
 			coordinate: coordinateDriver,
 		},
-		getUpgradeWebSocket: (app) => {
-			const webSocket = createNodeWebSocket({ app });
+		getUpgradeWebSocket: (router) => {
+			const webSocket = createNodeWebSocket({ app: router });
 			injectWebSocket = webSocket.injectWebSocket;
 			return webSocket.upgradeWebSocket;
 		},
@@ -143,8 +143,8 @@ export async function createTestRuntime(
 
 	// Build topology
 	const topology = coordinateDriver
-		? new CoordinateTopology(app.config, config)
-		: new StandaloneTopology(app.config, config);
+		? new CoordinateTopology(registry.config, config)
+		: new StandaloneTopology(registry.config, config);
 	if (!injectWebSocket) throw new Error("injectWebSocket not defined");
 
 	// Start server

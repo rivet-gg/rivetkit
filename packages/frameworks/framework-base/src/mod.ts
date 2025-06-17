@@ -70,8 +70,8 @@
 //
 //export class WorkerManager<
 //	C extends ClientRaw,
-//	App extends ExtractAppFromClient<C>,
-//	Registry extends ExtractWorkersFromApp<App>,
+//	Registry extends ExtractAppFromClient<C>,
+//	Registry extends ExtractWorkersFromRegistry<Registry>,
 //	WorkerName extends keyof Registry,
 //	AD extends Registry[WorkerName],
 //> {

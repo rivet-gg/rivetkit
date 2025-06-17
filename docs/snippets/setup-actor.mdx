@@ -14,12 +14,12 @@ const counter = worker({
 });
 
 // Create the application
-export const app = setup({
+export const registry = setup({
   workers: { counter },
   cors: { origin: "http://localhost:8080" }
 });
 
 // Export app type for client usage
-export type App = typeof app;
+export type Registry = typeof registry;
 ```
 

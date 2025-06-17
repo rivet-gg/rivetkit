@@ -6,9 +6,9 @@ import { codingAgent } from "./coding-agent/mod";
 dotenv.config();
 
 // Create and export the app
-export const app = setup({
+export const registry = setup({
 	workers: { codingAgent },
 });
 
 // Export type for client type checking
-export type App = typeof app;
+export type Registry = typeof registry;

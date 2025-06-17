@@ -8,7 +8,7 @@ import { publishMessageToLeader } from "../node/message";
 import { generateConnId, generateConnToken } from "@/worker/connection";
 import type { WorkerDriver } from "@/worker/driver";
 import { DriverConfig } from "@/driver-helpers/config";
-import { AppConfig } from "@/app/config";
+import { RegistryConfig } from "@/registry/config";
 
 export interface RelayConnDriver {
 	sendMessage(message: messageToClient.ToClient): void;
@@ -19,7 +19,7 @@ export interface RelayConnDriver {
  * This is different than `Connection`. `Connection` represents the data of the connection state on the worker itself, `RelayConnection` supports managing a connection for a worker running on another machine over pubsub.
  */
 export class RelayConn {
-	#appConfig: AppConfig;
+	#registryConfig: RegistryConfig;
 	#driverConfig: DriverConfig;
 	#coordinateDriver: CoordinateDriver;
 	#workerDriver: WorkerDriver;
@@ -48,7 +48,7 @@ export class RelayConn {
 	}
 
 	constructor(
-		appConfig: AppConfig,
+		registryConfig: RegistryConfig,
 		driverConfig: DriverConfig,
 		workerDriver: WorkerDriver,
 		CoordinateDriver: CoordinateDriver,
@@ -57,7 +57,7 @@ export class RelayConn {
 		workerId: string,
 		parameters: unknown,
 	) {
-		this.#appConfig = appConfig;
+		this.#registryConfig = registryConfig;
 		this.#driverConfig = driverConfig;
 		this.#coordinateDriver = CoordinateDriver;
 		this.#workerDriver = workerDriver;
@@ -83,7 +83,7 @@ export class RelayConn {
 
 		// Create worker peer
 		this.#workerPeer = await WorkerPeer.acquire(
-			this.#appConfig,
+			this.#registryConfig,
 			this.#driverConfig,
 			this.#workerDriver,
 			this.#coordinateDriver,
@@ -96,7 +96,7 @@ export class RelayConn {
 
 		// Publish connection open
 		await publishMessageToLeader(
-			this.#appConfig,
+			this.#registryConfig,
 			this.#driverConfig,
 			this.#coordinateDriver,
 			this.#globalState,
@@ -145,7 +145,7 @@ export class RelayConn {
 			if (!fromLeader && this.#workerPeer?.leaderNodeId) {
 				// Publish connection close
 				await publishMessageToLeader(
-					this.#appConfig,
+					this.#registryConfig,
 					this.#driverConfig,
 					this.#coordinateDriver,
 					this.#globalState,

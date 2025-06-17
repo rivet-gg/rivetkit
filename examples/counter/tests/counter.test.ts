@@ -1,9 +1,9 @@
 import { test, expect } from "vitest";
 import { setupTest } from "rivetkit/test";
-import { app } from "../src/workers/app";
+import { registry } from "../src/workers/registry";
 
 test("it should count", async (test) => {
-	const { client } = await setupTest(test, app);
+	const { client } = await setupTest(test, registry);
 	const counter = client.counter.getOrCreate().connect();
 
 	// Test initial count

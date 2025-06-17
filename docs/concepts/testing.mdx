@@ -58,11 +58,11 @@ const myWorker = worker({
   }
 });
 
-export const app = setup({
+export const registry = setup({
   workers: { myWorker }
 });
 
-export type App = typeof app;
+export type Registry = typeof registry;
 ```
 </CodeGroup>
 
@@ -108,11 +108,11 @@ const counter = worker({
   }
 });
 
-export const app = setup({
+export const registry = setup({
   workers: { counter }
 });
 
-export type App = typeof app;
+export type Registry = typeof registry;
 ```
 </CodeGroup>
 
@@ -163,12 +163,12 @@ export const chatRoom = worker({
 });
 
 // Create and export the app
-export const app = setup({
+export const registry = setup({
   workers: { chatRoom }
 });
 
 // Export type for client type checking
-export type App = typeof app;
+export type Registry = typeof registry;
 ```
 </CodeGroup>
 
@@ -224,11 +224,11 @@ const scheduler = worker({
   }
 });
 
-export const app = setup({
+export const registry = setup({
   workers: { scheduler }
 });
 
-export type App = typeof app;
+export type Registry = typeof registry;
 ```
 </CodeGroup>
 

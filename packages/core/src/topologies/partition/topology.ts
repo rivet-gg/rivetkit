@@ -22,7 +22,7 @@ import {
 import type { ConnDriver } from "@/worker/driver";
 import type { WorkerKey } from "@/common/utils";
 import type { DriverConfig } from "@/driver-helpers/config";
-import type { AppConfig } from "@/app/config";
+import type { RegistryConfig } from "@/registry/config";
 import type { WorkerInspectorConnection } from "@/inspector/worker";
 import { createManagerRouter } from "@/manager/router";
 import type { ManagerInspectorConnection } from "@/inspector/manager";
@@ -40,7 +40,7 @@ import { ToServer } from "@/worker/protocol/message/to-server";
 import { WorkerQuery } from "@/manager/protocol/query";
 import { Encoding } from "@/mod";
 import { EventSource } from "eventsource";
-import { createInlineClientDriver } from "@/app/inline-client-driver";
+import { createInlineClientDriver } from "@/inline-client-driver/mod";
 import {
 	ConnRoutingHandler,
 	ConnRoutingHandlerCustom,
@@ -64,7 +64,7 @@ export class PartitionTopologyManager {
 	router: Hono;
 
 	constructor(
-		appConfig: AppConfig,
+		registryConfig: RegistryConfig,
 		driverConfig: DriverConfig,
 		customRoutingHandlers: ConnRoutingHandlerCustom,
 	) {
@@ -77,7 +77,7 @@ export class PartitionTopologyManager {
 		this.clientDriver = createInlineClientDriver(managerDriver, routingHandler);
 
 		this.router = createManagerRouter(
-			appConfig,
+			registryConfig,
 			driverConfig,
 			this.clientDriver,
 			{
@@ -115,7 +115,7 @@ export class PartitionTopologyManager {
 export class PartitionTopologyWorker {
 	router: Hono;
 
-	#appConfig: AppConfig;
+	#registryConfig: RegistryConfig;
 	#driverConfig: DriverConfig;
 	#connDrivers: Record<string, ConnDriver>;
 	#worker?: AnyWorkerInstance;
@@ -130,15 +130,15 @@ export class PartitionTopologyWorker {
 	 **/
 	#workerStartedPromise?: PromiseWithResolvers<void> = Promise.withResolvers();
 
-	constructor(appConfig: AppConfig, driverConfig: DriverConfig) {
-		this.#appConfig = appConfig;
+	constructor(registryConfig: RegistryConfig, driverConfig: DriverConfig) {
+		this.#registryConfig = registryConfig;
 		this.#driverConfig = driverConfig;
 
 		const genericConnGlobalState = new GenericConnGlobalState();
 		this.#connDrivers = createGenericConnDrivers(genericConnGlobalState);
 
 		// TODO: Store this worker router globally so we're not re-initializing it for every DO
-		this.router = createWorkerRouter(appConfig, driverConfig, {
+		this.router = createWorkerRouter(registryConfig, driverConfig, {
 			getWorkerId: async () => {
 				if (this.#workerStartedPromise)
 					await this.#workerStartedPromise.promise;
@@ -336,7 +336,7 @@ export class PartitionTopologyWorker {
 		if (!workerDriver) throw new Error("config.drivers.worker not defined.");
 
 		// Find worker prototype
-		const definition = this.#appConfig.workers[name];
+		const definition = this.#registryConfig.workers[name];
 		// TODO: Handle error here gracefully somehow
 		if (!definition)
 			throw new Error(`no worker in registry for name ${definition}`);

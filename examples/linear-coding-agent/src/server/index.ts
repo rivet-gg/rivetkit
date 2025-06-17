@@ -2,8 +2,8 @@ import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import dotenv from "dotenv";
 import { createClient } from "rivetkit/client";
-import { app } from "../workers/app";
-import type { App } from "../workers/app";
+import { registry } from "../workers/registry";
+import type { Registry } from "../workers/registry";
 import type { LinearWebhookEvent } from "../types";
 
 // Load environment variables
@@ -16,7 +16,7 @@ const PORT = process.env.PORT || 8080;
 // Create actor client
 const ACTOR_SERVER_URL =
 	process.env.ACTOR_SERVER_URL || "http://localhost:6420";
-const client = createClient<App>(ACTOR_SERVER_URL);
+const client = createClient<Registry>(ACTOR_SERVER_URL);
 
 // Middleware to initialize agent
 server.use("*", async (c, next) => {

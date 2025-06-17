@@ -24,7 +24,7 @@ import {
 	getRequestQuery,
 } from "@/worker/router-endpoints";
 import { assertUnreachable } from "@/worker/utils";
-import type { AppConfig } from "@/app/config";
+import type { RegistryConfig } from "@/registry/config";
 import {
 	handleRouteError,
 	handleRouteNotFound,
@@ -110,7 +110,7 @@ function buildOpenApiResponses<T>(schema: T) {
 }
 
 export function createManagerRouter(
-	appConfig: AppConfig,
+	registryConfig: RegistryConfig,
 	driverConfig: DriverConfig,
 	inlineClientDriver: ClientDriver,
 	handler: ManagerRouterHandler,
@@ -120,18 +120,18 @@ export function createManagerRouter(
 		throw new Error("config.drivers.manager is not defined.");
 	}
 	const driver = driverConfig.drivers.manager;
-	const app = new OpenAPIHono();
+	const router = new OpenAPIHono();
 
 	const upgradeWebSocket = driverConfig.getUpgradeWebSocket?.(
-		app as unknown as Hono,
+		router as unknown as Hono,
 	);
 
-	app.use("*", loggerMiddleware(logger()));
+	router.use("*", loggerMiddleware(logger()));
 
-	if (appConfig.cors) {
-		const corsConfig = appConfig.cors;
+	if (registryConfig.cors) {
+		const corsConfig = registryConfig.cors;
 
-		app.use("*", async (c, next) => {
+		router.use("*", async (c, next) => {
 			const path = c.req.path;
 
 			// Don't apply to WebSocket routes
@@ -141,20 +141,20 @@ export function createManagerRouter(
 
 			return cors({
 				...corsConfig,
-				allowHeaders: [...(appConfig.cors?.allowHeaders ?? []), ...ALL_HEADERS],
+				allowHeaders: [...(registryConfig.cors?.allowHeaders ?? []), ...ALL_HEADERS],
 			})(c, next);
 		});
 	}
 
 	// GET /
-	app.get("/", (c) => {
+	router.get("/", (c) => {
 		return c.text(
 			"This is an RivetKit server.\n\nLearn more at https://rivetkit.org",
 		);
 	});
 
 	// GET /health
-	app.get("/health", (c) => {
+	router.get("/health", (c) => {
 		return c.text("ok");
 	});
 
@@ -194,7 +194,7 @@ export function createManagerRouter(
 			responses: buildOpenApiResponses(ResolveResponseSchema),
 		});
 
-		app.openapi(resolveRoute, (c) => handleResolveRequest(c, driver));
+		router.openapi(resolveRoute, (c) => handleResolveRequest(c, driver));
 	}
 
 	// GET /workers/connect/websocket
@@ -215,11 +215,11 @@ export function createManagerRouter(
 			},
 		});
 
-		app.openapi(wsRoute, (c) =>
+		router.openapi(wsRoute, (c) =>
 			handleWebSocketConnectRequest(
 				c,
 				upgradeWebSocket,
-				appConfig,
+				registryConfig,
 				driverConfig,
 				driver,
 				handler,
@@ -251,8 +251,8 @@ export function createManagerRouter(
 			},
 		});
 
-		app.openapi(sseRoute, (c) =>
-			handleSseConnectRequest(c, appConfig, driverConfig, driver, handler),
+		router.openapi(sseRoute, (c) =>
+			handleSseConnectRequest(c, registryConfig, driverConfig, driver, handler),
 		);
 	}
 
@@ -306,8 +306,8 @@ export function createManagerRouter(
 			responses: buildOpenApiResponses(ActionResponseSchema),
 		});
 
-		app.openapi(actionRoute, (c) =>
-			handleActionRequest(c, appConfig, driverConfig, driver, handler),
+		router.openapi(actionRoute, (c) =>
+			handleActionRequest(c, registryConfig, driverConfig, driver, handler),
 		);
 	}
 
@@ -346,27 +346,27 @@ export function createManagerRouter(
 			responses: buildOpenApiResponses(ConnectionMessageResponseSchema),
 		});
 
-		app.openapi(messageRoute, (c) =>
-			handleMessageRequest(c, appConfig, handler),
+		router.openapi(messageRoute, (c) =>
+			handleMessageRequest(c, registryConfig, handler),
 		);
 	}
 
-	if (appConfig.inspector.enabled) {
-		app.route(
+	if (registryConfig.inspector.enabled) {
+		router.route(
 			"/inspect",
 			createManagerInspectorRouter(
 				upgradeWebSocket,
 				handler.onConnectInspector,
-				appConfig.inspector,
+				registryConfig.inspector,
 			),
 		);
 	}
 
-	if (appConfig.test.enabled) {
+	if (registryConfig.test.enabled) {
 		// Add HTTP endpoint to test the inline client
 		//
-		// We have to do this in a router since this needs to run in the same server as the RivetKit app. Some test contexts to not run in the same server.
-		app.post(".test/inline-driver/call", async (c) => {
+		// We have to do this in a router since this needs to run in the same server as the RivetKit registry. Some test contexts to not run in the same server.
+		router.post(".test/inline-driver/call", async (c) => {
 			// TODO: use openapi instead
 			const buffer = await c.req.arrayBuffer();
 			const { encoding, transport, method, args }: TestInlineDriverCallRequest =
@@ -395,7 +395,7 @@ export function createManagerRouter(
 		});
 
 		if (upgradeWebSocket) {
-			app.get(
+			router.get(
 				".test/inline-driver/connect-websocket",
 				upgradeWebSocket(async (c) => {
 					const {
@@ -536,7 +536,7 @@ export function createManagerRouter(
 				}),
 			);
 		} else {
-			app.get(".test/inline-driver/connect-websocket", (c) => {
+			router.get(".test/inline-driver/connect-websocket", (c) => {
 				throw new Error(
 					"websocket unsupported, fix the test to exclude websockets for this platform",
 				);
@@ -544,7 +544,7 @@ export function createManagerRouter(
 		}
 	}
 
-	app.doc("/openapi.json", {
+	router.doc("/openapi.json", {
 		openapi: "3.0.0",
 		info: {
 			version: VERSION,
@@ -552,10 +552,10 @@ export function createManagerRouter(
 		},
 	});
 
-	app.notFound(handleRouteNotFound);
-	app.onError(handleRouteError.bind(undefined, {}));
+	router.notFound(handleRouteNotFound);
+	router.onError(handleRouteError.bind(undefined, {}));
 
-	return app as unknown as Hono;
+	return router as unknown as Hono;
 }
 
 export interface TestInlineDriverCallRequest {
@@ -642,7 +642,7 @@ export async function queryWorker(
  */
 async function handleSseConnectRequest(
 	c: HonoContext,
-	appConfig: AppConfig,
+	registryConfig: RegistryConfig,
 	driverConfig: DriverConfig,
 	driver: ManagerDriver,
 	handler: ManagerRouterHandler,
@@ -678,7 +678,7 @@ async function handleSseConnectRequest(
 			// Use the shared SSE handler
 			return await handleSseConnect(
 				c,
-				appConfig,
+				registryConfig,
 				driverConfig,
 				handler.routingHandler.inline.handlers.onConnectSse,
 				workerId,
@@ -765,7 +765,7 @@ async function handleWebSocketConnectRequest(
 				createEvents: (c: HonoContext) => any,
 		  ) => (c: HonoContext, next: Next) => Promise<Response>)
 		| undefined,
-	appConfig: AppConfig,
+	registryConfig: RegistryConfig,
 	driverConfig: DriverConfig,
 	driver: ManagerDriver,
 	handler: ManagerRouterHandler,
@@ -807,7 +807,7 @@ async function handleWebSocketConnectRequest(
 			return upgradeWebSocket((c) => {
 				return handleWebSocketConnect(
 					c,
-					appConfig,
+					registryConfig,
 					driverConfig,
 					onConnectWebSocket,
 					workerId,
@@ -881,7 +881,7 @@ async function handleWebSocketConnectRequest(
  */
 async function handleMessageRequest(
 	c: HonoContext,
-	appConfig: AppConfig,
+	registryConfig: RegistryConfig,
 	handler: ManagerRouterHandler,
 ): Promise<Response> {
 	logger().debug("connection message request received");
@@ -906,7 +906,7 @@ async function handleMessageRequest(
 			// Use shared connection message handler with direct parameters
 			return handleConnectionMessage(
 				c,
-				appConfig,
+				registryConfig,
 				handler.routingHandler.inline.handlers.onConnMessage,
 				connId,
 				connToken as string,
@@ -950,7 +950,7 @@ async function handleMessageRequest(
  */
 async function handleActionRequest(
 	c: HonoContext,
-	appConfig: AppConfig,
+	registryConfig: RegistryConfig,
 	driverConfig: DriverConfig,
 	driver: ManagerDriver,
 	handler: ManagerRouterHandler,
@@ -983,7 +983,7 @@ async function handleActionRequest(
 			// Use shared action handler with direct parameter
 			return handleAction(
 				c,
-				appConfig,
+				registryConfig,
 				driverConfig,
 				handler.routingHandler.inline.handlers.onAction,
 				actionName,

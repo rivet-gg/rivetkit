@@ -1,6 +1,6 @@
 import { test, expect, vi, beforeEach } from "vitest";
 import { setupTest } from "rivetkit/test";
-import { app } from "../src/workers/app";
+import { registry } from "../src/workers/registry";
 
 // Create mock for send method
 const mockSendEmail = vi.fn().mockResolvedValue({ success: true });
@@ -25,7 +25,7 @@ beforeEach(() => {
 });
 
 test("streak tracking with time zone signups", async (t) => {
-	const { client } = await setupTest(t, app);
+	const { client } = await setupTest(t, registry);
 	const actor = client.user.getOrCreate().connect();
 
 	// Sign up with specific time zone

@@ -9,7 +9,7 @@ import { WorkerAlreadyExists } from "@/worker/errors";
 import type { TestGlobalState } from "./global-state";
 import * as crypto from "node:crypto";
 import { ManagerInspector } from "@/inspector/manager";
-import type { App } from "@/app/mod";
+import type { Registry } from "@/registry/mod";
 import { WorkerOutput } from "@/manager/driver";
 
 export class TestManagerDriver implements ManagerDriver {
@@ -20,11 +20,11 @@ export class TestManagerDriver implements ManagerDriver {
 	 */
 	inspector: ManagerInspector = new ManagerInspector(this, {
 		getAllWorkers: () => this.#state.getAllWorkers(),
-		getAllTypesOfWorkers: () => Object.keys(this.app.config.workers),
+		getAllTypesOfWorkers: () => Object.keys(this.registry.config.workers),
 	});
 
 	constructor(
-		private readonly app: App<any>,
+		private readonly registry: Registry<any>,
 		state: TestGlobalState,
 	) {
 		this.#state = state;

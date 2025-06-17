@@ -29,7 +29,7 @@ import {
 } from "./vars";
 
 // Consolidated setup with all workers
-export const app = setup({
+export const registry = setup({
 	workers: {
 		// From counter.ts
 		counter,
@@ -66,4 +66,4 @@ export const app = setup({
 	},
 });
 
-export type App = typeof app;
+export type Registry = typeof registry;

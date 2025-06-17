@@ -70,7 +70,7 @@ This starts the RivetKit server that hosts the coding agent:
 ```
 npm run dev
 # Or using the RivetKit CLI
-npx rivetkit/cli dev src/actors/app.ts
+npx rivetkit/cli dev src/workers/registry.ts
 ```
 
 ##### Running the Webhook Server (for Linear integration)

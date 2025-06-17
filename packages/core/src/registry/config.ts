@@ -51,7 +51,7 @@ export const TestConfigSchema = z.object({ enabled: z.boolean() });
 export type TestConfig = z.infer<typeof TestConfigSchema>;
 
 /** Base config used for the worker config across all platforms. */
-export const AppConfigSchema = z.object({
+export const RegistryConfigSchema = z.object({
 	workers: z.record(z.string(), z.custom<AnyWorkerDefinition>()),
 
 	/** CORS configuration for the router. Uses Hono's CORS middleware options. */
@@ -82,8 +82,8 @@ export const AppConfigSchema = z.object({
 	 **/
 	test: TestConfigSchema.optional().default({ enabled: false }),
 });
-export type AppConfig = z.infer<typeof AppConfigSchema>;
-export type AppConfigInput<A extends Workers> = Omit<
-	z.input<typeof AppConfigSchema>,
+export type RegistryConfig = z.infer<typeof RegistryConfigSchema>;
+export type RegistryConfigInput<A extends Workers> = Omit<
+	z.input<typeof RegistryConfigSchema>,
 	"workers"
 > & { workers: A };

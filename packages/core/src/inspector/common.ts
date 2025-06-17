@@ -121,17 +121,17 @@ export function createInspectorRoute<
 	logger: Logger;
 	serverMessageSchema: ZodSchema<unknown>;
 }) {
-	const app = new Hono();
+	const router = new Hono();
 
 	if (!upgradeWebSocket || !onConnect || !config.enabled) {
-		return app.get("/", async (c) => {
+		return router.get("/", async (c) => {
 			return c.json({
 				error: "Inspector disabled. Only available on WebSocket connections.",
 			});
 		});
 	}
 
-	return app.get(
+	return router.get(
 		"/",
 		async (c, next) => {
 			const result =

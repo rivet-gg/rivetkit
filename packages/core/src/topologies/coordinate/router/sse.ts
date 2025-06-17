@@ -5,11 +5,11 @@ import type { CoordinateDriver } from "../driver";
 import { RelayConn } from "../conn/mod";
 import type { WorkerDriver } from "@/worker/driver";
 import { DriverConfig } from "@/driver-helpers/config";
-import { AppConfig } from "@/app/config";
+import { RegistryConfig } from "@/registry/config";
 import { ConnectSseOpts, ConnectSseOutput } from "@/worker/router-endpoints";
 
 export async function serveSse(
-	appConfig: AppConfig,
+	registryConfig: RegistryConfig,
 	driverConfig: DriverConfig,
 	workerDriver: WorkerDriver,
 	CoordinateDriver: CoordinateDriver,
@@ -21,7 +21,7 @@ export async function serveSse(
 	return {
 		onOpen: async (stream) => {
 			conn = new RelayConn(
-				appConfig,
+				registryConfig,
 				driverConfig,
 				workerDriver,
 				CoordinateDriver,

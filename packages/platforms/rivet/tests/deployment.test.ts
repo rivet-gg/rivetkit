@@ -26,15 +26,15 @@ const counter = worker({
   },
 });
 
-export const app = setup({
+export const registry = setup({
   workers: { counter },
 });
 
-export type App = typeof app;
+export type Registry = typeof registry;
 `;
 
 test("Rivet deployment tests", async () => {
-	const tempFilePath = path.join(os.tmpdir(), `app-${randomUUID()}`);
+	const tempFilePath = path.join(os.tmpdir(), `registry-${randomUUID()}`);
 	await fs.writeFile(tempFilePath, COUNTER_WORKER);
-	await deployToRivet("test-app", tempFilePath, true);
+	await deployToRivet("test-registry", tempFilePath, true);
 });

@@ -103,11 +103,11 @@ const counter = worker({
 });
 
 // Create and export the app
-const app = setup({
+const registry = setup({
   workers: { counter }
 });
 
-export type App = typeof app;
+export type Registry = typeof registry;
 ```
 
 ```typescript client.ts

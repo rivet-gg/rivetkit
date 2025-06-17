@@ -104,8 +104,8 @@ function isSameDay(a: TZDate, b: TZDate) {
 	);
 }
 
-export const app = setup({
+export const registry = setup({
 	workers: { user },
 });
 
-export type App = typeof app;
+export type Registry = typeof registry;

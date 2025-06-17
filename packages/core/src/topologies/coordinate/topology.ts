@@ -7,7 +7,7 @@ import type { RelayConn } from "./conn/mod";
 import { Hono } from "hono";
 import { handleRouteError, handleRouteNotFound } from "@/common/router";
 import type { DriverConfig } from "@/driver-helpers/config";
-import type { AppConfig } from "@/app/config";
+import type { RegistryConfig } from "@/registry/config";
 import { createManagerRouter } from "@/manager/router";
 import type {
 	ConnectWebSocketOpts,
@@ -20,7 +20,7 @@ import type {
 	ConnectionHandlers,
 } from "@/worker/router-endpoints";
 import invariant from "invariant";
-import { createInlineClientDriver } from "@/app/inline-client-driver";
+import { createInlineClientDriver } from "@/inline-client-driver/mod";
 import { serveWebSocket } from "./router/websocket";
 import { serveSse } from "./router/sse";
 import { ClientDriver } from "@/client/client";
@@ -40,7 +40,7 @@ export class CoordinateTopology {
 	public readonly clientDriver: ClientDriver;
 	public readonly router: Hono;
 
-	constructor(appConfig: AppConfig, driverConfig: DriverConfig) {
+	constructor(registryConfig: RegistryConfig, driverConfig: DriverConfig) {
 		if (!driverConfig.drivers) throw new Error("config.drivers not defined.");
 		const { worker: workerDriver, coordinate: CoordinateDriver } =
 			driverConfig.drivers;
@@ -62,10 +62,10 @@ export class CoordinateTopology {
 		const node = new Node(CoordinateDriver, globalState);
 		node.start();
 
-		// Build app
-		const app = new Hono();
+		// Build router
+		const router = new Hono();
 
-		const upgradeWebSocket = driverConfig.getUpgradeWebSocket?.(app);
+		const upgradeWebSocket = driverConfig.getUpgradeWebSocket?.(router);
 
 		// Share connection handlers for both routers
 		const connectionHandlers: ConnectionHandlers = {
@@ -73,7 +73,7 @@ export class CoordinateTopology {
 				opts: ConnectWebSocketOpts,
 			): Promise<ConnectWebSocketOutput> => {
 				return await serveWebSocket(
-					appConfig,
+					registryConfig,
 					driverConfig,
 					workerDriver,
 					CoordinateDriver,
@@ -84,7 +84,7 @@ export class CoordinateTopology {
 			},
 			onConnectSse: async (opts: ConnectSseOpts): Promise<ConnectSseOutput> => {
 				return await serveSse(
-					appConfig,
+					registryConfig,
 					driverConfig,
 					workerDriver,
 					CoordinateDriver,
@@ -99,7 +99,7 @@ export class CoordinateTopology {
 			},
 			onConnMessage: async (opts: ConnsMessageOpts): Promise<void> => {
 				await publishMessageToLeader(
-					appConfig,
+					registryConfig,
 					driverConfig,
 					CoordinateDriver,
 					globalState,
@@ -130,7 +130,7 @@ export class CoordinateTopology {
 
 		// Build manager router
 		const managerRouter = createManagerRouter(
-			appConfig,
+			registryConfig,
 			driverConfig,
 			this.clientDriver,
 			{
@@ -141,8 +141,8 @@ export class CoordinateTopology {
 			},
 		);
 
-		app.route("/", managerRouter);
+		router.route("/", managerRouter);
 
-		this.router = app;
+		this.router = router;
 	}
 }

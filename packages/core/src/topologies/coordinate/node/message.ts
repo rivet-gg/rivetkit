@@ -4,7 +4,7 @@ import pRetry, { AbortError } from "p-retry";
 import type { CoordinateDriver } from "../driver";
 import type { NodeMessage } from "./protocol";
 import { DriverConfig } from "@/driver-helpers/config";
-import { AppConfig } from "@/app/config";
+import { RegistryConfig } from "@/registry/config";
 
 /**
  * Publishes a message and waits for an ack. If no ack is received, then retries accordingly.
@@ -12,7 +12,7 @@ import { AppConfig } from "@/app/config";
  * This should be used any time a message to the leader is being published since it correctly handles leadership transfer edge cases.
  */
 export async function publishMessageToLeader(
-	appConfig: AppConfig,
+	registryConfig: RegistryConfig,
 	driverConfig: DriverConfig,
 	CoordinateDriver: CoordinateDriver,
 	globalState: GlobalState,
@@ -31,7 +31,7 @@ export async function publishMessageToLeader(
 	await pRetry(
 		() =>
 			publishMessageToLeaderInner(
-				appConfig,
+				registryConfig,
 				driverConfig,
 				CoordinateDriver,
 				globalState,
@@ -55,7 +55,7 @@ export async function publishMessageToLeader(
 }
 
 async function publishMessageToLeaderInner(
-	appConfig: AppConfig,
+	registryConfig: RegistryConfig,
 	driverConfig: DriverConfig,
 	CoordinateDriver: CoordinateDriver,
 	globalState: GlobalState,
@@ -92,7 +92,7 @@ async function publishMessageToLeaderInner(
 	// Throw error on timeout
 	const timeoutId = setTimeout(
 		() => ackReject(new Error("Ack timed out")),
-		appConfig.workerPeer.messageAckTimeout,
+		registryConfig.workerPeer.messageAckTimeout,
 	);
 
 	try {

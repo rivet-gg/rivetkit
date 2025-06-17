@@ -27,9 +27,9 @@ export const chatRoom = worker({
 });
 
 // Create and export the app
-export const app = setup({
+export const registry = setup({
 	workers: { chatRoom },
 });
 
 // Export type for client type checking
-export type App = typeof app;
+export type Registry = typeof registry;

@@ -6,12 +6,12 @@ import { PartitionTopologyWorker } from "rivetkit/topologies/partition";
 import { RivetWorkerDriver } from "./worker-driver";
 import invariant from "invariant";
 import type { ActorContext } from "@rivet-gg/actor-core";
-import { App } from "rivetkit";
+import { Registry } from "rivetkit";
 import { type Config, ConfigSchema, type InputConfig } from "./config";
 import { stringifyError } from "rivetkit/utils";
 
 export function createWorkerHandler(
-	app: App<any>,
+	registry: Registry<any>,
 	inputConfig?: InputConfig,
 ): RivetHandler {
 	let driverConfig: Config;
@@ -26,7 +26,7 @@ export function createWorkerHandler(
 		async start(ctx: ActorContext) {
 			const role = ctx.metadata.actor.tags.role;
 			if (role === "worker") {
-				await startWorker(ctx, app, driverConfig);
+				await startWorker(ctx, registry, driverConfig);
 			} else {
 				throw new Error(`Unexpected role (must be worker): ${role}`);
 			}
@@ -36,7 +36,7 @@ export function createWorkerHandler(
 
 async function startWorker(
 	ctx: ActorContext,
-	app: App<any>,
+	registry: Registry<any>,
 	driverConfig: Config,
 ): Promise<void> {
 	setupLogging();
@@ -70,7 +70,7 @@ async function startWorker(
 		driverConfig.getUpgradeWebSocket = () => upgradeWebSocket;
 	}
 
-	//app.config.inspector = {
+	//registry.config.inspector = {
 	//	enabled: true,
 	//	onRequest: async (c) => {
 	//		const url = new URL(c.req.url);
@@ -93,11 +93,11 @@ async function startWorker(
 	//	},
 	//};
 
-	//const corsConfig = app.config.cors;
+	//const corsConfig = registry.config.cors;
 	//
 	//// Enable CORS for Rivet domains
-	//app.config.cors = {
-	//	...app.config.cors,
+	//registry.config.cors = {
+	//	...registry.config.cors,
 	//	origin: (origin, c) => {
 	//		const isRivetOrigin =
 	//			origin.endsWith(".rivet.gg") || origin.includes("localhost:");
@@ -118,7 +118,7 @@ async function startWorker(
 
 	// Create worker topology
 	driverConfig.topology = driverConfig.topology ?? "partition";
-	const workerTopology = new PartitionTopologyWorker(app.config, driverConfig);
+	const workerTopology = new PartitionTopologyWorker(registry.config, driverConfig);
 
 	// Set a catch-all route
 	const router = workerTopology.router;

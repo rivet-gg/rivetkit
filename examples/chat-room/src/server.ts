@@ -1,4 +1,4 @@
 import { serve } from "@rivetkit/nodejs";
-import { app } from "./workers/app";
+import { registry } from "./workers/registry";
 
-serve(app);
+serve(registry);

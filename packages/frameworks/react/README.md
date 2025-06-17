@@ -26,11 +26,11 @@ bun add rivetkit/react
 ```tsx
 import { createClient } from "rivetkit/client";
 import { createReactActorCore } from "@rivetkit/react";
-import type { App } from "../counter/src/index";
+import type { Registry } from "../counter/src/index";
 import React, { useState } from "react";
 
 // Create a client
-const client = createClient<App>("http://your-rivetkit-server.com");
+const client = createClient<Registry>("http://your-rivetkit-server.com");
 
 // Create React hooks for your actors
 const { useActor, useActorEvent } = createReactActorCore(client);

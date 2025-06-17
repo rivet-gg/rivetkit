@@ -18,7 +18,7 @@ import { UpgradeWebSocket } from "@/utils";
 export const TopologySchema = z.enum(["standalone", "partition", "coordinate"]);
 export type Topology = z.infer<typeof TopologySchema>;
 
-export type GetUpgradeWebSocket = (app: Hono) => UpgradeWebSocket;
+export type GetUpgradeWebSocket = (router: Hono) => UpgradeWebSocket;
 
 /** Base config used for the worker config across all platforms. */
 export const DriverConfigSchema = z.object({
@@ -31,7 +31,7 @@ export const DriverConfigSchema = z.object({
 		})
 		.optional()
 		.default({}),
-	// This is dynamic since NodeJS requires a reference to the app to initialize WebSockets
+	// This is dynamic since NodeJS requires a reference to the router to initialize WebSockets
 	getUpgradeWebSocket: z.custom<GetUpgradeWebSocket>().optional(),
 });
 export type DriverConfig = z.infer<typeof DriverConfigSchema>;

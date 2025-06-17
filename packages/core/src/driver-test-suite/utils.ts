@@ -5,14 +5,14 @@ import { assertUnreachable } from "@/worker/utils";
 import { createClientWithDriver } from "@/client/client";
 import { createTestInlineClientDriver } from "./test-inline-client-driver";
 import { resolve } from "node:path";
-import type { App } from "../../fixtures/driver-test-suite/app";
+import type { Registry } from "../../fixtures/driver-test-suite/registry";
 
 // Must use `TestContext` since global hooks do not work when running concurrently
 export async function setupDriverTest(
 	c: TestContext,
 	driverTestConfig: DriverTestConfig,
 ): Promise<{
-	client: Client<App>;
+	client: Client<Registry>;
 }> {
 	if (!driverTestConfig.useRealTimers) {
 		vi.useFakeTimers();
@@ -23,10 +23,10 @@ export async function setupDriverTest(
 	const { endpoint, cleanup } = await driverTestConfig.start(projectPath);
 	c.onTestFinished(cleanup);
 
-	let client: Client<App>;
+	let client: Client<Registry>;
 	if (driverTestConfig.clientType === "http") {
 		// Create client
-		client = createClient<App>(endpoint, {
+		client = createClient<Registry>(endpoint, {
 			transport: driverTestConfig.transport,
 		});
 	} else if (driverTestConfig.clientType === "inline") {

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently --raw \"yarn dev:actors\" \"yarn dev:server\" \"yarn dev:ngrok\"",
-    "dev:actors": "npx rivetkit/cli@latest dev src/workers/app.ts",
+    "dev:actors": "npx rivetkit/cli@latest dev src/workers/registry.ts",
     "dev:server": "tsx --watch src/server/index.ts",
     "dev:ngrok": "ngrok http 3000",
     "check-types": "tsc --noEmit"

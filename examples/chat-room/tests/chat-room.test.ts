@@ -1,9 +1,9 @@
 import { test, expect } from "vitest";
 import { setupTest } from "rivetkit/test";
-import { app } from "../src/workers/app";
+import { registry } from "../src/workers/registry";
 
 test("chat room should handle messages", async (test) => {
-	const { client } = await setupTest(test, app);
+	const { client } = await setupTest(test, registry);
 
 	// Connect to chat room
 	const chatRoom = client.chatRoom.getOrCreate().connect();

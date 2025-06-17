@@ -72,7 +72,7 @@ async function packPackage(
  */
 export async function deployToRivet(projectPath: string) {
 	console.log("=== START deployToRivet ===");
-	console.log(`Deploying app from path: ${projectPath}`);
+	console.log(`Deploying registry from path: ${projectPath}`);
 
 	// Create a temporary directory for the test
 	const uuid = crypto.randomUUID();
@@ -232,24 +232,24 @@ node_modules
 	await fs.cp(projectPath, projectDestDir, { recursive: true });
 
 	const serverTsContent = `import { startManager } from "@rivetkit/rivet/manager";
-import { app } from "./workers/app";
+import { registry } from "./workers/registry";
 
-// TODO: Find a cleaner way of flagging an app as test mode (ideally not in the config itself)
+// TODO: Find a cleaner way of flagging an registry as test mode (ideally not in the config itself)
 // Force enable test
-app.config.test.enabled = true;
+registry.config.test.enabled = true;
 
-startManager(app);
+startManager(registry);
 `;
 	await writeFile(tmpDir, "src/server.ts", serverTsContent);
 
 	const workerTsContent = `import { createWorkerHandler } from "@rivetkit/rivet/worker";
-import { app } from "./workers/app";
+import { registry } from "./workers/registry";
 
-// TODO: Find a cleaner way of flagging an app as test mode (ideally not in the config itself)
+// TODO: Find a cleaner way of flagging an registry as test mode (ideally not in the config itself)
 // Force enable test
-app.config.test.enabled = true;
+registry.config.test.enabled = true;
 
-export default createWorkerHandler(app);`;
+export default createWorkerHandler(registry);`;
 	await writeFile(tmpDir, "src/worker.ts", workerTsContent);
 
 	// Build and deploy to Rivet

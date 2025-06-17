@@ -8,8 +8,8 @@ Cross-Origin Resource Sharing (CORS) is a security mechanism that allows a web a
 
 You'll need to configure CORS when:
 
-- **Local Development:** You're developing locally and your client runs on a different port than your worker service
-- **Different Domain:** Your frontend application is hosted on a different domain than your worker service
+- **Local Development**: You're developing locally and your client runs on a different port than your worker service
+- **Different Domain**: Your frontend application is hosted on a different domain than your worker service
 
 ## Example
 
@@ -17,7 +17,7 @@ You'll need to configure CORS when:
 import { setup } from "rivetkit";
 import counter from "./counter";
 
-const app = setup({
+const registry = setup({
   workers: { counter },
   // Change this to match your frontend's origin
   cors: { origin: "https://yourdomain.com" }

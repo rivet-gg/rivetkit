@@ -1,4 +1,4 @@
-import type { App } from "@/app/mod";
+import type { Registry } from "@/registry/mod";
 import { type Client, type ClientOptions, createClientWithDriver } from "./client";
 import { createHttpClientDriver } from "./http-client-driver";
 
@@ -11,8 +11,8 @@ export type {
 	GetWithIdOptions,
 	QueryOptions,
 	Region,
-	ExtractWorkersFromApp,
-	ExtractAppFromClient,
+	ExtractWorkersFromRegistry,
+	ExtractRegistryFromClient,
 	ClientRaw,
 } from "./client";
 export type { WorkerConn } from "./worker-conn";
@@ -45,7 +45,7 @@ export {
  * @param {ClientOptions} [opts] - Options for configuring the client.
  * @returns {Client<A>} - A proxied client that supports the `client.myWorker.connect()` syntax.
  */
-export function createClient<A extends App<any>>(
+export function createClient<A extends Registry<any>>(
 	endpoint: string,
 	opts?: ClientOptions,
 ): Client<A> {

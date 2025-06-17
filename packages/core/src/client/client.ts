@@ -10,7 +10,7 @@ import {
 import { WorkerHandle, WorkerHandleRaw } from "./worker-handle";
 import { WorkerActionFunction } from "./worker-common";
 import { logger } from "./log";
-import type { App } from "@/mod";
+import type { Registry } from "@/mod";
 import type { AnyWorkerDefinition } from "@/worker/definition";
 import type * as wsToServer from "@/worker/protocol/message/to-server";
 import type { EventSource } from "eventsource";
@@ -18,12 +18,12 @@ import type { Context as HonoContext } from "hono";
 import { createHttpClientDriver } from "./http-client-driver";
 import { HonoRequest } from "hono";
 
-/** Extract the worker registry from the app definition. */
-export type ExtractWorkersFromApp<A extends App<any>> =
-	A extends App<infer Workers> ? Workers : never;
+/** Extract the worker registry from the registry definition. */
+export type ExtractWorkersFromRegistry<A extends Registry<any>> =
+	A extends Registry<infer Workers> ? Workers : never;
 
-/** Extract the app definition from the client. */
-export type ExtractAppFromClient<C extends Client<App<{}>>> =
+/** Extract the registry definition from the client. */
+export type ExtractRegistryFromClient<C extends Client<Registry<{}>>> =
 	C extends Client<infer A> ? A : never;
 
 /**
@@ -435,15 +435,15 @@ export class ClientRaw {
  * Client type with worker accessors.
  * This adds property accessors for worker names to the ClientRaw base class.
  *
- * @template A The worker application type.
+ * @template A The worker registry type.
  */
-export type Client<A extends App<any>> = ClientRaw & {
-	[K in keyof ExtractWorkersFromApp<A>]: WorkerAccessor<
-		ExtractWorkersFromApp<A>[K]
+export type Client<A extends Registry<any>> = ClientRaw & {
+	[K in keyof ExtractWorkersFromRegistry<A>]: WorkerAccessor<
+		ExtractWorkersFromRegistry<A>[K]
 	>;
 };
 
-export function createClientWithDriver<A extends App<any>>(
+export function createClientWithDriver<A extends Registry<any>>(
 	driver: ClientDriver,
 	opts?: ClientOptions,
 ): Client<A> {
@@ -470,8 +470,8 @@ export function createClientWithDriver<A extends App<any>>(
 					get: (
 						key?: string | string[],
 						opts?: GetWithIdOptions,
-					): WorkerHandle<ExtractWorkersFromApp<A>[typeof prop]> => {
-						return target.get<ExtractWorkersFromApp<A>[typeof prop]>(
+					): WorkerHandle<ExtractWorkersFromRegistry<A>[typeof prop]> => {
+						return target.get<ExtractWorkersFromRegistry<A>[typeof prop]>(
 							prop,
 							key,
 							opts,
@@ -480,8 +480,8 @@ export function createClientWithDriver<A extends App<any>>(
 					getOrCreate: (
 						key?: string | string[],
 						opts?: GetOptions,
-					): WorkerHandle<ExtractWorkersFromApp<A>[typeof prop]> => {
-						return target.getOrCreate<ExtractWorkersFromApp<A>[typeof prop]>(
+					): WorkerHandle<ExtractWorkersFromRegistry<A>[typeof prop]> => {
+						return target.getOrCreate<ExtractWorkersFromRegistry<A>[typeof prop]>(
 							prop,
 							key,
 							opts,
@@ -490,8 +490,8 @@ export function createClientWithDriver<A extends App<any>>(
 					getForId: (
 						workerId: string,
 						opts?: GetWithIdOptions,
-					): WorkerHandle<ExtractWorkersFromApp<A>[typeof prop]> => {
-						return target.getForId<ExtractWorkersFromApp<A>[typeof prop]>(
+					): WorkerHandle<ExtractWorkersFromRegistry<A>[typeof prop]> => {
+						return target.getForId<ExtractWorkersFromRegistry<A>[typeof prop]>(
 							prop,
 							workerId,
 							opts,
@@ -500,14 +500,14 @@ export function createClientWithDriver<A extends App<any>>(
 					create: async (
 						key: string | string[],
 						opts: CreateOptions = {},
-					): Promise<WorkerHandle<ExtractWorkersFromApp<A>[typeof prop]>> => {
-						return await target.create<ExtractWorkersFromApp<A>[typeof prop]>(
+					): Promise<WorkerHandle<ExtractWorkersFromRegistry<A>[typeof prop]>> => {
+						return await target.create<ExtractWorkersFromRegistry<A>[typeof prop]>(
 							prop,
 							key,
 							opts,
 						);
 					},
-				} as WorkerAccessor<ExtractWorkersFromApp<A>[typeof prop]>;
+				} as WorkerAccessor<ExtractWorkersFromRegistry<A>[typeof prop]>;
 			}
 
 			return undefined;

@@ -13,7 +13,7 @@ import * as fs from "node:fs/promises";
 
 runDriverTests({
 	async start(appPath: string) {
-		return await createTestRuntime(appPath, async (app) => {
+		return await createTestRuntime(appPath, async (registry) => {
 			// Create a unique temp directory for each test
 			const testDir = path.join(
 				os.tmpdir(),
@@ -24,7 +24,7 @@ runDriverTests({
 			const fileSystemState = new FileSystemGlobalState(testDir);
 			return {
 				workerDriver: new FileSystemWorkerDriver(fileSystemState),
-				managerDriver: new FileSystemManagerDriver(app, fileSystemState),
+				managerDriver: new FileSystemManagerDriver(registry, fileSystemState),
 				async cleanup() {
 					await fs.rmdir(testDir, { recursive: true });
 

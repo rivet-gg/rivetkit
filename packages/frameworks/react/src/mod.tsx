@@ -16,8 +16,8 @@
 //} from "react";
 //
 //export function createReactActorCore<Client extends ClientRaw>(client: Client) {
-//	type App = ExtractAppFromClient<Client>;
-//	type Registry = ExtractActorsFromApp<App>;
+//	type Registry = ExtractAppFromClient<Client>;
+//	type Registry = ExtractActorsFromRegistry<Registry>;
 //	return {
 //		useActor: function useActor<
 //			N extends keyof Registry,
@@ -28,7 +28,7 @@
 //		) {
 //			const [manager] = useState(
 //				() =>
-//					new ActorManager<Client, App, Registry, N, AD>(client, name, options),
+//					new ActorManager<Client, Registry, Registry, N, AD>(client, name, options),
 //			);
 //
 //			const state = useSyncExternalStore(

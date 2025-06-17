@@ -4,7 +4,7 @@ import { assertUnreachable } from "@/utils";
 import { CoordinateTopology } from "@/topologies/coordinate/mod";
 import { logger } from "./log";
 import type { Hono } from "hono";
-import { StandaloneTopology, type App } from "@/mod";
+import { StandaloneTopology, type Registry } from "@/mod";
 import {
 	TestGlobalState,
 	TestManagerDriver,
@@ -16,7 +16,7 @@ import { type Client, createClient } from "@/client/mod";
 import { createServer } from "node:net";
 
 function createRouter(
-	app: App<any>,
+	registry: Registry<any>,
 	inputConfig?: InputConfig,
 ): {
 	router: Hono;
@@ -29,7 +29,7 @@ function createRouter(
 	if (!config.drivers.manager || !config.drivers.worker) {
 		const memoryState = new TestGlobalState();
 		if (!config.drivers.manager) {
-			config.drivers.manager = new TestManagerDriver(app, memoryState);
+			config.drivers.manager = new TestManagerDriver(registry, memoryState);
 		}
 		if (!config.drivers.worker) {
 			config.drivers.worker = new TestWorkerDriver(memoryState);
@@ -41,8 +41,8 @@ function createRouter(
 	// Save `injectWebSocket` for after server is created
 	let injectWebSocket: NodeWebSocket["injectWebSocket"] | undefined;
 	if (!config.getUpgradeWebSocket) {
-		config.getUpgradeWebSocket = (app) => {
-			const webSocket = createNodeWebSocket({ app });
+		config.getUpgradeWebSocket = (router) => {
+			const webSocket = createNodeWebSocket({ app: router });
 			injectWebSocket = webSocket.injectWebSocket;
 			return webSocket.upgradeWebSocket;
 		};
@@ -50,13 +50,13 @@ function createRouter(
 
 	// Setup topology
 	if (config.topology === "standalone") {
-		const topology = new StandaloneTopology(app.config, config);
+		const topology = new StandaloneTopology(registry.config, config);
 		if (!injectWebSocket) throw new Error("injectWebSocket not defined");
 		return { router: topology.router, injectWebSocket };
 	} else if (config.topology === "partition") {
 		throw new Error("Node.js only supports standalone & coordinate topology.");
 	} else if (config.topology === "coordinate") {
-		const topology = new CoordinateTopology(app.config, config);
+		const topology = new CoordinateTopology(registry.config, config);
 		if (!injectWebSocket) throw new Error("injectWebSocket not defined");
 		return { router: topology.router, injectWebSocket };
 	} else {
@@ -64,10 +64,10 @@ function createRouter(
 	}
 }
 
-function serve(app: App<any>, inputConfig?: InputConfig): ServerType {
+function serve(registry: Registry<any>, inputConfig?: InputConfig): ServerType {
 	const config = ConfigSchema.parse(inputConfig);
 
-	const { router, injectWebSocket } = createRouter(app, config);
+	const { router, injectWebSocket } = createRouter(registry, config);
 
 	const server = honoServe({
 		fetch: router.fetch,
@@ -84,7 +84,7 @@ function serve(app: App<any>, inputConfig?: InputConfig): ServerType {
 	return server;
 }
 
-export interface SetupTestResult<A extends App<any>> {
+export interface SetupTestResult<A extends Registry<any>> {
 	client: Client<A>;
 	mockDriver: {
 		workerDriver: {
@@ -94,9 +94,9 @@ export interface SetupTestResult<A extends App<any>> {
 }
 
 // Must use `TestContext` since global hooks do not work when running concurrently
-export async function setupTest<A extends App<any>>(
+export async function setupTest<A extends Registry<any>>(
 	c: TestContext,
-	app: A,
+	registry: A,
 ): Promise<SetupTestResult<A>> {
 	vi.useFakeTimers();
 
@@ -110,7 +110,7 @@ export async function setupTest<A extends App<any>>(
 
 	// Start server with a random port
 	const port = await getPort();
-	const server = serve(app, { port });
+	const server = serve(registry, { port });
 	c.onTestFinished(
 		async () => await new Promise((resolve) => server.close(() => resolve())),
 	);

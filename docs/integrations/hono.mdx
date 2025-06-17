@@ -10,7 +10,7 @@ When mounting the RivetKit router at a custom path, you **must** specify the sam
 
 ```typescript
 // Setup the RivetKit app
-const app = setup({
+const registry = setup({
   workers: { counter },
   // IMPORTANT: Must specify the same basePath where your router is mounted
   basePath: "/my-path"
@@ -45,7 +45,7 @@ honoApp.get("/", (c) => c.text("Welcome to my app!"));
 honoApp.get("/hello", (c) => c.text("Hello, world!"));
 
 // Setup the RivetKit app
-const app = setup({
+const registry = setup({
   workers: { counter },
   // IMPORTANT: Must specify the same basePath where your router is mounted
   basePath: "/my-path"
@@ -58,7 +58,7 @@ const { router: workerRouter, WorkerHandler } = createRouter(app);
 honoApp.route("/my-path", workerRouter);
 
 // Export the app type for client usage
-export type App = typeof app;
+export type Registry = typeof registry;
 
 // IMPORTANT: Must export `WorkerHandler` as this exact name
 export { honoApp as default, WorkerHandler };
@@ -121,7 +121,7 @@ honoApp.get("/", (c) => c.text("Welcome to my app!"));
 honoApp.get("/hello", (c) => c.text("Hello, world!"));
 
 // Setup the RivetKit app
-const app = setup({
+const registry = setup({
   workers: { counter },
   // IMPORTANT: Must specify the same basePath where your router is mounted
   basePath: "/my-path"
@@ -134,7 +134,7 @@ const { router: workerRouter, injectWebSocket } = createRouter(app);
 honoApp.route("/my-path", workerRouter);
 
 // Export the app type for client usage
-export type App = typeof app;
+export type Registry = typeof registry;
 
 // Create server with the combined app
 const server = serve({
@@ -173,7 +173,7 @@ honoApp.get("/", (c) => c.text("Welcome to my app!"));
 honoApp.get("/hello", (c) => c.text("Hello, world!"));
 
 // Setup the RivetKit app
-const app = setup({
+const registry = setup({
   workers: { counter },
   // IMPORTANT: Must specify the same basePath where your router is mounted
   basePath: "/my-path"
@@ -186,7 +186,7 @@ const { router: workerRouter, webSocketHandler } = createRouter(app);
 honoApp.route("/my-path", workerRouter);
 
 // Export the app type for client usage
-export type App = typeof app;
+export type Registry = typeof registry;
 
 // Create and start the server
 export default {

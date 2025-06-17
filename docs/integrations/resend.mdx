@@ -51,8 +51,8 @@ const user = worker({
   },
 });
 
-export const app = setup({ workers: { user } });
-export type App = typeof app;
+export const registry = setup({ workers: { user } });
+export type Registry = typeof registry;
 ```
 </Step>
 

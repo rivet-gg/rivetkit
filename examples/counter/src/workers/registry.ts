@@ -14,8 +14,8 @@ const counter = worker({
 	},
 });
 
-export const app = setup({
+export const registry = setup({
 	workers: { counter },
 });
 
-export type App = typeof app;
+export type Registry = typeof registry;

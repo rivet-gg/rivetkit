@@ -11,7 +11,7 @@ import type Redis from "ioredis";
 import * as crypto from "node:crypto";
 import { KEYS } from "./keys";
 import { ManagerInspector } from "rivetkit/inspector";
-import type { App } from "rivetkit";
+import type { Registry } from "rivetkit";
 
 interface Worker {
 	id: string;
@@ -24,7 +24,7 @@ interface Worker {
 
 export class RedisManagerDriver implements ManagerDriver {
 	#redis: Redis;
-	#app?: App<any>;
+	#registry?: Registry<any>;
 
 	/**
 	 * @internal
@@ -40,14 +40,14 @@ export class RedisManagerDriver implements ManagerDriver {
 			return workers;
 		},
 		getAllTypesOfWorkers: () => {
-			if (!this.#app) return [];
-			return Object.keys(this.#app.config.workers);
+			if (!this.#registry) return [];
+			return Object.keys(this.#registry.config.workers);
 		},
 	});
 
-	constructor(redis: Redis, app?: App<any>) {
+	constructor(redis: Redis, registry?: Registry<any>) {
 		this.#redis = redis;
-		this.#app = app;
+		this.#registry = registry;
 	}
 
 	async getForId({ workerId }: GetForIdInput): Promise<WorkerOutput | undefined> {
