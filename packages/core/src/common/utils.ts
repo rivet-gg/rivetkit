@@ -204,7 +204,7 @@ export function deconstructError(
 
 export function stringifyError(error: unknown): string {
 	if (error instanceof Error) {
-		if (process.env._WORKER_CORE_ERROR_STACK === "1") {
+		if (process.env._RIVETKIT_ERROR_STACK === "1") {
 			return `${error.name}: ${error.message}${error.stack ? `\n${error.stack}` : ""}`;
 		} else {
 			return `${error.name}: ${error.message}`;

@@ -5,6 +5,12 @@ import {
 } from "./worker-handler-do";
 import { ConfigSchema, type InputConfig } from "./config";
 import { assertUnreachable } from "rivetkit/utils";
+import {
+	HEADER_AUTH_DATA,
+	HEADER_CONN_PARAMS,
+	HEADER_ENCODING,
+	HEADER_EXPOSE_INTERNAL_ERROR,
+} from "rivetkit/driver-helpers";
 import type { Hono } from "hono";
 import { PartitionTopologyManager } from "rivetkit/topologies/partition";
 import { logger } from "./log";
@@ -27,6 +33,15 @@ export interface Bindings {
  * Use getCloudflareAmbientEnv unless using CF_AMBIENT_ENV.run.
  */
 export const CF_AMBIENT_ENV = new AsyncLocalStorage<Bindings>();
+
+const STANDARD_WEBSOCKET_HEADERS = [
+	"connection",
+	"upgrade",
+	"sec-websocket-key",
+	"sec-websocket-version",
+	"sec-websocket-protocol",
+	"sec-websocket-extensions",
+];
 
 export function getCloudflareAmbientEnv(): Bindings {
 	const env = CF_AMBIENT_ENV.getStore();
@@ -83,11 +98,7 @@ export function createRouter(
 			registry.config,
 			driverConfig,
 			{
-				sendRequest: async (
-					workerId,
-					meta,
-					workerRequest,
-				): Promise<Response> => {
+				sendRequest: async (workerId, workerRequest): Promise<Response> => {
 					const env = getCloudflareAmbientEnv();
 
 					logger().debug("sending request to durable object", {
@@ -104,8 +115,8 @@ export function createRouter(
 
 				openWebSocket: async (
 					workerId,
-					meta,
 					encodingKind: Encoding,
+					params: unknown,
 				): Promise<WebSocket> => {
 					const env = getCloudflareAmbientEnv();
 
@@ -115,13 +126,20 @@ export function createRouter(
 					const id = env.WORKER_DO.idFromString(workerId);
 					const stub = env.WORKER_DO.get(id);
 
-					// TODO: this doesn't call on open
-					const url = `http://worker/connect/websocket?encoding=${encodingKind}&expose-internal-error=true`;
-					const response = await stub.fetch(url, {
-						headers: {
-							Upgrade: "websocket",
-							Connection: "Upgrade",
-						},
+					const headers: Record<string, string> = {
+						Upgrade: "websocket",
+						Connection: "Upgrade",
+						[HEADER_EXPOSE_INTERNAL_ERROR]: "true",
+						[HEADER_ENCODING]: encodingKind,
+					};
+					if (params) {
+						headers[HEADER_CONN_PARAMS] = JSON.stringify(params);
+					}
+					// HACK: See packages/platforms/cloudflare-workers/src/websocket.ts
+					headers["sec-websocket-protocol"] = "rivetkit";
+
+					const response = await stub.fetch("http://worker/connect/websocket", {
+						headers,
 					});
 					const webSocket = response.webSocket;
 
@@ -136,6 +154,12 @@ export function createRouter(
 					});
 
 					webSocket.accept();
+
+					// HACK: Cloudflare does not call onopen automatically, so we need
+					// to call this on the next tick
+					setTimeout(() => {
+						webSocket.onopen?.(new Event("open"));
+					}, 100);
 
 					return webSocket;
 				},
@@ -152,7 +176,14 @@ export function createRouter(
 
 					return await stub.fetch(workerRequest);
 				},
-				proxyWebSocket: async (c, path, workerId) => {
+				proxyWebSocket: async (
+					c,
+					path,
+					workerId,
+					encoding,
+					params,
+					authData,
+				) => {
 					logger().debug("forwarding websocket to durable object", {
 						workerId,
 						path,
@@ -166,9 +197,36 @@ export function createRouter(
 						});
 					}
 
-					// Update path on URL
+					// TODO: strip headers
 					const newUrl = new URL(`http://worker${path}`);
 					const workerRequest = new Request(newUrl, c.req.raw);
+
+					// Always build fresh request to prevent forwarding unwanted headers
+					// HACK: Since we can't build a new request, we need to remove
+					// non-standard headers manually
+					const headerKeys: string[] = [];
+					workerRequest.headers.forEach((v, k) => headerKeys.push(k));
+					for (const k of headerKeys) {
+						if (!STANDARD_WEBSOCKET_HEADERS.includes(k)) {
+							workerRequest.headers.delete(k);
+						}
+					}
+
+					// Add RivetKit headers
+					workerRequest.headers.set(HEADER_EXPOSE_INTERNAL_ERROR, "true");
+					workerRequest.headers.set(HEADER_ENCODING, encoding);
+					if (params) {
+						workerRequest.headers.set(
+							HEADER_CONN_PARAMS,
+							JSON.stringify(params),
+						);
+					}
+					if (authData) {
+						workerRequest.headers.set(
+							HEADER_AUTH_DATA,
+							JSON.stringify(authData),
+						);
+					}
 
 					const id = c.env.WORKER_DO.idFromString(workerId);
 					const stub = c.env.WORKER_DO.get(id);

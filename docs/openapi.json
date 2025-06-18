@@ -117,27 +117,6 @@
     },
     "/workers/connect/websocket": {
       "get": {
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "description": "The encoding format to use for the response (json, cbor)",
-              "example": "json"
-            },
-            "required": true,
-            "name": "encoding",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "string",
-              "description": "Worker query information"
-            },
-            "required": true,
-            "name": "query",
-            "in": "query"
-          }
-        ],
         "responses": {
           "101": {
             "description": "WebSocket upgrade"

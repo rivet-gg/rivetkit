@@ -9,6 +9,7 @@ import { generateConnId, generateConnToken } from "@/worker/connection";
 import type { WorkerDriver } from "@/worker/driver";
 import { DriverConfig } from "@/driver-helpers/config";
 import { RegistryConfig } from "@/registry/config";
+import { unknown } from "zod";
 
 export interface RelayConnDriver {
 	sendMessage(message: messageToClient.ToClient): void;
@@ -27,6 +28,7 @@ export class RelayConn {
 	#driver: RelayConnDriver;
 	#workerId: string;
 	#parameters: unknown;
+	#authData: unknown;
 
 	#workerPeer?: WorkerPeer;
 
@@ -56,6 +58,7 @@ export class RelayConn {
 		driver: RelayConnDriver,
 		workerId: string,
 		parameters: unknown,
+		authData: unknown,
 	) {
 		this.#registryConfig = registryConfig;
 		this.#driverConfig = driverConfig;
@@ -65,6 +68,7 @@ export class RelayConn {
 		this.#globalState = globalState;
 		this.#workerId = workerId;
 		this.#parameters = parameters;
+		this.#authData = authData;
 	}
 
 	async start() {
@@ -108,6 +112,7 @@ export class RelayConn {
 						ci: connId,
 						ct: connToken,
 						p: this.#parameters,
+						ad: this.#authData,
 					},
 				},
 			},

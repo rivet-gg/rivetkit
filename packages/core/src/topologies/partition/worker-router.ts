@@ -27,8 +27,13 @@ import {
 	handleConnectionMessage,
 	HEADER_CONN_TOKEN,
 	HEADER_CONN_ID,
-	ALL_HEADERS,
+	ALL_PUBLIC_HEADERS,
+	HEADER_CONN_PARAMS,
+	HEADER_AUTH_DATA,
+	HEADER_ENCODING,
 } from "@/worker/router-endpoints";
+import invariant from "invariant";
+import { EncodingSchema } from "@/worker/protocol/serde";
 
 export type {
 	ConnectWebSocketOpts,
@@ -79,7 +84,10 @@ export function createWorkerRouter(
 
 			return cors({
 				...corsConfig,
-				allowHeaders: [...(registryConfig.cors?.allowHeaders ?? []), ...ALL_HEADERS],
+				allowHeaders: [
+					...(registryConfig.cors?.allowHeaders ?? []),
+					...ALL_PUBLIC_HEADERS,
+				],
 			})(c, next);
 		});
 	}
@@ -97,18 +105,30 @@ export function createWorkerRouter(
 	// Use the handlers from connectionHandlers
 	const handlers = handler.connectionHandlers;
 
-	if (upgradeWebSocket && handlers.onConnectWebSocket) {
+	if (upgradeWebSocket) {
 		router.get(
 			"/connect/websocket",
 			upgradeWebSocket(async (c) => {
 				const workerId = await handler.getWorkerId();
+				const encodingRaw = c.req.header(HEADER_ENCODING);
+				const connParamsRaw = c.req.header(HEADER_CONN_PARAMS);
+				const authDataRaw = c.req.header(HEADER_AUTH_DATA);
+
+				const encoding = EncodingSchema.parse(encodingRaw);
+				const connParams = connParamsRaw
+					? JSON.parse(connParamsRaw)
+					: undefined;
+				const authData = authDataRaw ? JSON.parse(authDataRaw) : undefined;
+
 				return handleWebSocketConnect(
 					c as HonoContext,
 					registryConfig,
-					driverConfig,
 					handlers.onConnectWebSocket!,
 					workerId,
-				)();
+					encoding,
+					connParams,
+					authData,
+				);
 			}),
 		);
 	} else {
@@ -125,12 +145,20 @@ export function createWorkerRouter(
 			throw new Error("onConnectSse handler is required");
 		}
 		const workerId = await handler.getWorkerId();
+
+		const authDataRaw = c.req.header(HEADER_AUTH_DATA);
+		let authData: unknown = undefined;
+		if (authDataRaw) {
+			authData = JSON.parse(authDataRaw);
+		}
+
 		return handleSseConnect(
 			c,
 			registryConfig,
 			driverConfig,
 			handlers.onConnectSse,
 			workerId,
+			authData,
 		);
 	});
 
@@ -140,6 +168,13 @@ export function createWorkerRouter(
 		}
 		const actionName = c.req.param("action");
 		const workerId = await handler.getWorkerId();
+
+		const authDataRaw = c.req.header(HEADER_AUTH_DATA);
+		let authData: unknown = undefined;
+		if (authDataRaw) {
+			authData = JSON.parse(authDataRaw);
+		}
+
 		return handleAction(
 			c,
 			registryConfig,
@@ -147,6 +182,7 @@ export function createWorkerRouter(
 			handlers.onAction,
 			actionName,
 			workerId,
+			authData,
 		);
 	});
 

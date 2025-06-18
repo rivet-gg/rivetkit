@@ -1,6 +1,7 @@
 import { worker } from "rivetkit";
 
 export const scheduled = worker({
+	onAuth: () => {},
 	state: {
 		lastRun: 0,
 		scheduledCount: 0,

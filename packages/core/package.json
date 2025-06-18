@@ -71,6 +71,16 @@
         "default": "./dist/driver-helpers/mod.cjs"
       }
     },
+    "./driver-helpers/websocket": {
+      "import": {
+        "types": "./dist/common/websocket.d.ts",
+        "default": "./dist/common/websocket.js"
+      },
+      "require": {
+        "types": "./dist/common/websocket.d.cts",
+        "default": "./dist/common/websocket.cjs"
+      }
+    },
     "./driver-test-suite": {
       "import": {
         "types": "./dist/driver-test-suite/mod.d.ts",
@@ -148,7 +158,7 @@
   "sideEffects": false,
   "scripts": {
     "dev": "yarn build --watch",
-    "build": "tsup src/mod.ts src/client/mod.ts src/common/log.ts src/worker/errors.ts src/topologies/coordinate/mod.ts src/topologies/partition/mod.ts src/utils.ts src/driver-helpers/mod.ts src/driver-test-suite/mod.ts src/worker/protocol/inspector/mod.ts src/test/mod.ts src/inspector/protocol/worker/mod.ts src/inspector/protocol/manager/mod.ts src/inspector/mod.ts",
+    "build": "tsup src/mod.ts src/client/mod.ts src/common/log.ts src/common/websocket.ts src/worker/errors.ts src/topologies/coordinate/mod.ts src/topologies/partition/mod.ts src/utils.ts src/driver-helpers/mod.ts src/driver-test-suite/mod.ts src/worker/protocol/inspector/mod.ts src/test/mod.ts src/inspector/protocol/worker/mod.ts src/inspector/protocol/manager/mod.ts src/inspector/mod.ts",
     "check-types": "tsc --noEmit",
     "boop": "tsc --outDir dist/test -d",
     "test": "vitest run",

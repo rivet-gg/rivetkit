@@ -1,6 +1,7 @@
 import { worker, UserError } from "rivetkit";
 
 export const errorHandlingWorker = worker({
+	onAuth: () => {},
 	state: {
 		errorLog: [] as string[],
 	},

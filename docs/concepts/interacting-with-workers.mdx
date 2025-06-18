@@ -19,7 +19,7 @@ const client = createClient<App>(/* CONNECTION ADDRESS */);
 ```
 
 ```rust Rust
-use worker_core_client::{Client, TransportKind, EncodingKind};
+use rivetkit_client::{Client, TransportKind, EncodingKind};
 
 // Create a client with connection address and configuration
 let client = Client::new(
@@ -30,7 +30,7 @@ let client = Client::new(
 ```
 
 ```python Python (Callbacks)
-from worker_core_client import AsyncClient as WorkerClient
+from rivetkit_client import AsyncClient as WorkerClient
 
 # Create a client with the connection address
 client = WorkerClient("http://localhost:6420")
@@ -60,7 +60,7 @@ await room.sendMessage("Alice", "Hello everyone!");
 ```
 
 ```rust Rust
-use worker_core_client::GetOptions;
+use rivetkit_client::GetOptions;
 use serde_json::json;
 
 // Connect to a chat room for the "general" channel
@@ -116,8 +116,8 @@ await doc.initializeDocument("My New Document");
 ```
 
 ```rust Rust
-use worker_core_client::{CreateOptions};
-use worker_core_client::client::CreateRequestMetadata;
+use rivetkit_client::{CreateOptions};
+use rivetkit_client::client::CreateRequestMetadata;
 use serde_json::json;
 
 // Create a new document worker
@@ -169,7 +169,7 @@ await doc.updateContent("Updated content");
 ```
 
 ```rust Rust
-use worker_core_client::GetWithIdOptions;
+use rivetkit_client::GetWithIdOptions;
 
 // Connect to a specific worker by its ID
 let my_worker_id = "55425f42-82f8-451f-82c1-6227c83c9372";
@@ -374,7 +374,7 @@ const chatRoom = await client.chatRoom.get({ channel: "super-secret" }, {
 
 ```rust Rust
 use serde_json::json;
-use worker_core_client::GetOptions;
+use rivetkit_client::GetOptions;
 
 let tags = vec![
     ("channel".to_string(), "super-secret".to_string()),
@@ -471,7 +471,7 @@ const client = createClient<App>(
 ```
 
 ```rust Rust
-use worker_core_client::{Client, TransportKind, EncodingKind};
+use rivetkit_client::{Client, TransportKind, EncodingKind};
 
 // Create client with specific options
 let client = Client::new(
@@ -484,7 +484,7 @@ let client = Client::new(
 ```
 
 ```python Python (Callbacks)
-from worker_core_client import AsyncClient as WorkerClient
+from rivetkit_client import AsyncClient as WorkerClient
 
 # Example with all client options
 client = WorkerClient(

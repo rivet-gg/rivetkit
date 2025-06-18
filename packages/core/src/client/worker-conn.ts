@@ -23,6 +23,7 @@ import {
 	type WebSocketMessage as ConnMessage,
 	messageLength,
 	serializeWithEncoding,
+	WebSocketMessage,
 } from "./utils";
 import {
 	HEADER_WORKER_ID,
@@ -34,6 +35,7 @@ import {
 } from "@/worker/router-endpoints";
 import type { EventSource } from "eventsource";
 import { WorkerDefinitionActions } from "./worker-common";
+import type { WebSocket, CloseEvent, ErrorEvent } from "ws";
 
 interface ActionInFlight {
 	name: string;
@@ -265,13 +267,13 @@ enc
 			logger().debug("websocket open");
 		};
 		ws.onmessage = async (ev) => {
-			this.#handleOnMessage(ev);
+			this.#handleOnMessage(ev.data);
 		};
 		ws.onclose = (ev) => {
 			this.#handleOnClose(ev);
 		};
 		ws.onerror = (ev) => {
-			this.#handleOnError(ev);
+			this.#handleOnError();
 		};
 	}
 
@@ -288,7 +290,7 @@ enc
 			// #handleOnOpen is called on "i" event
 		};
 		eventSource.onmessage = (ev) => {
-			this.#handleOnMessage(ev);
+			this.#handleOnMessage(ev.data);
 		};
 		eventSource.onerror = (ev) => {
 			if (eventSource.readyState === eventSource.CLOSED) {
@@ -296,7 +298,7 @@ enc
 				this.#handleOnClose(ev);
 			} else {
 				// Log error since event source is still open
-				this.#handleOnError(ev);
+				this.#handleOnError();
 			}
 		};
 	}
@@ -330,14 +332,16 @@ enc
 	}
 
 	/** Called by the onmessage event from drivers. */
-	async #handleOnMessage(event: MessageEvent<any>) {
+	async #handleOnMessage(data: any) {
 		logger().trace("received message", {
-			dataType: typeof event.data,
-			isBlob: event.data instanceof Blob,
-			isArrayBuffer: event.data instanceof ArrayBuffer,
+			dataType: typeof data,
+			isBlob: data instanceof Blob,
+			isArrayBuffer: data instanceof ArrayBuffer,
 		});
 
-		const response = (await this.#parse(event.data)) as wsToClient.ToClient;
+		const response = (await this.#parse(
+			data as ConnMessage,
+		)) as wsToClient.ToClient;
 		logger().trace("parsed message", {
 			response: JSON.stringify(response).substring(0, 100) + "...",
 		});
@@ -459,11 +463,11 @@ enc
 	}
 
 	/** Called by the onerror event from drivers. */
-	#handleOnError(event: Event) {
+	#handleOnError() {
 		if (this.#disposed) return;
 
 		// More detailed information will be logged in onclose
-		logger().warn("socket error", { event });
+		logger().warn("socket error");
 	}
 
 	#takeActionInFlight(id: number): ActionInFlight {

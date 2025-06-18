@@ -1,6 +1,7 @@
 import { worker } from "rivetkit";
 
 export const counter = worker({
+	onAuth: () => {},
 	state: { count: 0 },
 	actions: {
 		increment: (c, x: number) => {

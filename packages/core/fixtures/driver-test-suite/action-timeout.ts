@@ -2,6 +2,7 @@ import { worker } from "rivetkit";
 
 // Short timeout worker
 export const shortTimeoutWorker = worker({
+	onAuth: () => {},
 	state: { value: 0 },
 	options: {
 		action: {
@@ -22,6 +23,7 @@ export const shortTimeoutWorker = worker({
 
 // Long timeout worker
 export const longTimeoutWorker = worker({
+	onAuth: () => {},
 	state: { value: 0 },
 	options: {
 		action: {
@@ -39,6 +41,7 @@ export const longTimeoutWorker = worker({
 
 // Default timeout worker
 export const defaultTimeoutWorker = worker({
+	onAuth: () => {},
 	state: { value: 0 },
 	actions: {
 		normalAction: async (c) => {
@@ -50,6 +53,7 @@ export const defaultTimeoutWorker = worker({
 
 // Sync worker (timeout shouldn't apply)
 export const syncTimeoutWorker = worker({
+	onAuth: () => {},
 	state: { value: 0 },
 	options: {
 		action: {

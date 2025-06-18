@@ -1,6 +1,6 @@
-import { type HonoRequest, type Context as HonoContext } from "hono";
+import type { HonoRequest, Context as HonoContext } from "hono";
 import { type SSEStreamingApi, streamSSE } from "hono/streaming";
-import { type WSContext } from "hono/ws";
+import type { WSContext } from "hono/ws";
 import * as errors from "./errors";
 import { logger } from "./log";
 import {
@@ -8,23 +8,22 @@ import {
 	EncodingSchema,
 	serialize,
 	deserialize,
-	CachedSerializer,
 } from "@/worker/protocol/serde";
 import { parseMessage } from "@/worker/protocol/message/mod";
 import * as protoHttpAction from "@/worker/protocol/http/action";
 import type * as messageToServer from "@/worker/protocol/message/to-server";
-import type { InputData, OutputData } from "@/worker/protocol/serde";
+import type { InputData } from "@/worker/protocol/serde";
 import { assertUnreachable } from "./utils";
 import { deconstructError, stringifyError } from "@/common/utils";
 import type { RegistryConfig } from "@/registry/config";
 import type { DriverConfig } from "@/driver-helpers/config";
-import invariant from "invariant";
 
 export interface ConnectWebSocketOpts {
 	req?: HonoRequest;
 	encoding: Encoding;
-	params: unknown;
 	workerId: string;
+	params: unknown;
+	authData: unknown;
 }
 
 export interface ConnectWebSocketOutput {
@@ -38,6 +37,7 @@ export interface ConnectSseOpts {
 	encoding: Encoding;
 	params: unknown;
 	workerId: string;
+	authData: unknown;
 }
 
 export interface ConnectSseOutput {
@@ -51,6 +51,7 @@ export interface ActionOpts {
 	actionName: string;
 	actionArgs: unknown[];
 	workerId: string;
+	authData: unknown;
 }
 
 export interface ActionOutput {
@@ -83,166 +84,129 @@ export interface ConnectionHandlers {
 export function handleWebSocketConnect(
 	context: HonoContext,
 	registryConfig: RegistryConfig,
-	driverConfig: DriverConfig,
 	handler: (opts: ConnectWebSocketOpts) => Promise<ConnectWebSocketOutput>,
 	workerId: string,
+	encoding: Encoding,
+	params: unknown,
+	authData: unknown,
 ) {
-	return async () => {
-		const encoding = getRequestEncoding(context.req, true);
-		const exposeInternalError = getRequestExposeInternalError(
-			context.req,
-			false,
-		);
+	const exposeInternalError = getRequestExposeInternalError(context.req);
 
-		let sharedWs: WSContext | undefined = undefined;
+	// Setup promise for the init message since all other behavior depends on this
+	const {
+		promise: wsHandlerPromise,
+		resolve: wsHandlerResolve,
+		reject: wsHandlerReject,
+	} = Promise.withResolvers<ConnectWebSocketOutput>();
 
-		// Setup promise for the init message since all other behavior depends on this
-		const {
-			promise: onInitPromise,
-			resolve: onInitResolve,
-			reject: onInitReject,
-		} = Promise.withResolvers<ConnectWebSocketOutput>();
+	return {
+		onOpen: async (_evt: any, ws: WSContext) => {
+			logger().debug("websocket open");
 
-		let didTimeOut = false;
-		let didInit = false;
+			try {
+				// Create connection handler
+				const wsHandler = await handler({
+					req: context.req,
+					encoding,
+					params,
+					workerId,
+					authData,
+				});
 
-		// Add timeout waiting for init
-		const initTimeout = setTimeout(() => {
-			logger().warn("timed out waiting for init");
+				// Notify socket open
+				// TODO: Add timeout to this
+				await wsHandler.onOpen(ws);
 
-			sharedWs?.close(1001, "timed out waiting for init message");
-			didTimeOut = true;
-			onInitReject("init timed out");
-		}, registryConfig.webSocketInitTimeout);
+				// Unblock other uses of WS handler
+				wsHandlerResolve(wsHandler);
+			} catch (error) {
+				wsHandlerReject(error);
 
-		return {
-			onOpen: async (_evt: any, ws: WSContext) => {
-				sharedWs = ws;
+				const { code } = deconstructError(
+					error,
+					logger(),
+					{
+						wsEvent: "message",
+					},
+					exposeInternalError,
+				);
+				ws.close(1011, code);
+			}
+		},
+		onMessage: async (evt: { data: any }, ws: WSContext) => {
+			try {
+				const wsHandler = await wsHandlerPromise;
 
-				logger().debug("websocket open");
+				const value = evt.data.valueOf() as InputData;
+				const message = await parseMessage(value, {
+					encoding: encoding,
+					maxIncomingMessageSize: registryConfig.maxIncomingMessageSize,
+				});
 
-				// Close WS immediately if init timed out. This indicates a long delay at the protocol level in sending the init message.
-				if (didTimeOut) ws.close(1001, "timed out waiting for init message");
+				await wsHandler.onMessage(message);
+			} catch (error) {
+				const { code } = deconstructError(
+					error,
+					logger(),
+					{
+						wsEvent: "message",
+					},
+					exposeInternalError,
+				);
+				ws.close(1011, code);
+			}
+		},
+		onClose: async (
+			event: {
+				wasClean: boolean;
+				code: number;
+				reason: string;
 			},
-			onMessage: async (evt: { data: any }, ws: WSContext) => {
-				try {
-					const value = evt.data.valueOf() as InputData;
-					const message = await parseMessage(value, {
-						encoding: encoding,
-						maxIncomingMessageSize: registryConfig.maxIncomingMessageSize,
-					});
+			ws: WSContext,
+		) => {
+			if (event.wasClean) {
+				logger().info("websocket closed", {
+					code: event.code,
+					reason: event.reason,
+					wasClean: event.wasClean,
+				});
+			} else {
+				logger().warn("websocket closed", {
+					code: event.code,
+					reason: event.reason,
+					wasClean: event.wasClean,
+				});
+			}
 
-					if ("i" in message.b) {
-						// Handle init message
-						//
-						// Parameters must go over the init message instead of a query parameter so it receives full E2EE
+			// HACK: Close socket in order to fix bug with Cloudflare leaving WS in closing state
+			// https://github.com/cloudflare/workerd/issues/2569
+			ws.close(1000, "hack_force_close");
 
-						logger().debug("received init ws message");
-
-						invariant(
-							!didInit,
-							"should not have already received init message",
-						);
-						didInit = true;
-						clearTimeout(initTimeout);
-
-						try {
-							// Create connection handler
-							const wsHandler = await handler({
-								req: context.req,
-								encoding,
-								params: message.b.i.p,
-								workerId,
-							});
-
-							// Notify socket open
-							// TODO: Add timeout to this
-							await wsHandler.onOpen(ws);
-
-							// Allow all other events to proceed
-							onInitResolve(wsHandler);
-						} catch (error) {
-							deconstructError(
-								error,
-								logger(),
-								{ wsEvent: "open" },
-								exposeInternalError,
-							);
-							onInitReject(error);
-							ws.close(1011, "internal error");
-						}
-					} else {
-						// Handle all other messages
-
-						logger().debug("received regular ws message");
-
-						const wsHandler = await onInitPromise;
-						await wsHandler.onMessage(message);
-					}
-				} catch (error) {
-					const { code } = deconstructError(
-						error,
-						logger(),
-						{
-							wsEvent: "message",
-						},
-						exposeInternalError,
-					);
-					ws.close(1011, code);
-				}
-			},
-			onClose: async (
-				event: {
-					wasClean: boolean;
-					code: number;
-					reason: string;
-				},
-				ws: WSContext,
-			) => {
-				if (event.wasClean) {
-					logger().info("websocket closed", {
-						code: event.code,
-						reason: event.reason,
-						wasClean: event.wasClean,
-					});
-				} else {
-					logger().warn("websocket closed", {
-						code: event.code,
-						reason: event.reason,
-						wasClean: event.wasClean,
-					});
-				}
-
-				// HACK: Close socket in order to fix bug with Cloudflare leaving WS in closing state
-				// https://github.com/cloudflare/workerd/issues/2569
-				ws.close(1000, "hack_force_close");
-
-				try {
-					const wsHandler = await onInitPromise;
-					await wsHandler.onClose();
-				} catch (error) {
-					deconstructError(
-						error,
-						logger(),
-						{ wsEvent: "close" },
-						exposeInternalError,
-					);
-				}
-			},
-			onError: async (_error: unknown) => {
-				try {
-					// Workers don't need to know about this, since it's abstracted away
-					logger().warn("websocket error");
-				} catch (error) {
-					deconstructError(
-						error,
-						logger(),
-						{ wsEvent: "error" },
-						exposeInternalError,
-					);
-				}
-			},
-		};
+			try {
+				const wsHandler = await wsHandlerPromise;
+				await wsHandler.onClose();
+			} catch (error) {
+				deconstructError(
+					error,
+					logger(),
+					{ wsEvent: "close" },
+					exposeInternalError,
+				);
+			}
+		},
+		onError: async (_error: unknown) => {
+			try {
+				// Workers don't need to know about this, since it's abstracted away
+				logger().warn("websocket error");
+			} catch (error) {
+				deconstructError(
+					error,
+					logger(),
+					{ wsEvent: "error" },
+					exposeInternalError,
+				);
+			}
+		},
 	};
 }
 
@@ -255,8 +219,9 @@ export async function handleSseConnect(
 	driverConfig: DriverConfig,
 	handler: (opts: ConnectSseOpts) => Promise<ConnectSseOutput>,
 	workerId: string,
+	authData: unknown,
 ) {
-	const encoding = getRequestEncoding(c.req, false);
+	const encoding = getRequestEncoding(c.req);
 	const parameters = getRequestConnParams(c.req, registryConfig, driverConfig);
 
 	const sseHandler = await handler({
@@ -264,6 +229,7 @@ export async function handleSseConnect(
 		encoding,
 		params: parameters,
 		workerId,
+		authData,
 	});
 
 	return streamSSE(c, async (stream) => {
@@ -312,8 +278,9 @@ export async function handleAction(
 	handler: (opts: ActionOpts) => Promise<ActionOutput>,
 	actionName: string,
 	workerId: string,
+	authData: unknown,
 ) {
-	const encoding = getRequestEncoding(c.req, false);
+	const encoding = getRequestEncoding(c.req);
 	const parameters = getRequestConnParams(c.req, registryConfig, driverConfig);
 
 	logger().debug("handling action", { actionName, encoding });
@@ -365,6 +332,7 @@ export async function handleAction(
 		actionName: actionName,
 		actionArgs: actionArgs,
 		workerId,
+		authData,
 	});
 
 	// Encode the response
@@ -396,7 +364,7 @@ export async function handleConnectionMessage(
 	connToken: string,
 	workerId: string,
 ) {
-	const encoding = getRequestEncoding(c.req, false);
+	const encoding = getRequestEncoding(c.req);
 
 	// Validate incoming request
 	let message: messageToServer.ToServer;
@@ -435,15 +403,10 @@ export async function handleConnectionMessage(
 }
 
 // Helper to get the connection encoding from a request
-export function getRequestEncoding(
-	req: HonoRequest,
-	useQuery: boolean,
-): Encoding {
-	const encodingParam = useQuery
-		? req.query("encoding")
-		: req.header(HEADER_ENCODING);
+export function getRequestEncoding(req: HonoRequest): Encoding {
+	const encodingParam = req.header(HEADER_ENCODING);
 	if (!encodingParam) {
-		return "json";
+		throw new errors.InvalidEncoding("undefined");
 	}
 
 	const result = EncodingSchema.safeParse(encodingParam);
@@ -454,13 +417,8 @@ export function getRequestEncoding(
 	return result.data;
 }
 
-export function getRequestExposeInternalError(
-	req: HonoRequest,
-	useQuery: boolean,
-): boolean {
-	const param = useQuery
-		? req.query("expose-internal-error")
-		: req.header(HEADER_EXPOSE_INTERNAL_ERROR);
+export function getRequestExposeInternalError(req: HonoRequest): boolean {
+	const param = req.header(HEADER_EXPOSE_INTERNAL_ERROR);
 	if (!param) {
 		return false;
 	}
@@ -468,11 +426,9 @@ export function getRequestExposeInternalError(
 	return param === "true";
 }
 
-export function getRequestQuery(c: HonoContext, useQuery: boolean): unknown {
+export function getRequestQuery(c: HonoContext): unknown {
 	// Get query parameters for worker lookup
-	const queryParam = useQuery
-		? c.req.query("query")
-		: c.req.header(HEADER_WORKER_QUERY);
+	const queryParam = c.req.header(HEADER_WORKER_QUERY);
 	if (!queryParam) {
 		logger().error("missing query parameter");
 		throw new errors.InvalidRequest("missing query");
@@ -491,10 +447,15 @@ export function getRequestQuery(c: HonoContext, useQuery: boolean): unknown {
 export const HEADER_WORKER_QUERY = "X-AC-Query";
 
 export const HEADER_ENCODING = "X-AC-Encoding";
+
+// Internal header
 export const HEADER_EXPOSE_INTERNAL_ERROR = "X-AC-Expose-Internal-Error";
 
 // IMPORTANT: Params must be in headers or in an E2EE part of the request (i.e. NOT the URL or query string) in order to ensure that tokens can be securely passed in params.
 export const HEADER_CONN_PARAMS = "X-AC-Conn-Params";
+
+// Internal header
+export const HEADER_AUTH_DATA = "X-AC-Auth-Data";
 
 export const HEADER_WORKER_ID = "X-AC-Worker";
 
@@ -502,7 +463,12 @@ export const HEADER_CONN_ID = "X-AC-Conn";
 
 export const HEADER_CONN_TOKEN = "X-AC-Conn-Token";
 
-export const ALL_HEADERS = [
+/**
+ * Headers that publics can send from public clients.
+ *
+ * Used for CORS.
+ **/
+export const ALL_PUBLIC_HEADERS = [
 	HEADER_WORKER_QUERY,
 	HEADER_ENCODING,
 	HEADER_CONN_PARAMS,

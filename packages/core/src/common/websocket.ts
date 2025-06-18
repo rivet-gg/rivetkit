@@ -1,4 +1,5 @@
 import { logger } from "@/client/log";
+import type { WebSocket } from "ws";
 
 // Global singleton promise that will be reused for subsequent calls
 let webSocketPromise: Promise<typeof WebSocket> | null = null;
@@ -13,9 +14,9 @@ export async function importWebSocket(): Promise<typeof WebSocket> {
 	webSocketPromise = (async () => {
 		let _WebSocket: typeof WebSocket;
 
-		if (typeof WebSocket !== "undefined") {
+		if (typeof global.WebSocket !== "undefined") {
 			// Browser environment
-			_WebSocket = WebSocket;
+			_WebSocket = global.WebSocket as unknown as typeof WebSocket;
 			logger().debug("using native websocket");
 		} else {
 			// Node.js environment

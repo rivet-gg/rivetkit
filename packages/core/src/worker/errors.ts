@@ -24,14 +24,6 @@ export class WorkerError extends Error {
 	public static isWorkerError(
 		error: unknown,
 	): error is WorkerError | DeconstructedError {
-		console.trace(
-			"checking error",
-			error,
-			typeof error,
-			(error as WorkerError | DeconstructedError).__type,
-			typeof error === "object" &&
-				(error as WorkerError | DeconstructedError).__type === "WorkerError",
-		);
 		return (
 			typeof error === "object" &&
 			(error as WorkerError | DeconstructedError).__type === "WorkerError"
@@ -294,5 +286,12 @@ export class InvalidActionRequest extends WorkerError {
 export class InvalidParams extends WorkerError {
 	constructor(message: string) {
 		super("invalid_params", message, { public: true });
+	}
+}
+
+export class Forbidden extends WorkerError {
+	constructor(message?: string) {
+		super("forbidden", message ?? "Access denied", { public: true });
+		this.statusCode = 403;
 	}
 }

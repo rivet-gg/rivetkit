@@ -49,14 +49,10 @@ export class CloudflareWorkersManagerDriver implements ManagerDriver {
 			return undefined;
 		}
 
-		// Generate durable ID from workerId for meta
-		const durableId = env.WORKER_DO.idFromString(workerId);
-
 		return {
 			workerId,
 			name: workerData.name,
 			key: workerData.key,
-			meta: durableId,
 		};
 	}
 
@@ -74,8 +70,7 @@ export class CloudflareWorkersManagerDriver implements ManagerDriver {
 		// Generate deterministic ID from the name and key
 		// This is aligned with how createWorker generates IDs
 		const nameKeyString = serializeNameAndKey(name, key);
-		const durableId = env.WORKER_DO.idFromName(nameKeyString);
-		const workerId = durableId.toString();
+		const workerId = env.WORKER_DO.idFromName(nameKeyString).toString();
 
 		// Check if the worker metadata exists
 		const workerData = await env.WORKER_KV.get(KEYS.WORKER.metadata(workerId), {
@@ -128,11 +123,11 @@ export class CloudflareWorkersManagerDriver implements ManagerDriver {
 		// Create a deterministic ID from the worker name and key
 		// This ensures that workers with the same name and key will have the same ID
 		const nameKeyString = serializeNameAndKey(name, key);
-		const durableId = env.WORKER_DO.idFromName(nameKeyString);
-		const workerId = durableId.toString();
+		const doId = env.WORKER_DO.idFromName(nameKeyString);
+		const workerId = doId.toString();
 
 		// Init worker
-		const worker = env.WORKER_DO.get(durableId);
+		const worker = env.WORKER_DO.get(doId);
 		await worker.initialize({
 			name,
 			key,
@@ -153,7 +148,6 @@ export class CloudflareWorkersManagerDriver implements ManagerDriver {
 			workerId,
 			name,
 			key,
-			meta: durableId,
 		};
 	}
 
@@ -172,14 +166,10 @@ export class CloudflareWorkersManagerDriver implements ManagerDriver {
 			return undefined;
 		}
 
-		// Generate durable ID for meta
-		const durableId = env.WORKER_DO.idFromString(workerId);
-
 		return {
 			workerId,
 			name: workerData.name,
 			key: workerData.key,
-			meta: durableId,
 		};
 	}
 }

@@ -8,6 +8,7 @@ export type ConnState = {
 };
 
 export const connStateWorker = worker({
+	onAuth: () => {},
 	state: {
 		sharedCounter: 0,
 		disconnectionCount: 0,

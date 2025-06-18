@@ -7,6 +7,7 @@ export interface State {
 
 // Test worker that can capture input during creation
 export const inputWorker = worker({
+	onAuth: () => {},
 	createState: (c, { input }): State => {
 		return {
 			initialInput: input,

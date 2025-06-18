@@ -21,6 +21,7 @@ import { runWorkerVarsTests } from "./tests/worker-vars";
 import { runWorkerConnStateTests } from "./tests/worker-conn-state";
 import { runWorkerMetadataTests } from "./tests/worker-metadata";
 import { runWorkerErrorHandlingTests } from "./tests/worker-error-handling";
+import { runWorkerAuthTests } from "./tests/worker-auth";
 
 export interface DriverTestConfig {
 	/** Deploys an registry and returns the connection endpoint. */
@@ -90,6 +91,8 @@ export function runDriverTests(
 			runWorkerMetadataTests(driverTestConfig);
 
 			runWorkerErrorHandlingTests(driverTestConfig);
+
+			runWorkerAuthTests(driverTestConfig);
 		});
 	}
 }

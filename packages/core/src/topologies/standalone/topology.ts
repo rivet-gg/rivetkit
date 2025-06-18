@@ -157,6 +157,7 @@ export class StandaloneTopology {
 							connState,
 							CONN_DRIVER_GENERIC_WEBSOCKET,
 							{ encoding: opts.encoding } satisfies GenericWebSocketDriverState,
+							opts.authData,
 						);
 					},
 					onMessage: async (message) => {
@@ -199,6 +200,7 @@ export class StandaloneTopology {
 							connState,
 							CONN_DRIVER_GENERIC_SSE,
 							{ encoding: opts.encoding } satisfies GenericSseDriverState,
+							opts.authData,
 						);
 					},
 					onClose: async () => {
@@ -224,6 +226,7 @@ export class StandaloneTopology {
 						connState,
 						CONN_DRIVER_GENERIC_HTTP,
 						{} satisfies GenericHttpDriverState,
+						opts.authData,
 					);
 
 					// Call action

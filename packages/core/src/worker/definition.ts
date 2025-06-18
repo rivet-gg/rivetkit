@@ -31,6 +31,10 @@ export class WorkerDefinition<S, CP, CS, V, R extends Actions<S, CP, CS, V>> {
 		this.#config = config;
 	}
 
+	get config(): WorkerConfig<S, CP, CS, V> {
+		return this.#config;
+	}
+
 	instantiate(): WorkerInstance<S, CP, CS, V> {
 		return new WorkerInstance(this.#config);
 	}

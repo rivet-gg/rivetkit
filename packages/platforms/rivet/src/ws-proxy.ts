@@ -1,7 +1,8 @@
 import { WSContext } from "hono/ws";
-import { Context } from "hono";
 import { logger } from "./log";
 import invariant from "invariant";
+import type { WebSocket, CloseEvent } from "ws";
+import { importWebSocket } from "rivetkit/driver-helpers/websocket";
 
 /**
  * Creates a WebSocket proxy to forward connections to a target endpoint
@@ -10,14 +11,19 @@ import invariant from "invariant";
  * @param targetUrl Target WebSocket URL to proxy to
  * @returns Response with upgraded WebSocket
  */
-export function createWebSocketProxy(targetUrl: string) {
+export async function createWebSocketProxy(
+	targetUrl: string,
+	headers: Record<string, string>,
+) {
+	const WebSocket = await importWebSocket();
+
 	let targetWs: WebSocket | undefined = undefined;
 	const messageQueue: any[] = [];
 
 	return {
 		onOpen: (_evt: any, wsContext: WSContext) => {
 			// Create target WebSocket connection
-			targetWs = new WebSocket(targetUrl);
+			targetWs = new WebSocket(targetUrl, { headers });
 
 			// Set up target websocket handlers
 			targetWs.onopen = () => {
@@ -34,7 +40,7 @@ export function createWebSocketProxy(targetUrl: string) {
 			};
 
 			targetWs.onmessage = (event) => {
-				wsContext.send(event.data);
+				wsContext.send(event.data as any);
 			};
 
 			targetWs.onclose = (event) => {

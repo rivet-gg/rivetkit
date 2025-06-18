@@ -10,6 +10,14 @@ import invariant from "invariant";
 import { ConfigSchema, InputConfig } from "./config";
 import type { Registry } from "rivetkit";
 import { createWebSocketProxy } from "./ws-proxy";
+import { flushCache, getWorkerMeta } from "./worker-meta";
+import {
+	HEADER_AUTH_DATA,
+	HEADER_CONN_PARAMS,
+	HEADER_ENCODING,
+	HEADER_EXPOSE_INTERNAL_ERROR,
+} from "rivetkit/driver-helpers";
+import { importWebSocket } from "rivetkit/driver-helpers/websocket";
 
 export async function startManager(
 	registry: Registry<any>,
@@ -96,12 +104,12 @@ export async function startManager(
 		registry.config,
 		driverConfig,
 		{
-			sendRequest: async (workerId, meta, workerRequest) => {
-				invariant(meta, "meta not provided");
-				const workerMeta = meta as GetWorkerMeta;
+			sendRequest: async (workerId, workerRequest) => {
+				const meta = await getWorkerMeta(clientConfig, workerId);
+				invariant(meta, "worker should exist");
 
 				const parsedRequestUrl = new URL(workerRequest.url);
-				const workerUrl = `${workerMeta.endpoint}${parsedRequestUrl.pathname}${parsedRequestUrl.search}`;
+				const workerUrl = `${meta.endpoint}${parsedRequestUrl.pathname}${parsedRequestUrl.search}`;
 
 				logger().debug("proxying request to rivet worker", {
 					method: workerRequest.method,
@@ -111,25 +119,35 @@ export async function startManager(
 				const proxyRequest = new Request(workerUrl, workerRequest);
 				return await fetch(proxyRequest);
 			},
-			openWebSocket: async (workerId, meta, encodingKind) => {
-				invariant(meta, "meta not provided");
-				const workerMeta = meta as GetWorkerMeta;
+			openWebSocket: async (workerId, encodingKind, params: unknown) => {
+				const WebSocket = await importWebSocket();
 
-				// Create WebSocket URL with encoding parameter
-				const wsEndpoint = workerMeta.endpoint.replace(/^http/, "ws");
-				const url = `${wsEndpoint}/connect/websocket?encoding=${encodingKind}&expose-internal-error=true`;
+				const meta = await getWorkerMeta(clientConfig, workerId);
+				invariant(meta, "worker should exist");
+
+				const wsEndpoint = meta.endpoint.replace(/^http/, "ws");
+				const url = `${wsEndpoint}/connect/websocket`;
+
+				const headers: Record<string, string> = {
+					Upgrade: "websocket",
+					Connection: "Upgrade",
+					[HEADER_EXPOSE_INTERNAL_ERROR]: "true",
+					[HEADER_ENCODING]: encodingKind,
+				};
+				if (params) {
+					headers[HEADER_CONN_PARAMS] = JSON.stringify(params);
+				}
 
 				logger().debug("opening websocket to worker", {
 					workerId,
 					url,
 				});
 
-				// Open WebSocket connection
-				return new WebSocket(url);
+				return new WebSocket(url, { headers });
 			},
-			proxyRequest: async (c, workerRequest, _workerId, metaRaw) => {
-				invariant(metaRaw, "meta not provided");
-				const meta = metaRaw as GetWorkerMeta;
+			proxyRequest: async (c, workerRequest, workerId) => {
+				const meta = await getWorkerMeta(clientConfig, workerId);
+				invariant(meta, "worker should exist");
 
 				const parsedRequestUrl = new URL(workerRequest.url);
 				const workerUrl = `${meta.endpoint}${parsedRequestUrl.pathname}${parsedRequestUrl.search}`;
@@ -142,9 +160,17 @@ export async function startManager(
 				const proxyRequest = new Request(workerUrl, workerRequest);
 				return await proxy(proxyRequest);
 			},
-			proxyWebSocket: async (c, path, _workerId, metaRaw, upgradeWebSocket) => {
-				invariant(metaRaw, "meta not provided");
-				const meta = metaRaw as GetWorkerMeta;
+			proxyWebSocket: async (
+				c,
+				path,
+				workerId,
+				encoding,
+				connParmas,
+				authData,
+				upgradeWebSocket,
+			) => {
+				const meta = await getWorkerMeta(clientConfig, workerId);
+				invariant(meta, "worker should exist");
 
 				const workerUrl = `${meta.endpoint}${path}`;
 
@@ -152,17 +178,32 @@ export async function startManager(
 					url: workerUrl,
 				});
 
-				const handlers = createWebSocketProxy(workerUrl);
+				// Build headers
+				const headers: Record<string, string> = {
+					[HEADER_EXPOSE_INTERNAL_ERROR]: "true",
+					[HEADER_ENCODING]: encoding,
+				};
+				if (connParmas) {
+					headers[HEADER_CONN_PARAMS] = JSON.stringify(connParmas);
+				}
+				if (authData) {
+					headers[HEADER_AUTH_DATA] = JSON.stringify(authData);
+				}
+
+				const handlers = await createWebSocketProxy(workerUrl, headers);
 
 				// upgradeWebSocket is middleware, so we need to pass fake handlers
 				invariant(upgradeWebSocket, "missing upgradeWebSocket");
-				return upgradeWebSocket((c) => createWebSocketProxy(workerUrl))(
-					c,
-					async () => {},
-				);
+				return upgradeWebSocket((c) => handlers)(c, async () => {});
 			},
 		},
 	);
+
+	// HACK: Expose endpoint for tests to flush cache
+	managerTopology.router.post("/.test/rivet/flush-cache", (c) => {
+		flushCache();
+		return c.text("ok");
+	});
 
 	// Start server with ambient env wrapper
 	logger().info("server running", { port });
@@ -174,37 +215,3 @@ export async function startManager(
 	if (!injectWebSocket) throw new Error("injectWebSocket not defined");
 	injectWebSocket(server);
 }
-
-// import { Hono } from "hono";
-// import { serve } from "@hono/node-server";
-// import { upgradeWebSocket } from "hono/cloudflare-workers";
-// import { logger as honoLogger } from "hono/logger";
-//
-// export async function startManager(
-// 	registry: Registry<any>,
-// 	inputConfig?: InputConfig,
-// ): Promise<void> {
-// 	const port = parseInt(process.env.PORT_HTTP!);
-//
-// 	const router = new Hono();
-// 	router.use(honoLogger());
-//
-// 	const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({
-// 		app: router,
-// 	});
-//
-// 	router.get("/", (c) => {
-// 		return c.text("Hello Hono!");
-// 	});
-//
-// 	console.log(`Server is running on port ${port}`);
-//
-// 	const server = serve({
-// 		fetch: router.fetch,
-// 		hostname: "0.0.0.0",
-// 		port,
-// 	});
-// 	injectWebSocket(server);
-//
-// 	console.log(`WS injected`);
-// }

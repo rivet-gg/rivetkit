@@ -10,6 +10,7 @@ import { z } from "zod";
 // (b) it makes the type definitions incredibly difficult to read as opposed to vanilla TypeScript.
 export const WorkerConfigSchema = z
 	.object({
+		onAuth: z.function().optional(),
 		onCreate: z.function().optional(),
 		onStart: z.function().optional(),
 		onStateChange: z.function().optional(),
@@ -95,6 +96,8 @@ export interface OnConnectOptions<CP> {
 // Creates state config
 //
 // This must have only one or the other or else S will not be able to be inferred
+//
+// Data returned from this handler will be available on `c.state`.
 type CreateState<S, CP, CS, V> =
 	| { state: S }
 	| {
@@ -108,6 +111,8 @@ type CreateState<S, CP, CS, V> =
 // Creates connection state config
 //
 // This must have only one or the other or else S will not be able to be inferred
+//
+// Data returned from this handler will be available on `c.conn.state`.
 type CreateConnState<S, CP, CS, V> =
 	| { connState: CS }
 	| {
@@ -151,7 +156,48 @@ export interface Actions<S, CP, CS, V> {
 //	CreateState<S, CP, CS, V> &
 //	CreateConnState<S, CP, CS, V>;
 
+/**
+ * @experimental
+ */
+export type AuthIntent = "get" | "create" | "connect" | "action" | "message";
+
+interface OnAuthOptions<CP> {
+	req: Request;
+	/**
+	 * @experimental
+	 */
+	intents: Set<AuthIntent>;
+	params: CP;
+}
+
 interface BaseWorkerConfig<S, CP, CS, V, R extends Actions<S, CP, CS, V>> {
+	/**
+	 * Called on the HTTP server before clients can interact with the worker.
+	 *
+	 * Only called for public endpoints. Calls to workers from within the backend
+	 * do not trigger this handler.
+	 *
+	 * Data returned from this handler will be available on `c.conn.auth`.
+	 *
+	 * This function is required for any public HTTP endpoint access. Use this hook
+	 * to validate client credentials and return authentication data that will be
+	 * available on connections. This runs on the HTTP server (not the worker)
+	 * in order to reduce load on the worker & prevent denial of server attacks
+	 * against individual workers.
+	 *
+	 * If you need access to worker state for authentication, use onBeforeConnect
+	 * with an empty onAuth function instead.
+	 *
+	 * You can also provide your own authentication middleware on your router if you
+	 * choose, then use onAuth to pass the authentication data (e.g. user ID) to the
+	 * worker itself.
+	 *
+	 * @param opts Authentication options including request and intent
+	 * @returns Authentication data to attach to connections (must be serializable)
+	 * @throws Throw an error to deny access to the worker
+	 */
+	onAuth?: (opts: OnAuthOptions<CP>) => unknown | Promise<unknown>;
+
 	/**
 	 * Called when the worker is first initialized.
 	 *
@@ -186,8 +232,18 @@ interface BaseWorkerConfig<S, CP, CS, V, R extends Actions<S, CP, CS, V>> {
 	/**
 	 * Called before a client connects to the worker.
 	 *
+	 * Unlike onAuth, this handler is still called for both internal and
+	 * public clients.
+	 *
 	 * Use this hook to determine if a connection should be accepted
-	 * and to initialize connection-specific state.
+	 * and to initialize connection-specific state. Unlike onAuth, this runs
+	 * on the worker and has access to worker state, but uses slightly
+	 * more resources on the worker rather than authenticating with onAuth.
+	 *
+	 * For authentication without worker state access, prefer onAuth.
+	 *
+	 * For authentication with worker state, use onBeforeConnect with an empty
+	 * onAuth handler.
 	 *
 	 * @param opts Connection parameters including client-provided data
 	 * @returns The initial connection state or a Promise that resolves to it
@@ -254,6 +310,7 @@ interface BaseWorkerConfig<S, CP, CS, V, R extends Actions<S, CP, CS, V>> {
 export type WorkerConfig<S, CP, CS, V> = Omit<
 	z.infer<typeof WorkerConfigSchema>,
 	| "actions"
+	| "onAuth"
 	| "onCreate"
 	| "onStart"
 	| "onStateChange"
@@ -283,6 +340,7 @@ export type WorkerConfigInput<
 > = Omit<
 	z.input<typeof WorkerConfigSchema>,
 	| "actions"
+	| "onAuth"
 	| "onCreate"
 	| "onStart"
 	| "onStateChange"

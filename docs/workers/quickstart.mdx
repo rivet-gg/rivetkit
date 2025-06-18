@@ -7,10 +7,11 @@ description: Start building awesome documentation in under 5 minutes
 ```ts registry.ts
 import { setup } from "rivetkit";
 import { worker } from "rivetkit/worker";
-import { workflow } from "rivetkit/workflow";
-import { realtime } from "rivetkit/realtime";
 
 const counter = worker({
+	onAuth: async () => {
+		// Allow public access
+	},
 	state: {
 		count: 0,
 	},
@@ -36,10 +37,16 @@ export type Registry = typeof registry;
 ```
 
 ```ts server.ts
+// With router
 import { registry } from "./registry";
 
-const registry = new Hono();
-app.route("/registry", registry.handler);
+const app = new Hono();
+app.route("/registry", c => registry.handler(c.req.raw));
+serve(app);
+
+// Without router
+import { serve } from "@rivetkit/node";
+
 serve(registry);
 ```
 
@@ -47,7 +54,7 @@ serve(registry);
 import { createClient } from "rivetkit/client";
 import type { Registry } from "./registry";
 
-const client = createClient<Registry>("http://localhost:8080/registry");
+const client = createClient<Registry>("http://localhost:8080");
 ```
 
 <Steps>

@@ -1737,7 +1737,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@rivetkit/nodejs@workspace:packages/platforms/nodejs":
+"@rivetkit/nodejs@workspace:*, @rivetkit/nodejs@workspace:packages/platforms/nodejs":
   version: 0.0.0-use.local
   resolution: "@rivetkit/nodejs@workspace:packages/platforms/nodejs"
   dependencies:
@@ -2684,6 +2684,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "chat-room-python@workspace:examples/chat-room-python"
   dependencies:
+    "@rivetkit/nodejs": "workspace:*"
     "@types/node": "npm:^22.13.9"
     rivetkit: "workspace:*"
     tsx: "npm:^3.12.7"
@@ -2695,6 +2696,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "chat-room@workspace:examples/chat-room"
   dependencies:
+    "@rivetkit/nodejs": "workspace:*"
     "@types/node": "npm:^22.13.9"
     "@types/prompts": "npm:^2"
     prompts: "npm:^2.4.2"
@@ -2920,6 +2922,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "counter@workspace:examples/counter"
   dependencies:
+    "@rivetkit/nodejs": "workspace:*"
     "@types/node": "npm:^22.13.9"
     rivetkit: "workspace:*"
     tsx: "npm:^3.12.7"
@@ -4620,6 +4623,7 @@ __metadata:
     "@hono/node-server": "npm:^1.14.1"
     "@linear/sdk": "npm:^7.0.0"
     "@octokit/rest": "npm:^19.0.13"
+    "@rivetkit/nodejs": "workspace:*"
     "@types/dotenv": "npm:^8.2.3"
     "@types/express": "npm:^5"
     "@types/node": "npm:^22.13.9"
@@ -5581,6 +5585,7 @@ __metadata:
   resolution: "resend-streaks@workspace:examples/resend-streaks"
   dependencies:
     "@date-fns/tz": "npm:^1.2.0"
+    "@rivetkit/nodejs": "workspace:*"
     "@types/node": "npm:^22.13.9"
     date-fns: "npm:^4.1.0"
     resend: "npm:^2.0.0"

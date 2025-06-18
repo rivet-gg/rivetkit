@@ -20,8 +20,9 @@ import {
 	HEADER_CONN_TOKEN,
 	HEADER_ENCODING,
 	HEADER_WORKER_QUERY,
-	ALL_HEADERS,
+	ALL_PUBLIC_HEADERS,
 	getRequestQuery,
+	HEADER_AUTH_DATA,
 } from "@/worker/router-endpoints";
 import { assertUnreachable } from "@/worker/utils";
 import type { RegistryConfig } from "@/registry/config";
@@ -30,7 +31,11 @@ import {
 	handleRouteNotFound,
 	loggerMiddleware,
 } from "@/common/router";
-import { DeconstructedError, deconstructError } from "@/common/utils";
+import {
+	DeconstructedError,
+	deconstructError,
+	stringifyError,
+} from "@/common/utils";
 import type { DriverConfig } from "@/driver-helpers/config";
 import {
 	type ManagerInspectorConnHandler,
@@ -55,8 +60,10 @@ import {
 import type { WorkerQuery } from "./protocol/query";
 import { VERSION } from "@/utils";
 import { ConnRoutingHandler } from "@/worker/conn-routing-handler";
-import { ClientDriver, createClientWithDriver } from "@/client/client";
-import { Transport, TransportSchema } from "@/worker/protocol/message/mod";
+import { ClientDriver } from "@/client/client";
+import { Transport } from "@/worker/protocol/message/mod";
+import { authenticateEndpoint } from "./auth";
+import type { WebSocket, MessageEvent, CloseEvent } from "ws";
 
 type ManagerRouterHandler = {
 	onConnectInspector?: ManagerInspectorConnHandler;
@@ -141,7 +148,10 @@ export function createManagerRouter(
 
 			return cors({
 				...corsConfig,
-				allowHeaders: [...(registryConfig.cors?.allowHeaders ?? []), ...ALL_HEADERS],
+				allowHeaders: [
+					...(registryConfig.cors?.allowHeaders ?? []),
+					...ALL_PUBLIC_HEADERS,
+				],
 			})(c, next);
 		});
 	}
@@ -194,7 +204,9 @@ export function createManagerRouter(
 			responses: buildOpenApiResponses(ResolveResponseSchema),
 		});
 
-		router.openapi(resolveRoute, (c) => handleResolveRequest(c, driver));
+		router.openapi(resolveRoute, (c) =>
+			handleResolveRequest(c, registryConfig, driver),
+		);
 	}
 
 	// GET /workers/connect/websocket
@@ -202,12 +214,6 @@ export function createManagerRouter(
 		const wsRoute = createRoute({
 			method: "get",
 			path: "/workers/connect/websocket",
-			request: {
-				query: z.object({
-					encoding: OPENAPI_ENCODING,
-					query: OPENAPI_WORKER_QUERY,
-				}),
-			},
 			responses: {
 				101: {
 					description: "WebSocket upgrade",
@@ -443,7 +449,7 @@ export function createManagerRouter(
 
 									if (serverWs.readyState === 1) {
 										// OPEN
-										serverWs.send(clientEvt.data);
+										serverWs.send(clientEvt.data as any);
 									}
 								};
 
@@ -580,9 +586,9 @@ export async function queryWorker(
 	c: HonoContext,
 	query: WorkerQuery,
 	driver: ManagerDriver,
-): Promise<{ workerId: string; meta?: unknown }> {
+): Promise<{ workerId: string }> {
 	logger().debug("querying worker", { query });
-	let workerOutput: { workerId: string; meta?: unknown };
+	let workerOutput: { workerId: string };
 	if ("getForId" in query) {
 		const output = await driver.getForId({
 			c,
@@ -612,7 +618,6 @@ export async function queryWorker(
 		});
 		workerOutput = {
 			workerId: getOrCreateOutput.workerId,
-			meta: getOrCreateOutput.meta,
 		};
 	} else if ("create" in query) {
 		const createOutput = await driver.createWorker({
@@ -624,7 +629,6 @@ export async function queryWorker(
 		});
 		workerOutput = {
 			workerId: createOutput.workerId,
-			meta: createOutput.meta,
 		};
 	} else {
 		throw new errors.InvalidRequest("Invalid query format");
@@ -632,9 +636,8 @@ export async function queryWorker(
 
 	logger().debug("worker query result", {
 		workerId: workerOutput.workerId,
-		meta: workerOutput.meta,
 	});
-	return { workerId: workerOutput.workerId, meta: workerOutput.meta };
+	return { workerId: workerOutput.workerId };
 }
 
 /**
@@ -649,11 +652,11 @@ async function handleSseConnectRequest(
 ): Promise<Response> {
 	let encoding: Encoding | undefined;
 	try {
-		encoding = getRequestEncoding(c.req, false);
+		encoding = getRequestEncoding(c.req);
 		logger().debug("sse connection request received", { encoding });
 
 		const params = ConnectRequestSchema.safeParse({
-			query: getRequestQuery(c, false),
+			query: getRequestQuery(c),
 			encoding: c.req.header(HEADER_ENCODING),
 			connParams: c.req.header(HEADER_CONN_PARAMS),
 		});
@@ -667,10 +670,25 @@ async function handleSseConnectRequest(
 
 		const query = params.data.query;
 
-		// Get the worker ID and meta
-		const { workerId, meta } = await queryWorker(c, query, driver);
+		// Parse connection parameters for authentication
+		const connParams = params.data.connParams
+			? JSON.parse(params.data.connParams)
+			: undefined;
+
+		// Authenticate the request
+		const authData = await authenticateEndpoint(
+			c,
+			driver,
+			registryConfig,
+			query,
+			["connect"],
+			connParams,
+		);
+
+		// Get the worker ID
+		const { workerId } = await queryWorker(c, query, driver);
 		invariant(workerId, "Missing worker ID");
-		logger().debug("sse connection to worker", { workerId, meta });
+		logger().debug("sse connection to worker", { workerId });
 
 		// Handle based on mode
 		if ("inline" in handler.routingHandler) {
@@ -682,6 +700,7 @@ async function handleSseConnectRequest(
 				driverConfig,
 				handler.routingHandler.inline.handlers.onConnectSse,
 				workerId,
+				authData,
 			);
 		} else if ("custom" in handler.routingHandler) {
 			logger().debug("using custom proxy mode for sse connection");
@@ -693,11 +712,13 @@ async function handleSseConnectRequest(
 			if (params.data.connParams) {
 				proxyRequest.headers.set(HEADER_CONN_PARAMS, params.data.connParams);
 			}
+			if (authData) {
+				proxyRequest.headers.set(HEADER_AUTH_DATA, JSON.stringify(authData));
+			}
 			return await handler.routingHandler.custom.proxyRequest(
 				c,
 				proxyRequest,
 				workerId,
-				meta,
 			);
 		} else {
 			assertUnreachable(handler.routingHandler);
@@ -776,12 +797,63 @@ async function handleWebSocketConnectRequest(
 	try {
 		logger().debug("websocket connection request received");
 
+		// Parse configuration from Sec-WebSocket-Protocol header
+		//
+		// We use this instead of query parameters since this is more secure than
+		// query parameters. Query parameters often get logged.
+		//
+		// Browsers don't support using headers, so this is the only way to
+		// pass data securely.
+		const protocols = c.req.header("sec-websocket-protocol");
+		let queryRaw: string | undefined;
+		let encodingRaw: string | undefined;
+		let connParamsRaw: string | undefined;
+
+		if (protocols) {
+			// Parse protocols for conn_params.{token} pattern
+			const protocolList = protocols.split(",").map((p) => p.trim());
+			for (const protocol of protocolList) {
+				if (protocol.startsWith("query.")) {
+					queryRaw = decodeURIComponent(protocol.substring("query.".length));
+				} else if (protocol.startsWith("encoding.")) {
+					encodingRaw = protocol.substring("encoding.".length);
+				} else if (protocol.startsWith("conn_params.")) {
+					connParamsRaw = decodeURIComponent(
+						protocol.substring("conn_params.".length),
+					);
+				}
+			}
+		}
+
+		// Parse query
+		let queryUnvalidated: unknown;
+		try {
+			queryUnvalidated = JSON.parse(queryRaw!);
+		} catch (error) {
+			logger().error("invalid query json", { error });
+			throw new errors.InvalidQueryJSON(error);
+		}
+
+		// Parse conn params
+		let connParamsUnvalidated: unknown = null;
+		try {
+			if (connParamsRaw) {
+				connParamsUnvalidated = JSON.parse(connParamsRaw!);
+			}
+		} catch (error) {
+			logger().error("invalid conn params", { error });
+			throw new errors.InvalidParams(
+				`Invalid params JSON: ${stringifyError(error)}`,
+			);
+		}
+
 		// We can't use the standard headers with WebSockets
 		//
 		// All other information will be sent over the socket itself, since that data needs to be E2EE
 		const params = ConnectWebSocketRequestSchema.safeParse({
-			query: getRequestQuery(c, true),
-			encoding: c.req.query("encoding"),
+			query: queryUnvalidated,
+			encoding: encodingRaw,
+			connParams: connParamsUnvalidated,
 		});
 		if (!params.success) {
 			logger().error("invalid connection parameters", {
@@ -789,10 +861,23 @@ async function handleWebSocketConnectRequest(
 			});
 			throw new errors.InvalidRequest(params.error);
 		}
+		encoding = params.data.encoding;
 
-		// Get the worker ID and meta
-		const { workerId, meta } = await queryWorker(c, params.data.query, driver);
-		logger().debug("found worker for websocket connection", { workerId, meta });
+		// Authenticate endpoint
+		const authData = await authenticateEndpoint(
+			c,
+			driver,
+			registryConfig,
+			params.data.query,
+			["connect"],
+			connParamsRaw,
+		);
+
+		// Get the worker ID
+		const { workerId } = await queryWorker(c, params.data.query, driver);
+		logger().debug("found worker for websocket connection", {
+			workerId,
+		});
 		invariant(workerId, "missing worker id");
 
 		if ("inline" in handler.routingHandler) {
@@ -808,24 +893,29 @@ async function handleWebSocketConnectRequest(
 				return handleWebSocketConnect(
 					c,
 					registryConfig,
-					driverConfig,
 					onConnectWebSocket,
 					workerId,
-				)();
+					params.data.encoding,
+					params.data.connParams,
+					authData,
+				);
 			})(c, noopNext());
 		} else if ("custom" in handler.routingHandler) {
 			logger().debug("using custom proxy mode for websocket connection");
 
 			// Proxy the WebSocket connection to the worker
+			//
 			// The proxyWebSocket handler will:
 			// 1. Validate the WebSocket upgrade request
 			// 2. Forward the request to the worker with the appropriate path
 			// 3. Handle the WebSocket pair and proxy messages between client and worker
 			return await handler.routingHandler.custom.proxyWebSocket(
 				c,
-				`/connect/websocket?encoding=${params.data.encoding}`,
+				"/connect/websocket",
 				workerId,
-				meta,
+				params.data.encoding,
+				params.data.connParams,
+				authData,
 				upgradeWebSocket,
 			);
 		} else {
@@ -878,6 +968,9 @@ async function handleWebSocketConnectRequest(
 
 /**
  * Handle a connection message request to a worker
+ *
+ * There is no authentication handler on this request since the connection
+ * token is used to authenticate the message.
  */
 async function handleMessageRequest(
 	c: HonoContext,
@@ -899,6 +992,22 @@ async function handleMessageRequest(
 			throw new errors.InvalidRequest(params.error);
 		}
 		const { workerId, connId, encoding, connToken } = params.data;
+
+		// TODO: This endpoint can be used to exhause resources (DoS attack) on an worker if you know the worker ID:
+		// 1. Get the worker ID (usually this is reasonably secure, but we don't assume worker ID is sensitive)
+		// 2. Spam messages to the worker (the conn token can be invalid)
+		// 3. The worker will be exhausted processing messages — even if the token is invalid
+		//
+		// The solution is we need to move the authorization of the connection token to this request handler
+		// AND include the worker ID in the connection token so we can verify that it has permission to send
+		// a message to that worker. This would require changing the token to a JWT so we can include a secure
+		// payload, but this requires managing a private key & managing key rotations.
+		//
+		// All other solutions (e.g. include the worker name as a header or include the worker name in the worker ID)
+		// have exploits that allow the caller to send messages to arbitrary workers.
+		//
+		// Currently, we assume this is not a critical problem because requests will likely get rate
+		// limited before enough messages are passed to the worker to exhaust resources.
 
 		// Handle based on mode
 		if ("inline" in handler.routingHandler) {
@@ -960,7 +1069,7 @@ async function handleActionRequest(
 		logger().debug("action call received", { actionName });
 
 		const params = ConnectRequestSchema.safeParse({
-			query: getRequestQuery(c, false),
+			query: getRequestQuery(c),
 			encoding: c.req.header(HEADER_ENCODING),
 			connParams: c.req.header(HEADER_CONN_PARAMS),
 		});
@@ -972,9 +1081,24 @@ async function handleActionRequest(
 			throw new errors.InvalidRequest(params.error);
 		}
 
-		// Get the worker ID and meta
-		const { workerId, meta } = await queryWorker(c, params.data.query, driver);
-		logger().debug("found worker for action", { workerId, meta });
+		// Parse connection parameters for authentication
+		const connParams = params.data.connParams
+			? JSON.parse(params.data.connParams)
+			: undefined;
+
+		// Authenticate the request
+		const authData = await authenticateEndpoint(
+			c,
+			driver,
+			registryConfig,
+			params.data.query,
+			["action"],
+			connParams,
+		);
+
+		// Get the worker ID
+		const { workerId } = await queryWorker(c, params.data.query, driver);
+		logger().debug("found worker for action", { workerId });
 		invariant(workerId, "Missing worker ID");
 
 		// Handle based on mode
@@ -988,6 +1112,7 @@ async function handleActionRequest(
 				handler.routingHandler.inline.handlers.onAction,
 				actionName,
 				workerId,
+				authData,
 			);
 		} else if ("custom" in handler.routingHandler) {
 			logger().debug("using custom proxy mode for action call");
@@ -1002,14 +1127,17 @@ async function handleActionRequest(
 				body: c.req.raw.body,
 			});
 			proxyRequest.headers.set(HEADER_ENCODING, params.data.encoding);
-			if (params.data.connParams)
+			if (params.data.connParams) {
 				proxyRequest.headers.set(HEADER_CONN_PARAMS, params.data.connParams);
+			}
+			if (authData) {
+				proxyRequest.headers.set(HEADER_AUTH_DATA, JSON.stringify(authData));
+			}
 
 			return await handler.routingHandler.custom.proxyRequest(
 				c,
 				proxyRequest,
 				workerId,
-				meta,
 			);
 		} else {
 			assertUnreachable(handler.routingHandler);
@@ -1031,13 +1159,15 @@ async function handleActionRequest(
  */
 async function handleResolveRequest(
 	c: HonoContext,
+	registryConfig: RegistryConfig,
 	driver: ManagerDriver,
 ): Promise<Response> {
-	const encoding = getRequestEncoding(c.req, false);
+	const encoding = getRequestEncoding(c.req);
 	logger().debug("resolve request encoding", { encoding });
 
 	const params = ResolveRequestSchema.safeParse({
-		query: getRequestQuery(c, false),
+		query: getRequestQuery(c),
+		connParams: c.req.header(HEADER_CONN_PARAMS),
 	});
 	if (!params.success) {
 		logger().error("invalid connection parameters", {
@@ -1046,9 +1176,19 @@ async function handleResolveRequest(
 		throw new errors.InvalidRequest(params.error);
 	}
 
-	// Get the worker ID and meta
-	const { workerId, meta } = await queryWorker(c, params.data.query, driver);
-	logger().debug("resolved worker", { workerId, meta });
+	// Parse connection parameters for authentication
+	const connParams = params.data.connParams
+		? JSON.parse(params.data.connParams)
+		: undefined;
+
+	const query = params.data.query;
+
+	// Authenticate the request
+	await authenticateEndpoint(c, driver, registryConfig, query, [], connParams);
+
+	// Get the worker ID
+	const { workerId } = await queryWorker(c, query, driver);
+	logger().debug("resolved worker", { workerId });
 	invariant(workerId, "Missing worker ID");
 
 	// Format response according to protocol

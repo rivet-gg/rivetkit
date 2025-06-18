@@ -42,5 +42,4 @@ export interface WorkerOutput {
 	workerId: string;
 	name: string;
 	key: WorkerKey;
-	meta?: unknown;
 }

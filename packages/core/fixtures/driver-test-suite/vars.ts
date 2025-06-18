@@ -2,6 +2,7 @@ import { worker } from "rivetkit";
 
 // Worker with static vars
 export const staticVarWorker = worker({
+	onAuth: () => {},
 	state: { value: 0 },
 	connState: { hello: "world" },
 	vars: { counter: 42, name: "test-worker" },
@@ -17,6 +18,7 @@ export const staticVarWorker = worker({
 
 // Worker with nested vars
 export const nestedVarWorker = worker({
+	onAuth: () => {},
 	state: { value: 0 },
 	connState: { hello: "world" },
 	vars: {
@@ -43,6 +45,7 @@ export const nestedVarWorker = worker({
 
 // Worker with dynamic vars
 export const dynamicVarWorker = worker({
+	onAuth: () => {},
 	state: { value: 0 },
 	connState: { hello: "world" },
 	createVars: () => {
@@ -60,6 +63,7 @@ export const dynamicVarWorker = worker({
 
 // Worker with unique vars per instance
 export const uniqueVarWorker = worker({
+	onAuth: () => {},
 	state: { value: 0 },
 	connState: { hello: "world" },
 	createVars: () => {
@@ -76,6 +80,7 @@ export const uniqueVarWorker = worker({
 
 // Worker that uses driver context
 export const driverCtxWorker = worker({
+	onAuth: () => {},
 	state: { value: 0 },
 	connState: { hello: "world" },
 	createVars: (c, driverCtx: any) => {

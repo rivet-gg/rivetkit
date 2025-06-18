@@ -9,8 +9,22 @@ import type {
 	CreateInput,
 } from "rivetkit/driver-helpers";
 import { logger } from "./log";
-import { type RivetClientConfig, rivetRequest } from "./rivet-client";
-import { serializeKeyForTag, deserializeKeyFromTag } from "./util";
+import {
+	RivetActor,
+	type RivetClientConfig,
+	rivetRequest,
+} from "./rivet-client";
+import {
+	serializeKeyForTag,
+	deserializeKeyFromTag,
+	convertKeyToRivetTags,
+} from "./util";
+import {
+	getWorkerMeta,
+	getWorkerMetaWithKey,
+	populateCache,
+} from "./worker-meta";
+import invariant from "invariant";
 
 export interface WorkerState {
 	key: string[];
@@ -32,39 +46,16 @@ export class RivetManagerDriver implements ManagerDriver {
 		workerId,
 	}: GetForIdInput): Promise<WorkerOutput | undefined> {
 		try {
-			// Get actor
-			const res = await rivetRequest<void, { actor: RivetActor }>(
-				this.#clientConfig,
-				"GET",
-				`/actors/${encodeURIComponent(workerId)}`,
-			);
-
-			// Check if worker exists and not destroyed
-			if (res.actor.destroyedAt) {
-				return undefined;
-			}
-
-			// Ensure worker has required tags
-			if (!("name" in res.actor.tags)) {
-				throw new Error(`Worker ${res.actor.id} missing 'name' in tags.`);
-			}
-			if (res.actor.tags.role !== "worker") {
-				throw new Error(`Worker ${res.actor.id} does not have a worker role.`);
-			}
-			if (res.actor.tags.framework !== "rivetkit") {
-				throw new Error(`Worker ${res.actor.id} is not an RivetKit worker.`);
-			}
+			const meta = await getWorkerMeta(this.#clientConfig, workerId);
+			if (!meta) return undefined;
 
 			return {
-				workerId: res.actor.id,
-				name: res.actor.tags.name,
-				key: this.#extractKeyFromRivetTags(res.actor.tags),
-				meta: {
-					endpoint: buildWorkerEndpoint(res.actor),
-				} satisfies GetWorkerMeta,
+				workerId,
+				name: meta.name,
+				key: meta.key,
 			};
 		} catch (error) {
-			// Handle not found or other errors
+			// TODO: Handle not found or other errors gracefully
 			return undefined;
 		}
 	}
@@ -73,48 +64,13 @@ export class RivetManagerDriver implements ManagerDriver {
 		name,
 		key,
 	}: GetWithKeyInput): Promise<WorkerOutput | undefined> {
-		// Convert key array to Rivet's tag format
-		const rivetTags = this.#convertKeyToRivetTags(name, key);
-
-		// Query actors with matching tags
-		const { actors } = await rivetRequest<void, { actors: RivetActor[] }>(
-			this.#clientConfig,
-			"GET",
-			`/actors?tags_json=${encodeURIComponent(JSON.stringify(rivetTags))}`,
-		);
-
-		// Filter workers to ensure they're valid
-		const validActors = actors.filter((a: RivetActor) => {
-			// Verify all ports have hostname and port
-			for (const portName in a.network.ports) {
-				const port = a.network.ports[portName];
-				if (!port.hostname || !port.port) return false;
-			}
-			return true;
-		});
-
-		if (validActors.length === 0) {
-			return undefined;
-		}
-
-		// For consistent results, sort by ID if multiple actors match
-		const actor =
-			validActors.length > 1
-				? validActors.sort((a, b) => a.id.localeCompare(b.id))[0]
-				: validActors[0];
-
-		// Ensure actor has required tags
-		if (!("name" in actor.tags)) {
-			throw new Error(`Worker ${actor.id} missing 'name' in tags.`);
-		}
+		const meta = await getWorkerMetaWithKey(this.#clientConfig, name, key);
+		if (!meta) return undefined;
 
 		return {
-			workerId: actor.id,
-			name: actor.tags.name,
-			key: this.#extractKeyFromRivetTags(actor.tags),
-			meta: {
-				endpoint: buildWorkerEndpoint(actor),
-			} satisfies GetWorkerMeta,
+			workerId: meta.workerId,
+			name: meta.name,
+			key: meta.key,
 		};
 	}
 
@@ -151,7 +107,7 @@ export class RivetManagerDriver implements ManagerDriver {
 		}
 
 		const createRequest = {
-			tags: this.#convertKeyToRivetTags(name, key),
+			tags: convertKeyToRivetTags(name, key),
 			build_tags: {
 				role: "worker",
 				framework: "rivetkit",
@@ -186,10 +142,12 @@ export class RivetManagerDriver implements ManagerDriver {
 			{ actor: RivetActor }
 		>(this.#clientConfig, "POST", "/actors", createRequest);
 
+		const meta = populateCache(actor);
+		invariant(meta, "actor just created, should not be destroyed");
+
 		// Initialize the worker
 		try {
-			const endpoint = buildWorkerEndpoint(actor);
-			const url = `${endpoint}/initialize`;
+			const url = `${meta.endpoint}/initialize`;
 			logger().debug("initializing worker", {
 				url,
 				input: JSON.stringify(input),
@@ -225,84 +183,8 @@ export class RivetManagerDriver implements ManagerDriver {
 
 		return {
 			workerId: actor.id,
-			name,
-			key: this.#extractKeyFromRivetTags(actor.tags),
-			meta: {
-				endpoint: buildWorkerEndpoint(actor),
-			} satisfies GetWorkerMeta,
+			name: meta.name,
+			key: meta.key,
 		};
 	}
-
-	// Helper method to convert a key array to Rivet's tag-based format
-	#convertKeyToRivetTags(name: string, key: string[]): Record<string, string> {
-		return {
-			name,
-			key: serializeKeyForTag(key),
-			role: "worker",
-			framework: "rivetkit",
-		};
-	}
-
-	// Helper method to extract key array from Rivet's tag-based format
-	#extractKeyFromRivetTags(tags: Record<string, string>): string[] {
-		return deserializeKeyFromTag(tags.key);
-	}
-
-	async #getBuildWithTags(
-		buildTags: Record<string, string>,
-	): Promise<RivetBuild | undefined> {
-		// Query builds with matching tags
-		const { builds } = await rivetRequest<void, { builds: RivetBuild[] }>(
-			this.#clientConfig,
-			"GET",
-			`/builds?tags_json=${encodeURIComponent(JSON.stringify(buildTags))}`,
-		);
-
-		if (builds.length === 0) {
-			return undefined;
-		}
-
-		// For consistent results, sort by ID if multiple builds match
-		return builds.length > 1
-			? builds.sort((a, b) => a.id.localeCompare(b.id))[0]
-			: builds[0];
-	}
 }
-
-function buildWorkerEndpoint(worker: RivetActor): string {
-	// Fetch port
-	const httpPort = worker.network.ports.http;
-	if (!httpPort) throw new Error("missing http port");
-	let hostname = httpPort.hostname;
-	if (!hostname) throw new Error("missing hostname");
-	const port = httpPort.port;
-	if (!port) throw new Error("missing port");
-
-	let isTls = false;
-	switch (httpPort.protocol) {
-		case "https":
-			isTls = true;
-			break;
-		case "http":
-		case "tcp":
-			isTls = false;
-			break;
-		case "tcp_tls":
-		case "udp":
-			throw new Error(`Invalid protocol ${httpPort.protocol}`);
-		default:
-			assertUnreachable(httpPort.protocol as never);
-	}
-
-	const path = httpPort.path ?? "";
-
-	// HACK: Fix hostname inside of Docker Compose
-	if (hostname === "127.0.0.1") hostname = "rivet-guard";
-
-	return `${isTls ? "https" : "http"}://${hostname}:${port}${path}`;
-}
-
-// biome-ignore lint/suspicious/noExplicitAny: will add api types later
-type RivetActor = any;
-// biome-ignore lint/suspicious/noExplicitAny: will add api types later
-type RivetBuild = any;

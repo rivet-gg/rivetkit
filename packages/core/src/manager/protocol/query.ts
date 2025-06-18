@@ -55,6 +55,7 @@ export const ConnectRequestSchema = z.object({
 export const ConnectWebSocketRequestSchema = z.object({
 	query: WorkerQuerySchema.describe("query"),
 	encoding: EncodingSchema.describe("encoding"),
+	connParams: z.unknown().optional().describe("conn_params"),
 });
 
 export const ConnMessageRequestSchema = z.object({
@@ -66,6 +67,7 @@ export const ConnMessageRequestSchema = z.object({
 
 export const ResolveRequestSchema = z.object({
 	query: WorkerQuerySchema.describe(HEADER_WORKER_QUERY),
+	connParams: z.string().optional().describe(HEADER_CONN_PARAMS),
 });
 
 export type WorkerQuery = z.infer<typeof WorkerQuerySchema>;

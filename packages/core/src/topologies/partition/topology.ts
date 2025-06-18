@@ -46,17 +46,16 @@ import {
 	ConnRoutingHandlerCustom,
 } from "@/worker/conn-routing-handler";
 import invariant from "invariant";
+import type { WebSocket } from "ws";
 
 export type SendRequestHandler = (
 	workerRequest: Request,
 	workerId: string,
-	meta?: unknown,
 ) => Promise<Response>;
 
 export type OpenWebSocketHandler = (
 	path: string,
 	workerId: string,
-	meta?: unknown,
 ) => Promise<WebSocket>;
 
 export class PartitionTopologyManager {
@@ -177,6 +176,7 @@ export class PartitionTopologyWorker {
 								{
 									encoding: opts.encoding,
 								} satisfies GenericWebSocketDriverState,
+								opts.authData,
 							);
 						},
 						onMessage: async (message) => {
@@ -228,6 +228,7 @@ export class PartitionTopologyWorker {
 								connState,
 								CONN_DRIVER_GENERIC_SSE,
 								{ encoding: opts.encoding } satisfies GenericSseDriverState,
+								opts.authData,
 							);
 						},
 						onClose: async () => {
@@ -261,6 +262,7 @@ export class PartitionTopologyWorker {
 							connState,
 							CONN_DRIVER_GENERIC_HTTP,
 							{} satisfies GenericHttpDriverState,
+							opts.authData,
 						);
 
 						// Call action

@@ -3,6 +3,7 @@ import { worker } from "rivetkit";
 // Note: For testing only - metadata API will need to be mocked
 // in tests since this is implementation-specific
 export const metadataWorker = worker({
+	onAuth: () => {},
 	state: {
 		lastMetadata: null as any,
 		workerName: "",

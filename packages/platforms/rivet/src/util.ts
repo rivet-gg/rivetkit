@@ -42,9 +42,9 @@ export function serializeKeyForTag(key: string[]): string {
  * @param keyString The serialized key string from a tag
  * @returns Array of key strings
  */
-export function deserializeKeyFromTag(keyString: string): string[] {
+export function deserializeKeyFromTag(keyString?: string): string[] {
 	// Check for special empty key marker
-	if (keyString === EMPTY_KEY) {
+	if (!keyString || keyString === EMPTY_KEY) {
 		return [];
 	}
 
@@ -79,4 +79,17 @@ export function deserializeKeyFromTag(keyString: string): string[] {
 	}
 
 	return parts;
+}
+
+// Helper method to convert a key array to Rivet's tag-based format
+export function convertKeyToRivetTags(
+	name: string,
+	key: string[],
+): Record<string, string> {
+	return {
+		name,
+		key: serializeKeyForTag(key),
+		role: "worker",
+		framework: "rivetkit",
+	};
 }

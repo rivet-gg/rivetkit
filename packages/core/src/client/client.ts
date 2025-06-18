@@ -1,12 +1,7 @@
 import type { Transport } from "@/worker/protocol/message/mod";
 import type { Encoding } from "@/worker/protocol/serde";
 import type { WorkerQuery } from "@/manager/protocol/query";
-import {
-	WorkerConn,
-	WorkerConnRaw,
-	CONNECT_SYMBOL,
-	SendHttpMessageOpts,
-} from "./worker-conn";
+import { WorkerConn, WorkerConnRaw, CONNECT_SYMBOL } from "./worker-conn";
 import { WorkerHandle, WorkerHandleRaw } from "./worker-handle";
 import { WorkerActionFunction } from "./worker-common";
 import { logger } from "./log";
@@ -15,8 +10,7 @@ import type { AnyWorkerDefinition } from "@/worker/definition";
 import type * as wsToServer from "@/worker/protocol/message/to-server";
 import type { EventSource } from "eventsource";
 import type { Context as HonoContext } from "hono";
-import { createHttpClientDriver } from "./http-client-driver";
-import { HonoRequest } from "hono";
+import type { WebSocket } from "ws";
 
 /** Extract the worker registry from the registry definition. */
 export type ExtractWorkersFromRegistry<A extends Registry<any>> =
@@ -172,6 +166,7 @@ export interface ClientDriver {
 		c: HonoContext | undefined,
 		workerQuery: WorkerQuery,
 		encodingKind: Encoding,
+		params: unknown,
 	): Promise<string>;
 	connectWebSocket(
 		c: HonoContext | undefined,
@@ -364,6 +359,7 @@ export class ClientRaw {
 			undefined,
 			createQuery,
 			this.#encodingKind,
+			opts?.params,
 		);
 		logger().debug("created worker with ID", {
 			name,
@@ -481,11 +477,9 @@ export function createClientWithDriver<A extends Registry<any>>(
 						key?: string | string[],
 						opts?: GetOptions,
 					): WorkerHandle<ExtractWorkersFromRegistry<A>[typeof prop]> => {
-						return target.getOrCreate<ExtractWorkersFromRegistry<A>[typeof prop]>(
-							prop,
-							key,
-							opts,
-						);
+						return target.getOrCreate<
+							ExtractWorkersFromRegistry<A>[typeof prop]
+						>(prop, key, opts);
 					},
 					getForId: (
 						workerId: string,
@@ -500,12 +494,12 @@ export function createClientWithDriver<A extends Registry<any>>(
 					create: async (
 						key: string | string[],
 						opts: CreateOptions = {},
-					): Promise<WorkerHandle<ExtractWorkersFromRegistry<A>[typeof prop]>> => {
-						return await target.create<ExtractWorkersFromRegistry<A>[typeof prop]>(
-							prop,
-							key,
-							opts,
-						);
+					): Promise<
+						WorkerHandle<ExtractWorkersFromRegistry<A>[typeof prop]>
+					> => {
+						return await target.create<
+							ExtractWorkersFromRegistry<A>[typeof prop]
+						>(prop, key, opts);
 					},
 				} as WorkerAccessor<ExtractWorkersFromRegistry<A>[typeof prop]>;
 			}

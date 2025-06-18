@@ -1,6 +1,7 @@
 import { runDriverTests } from "rivetkit/driver-test-suite";
 import { deployToRivet, rivetClientConfig } from "./rivet-deploy";
 import { RivetClientConfig, rivetRequest } from "../src/rivet-client";
+import invariant from "invariant";
 
 let deployProjectOnce: Promise<string> | undefined = undefined;
 
@@ -17,6 +18,12 @@ runDriverTests({
 
 		// Cleanup workers from previous tests
 		await deleteAllWorkers(rivetClientConfig);
+
+		// Flush cache since we manually updated the workers
+		const res = await fetch(`${endpoint}/.test/rivet/flush-cache`, {
+			method: "POST",
+		});
+		invariant(res.ok, `request failed: ${res.status}`);
 
 		return {
 			endpoint,

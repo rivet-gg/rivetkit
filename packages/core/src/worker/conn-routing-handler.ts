@@ -1,7 +1,8 @@
-import { UpgradeWebSocket } from "@/utils";
-import { Encoding } from "./protocol/serde";
+import type { UpgradeWebSocket } from "@/utils";
+import type { Encoding } from "./protocol/serde";
 import type { ConnectionHandlers as ConnHandlers } from "./router-endpoints";
-import type { Context as HonoContext, HonoRequest } from "hono";
+import type { Context as HonoContext } from "hono";
+import type { WebSocket } from "ws";
 
 /**
  * Deterines how requests to workers should be routed.
@@ -31,27 +32,27 @@ export type BuildProxyEndpoint = (c: HonoContext, workerId: string) => string;
 
 export type SendRequestHandler = (
 	workerId: string,
-	meta: unknown | undefined,
 	workerRequest: Request,
 ) => Promise<Response>;
 
 export type OpenWebSocketHandler = (
 	workerId: string,
-	meta: unknown | undefined,
 	encodingKind: Encoding,
+	params: unknown
 ) => Promise<WebSocket>;
 
 export type ProxyRequestHandler = (
 	c: HonoContext,
 	workerRequest: Request,
 	workerId: string,
-	meta?: unknown,
 ) => Promise<Response>;
 
 export type ProxyWebSocketHandler = (
 	c: HonoContext,
 	path: string,
 	workerId: string,
-	meta?: unknown,
-	upgradeWebSocket?: UpgradeWebSocket,
+	encoding: Encoding,
+	connParams: unknown,
+	authData: unknown,
+	upgradeWebSocket: UpgradeWebSocket,
 ) => Promise<Response>;

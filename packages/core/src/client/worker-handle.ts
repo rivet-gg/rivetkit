@@ -109,6 +109,7 @@ export class WorkerHandleRaw {
 				undefined,
 				this.#workerQuery,
 				this.#encodingKind,
+				this.#params,
 			);
 			this.#workerQuery = { getForId: { workerId } };
 			return workerId;

@@ -22,6 +22,8 @@ export interface PersistedConn<CP, CS> {
 	p: CP;
 	// State
 	s: CS;
+	// Auth data
+	a?: unknown;
 	// Subscriptions
 	su: PersistedSubscription[];
 }

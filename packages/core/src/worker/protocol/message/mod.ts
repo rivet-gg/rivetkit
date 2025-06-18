@@ -92,9 +92,7 @@ export async function processMessage<S, CP, CS, V>(
 	let actionName: string | undefined;
 
 	try {
-		if ("i" in message.b) {
-			invariant(false, "should not be notified of init event");
-		} else if ("ar" in message.b) {
+		if ("ar" in message.b) {
 			// Action request
 
 			if (handler.onExecuteAction === undefined) {

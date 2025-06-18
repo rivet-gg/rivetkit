@@ -105,6 +105,7 @@ export class Node {
 			ci: connId,
 			ct: connToken,
 			p: connParams,
+			ad: authData,
 		}: ToLeaderConnectionOpen,
 	) {
 		if (!nodeId) {
@@ -133,6 +134,7 @@ export class Node {
 				connState,
 				CONN_DRIVER_COORDINATE_RELAY,
 				{ nodeId } satisfies CoordinateRelayState,
+				authData,
 			);
 
 			// Connection init will be sent by `Worker`

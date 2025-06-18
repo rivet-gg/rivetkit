@@ -10,7 +10,10 @@ import { publishMessageToLeader } from "../node/message";
 import type { WorkerDriver } from "@/worker/driver";
 import type { DriverConfig } from "@/driver-helpers/config";
 import type { RegistryConfig } from "@/registry/config";
-import { ConnectWebSocketOpts, ConnectWebSocketOutput } from "@/worker/router-endpoints";
+import {
+	ConnectWebSocketOpts,
+	ConnectWebSocketOutput,
+} from "@/worker/router-endpoints";
 
 export async function serveWebSocket(
 	registryConfig: RegistryConfig,
@@ -19,7 +22,7 @@ export async function serveWebSocket(
 	CoordinateDriver: CoordinateDriver,
 	globalState: GlobalState,
 	workerId: string,
-	{ req, encoding, params }: ConnectWebSocketOpts,
+	{ req, encoding, params, authData }: ConnectWebSocketOpts,
 ): Promise<ConnectWebSocketOutput> {
 	let conn: RelayConn | undefined;
 	return {
@@ -41,6 +44,7 @@ export async function serveWebSocket(
 				},
 				workerId,
 				params,
+				authData,
 			);
 			await conn.start();
 		},

@@ -108,3 +108,7 @@ This ensures imports resolve correctly across different build environments and p
 - Run `yarn check-types` regularly during development to catch type errors early. Prefer `yarn check-types` instead of `yarn build`.
 - Use `tsx` CLI to execute TypeScript scripts directly (e.g., `tsx script.ts` instead of `node script.js`).
 - Do not auto-commit changes
+
+## Test Guidelines
+
+- Do not check if errors are an instanceOf WorkerError in tests. Many error types do not have the same prototype chain when sent over the network, but still have the same properties so you can safely cast with `as`.

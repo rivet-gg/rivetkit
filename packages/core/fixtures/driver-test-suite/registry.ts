@@ -27,6 +27,13 @@ import {
 	uniqueVarWorker,
 	driverCtxWorker,
 } from "./vars";
+import {
+	authWorker,
+	intentAuthWorker,
+	publicWorker,
+	noAuthWorker,
+	asyncAuthWorker,
+} from "./auth";
 
 // Consolidated setup with all workers
 export const registry = setup({
@@ -63,6 +70,12 @@ export const registry = setup({
 		dynamicVarWorker,
 		uniqueVarWorker,
 		driverCtxWorker,
+		// From auth.ts
+		authWorker,
+		intentAuthWorker,
+		publicWorker,
+		noAuthWorker,
+		asyncAuthWorker,
 	},
 });
 

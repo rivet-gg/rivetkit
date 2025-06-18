@@ -15,7 +15,7 @@ export async function serveSse(
 	CoordinateDriver: CoordinateDriver,
 	globalState: GlobalState,
 	workerId: string,
-	{ encoding, params }: ConnectSseOpts,
+	{ encoding, params, authData }: ConnectSseOpts,
 ): Promise<ConnectSseOutput> {
 	let conn: RelayConn | undefined;
 	return {
@@ -39,6 +39,7 @@ export async function serveSse(
 				},
 				workerId,
 				params,
+				authData,
 			);
 			await conn.start();
 		},

@@ -666,6 +666,7 @@ export class WorkerInstance<S, CP, CS, V> {
 		state: CS,
 		driverId: string,
 		driverState: unknown,
+		authData: unknown,
 	): Promise<Conn<S, CP, CS, V>> {
 		if (this.#connections.has(connectionId)) {
 			throw new Error(`Connection already exists: ${connectionId}`);
@@ -680,6 +681,7 @@ export class WorkerInstance<S, CP, CS, V> {
 			ds: driverState,
 			p: params,
 			s: state,
+			a: authData,
 			su: [],
 		};
 		const conn = new Conn<S, CP, CS, V>(

@@ -4,24 +4,28 @@ import type { ConnectWebSocketOutput } from "@/worker/router-endpoints";
 import type * as messageToServer from "@/worker/protocol/message/to-server";
 import { parseMessage } from "@/worker/protocol/message/mod";
 import type { InputData } from "@/worker/protocol/serde";
+import type {
+	Event,
+	CloseEvent,
+	MessageEvent,
+} from "ws";
 
 /**
  * FakeWebSocket implements a WebSocket-like interface
  * that connects to a ConnectWebSocketOutput handler
  */
-export class FakeWebSocket implements WebSocket {
+export class FakeWebSocket {
 	// WebSocket interface properties
-	binaryType: BinaryType = "arraybuffer";
-	bufferedAmount: number = 0;
-	extensions: string = "";
-	protocol: string = "";
-	url: string = "";
+	bufferedAmount = 0;
+	extensions = "";
+	protocol = "";
+	url = "";
 
 	// Event handlers
-	onclose: ((ev: CloseEvent) => any) | null = null;
-	onerror: ((ev: Event) => any) | null = null;
-	onmessage: ((ev: MessageEvent) => any) | null = null;
-	onopen: ((ev: Event) => any) | null = null;
+	onclose: ((ev: any) => void) | null = null;
+	onerror: ((ev: any) => void) | null = null;
+	onmessage: ((ev: any) => void) | null = null;
+	onopen: ((ev: any) => void) | null = null;
 
 	// WebSocket readyState values
 	readonly CONNECTING = 0 as const;
@@ -117,13 +121,11 @@ export class FakeWebSocket implements WebSocket {
 				logger().debug("fake websocket sending message", {
 					messageType:
 						message.b &&
-						("i" in message.b
-							? "init"
-							: "ar" in message.b
-								? "action"
-								: "sr" in message.b
-									? "subscription"
-									: "unknown"),
+						("ar" in message.b
+							? "action"
+							: "sr" in message.b
+								? "subscription"
+								: "unknown"),
 				});
 
 				this.#handler.onMessage(message).catch((err) => {
@@ -220,10 +222,7 @@ export class FakeWebSocket implements WebSocket {
 	/**
 	 * Implementation of EventTarget methods (minimal implementation)
 	 */
-	addEventListener(
-		type: string,
-		listener: EventListenerOrEventListenerObject,
-	): void {
+	addEventListener(type: string, listener: any): void {
 		// Map to the onXXX properties
 		switch (type) {
 			case "open":
@@ -271,7 +270,7 @@ export class FakeWebSocket implements WebSocket {
 		}
 	}
 
-	dispatchEvent(event: Event): boolean {
+	dispatchEvent(event: any): boolean {
 		// Dispatch to the corresponding handler
 		switch (event.type) {
 			case "open":

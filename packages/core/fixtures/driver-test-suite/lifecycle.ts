@@ -1,6 +1,7 @@
 import { worker } from "rivetkit";
 
 export const counterWithLifecycle = worker({
+	onAuth: () => {},
 	state: {
 		count: 0,
 		events: [] as string[],

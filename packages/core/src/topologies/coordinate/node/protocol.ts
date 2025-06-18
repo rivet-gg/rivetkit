@@ -18,6 +18,8 @@ export const ToLeaderConnectionOpenSchema = z.object({
 	ct: z.string(),
 	// Parameters
 	p: z.unknown(),
+	// Auth data
+	ad: z.unknown(),
 });
 
 export type ToLeaderConnectionOpen = z.infer<typeof ToLeaderConnectionOpenSchema>;

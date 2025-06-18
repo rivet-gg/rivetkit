@@ -6,7 +6,6 @@ import type * as wsToServer from "@/worker/protocol/message/to-server";
 import { type Encoding, serialize } from "@/worker/protocol/serde";
 import {
 	ConnectWebSocketOutput,
-	handleWebSocketConnect,
 	HEADER_CONN_PARAMS,
 	HEADER_ENCODING,
 	HEADER_CONN_ID,
@@ -32,6 +31,7 @@ import onChange from "on-change";
 import { httpUserAgent } from "@/utils";
 import { WorkerError as ClientWorkerError } from "@/client/errors";
 import { deconstructError } from "@/common/utils";
+import type { WebSocket } from "ws";
 
 /**
  * Client driver that calls the manager driver inline.
@@ -58,13 +58,9 @@ export function createInlineClientDriver(
 			...args: Args
 		): Promise<Response> => {
 			try {
-				// Get the worker ID and meta
-				const { workerId, meta } = await queryWorker(
-					c,
-					workerQuery,
-					managerDriver,
-				);
-				logger().debug("found worker for action", { workerId, meta });
+				// Get the worker ID
+				const { workerId } = await queryWorker(c, workerQuery, managerDriver);
+				logger().debug("found worker for action", { workerId });
 				invariant(workerId, "Missing worker ID");
 
 				// Invoke the action
@@ -76,6 +72,8 @@ export function createInlineClientDriver(
 						actionName,
 						actionArgs: args,
 						workerId,
+						// No auth data since this is from internal
+						authData: undefined,
 					});
 
 					try {
@@ -116,7 +114,6 @@ export function createInlineClientDriver(
 						customFetch: routingHandler.custom.sendRequest.bind(
 							undefined,
 							workerId,
-							meta,
 						),
 					});
 
@@ -142,7 +139,7 @@ export function createInlineClientDriver(
 			workerQuery: WorkerQuery,
 			_encodingKind: Encoding,
 		): Promise<string> => {
-			// Get the worker ID and meta
+			// Get the worker ID
 			const { workerId } = await queryWorker(c, workerQuery, managerDriver);
 			logger().debug("resolved worker", { workerId });
 			invariant(workerId, "missing worker ID");
@@ -156,13 +153,9 @@ export function createInlineClientDriver(
 			encodingKind: Encoding,
 			params?: unknown,
 		): Promise<WebSocket> => {
-			// Get the worker ID and meta
-			const { workerId, meta } = await queryWorker(
-				c,
-				workerQuery,
-				managerDriver,
-			);
-			logger().debug("found worker for action", { workerId, meta });
+			// Get the worker ID
+			const { workerId } = await queryWorker(c, workerQuery, managerDriver);
+			logger().debug("found worker for action", { workerId });
 			invariant(workerId, "Missing worker ID");
 
 			// Invoke the action
@@ -182,15 +175,17 @@ export function createInlineClientDriver(
 				const output = await routingHandler.inline.handlers.onConnectWebSocket({
 					req: c?.req,
 					encoding: encodingKind,
-					params,
 					workerId,
+					params,
+					// No auth data since this is from internal
+					authData: undefined,
 				});
 
 				logger().debug("got ConnectWebSocketOutput, creating FakeWebSocket");
 
 				// TODO: There might be a bug where mutating data from the response of an action over a websocket will mutate the original data. See note about `structuredClone` in `action`
 				// Create and initialize the FakeWebSocket, waiting for it to be ready
-				const webSocket = new FakeWebSocket(output);
+				const webSocket = new FakeWebSocket(output) as any as WebSocket;
 				logger().debug("FakeWebSocket created and initialized");
 
 				return webSocket;
@@ -198,18 +193,9 @@ export function createInlineClientDriver(
 				// Open WebSocket
 				const ws = await routingHandler.custom.openWebSocket(
 					workerId,
-					meta,
 					encodingKind,
+					params,
 				);
-
-				// Send init message with the initialization data
-				//
-				// We can't pass this data in the query string since it might include sensitive data which would get logged
-				const messageSerialized = serializeWithEncoding(encodingKind, {
-					b: { i: { p: params } },
-				});
-				ws.send(messageSerialized);
-				logger().debug("sent websocket init message");
 
 				return ws;
 			} else {
@@ -223,13 +209,9 @@ export function createInlineClientDriver(
 			encodingKind: Encoding,
 			params: unknown,
 		): Promise<EventSource> => {
-			// Get the worker ID and meta
-			const { workerId, meta } = await queryWorker(
-				c,
-				workerQuery,
-				managerDriver,
-			);
-			logger().debug("found worker for sse connection", { workerId, meta });
+			// Get the worker ID
+			const { workerId } = await queryWorker(c, workerQuery, managerDriver);
+			logger().debug("found worker for sse connection", { workerId });
 			invariant(workerId, "Missing worker ID");
 
 			logger().debug("opening sse connection", {
@@ -254,6 +236,8 @@ export function createInlineClientDriver(
 					encoding: encodingKind,
 					params,
 					workerId,
+					// No auth data since this is from internal
+					authData: undefined,
 				});
 
 				logger().debug("got ConnectSseOutput, creating FakeEventSource");
@@ -329,13 +313,6 @@ export function createInlineClientDriver(
 					},
 				});
 			} else if ("custom" in routingHandler) {
-				// For custom routing handler, get the worker metadata first
-				const { meta } = await queryWorker(
-					c,
-					{ getForId: { workerId } },
-					managerDriver,
-				);
-
 				// Send an HTTP request to the connections endpoint
 				return sendHttpRequest({
 					url: "http://worker/connections/message",
@@ -352,7 +329,6 @@ export function createInlineClientDriver(
 					customFetch: routingHandler.custom.sendRequest.bind(
 						undefined,
 						workerId,
-						meta,
 					),
 				});
 			} else {
@@ -371,9 +347,9 @@ export async function queryWorker(
 	c: HonoContext | undefined,
 	query: WorkerQuery,
 	driver: ManagerDriver,
-): Promise<{ workerId: string; meta?: unknown }> {
+): Promise<{ workerId: string }> {
 	logger().debug("querying worker", { query });
-	let workerOutput: { workerId: string; meta?: unknown };
+	let workerOutput: { workerId: string };
 	if ("getForId" in query) {
 		const output = await driver.getForId({
 			c,
@@ -403,7 +379,6 @@ export async function queryWorker(
 		});
 		workerOutput = {
 			workerId: getOrCreateOutput.workerId,
-			meta: getOrCreateOutput.meta,
 		};
 	} else if ("create" in query) {
 		const createOutput = await driver.createWorker({
@@ -415,7 +390,6 @@ export async function queryWorker(
 		});
 		workerOutput = {
 			workerId: createOutput.workerId,
-			meta: createOutput.meta,
 		};
 	} else {
 		throw new errors.InvalidRequest("Invalid query format");
@@ -423,9 +397,8 @@ export async function queryWorker(
 
 	logger().debug("worker query result", {
 		workerId: workerOutput.workerId,
-		meta: workerOutput.meta,
 	});
-	return { workerId: workerOutput.workerId, meta: workerOutput.meta };
+	return { workerId: workerOutput.workerId };
 }
 
 /**

@@ -1,11 +1,11 @@
 import type { Context as HonoContext, Next } from "hono";
 import { getLogger, Logger } from "./log";
-import { deconstructError } from "./utils";
+import { deconstructError, stringifyError } from "./utils";
 import {
 	getRequestEncoding,
 	getRequestExposeInternalError,
 } from "@/worker/router-endpoints";
-import { serialize } from "@/worker/protocol/serde";
+import { Encoding, serialize } from "@/worker/protocol/serde";
 import { ResponseError } from "@/worker/protocol/http/error";
 
 export function logger() {
@@ -21,7 +21,7 @@ export function loggerMiddleware(logger: Logger) {
 		await next();
 
 		const duration = Date.now() - startTime;
-		logger.info("http request", {
+		logger.debug("http request", {
 			method,
 			path,
 			status: c.res.status,
@@ -48,7 +48,7 @@ export function handleRouteError(
 ) {
 	const exposeInternalError =
 		opts.enableExposeInternalError &&
-		getRequestExposeInternalError(c.req, false);
+		getRequestExposeInternalError(c.req);
 
 	const { statusCode, code, message, metadata } = deconstructError(
 		error,
@@ -60,7 +60,16 @@ export function handleRouteError(
 		exposeInternalError,
 	);
 
-	const encoding = getRequestEncoding(c.req, false);
+	let encoding: Encoding;
+	try {
+		encoding = getRequestEncoding(c.req);
+	} catch (err) {
+		logger().debug("failed to extract encoding", {
+			error: stringifyError(err),
+		});
+		encoding = "json";
+	}
+
 	const output = serialize(
 		{
 			c: code,

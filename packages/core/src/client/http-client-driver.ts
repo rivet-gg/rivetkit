@@ -26,6 +26,7 @@ import type { ActionRequest } from "@/worker/protocol/http/action";
 import type { ActionResponse } from "@/worker/protocol/message/to-client";
 import { ClientDriver } from "./client";
 import { HonoRequest, Context as HonoContext } from "hono";
+import type { WebSocket } from "ws";
 
 /**
  * Client driver that communicates with the manager via HTTP.
@@ -82,6 +83,7 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 			_c: HonoContext | undefined,
 			workerQuery: WorkerQuery,
 			encodingKind: Encoding,
+			params: unknown,
 		): Promise<string> => {
 			logger().debug("resolving worker ID", { query: workerQuery });
 
@@ -95,6 +97,9 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 					headers: {
 						[HEADER_ENCODING]: encodingKind,
 						[HEADER_WORKER_QUERY]: JSON.stringify(workerQuery),
+						...(params !== undefined
+							? { [HEADER_CONN_PARAMS]: JSON.stringify(params) }
+							: {}),
 					},
 					body: {},
 					encoding: encodingKind,
@@ -122,35 +127,36 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 		): Promise<WebSocket> => {
 			const { WebSocket } = await dynamicImports;
 
-			const workerQueryStr = encodeURIComponent(JSON.stringify(workerQuery));
 			const endpoint = managerEndpoint
 				.replace(/^http:/, "ws:")
 				.replace(/^https:/, "wss:");
-			const url = `${endpoint}/workers/connect/websocket?encoding=${encodingKind}&query=${workerQueryStr}`;
+			const url = `${endpoint}/workers/connect/websocket`;
+
+			// Pass sensitive data via protocol
+			const protocol = [
+				`query.${encodeURIComponent(JSON.stringify(workerQuery))}`,
+				`encoding.${encodingKind}`,
+			];
+			if (params)
+				protocol.push(
+					`conn_params.${encodeURIComponent(JSON.stringify(params))}`,
+				);
+
+			// HACK: See packages/platforms/cloudflare-workers/src/websocket.ts
+			protocol.push("rivetkit");
 
 			logger().debug("connecting to websocket", { url });
-			const ws = new WebSocket(url);
+			const ws = new WebSocket(url, protocol);
 			if (encodingKind === "cbor") {
 				ws.binaryType = "arraybuffer";
 			} else if (encodingKind === "json") {
 				// HACK: Bun bug prevents changing binary type, so we ignore the error https://github.com/oven-sh/bun/issues/17005
 				try {
-					ws.binaryType = "blob";
+					ws.binaryType = "blob" as any;
 				} catch (error) {}
 			} else {
 				assertUnreachable(encodingKind);
 			}
-
-			ws.addEventListener("open", () => {
-				// Send init message with the initialization data
-				//
-				// We can't pass this data in the query string since it might include sensitive data which would get logged
-				const messageSerialized = serializeWithEncoding(encodingKind, {
-					b: { i: { p: params } },
-				});
-				ws.send(messageSerialized);
-				logger().debug("sent websocket init message");
-			});
 
 			return ws;
 		},

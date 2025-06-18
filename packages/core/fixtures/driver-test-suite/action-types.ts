@@ -2,6 +2,7 @@ import { worker, UserError } from "rivetkit";
 
 // Worker with synchronous actions
 export const syncActionWorker = worker({
+	onAuth: () => {},
 	state: { value: 0 },
 	actions: {
 		// Simple synchronous action that returns a value directly
@@ -25,6 +26,7 @@ export const syncActionWorker = worker({
 
 // Worker with asynchronous actions
 export const asyncActionWorker = worker({
+	onAuth: () => {},
 	state: { value: 0, data: null as any },
 	actions: {
 		// Async action with a delay
@@ -57,6 +59,7 @@ export const asyncActionWorker = worker({
 
 // Worker with promise actions
 export const promiseWorker = worker({
+	onAuth: () => {},
 	state: { results: [] as string[] },
 	actions: {
 		// Action that returns a resolved promise

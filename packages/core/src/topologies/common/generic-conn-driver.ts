@@ -7,6 +7,7 @@ import * as messageToClient from "@/worker/protocol/message/to-client";
 import { encodeDataToString } from "@/worker/protocol/serde";
 import { WSContext } from "hono/ws";
 import { SSEStreamingApi } from "hono/streaming";
+import type { WebSocket } from "ws";
 
 // This state is different than `PersistedConn` state since the connection-specific state is persisted & must be serializable. This is also part of the connection driver, not part of the core worker.
 //

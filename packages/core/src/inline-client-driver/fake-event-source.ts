@@ -1,6 +1,6 @@
 import { logger } from "./log";
 import type { SSEStreamingApi } from "hono/streaming";
-import type { EventSource } from "eventsource";
+import type { EventListener, EventSource } from "eventsource";
 
 /**
  * FakeEventSource provides a minimal implementation of an SSE stream

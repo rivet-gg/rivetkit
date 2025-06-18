@@ -59,6 +59,12 @@ export const upgradeWebSocket: UpgradeWebSocket<
 
 	return new Response(null, {
 		status: 101,
+		headers: {
+			// HACK: Required in order for Cloudflare to not error with "Network connection lost"
+			//
+			// This bug undocumented. Cannot easily reproduce outside of RivetKit.
+			"Sec-WebSocket-Protocol": "rivetkit",
+		},
 		webSocket: client,
 	});
 });

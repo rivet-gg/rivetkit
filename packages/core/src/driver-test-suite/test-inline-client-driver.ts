@@ -13,6 +13,8 @@ import {
 import { assertUnreachable } from "@/worker/utils";
 import * as cbor from "cbor-x";
 import { WorkerError as ClientWorkerError } from "@/client/errors";
+import type { WebSocket } from "ws";
+import { importWebSocket } from "@/common/websocket";
 
 /**
  * Creates a client driver used for testing the inline client driver. This will send a request to the HTTP server which will then internally call the internal client and return the response.
@@ -43,13 +45,14 @@ export function createTestInlineClientDriver(
 			c: HonoContext | undefined,
 			workerQuery: WorkerQuery,
 			encodingKind: Encoding,
+			params: unknown,
 		): Promise<string> => {
 			return makeInlineRequest<string>(
 				endpoint,
 				encodingKind,
 				transport,
 				"resolveWorkerId",
-				[undefined, workerQuery, encodingKind],
+				[undefined, workerQuery, encodingKind, params],
 			);
 		},
 
@@ -59,6 +62,8 @@ export function createTestInlineClientDriver(
 			encodingKind: Encoding,
 			params: unknown,
 		): Promise<WebSocket> => {
+			const WebSocket = await importWebSocket();
+
 			logger().info("creating websocket connection via test inline driver", {
 				workerQuery,
 				encodingKind,
@@ -80,7 +85,10 @@ export function createTestInlineClientDriver(
 			logger().debug("connecting to websocket", { url: finalWsUrl });
 
 			// Create and return the WebSocket
-			return new WebSocket(finalWsUrl);
+			return new WebSocket(finalWsUrl, [
+				// HACK: See packages/platforms/cloudflare-workers/src/websocket.ts
+				"rivetkit",
+			]);
 		},
 
 		connectSse: async (

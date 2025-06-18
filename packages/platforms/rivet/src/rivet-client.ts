@@ -7,6 +7,11 @@ export interface RivetClientConfig {
 	environment?: string;
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: will add api types later
+export type RivetActor = any;
+// biome-ignore lint/suspicious/noExplicitAny: will add api types later
+export type RivetBuild = any;
+
 export async function rivetRequest<RequestBody, ResponseBody>(
 	config: RivetClientConfig,
 	method: string,
@@ -32,11 +37,11 @@ export async function rivetRequest<RequestBody, ResponseBody>(
 	});
 
 	if (!response.ok) {
-		const errorData = await response.json().catch(() => ({}));
+		const errorData: any = await response.json().catch(() => ({}));
 		throw new Error(
 			`Rivet API error (${response.status}, ${method} ${url}): ${errorData.message || response.statusText}`,
 		);
 	}
 
-	return response.json();
+	return (await response.json()) as ResponseBody;
 }

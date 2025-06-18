@@ -1,6 +1,7 @@
 import { worker } from "rivetkit";
 
 export const counterWithParams = worker({
+	onAuth: () => {},
 	state: { count: 0, initializers: [] as string[] },
 	createConnState: (c, { params }: { params: { name?: string } }) => {
 		return {
