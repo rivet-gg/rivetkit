@@ -1,17 +1,16 @@
-import { Logger } from "@/common/log";
-import { Actions } from "./config";
-import { WorkerInstance, SaveStateOptions } from "./instance";
-import { Conn, ConnId } from "./connection";
-import { WorkerKey } from "@/common/utils";
-import { Schedule } from "./schedule";
+import type { Logger } from "@/common/log";
+import type { WorkerInstance, SaveStateOptions } from "./instance";
+import type { Conn, ConnId } from "./connection";
+import type { WorkerKey } from "@/common/utils";
+import type { Schedule } from "./schedule";
 
 /**
  * WorkerContext class that provides access to worker methods and state
  */
-export class WorkerContext<S, CP, CS, V, I, AD> {
-	#worker: WorkerInstance<S, CP, CS, V, I, AD>;
+export class WorkerContext<S, CP, CS, V, I, AD, DB> {
+	#worker: WorkerInstance<S, CP, CS, V, I, AD, DB>;
 
-	constructor(worker: WorkerInstance<S, CP, CS, V, I, AD>) {
+	constructor(worker: WorkerInstance<S, CP, CS, V, I, AD, DB>) {
 		this.#worker = worker;
 	}
 
@@ -84,8 +83,17 @@ export class WorkerContext<S, CP, CS, V, I, AD> {
 	/**
 	 * Gets the map of connections.
 	 */
-	get conns(): Map<ConnId, Conn<S, CP, CS, V, I, AD>> {
+	get conns(): Map<ConnId, Conn<S, CP, CS, V, I, AD, DB>> {
 		return this.#worker.conns;
+	}
+
+	/**
+	 * Gets the database.
+	 * @experimental
+	 * @throws {DatabaseNotEnabled} If the database is not enabled.
+	 */
+	get db(): DB {
+		return this.#worker.db;
 	}
 
 	/**

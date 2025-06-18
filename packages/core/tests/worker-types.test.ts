@@ -30,6 +30,11 @@ describe("WorkerDefinition", () => {
 				baz: string;
 			}
 
+			interface TestDatabase {
+				onMigrate: () => void;
+				client: object;
+			}
+
 			// For testing type utilities, we don't need a real worker instance
 			// We just need a properly typed WorkerDefinition to check against
 			type TestActions = Record<never, never>;
@@ -40,6 +45,7 @@ describe("WorkerDefinition", () => {
 				TestVars,
 				TestInput,
 				TestAuthData,
+				TestDatabase,
 				TestActions
 			>;
 
@@ -51,7 +57,8 @@ describe("WorkerDefinition", () => {
 					TestConnState,
 					TestVars,
 					TestInput,
-					TestAuthData
+					TestAuthData,
+					TestDatabase
 				>
 			>();
 
@@ -67,7 +74,8 @@ describe("WorkerDefinition", () => {
 					TestConnState,
 					TestVars,
 					TestInput,
-					TestAuthData
+					TestAuthData,
+					TestDatabase
 				>
 			>();
 		});

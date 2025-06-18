@@ -43,4 +43,9 @@ export class RedisWorkerDriver implements WorkerDriver {
 			worker.onAlarm();
 		}, delay);
 	}
+
+	getDatabase(workerId: string): Promise<unknown | undefined> {
+		// Redis does not have a database concept like other drivers, so we return undefined
+		return Promise.resolve(undefined);
+	}
 }

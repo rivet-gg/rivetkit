@@ -1,6 +1,6 @@
-import * as wsToClient from "@/worker/protocol/message/to-client";
+import type * as wsToClient from "@/worker/protocol/message/to-client";
 import * as wsToServer from "@/worker/protocol/message/to-server";
-import type { WorkerInstance, AnyWorkerInstance } from "../../instance";
+import type { WorkerInstance } from "../../instance";
 import type { Conn } from "../../connection";
 import * as errors from "../../errors";
 import { logger } from "../../log";
@@ -9,13 +9,11 @@ import { assertUnreachable } from "../../utils";
 import { z } from "zod";
 import {
 	deserialize,
-	Encoding,
-	InputData,
+	type Encoding,
+	type InputData,
 	CachedSerializer,
 } from "@/worker/protocol/serde";
 import { deconstructError } from "@/common/utils";
-import { Actions } from "@/worker/config";
-import invariant from "invariant";
 
 export const TransportSchema = z.enum(["websocket", "sse"]);
 
@@ -69,24 +67,27 @@ export async function parseMessage(
 	return message;
 }
 
-export interface ProcessMessageHandler<S, CP, CS, V, I, AD> {
+export interface ProcessMessageHandler<S, CP, CS, V, I, AD, DB> {
 	onExecuteAction?: (
-		ctx: ActionContext<S, CP, CS, V, I, AD>,
+		ctx: ActionContext<S, CP, CS, V, I, AD, DB>,
 		name: string,
 		args: unknown[],
 	) => Promise<unknown>;
-	onSubscribe?: (eventName: string, conn: Conn<S, CP, CS, V, I, AD>) => Promise<void>;
+	onSubscribe?: (
+		eventName: string,
+		conn: Conn<S, CP, CS, V, I, AD, DB>,
+	) => Promise<void>;
 	onUnsubscribe?: (
 		eventName: string,
-		conn: Conn<S, CP, CS, V, I, AD>,
+		conn: Conn<S, CP, CS, V, I, AD, DB>,
 	) => Promise<void>;
 }
 
-export async function processMessage<S, CP, CS, V, I, AD>(
+export async function processMessage<S, CP, CS, V, I, AD, DB>(
 	message: wsToServer.ToServer,
-	worker: WorkerInstance<S, CP, CS, V, I, AD>,
-	conn: Conn<S, CP, CS, V, I, AD>,
-	handler: ProcessMessageHandler<S, CP, CS, V, I, AD>,
+	worker: WorkerInstance<S, CP, CS, V, I, AD, DB>,
+	conn: Conn<S, CP, CS, V, I, AD, DB>,
+	handler: ProcessMessageHandler<S, CP, CS, V, I, AD, DB>,
 ) {
 	let actionId: number | undefined;
 	let actionName: string | undefined;
@@ -110,7 +111,10 @@ export async function processMessage<S, CP, CS, V, I, AD>(
 				argsCount: args.length,
 			});
 
-			const ctx = new ActionContext<S, CP, CS, V, I, AD>(worker.workerContext, conn);
+			const ctx = new ActionContext<S, CP, CS, V, I, AD, DB>(
+				worker.workerContext,
+				conn,
+			);
 
 			// Process the action request and wait for the result
 			// This will wait for async actions to complete

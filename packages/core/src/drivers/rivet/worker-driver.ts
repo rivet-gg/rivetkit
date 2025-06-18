@@ -52,4 +52,9 @@ export class RivetWorkerDriver implements WorkerDriver {
 			worker.onAlarm();
 		}, timeout);
 	}
+
+	getDatabase(_workerId: string): Promise<unknown | undefined> {
+		// TODO: Implement database access
+		return Promise.resolve(undefined);
+	}
 }

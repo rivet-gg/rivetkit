@@ -295,3 +295,12 @@ export class Forbidden extends WorkerError {
 		this.statusCode = 403;
 	}
 }
+
+export class DatabaseNotEnabled extends WorkerError {
+	constructor() {
+		super(
+			"database_not_enabled",
+			"Database not enabled. Must implement `database` to use database.",
+		);
+	}
+}

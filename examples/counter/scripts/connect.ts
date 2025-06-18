@@ -1,11 +1,13 @@
 /// <reference types="node" />
 import { createClient } from "@rivetkit/worker/client";
-import type { Registry } from "../workers/registry";
+import type { Registry } from "../src/workers/registry";
 
 async function main() {
-	const client = createClient<Registry>(process.env.ENDPOINT ?? "http://localhost:6420");
+	const client = createClient<Registry>(
+		process.env.ENDPOINT ?? "http://127.0.0.1:8080",
+	);
 
-	const counter = client.counter.connect()
+	const counter = (await client.counter.getOrCreate()).connect();
 
 	counter.on("newCount", (count: number) => console.log("Event:", count));
 

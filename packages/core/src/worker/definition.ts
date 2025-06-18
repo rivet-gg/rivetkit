@@ -1,9 +1,10 @@
-import { type WorkerConfig, type Actions } from "./config";
+import type { WorkerConfig, Actions } from "./config";
 import { WorkerInstance } from "./instance";
-import { WorkerContext } from "./context";
+import type { WorkerContext } from "./context";
 import type { ActionContext } from "./action";
 
 export type AnyWorkerDefinition = WorkerDefinition<
+	any,
 	any,
 	any,
 	any,
@@ -24,9 +25,10 @@ export type WorkerContextOf<AD extends AnyWorkerDefinition> =
 		infer V,
 		infer I,
 		infer AD,
+		infer DB,
 		any
 	>
-		? WorkerContext<S, CP, CS, V, I, AD>
+		? WorkerContext<S, CP, CS, V, I, AD, DB>
 		: never;
 
 /**
@@ -40,9 +42,10 @@ export type ActionContextOf<AD extends AnyWorkerDefinition> =
 		infer V,
 		infer I,
 		infer AD,
+		infer DB,
 		any
 	>
-		? ActionContext<S, CP, CS, V, I, AD>
+		? ActionContext<S, CP, CS, V, I, AD, DB>
 		: never;
 
 export class WorkerDefinition<
@@ -52,19 +55,20 @@ export class WorkerDefinition<
 	V,
 	I,
 	AD,
-	R extends Actions<S, CP, CS, V, I, AD>,
+	DB,
+	R extends Actions<S, CP, CS, V, I, AD, DB>,
 > {
-	#config: WorkerConfig<S, CP, CS, V, I, AD>;
+	#config: WorkerConfig<S, CP, CS, V, I, AD, DB>;
 
-	constructor(config: WorkerConfig<S, CP, CS, V, I, AD>) {
+	constructor(config: WorkerConfig<S, CP, CS, V, I, AD, DB>) {
 		this.#config = config;
 	}
 
-	get config(): WorkerConfig<S, CP, CS, V, I, AD> {
+	get config(): WorkerConfig<S, CP, CS, V, I, AD, DB> {
 		return this.#config;
 	}
 
-	instantiate(): WorkerInstance<S, CP, CS, V, I, AD> {
+	instantiate(): WorkerInstance<S, CP, CS, V, I, AD, DB> {
 		return new WorkerInstance(this.#config);
 	}
 }

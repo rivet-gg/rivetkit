@@ -1,4 +1,4 @@
-// import { WorkerDriver, AnyWorkerInstance } from "@rivetkit/core/driver-helpers";
+// import type { WorkerDriver, AnyWorkerInstance } from "rivetkit/driver-helpers";
 // import invariant from "invariant";
 // import { KEYS } from "./worker-handler-do";
 //
@@ -62,5 +62,9 @@
 //
 // 	async setAlarm(worker: AnyWorkerInstance, timestamp: number): Promise<void> {
 // 		await this.#getDOCtx(worker.id).storage.setAlarm(timestamp);
+// 	}
+//
+// 	async getDatabase(workerId: string): Promise<unknown | undefined> {
+// 		return this.#getDOCtx(workerId).storage.sql;
 // 	}
 // }

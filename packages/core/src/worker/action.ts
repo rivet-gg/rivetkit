@@ -1,20 +1,18 @@
-import type { AnyWorkerInstance } from "./instance";
 import type { Conn } from "./connection";
 import type { Logger } from "@/common/log";
 import type { WorkerKey } from "@/common/utils";
 import type { Schedule } from "./schedule";
 import type { ConnId } from "./connection";
 import type { SaveStateOptions } from "./instance";
-import { Actions } from "./config";
-import { WorkerContext } from "./context";
+import type { WorkerContext } from "./context";
 
 /**
  * Context for a remote procedure call.
  *
  * @typeParam A Worker this action belongs to
  */
-export class ActionContext<S, CP, CS, V, I, AD> {
-	#workerContext: WorkerContext<S, CP, CS, V, I, AD>;
+export class ActionContext<S, CP, CS, V, I, AD, DB> {
+	#workerContext: WorkerContext<S, CP, CS, V, I, AD, DB>;
 
 	/**
 	 * Should not be called directly.
@@ -23,8 +21,8 @@ export class ActionContext<S, CP, CS, V, I, AD> {
 	 * @param conn - The connection associated with the action
 	 */
 	constructor(
-		workerContext: WorkerContext<S, CP, CS, V, I, AD>,
-		public readonly conn: Conn<S, CP, CS, V, I, AD>,
+		workerContext: WorkerContext<S, CP, CS, V, I, AD, DB>,
+		public readonly conn: Conn<S, CP, CS, V, I, AD, DB>,
 	) {
 		this.#workerContext = workerContext;
 	}
@@ -95,8 +93,15 @@ export class ActionContext<S, CP, CS, V, I, AD> {
 	/**
 	 * Gets the map of connections.
 	 */
-	get conns(): Map<ConnId, Conn<S, CP, CS, V, I, AD>> {
+	get conns(): Map<ConnId, Conn<S, CP, CS, V, I, AD, DB>> {
 		return this.#workerContext.conns;
+	}
+
+	/**
+	 * @experimental
+	 */
+	get db(): DB {
+		return this.#workerContext.db;
 	}
 
 	/**

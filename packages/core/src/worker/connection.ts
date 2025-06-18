@@ -3,9 +3,9 @@ import * as errors from "./errors";
 import { generateSecureToken } from "./utils";
 import { CachedSerializer } from "./protocol/serde";
 import type { ConnDriver } from "./driver";
-import * as messageToClient from "@/worker/protocol/message/to-client";
+import type * as messageToClient from "@/worker/protocol/message/to-client";
 import type { PersistedConn } from "./persisted";
-import * as wsToClient from "@/worker/protocol/message/to-client";
+import type * as wsToClient from "@/worker/protocol/message/to-client";
 
 export function generateConnId(): string {
 	return crypto.randomUUID();
@@ -17,7 +17,7 @@ export function generateConnToken(): string {
 
 export type ConnId = string;
 
-export type AnyConn = Conn<any, any, any, any, any, any>;
+export type AnyConn = Conn<any, any, any, any, any, any, any>;
 
 /**
  * Represents a client connection to a worker.
@@ -26,13 +26,13 @@ export type AnyConn = Conn<any, any, any, any, any, any>;
  *
  * @see {@link https://rivet.gg/docs/connections|Connection Documentation}
  */
-export class Conn<S, CP, CS, V, I, AD> {
+export class Conn<S, CP, CS, V, I, AD, DB> {
 	subscriptions: Set<string> = new Set<string>();
 
 	#stateEnabled: boolean;
 
 	// TODO: Remove this cyclical reference
-	#worker: WorkerInstance<S, CP, CS, V, I, AD>;
+	#worker: WorkerInstance<S, CP, CS, V, I, AD, DB>;
 
 	/**
 	 * The proxied state that notifies of changes automatically.
@@ -103,7 +103,7 @@ export class Conn<S, CP, CS, V, I, AD> {
 	 * @protected
 	 */
 	public constructor(
-		worker: WorkerInstance<S, CP, CS, V, I, AD>,
+		worker: WorkerInstance<S, CP, CS, V, I, AD, DB>,
 		persist: PersistedConn<CP, CS>,
 		driver: ConnDriver,
 		stateEnabled: boolean,

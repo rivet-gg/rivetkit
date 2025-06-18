@@ -32,4 +32,8 @@ export class MemoryWorkerDriver implements WorkerDriver {
 			worker.onAlarm();
 		}, delay);
 	}
+
+	getDatabase(workerId: string): Promise<unknown | undefined> {
+		return Promise.resolve(undefined);
+	}
 }

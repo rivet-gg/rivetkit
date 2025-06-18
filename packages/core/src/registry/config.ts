@@ -5,7 +5,7 @@ import { z } from "zod";
 
 export const WorkersSchema = z.record(
 	z.string(),
-	z.custom<WorkerDefinition<any, any, any, any, any, any, any>>(),
+	z.custom<WorkerDefinition<any, any, any, any, any, any, any, any>>(),
 );
 export type RegistryWorkers = z.infer<typeof WorkersSchema>;
 
@@ -21,6 +21,7 @@ export const RegistryConfigSchema = z.object({
 	 * Test configuration.
 	 *
 	 * DO NOT MANUALLY ENABLE. THIS IS USED INTERNALLY.
+	 * @internal
 	 **/
 	test: TestConfigSchema.optional().default({ enabled: false }),
 });

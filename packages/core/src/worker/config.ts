@@ -24,6 +24,7 @@ export const WorkerConfigSchema = z
 		connState: z.any().optional(),
 		createConnState: z.function().optional(),
 		vars: z.any().optional(),
+		db: z.any().optional(),
 		createVars: z.function().optional(),
 		options: z
 			.object({
@@ -98,11 +99,19 @@ export interface OnConnectOptions<CP> {
 // This must have only one or the other or else S will not be able to be inferred
 //
 // Data returned from this handler will be available on `c.state`.
-type CreateState<S, CP, CS, V, I, AD> =
+type CreateState<S, CP, CS, V, I, AD, DB> =
 	| { state: S }
 	| {
 			createState: (
-				c: WorkerContext<undefined, undefined, undefined, undefined, undefined, undefined>,
+				c: WorkerContext<
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					undefined
+				>,
 				opts: CreateStateOptions<I>,
 			) => S | Promise<S>;
 	  }
@@ -113,11 +122,19 @@ type CreateState<S, CP, CS, V, I, AD> =
 // This must have only one or the other or else S will not be able to be inferred
 //
 // Data returned from this handler will be available on `c.conn.state`.
-type CreateConnState<S, CP, CS, V, I, AD> =
+type CreateConnState<S, CP, CS, V, I, AD, DB> =
 	| { connState: CS }
 	| {
 			createConnState: (
-				c: WorkerContext<undefined, undefined, undefined, undefined, undefined, undefined>,
+				c: WorkerContext<
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					undefined
+				>,
 				opts: OnConnectOptions<CP>,
 			) => CS | Promise<CS>;
 	  }
@@ -129,7 +146,7 @@ type CreateConnState<S, CP, CS, V, I, AD> =
 /**
  * @experimental
  */
-type CreateVars<S, CP, CS, V, I, AD> =
+type CreateVars<S, CP, CS, V, I, AD, DB> =
 	| {
 			/**
 			 * @experimental
@@ -141,15 +158,23 @@ type CreateVars<S, CP, CS, V, I, AD> =
 			 * @experimental
 			 */
 			createVars: (
-				c: WorkerContext<undefined, undefined, undefined, undefined, undefined, undefined>,
+				c: WorkerContext<
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					undefined
+				>,
 				driverCtx: unknown,
 			) => V | Promise<V>;
 	  }
 	| Record<never, never>;
 
-export interface Actions<S, CP, CS, V, I, AD> {
+export interface Actions<S, CP, CS, V, I, AD, DB> {
 	[Action: string]: (
-		c: ActionContext<S, CP, CS, V, I, AD>,
+		c: ActionContext<S, CP, CS, V, I, AD, DB>,
 		...args: any[]
 	) => any;
 }
@@ -180,7 +205,8 @@ interface BaseWorkerConfig<
 	V,
 	I,
 	AD,
-	R extends Actions<S, CP, CS, V, I, AD>,
+	DB,
+	R extends Actions<S, CP, CS, V, I, AD, DB>,
 > {
 	/**
 	 * Called on the HTTP server before clients can interact with the worker.
@@ -216,7 +242,7 @@ interface BaseWorkerConfig<
 	 * This is called before any other lifecycle hooks.
 	 */
 	onCreate?: (
-		c: WorkerContext<S, CP, CS, V, I, AD>,
+		c: WorkerContext<S, CP, CS, V, I, AD, DB>,
 		opts: OnCreateOptions<I>,
 	) => void | Promise<void>;
 
@@ -228,7 +254,7 @@ interface BaseWorkerConfig<
 	 *
 	 * @returns Void or a Promise that resolves when startup is complete
 	 */
-	onStart?: (c: WorkerContext<S, CP, CS, V, I, AD>) => void | Promise<void>;
+	onStart?: (c: WorkerContext<S, CP, CS, V, I, AD, DB>) => void | Promise<void>;
 
 	/**
 	 * Called when the worker's state changes.
@@ -238,7 +264,10 @@ interface BaseWorkerConfig<
 	 *
 	 * @param newState The updated state
 	 */
-	onStateChange?: (c: WorkerContext<S, CP, CS, V, I, AD>, newState: S) => void;
+	onStateChange?: (
+		c: WorkerContext<S, CP, CS, V, I, AD, DB>,
+		newState: S,
+	) => void;
 
 	/**
 	 * Called before a client connects to the worker.
@@ -261,7 +290,7 @@ interface BaseWorkerConfig<
 	 * @throws Throw an error to reject the connection
 	 */
 	onBeforeConnect?: (
-		c: WorkerContext<S, CP, CS, V, I, AD>,
+		c: WorkerContext<S, CP, CS, V, I, AD, DB>,
 		opts: OnConnectOptions<CP>,
 	) => void | Promise<void>;
 
@@ -275,8 +304,8 @@ interface BaseWorkerConfig<
 	 * @returns Void or a Promise that resolves when connection handling is complete
 	 */
 	onConnect?: (
-		c: WorkerContext<S, CP, CS, V, I, AD>,
-		conn: Conn<S, CP, CS, V, I, AD>,
+		c: WorkerContext<S, CP, CS, V, I, AD, DB>,
+		conn: Conn<S, CP, CS, V, I, AD, DB>,
 	) => void | Promise<void>;
 
 	/**
@@ -289,8 +318,8 @@ interface BaseWorkerConfig<
 	 * @returns Void or a Promise that resolves when disconnect handling is complete
 	 */
 	onDisconnect?: (
-		c: WorkerContext<S, CP, CS, V, I, AD>,
-		conn: Conn<S, CP, CS, V, I, AD>,
+		c: WorkerContext<S, CP, CS, V, I, AD, DB>,
+		conn: Conn<S, CP, CS, V, I, AD, DB>,
 	) => void | Promise<void>;
 
 	/**
@@ -306,7 +335,7 @@ interface BaseWorkerConfig<
 	 * @returns The modified output to send to the client
 	 */
 	onBeforeActionResponse?: <Out>(
-		c: WorkerContext<S, CP, CS, V, I, AD>,
+		c: WorkerContext<S, CP, CS, V, I, AD, DB>,
 		name: string,
 		args: unknown[],
 		output: Out,
@@ -315,10 +344,32 @@ interface BaseWorkerConfig<
 	actions: R;
 }
 
+export type DatabaseFactory<DB> = (ctx: {
+	createDatabase: () => Promise<unknown>;
+}) => Promise<{
+	/**
+	 * @experimental
+	 */
+	db?: DB;
+	/**
+	 * @experimental
+	 */
+	onMigrate?: () => void | Promise<void>;
+}>;
+
+type WorkerDatabaseConfig<DB> =
+	| {
+			/**
+			 * @experimental
+			 */
+			db: DatabaseFactory<DB>;
+	  }
+	| Record<never, never>;
+
 // 1. Infer schema
 // 2. Omit keys that we'll manually define (because of generics)
 // 3. Define our own types that have generic constraints
-export type WorkerConfig<S, CP, CS, V, I, AD> = Omit<
+export type WorkerConfig<S, CP, CS, V, I, AD, DB> = Omit<
 	z.infer<typeof WorkerConfigSchema>,
 	| "actions"
 	| "onAuth"
@@ -335,11 +386,13 @@ export type WorkerConfig<S, CP, CS, V, I, AD> = Omit<
 	| "createConnState"
 	| "vars"
 	| "createVars"
+	| "db"
 > &
-	BaseWorkerConfig<S, CP, CS, V, I, AD, Actions<S, CP, CS, V, I, AD>> &
-	CreateState<S, CP, CS, V, I, AD> &
-	CreateConnState<S, CP, CS, V, I, AD> &
-	CreateVars<S, CP, CS, V, I, AD>;
+	BaseWorkerConfig<S, CP, CS, V, I, AD, DB, Actions<S, CP, CS, V, I, AD, DB>> &
+	CreateState<S, CP, CS, V, I, AD, DB> &
+	CreateConnState<S, CP, CS, V, I, AD, DB> &
+	CreateVars<S, CP, CS, V, I, AD, DB> &
+	WorkerDatabaseConfig<DB>;
 
 // See description on `WorkerConfig`
 export type WorkerConfigInput<
@@ -349,7 +402,8 @@ export type WorkerConfigInput<
 	V,
 	I,
 	AD,
-	R extends Actions<S, CP, CS, V, I, AD>,
+	DB,
+	R extends Actions<S, CP, CS, V, I, AD, DB>,
 > = Omit<
 	z.input<typeof WorkerConfigSchema>,
 	| "actions"
@@ -367,11 +421,13 @@ export type WorkerConfigInput<
 	| "createConnState"
 	| "vars"
 	| "createVars"
+	| "db"
 > &
-	BaseWorkerConfig<S, CP, CS, V, I, AD, R> &
-	CreateState<S, CP, CS, V, I, AD> &
-	CreateConnState<S, CP, CS, V, I, AD> &
-	CreateVars<S, CP, CS, V, I, AD>;
+	BaseWorkerConfig<S, CP, CS, V, I, AD, DB, R> &
+	CreateState<S, CP, CS, V, I, AD, DB> &
+	CreateConnState<S, CP, CS, V, I, AD, DB> &
+	CreateVars<S, CP, CS, V, I, AD, DB> &
+	WorkerDatabaseConfig<DB>;
 
 // For testing type definitions:
 export function test<
@@ -381,17 +437,19 @@ export function test<
 	V,
 	I,
 	AD,
-	R extends Actions<S, CP, CS, V, I, AD>,
+	DB,
+	R extends Actions<S, CP, CS, V, I, AD, DB>,
 >(
-	input: WorkerConfigInput<S, CP, CS, V, I, AD, R>,
-): WorkerConfig<S, CP, CS, V, I, AD> {
+	input: WorkerConfigInput<S, CP, CS, V, I, AD, DB, R>,
+): WorkerConfig<S, CP, CS, V, I, AD, DB> {
 	const config = WorkerConfigSchema.parse(input) as WorkerConfig<
 		S,
 		CP,
 		CS,
 		V,
 		I,
-		AD
+		AD,
+		DB
 	>;
 	return config;
 }

@@ -17,6 +17,13 @@ export interface WorkerDriver {
 	// Schedule
 	setAlarm(worker: AnyWorkerInstance, timestamp: number): Promise<void>;
 
+	// Database
+	/**
+	 * @experimental
+	 * This is an experimental API that may change in the future.
+	 */
+	getDatabase(workerId: string): Promise<unknown | undefined>;
+
 	// TODO:
 	//destroy(): Promise<void>;
 	//readState(): void;
