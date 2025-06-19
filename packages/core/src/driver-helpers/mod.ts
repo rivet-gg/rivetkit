@@ -1,4 +1,3 @@
-export { type DriverConfig, DriverConfigSchema } from "./config";
 export type { WorkerInstance, AnyWorkerInstance } from "@/worker/instance";
 export {
 	AttemptAcquireLease,
@@ -27,3 +26,4 @@ export {
 	HEADER_CONN_ID,
 	HEADER_CONN_TOKEN,
 } from "@/worker/router-endpoints";
+export { RunConfigSchema, DriverConfigSchema } from "@/registry/run-config";

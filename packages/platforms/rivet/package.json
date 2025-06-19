@@ -1,6 +1,7 @@
 {
   "name": "@rivetkit/rivet",
   "version": "0.9.0-rc.1",
+  "keywords": ["rivetkit", "rivet", "platform", "cloud", "managed", "scaling"],
   "files": [
     "src",
     "dist",

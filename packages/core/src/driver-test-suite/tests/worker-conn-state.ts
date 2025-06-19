@@ -6,11 +6,7 @@ export function runWorkerConnStateTests(driverTestConfig: DriverTestConfig) {
 	describe("Worker Connection State Tests", () => {
 		describe("Connection State Initialization", () => {
 			test("should retrieve connection state", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Connect to the worker
 				const connection = client.connStateWorker.getOrCreate().connect();
@@ -30,11 +26,7 @@ export function runWorkerConnStateTests(driverTestConfig: DriverTestConfig) {
 			});
 
 			test("should initialize connection state with custom parameters", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Connect with custom parameters
 				const connection = client.connStateWorker
@@ -60,11 +52,7 @@ export function runWorkerConnStateTests(driverTestConfig: DriverTestConfig) {
 
 		describe("Connection State Management", () => {
 			test("should maintain unique state for each connection", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Create multiple connections
 				const conn1 = client.connStateWorker
@@ -99,11 +87,7 @@ export function runWorkerConnStateTests(driverTestConfig: DriverTestConfig) {
 			});
 
 			test("should track connections in shared state", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Create two connections
 				const handle = client.connStateWorker.getOrCreate();
@@ -128,11 +112,7 @@ export function runWorkerConnStateTests(driverTestConfig: DriverTestConfig) {
 			});
 
 			test("should identify different connections in the same worker", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Create two connections to the same worker
 				const handle = client.connStateWorker.getOrCreate();
@@ -158,11 +138,7 @@ export function runWorkerConnStateTests(driverTestConfig: DriverTestConfig) {
 
 		describe("Connection Lifecycle", () => {
 			test("should track connection and disconnection events", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Create a connection
 				const handle = client.connStateWorker.getOrCreate();
@@ -196,11 +172,7 @@ export function runWorkerConnStateTests(driverTestConfig: DriverTestConfig) {
 			});
 
 			test("should update connection state", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Create a connection
 				const conn = client.connStateWorker.getOrCreate().connect();
@@ -231,11 +203,7 @@ export function runWorkerConnStateTests(driverTestConfig: DriverTestConfig) {
 
 		describe("Connection Communication", () => {
 			test("should send messages to specific connections", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Create two connections
 				const handle = client.connStateWorker.getOrCreate();

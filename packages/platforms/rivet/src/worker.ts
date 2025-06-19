@@ -61,8 +61,8 @@ async function startWorker(
 
 	// Setup worker driver
 	if (!driverConfig.drivers) driverConfig.drivers = {};
-	if (!driverConfig.drivers.worker) {
-		driverConfig.drivers.worker = new RivetWorkerDriver(ctx);
+	if (!driverConfig.driver.worker) {
+		driverConfig.driver.worker = new RivetWorkerDriver(ctx);
 	}
 
 	// Setup WebSocket upgrader

@@ -102,8 +102,8 @@ export function createWorkerDurableObject(
 
 			// Create topology
 			if (!config.drivers) config.drivers = {};
-			if (!config.drivers.worker) {
-				config.drivers.worker = new CloudflareWorkersWorkerDriver(globalState);
+			if (!config.driver.worker) {
+				config.driver.worker = new CloudflareWorkersWorkerDriver(globalState);
 			}
 			const workerTopology = new PartitionTopologyWorker(registry.config, config);
 

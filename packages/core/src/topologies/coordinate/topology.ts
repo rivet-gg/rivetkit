@@ -6,7 +6,6 @@ import { publishMessageToLeader } from "./node/message";
 import type { RelayConn } from "./conn/mod";
 import { Hono } from "hono";
 import { handleRouteError, handleRouteNotFound } from "@/common/router";
-import type { DriverConfig } from "@/driver-helpers/config";
 import type { RegistryConfig } from "@/registry/config";
 import { createManagerRouter } from "@/manager/router";
 import type {
@@ -25,6 +24,7 @@ import { serveWebSocket } from "./router/websocket";
 import { serveSse } from "./router/sse";
 import { ClientDriver } from "@/client/client";
 import { ConnRoutingHandler } from "@/worker/conn-routing-handler";
+import { DriverConfig, RunConfig } from "@/registry/run-config";
 
 export interface GlobalState {
 	nodeId: string;
@@ -40,13 +40,11 @@ export class CoordinateTopology {
 	public readonly clientDriver: ClientDriver;
 	public readonly router: Hono;
 
-	constructor(registryConfig: RegistryConfig, driverConfig: DriverConfig) {
-		if (!driverConfig.drivers) throw new Error("config.drivers not defined.");
+	constructor(registryConfig: RegistryConfig, runConfig: RunConfig) {
 		const { worker: workerDriver, coordinate: CoordinateDriver } =
-			driverConfig.drivers;
-		if (!workerDriver) throw new Error("config.drivers.worker not defined.");
+			runConfig.driver;
 		if (!CoordinateDriver)
-			throw new Error("config.drivers.coordinate not defined.");
+			throw new Error("config.driver.coordinate not defined.");
 
 		// Allow usage of a lot of AbortSignals (which are EventEmitters)
 		//events.defaultMaxListeners = 100_000;
@@ -65,7 +63,7 @@ export class CoordinateTopology {
 		// Build router
 		const router = new Hono();
 
-		const upgradeWebSocket = driverConfig.getUpgradeWebSocket?.(router);
+		const upgradeWebSocket = runConfig.getUpgradeWebSocket?.(router);
 
 		// Share connection handlers for both routers
 		const connectionHandlers: ConnectionHandlers = {
@@ -74,7 +72,7 @@ export class CoordinateTopology {
 			): Promise<ConnectWebSocketOutput> => {
 				return await serveWebSocket(
 					registryConfig,
-					driverConfig,
+					runConfig,
 					workerDriver,
 					CoordinateDriver,
 					globalState,
@@ -85,7 +83,7 @@ export class CoordinateTopology {
 			onConnectSse: async (opts: ConnectSseOpts): Promise<ConnectSseOutput> => {
 				return await serveSse(
 					registryConfig,
-					driverConfig,
+					runConfig,
 					workerDriver,
 					CoordinateDriver,
 					globalState,
@@ -100,7 +98,7 @@ export class CoordinateTopology {
 			onConnMessage: async (opts: ConnsMessageOpts): Promise<void> => {
 				await publishMessageToLeader(
 					registryConfig,
-					driverConfig,
+					runConfig,
 					CoordinateDriver,
 					globalState,
 					opts.workerId,
@@ -124,14 +122,14 @@ export class CoordinateTopology {
 		};
 
 		// Create driver
-		const managerDriver = driverConfig.drivers.manager;
+		const managerDriver = runConfig.driver.manager;
 		invariant(managerDriver, "missing manager driver");
 		this.clientDriver = createInlineClientDriver(managerDriver, routingHandler);
 
 		// Build manager router
 		const managerRouter = createManagerRouter(
 			registryConfig,
-			driverConfig,
+			runConfig,
 			this.clientDriver,
 			{
 				routingHandler,

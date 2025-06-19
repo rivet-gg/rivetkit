@@ -6,7 +6,6 @@ import {
 	handleRouteNotFound,
 	loggerMiddleware,
 } from "@/common/router";
-import type { DriverConfig } from "@/driver-helpers/config";
 import type { RegistryConfig } from "@/registry/config";
 import {
 	type ConnectWebSocketOpts,
@@ -30,6 +29,7 @@ import {
 } from "@/worker/router-endpoints";
 import invariant from "invariant";
 import { EncodingSchema } from "@/worker/protocol/serde";
+import { DriverConfig, RunConfig } from "@/registry/run-config";
 
 export type {
 	ConnectWebSocketOpts,
@@ -55,38 +55,14 @@ export interface WorkerRouterHandler {
  */
 export function createWorkerRouter(
 	registryConfig: RegistryConfig,
-	driverConfig: DriverConfig,
+	runConfig: RunConfig,
 	handler: WorkerRouterHandler,
 ): Hono {
 	const router = new Hono();
 
-	const upgradeWebSocket = driverConfig.getUpgradeWebSocket?.(router);
+	const upgradeWebSocket = runConfig.getUpgradeWebSocket?.(router);
 
 	router.use("*", loggerMiddleware(logger()));
-
-	// Apply CORS middleware if configured
-	//
-	//This is only relevant if the worker is exposed directly publicly
-	if (registryConfig.cors) {
-		const corsConfig = registryConfig.cors;
-
-		router.use("*", async (c, next) => {
-			const path = c.req.path;
-
-			// Don't apply to WebSocket routes, see https://hono.dev/docs/helpers/websocket#upgradewebsocket
-			if (path === "/connect/websocket" || path === "/inspect") {
-				return next();
-			}
-
-			return cors({
-				...corsConfig,
-				allowHeaders: [
-					...(registryConfig.cors?.allowHeaders ?? []),
-					...ALL_PUBLIC_HEADERS,
-				],
-			})(c, next);
-		});
-	}
 
 	router.get("/", (c) => {
 		return c.text(
@@ -119,6 +95,7 @@ export function createWorkerRouter(
 				return handleWebSocketConnect(
 					c as HonoContext,
 					registryConfig,
+					runConfig,
 					handlers.onConnectWebSocket!,
 					workerId,
 					encoding,
@@ -151,7 +128,7 @@ export function createWorkerRouter(
 		return handleSseConnect(
 			c,
 			registryConfig,
-			driverConfig,
+			runConfig,
 			handlers.onConnectSse,
 			workerId,
 			authData,
@@ -174,7 +151,7 @@ export function createWorkerRouter(
 		return handleAction(
 			c,
 			registryConfig,
-			driverConfig,
+			runConfig,
 			handlers.onAction,
 			actionName,
 			workerId,
@@ -195,6 +172,7 @@ export function createWorkerRouter(
 		return handleConnectionMessage(
 			c,
 			registryConfig,
+			runConfig,
 			handlers.onConnMessage,
 			connId,
 			connToken,

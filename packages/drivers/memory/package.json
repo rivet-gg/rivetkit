@@ -1,6 +1,7 @@
 {
   "name": "@rivetkit/memory",
   "version": "0.9.0-rc.1",
+  "keywords": ["rivetkit", "driver", "memory", "storage", "development", "testing"],
   "files": [
     "src",
     "dist",

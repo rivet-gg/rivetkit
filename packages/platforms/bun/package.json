@@ -1,6 +1,7 @@
 {
   "name": "@rivetkit/bun",
   "version": "0.9.0-rc.1",
+  "keywords": ["rivetkit", "bun", "platform", "runtime", "fast"],
   "files": [
     "src",
     "dist",

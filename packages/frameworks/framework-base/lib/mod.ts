@@ -7,6 +7,7 @@ import type {
 	WorkerHandle,
 } from "rivetkit/client";
 
+// biome-ignore lint/suspicious/noExplicitAny: its a generic worker registry
 export type AnyWorkerRegistry = Registry<any>;
 
 interface WorkerStateReference<AD extends AnyWorkerDefinition> {
@@ -104,7 +105,11 @@ export interface WorkerOptions<
 	enabled?: boolean;
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: worker name can be anything
+export type AnyWorkerOptions = WorkerOptions<AnyWorkerRegistry, any>;
+
 export interface CreateRivetKitOptions<Registry extends AnyWorkerRegistry> {
+	// biome-ignore lint/suspicious/noExplicitAny: worker name can be anything
 	hashFunction?: (opts: WorkerOptions<Registry, any>) => string;
 }
 
@@ -131,6 +136,7 @@ export function createRivetKit<
 			create: () => void;
 			addEventListener?: (
 				event: string,
+				// biome-ignore lint/suspicious/noExplicitAny: need any specific type here
 				handler: (...args: any[]) => void,
 			) => void;
 		}
@@ -174,29 +180,36 @@ export function createRivetKit<
 
 					await handle.resolve(/*{ signal: AbortSignal.timeout(0) }*/);
 					store.setState((prev) => {
-						const prevWorker = prev.workers[key];
-						prev.workers[key] = {
-							...prevWorker,
-							isConnected: true,
-							isConnecting: false,
-							handle: handle as WorkerHandle<Workers[WorkerName]>,
-							connection: connection as WorkerConn<Workers[WorkerName]>,
-							isError: false,
-							error: null,
+						return {
+							...prev,
+							workers: {
+								...prev.workers,
+								[key]: {
+									...prev.workers[key],
+									isConnected: true,
+									isConnecting: false,
+									handle: handle as WorkerHandle<Workers[WorkerName]>,
+									connection: connection as WorkerConn<Workers[WorkerName]>,
+									isError: false,
+									error: null,
+								},
+							},
 						};
-						return prev;
 					});
 				} catch (error) {
 					store.setState((prev) => {
-						const prevWorker = prev.workers[key];
-						prev.workers[key] = {
-							...prevWorker,
-							isError: true,
-							isConnecting: false,
-							error: error as Error,
+						return {
+							...prev,
+							workers: {
+								...prev.workers,
+								[key]: {
+									...prev.workers[key],
+									isError: true,
+									isConnecting: false,
+									error: error as Error,
+								},
+							},
 						};
-
-						return prev;
 					});
 				}
 			}
@@ -215,7 +228,6 @@ export function createRivetKit<
 			fn: () => {
 				// check if prev state is different from current state
 				// do a shallow comparison
-
 				const worker = store.state.workers[key];
 
 				const isSame =
@@ -239,17 +251,22 @@ export function createRivetKit<
 			if (prev.workers[key]) {
 				return prev;
 			}
-			prev.workers[key] = {
-				hash: key,
-				isConnected: false,
-				isConnecting: false,
-				connection: null,
-				handle: null,
-				isError: false,
-				error: null,
-				opts,
+			return {
+				...prev,
+				workers: {
+					...prev.workers,
+					[key]: {
+						hash: key,
+						isConnected: false,
+						isConnecting: false,
+						connection: null,
+						handle: null,
+						isError: false,
+						error: null,
+						opts,
+					},
+				},
 			};
-			return prev;
 		});
 
 		function setState(updater: Updater<RivetKitStore["workers"][string]>) {
@@ -259,13 +276,21 @@ export function createRivetKit<
 					throw new Error(`Worker with key "${key}" does not exist.`);
 				}
 
+				let newState: RivetKitStore["workers"][string];
+
 				if (typeof updater === "function") {
-					prev.workers[key] = updater(worker);
+					newState = updater(worker);
 				} else {
 					// If updater is a direct value, we assume it replaces the entire worker state
-					prev.workers[key] = updater;
+					newState = updater;
 				}
-				return prev;
+				return {
+					...prev,
+					workers: {
+						...prev.workers,
+						[key]: newState,
+					},
+				};
 			});
 		}
 
@@ -308,6 +333,6 @@ export function createRivetKit<
 	};
 }
 
-function defaultHashFunction({ name, key, params }: WorkerOptions<any, any>) {
+function defaultHashFunction({ name, key, params }: AnyWorkerOptions) {
 	return JSON.stringify({ name, key, params });
 }

@@ -36,7 +36,6 @@ import {
 	deconstructError,
 	stringifyError,
 } from "@/common/utils";
-import type { DriverConfig } from "@/driver-helpers/config";
 import { Hono, type Context as HonoContext, type Next } from "hono";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { z } from "@hono/zod-openapi";
@@ -60,6 +59,8 @@ import { ClientDriver } from "@/client/client";
 import { Transport } from "@/worker/protocol/message/mod";
 import { authenticateEndpoint } from "./auth";
 import type { WebSocket, MessageEvent, CloseEvent } from "ws";
+import { DriverConfig, RunConfig } from "@/registry/run-config";
+import { basePath, baseRoutePath, routePath } from "hono/route";
 
 type ManagerRouterHandler = {
 	// onConnectInspector?: ManagerInspectorConnHandler;
@@ -114,54 +115,50 @@ function buildOpenApiResponses<T>(schema: T) {
 
 export function createManagerRouter(
 	registryConfig: RegistryConfig,
-	driverConfig: DriverConfig,
+	runConfig: RunConfig,
 	inlineClientDriver: ClientDriver,
 	handler: ManagerRouterHandler,
 ) {
-	if (!driverConfig.drivers?.manager) {
-		// FIXME move to config schema
-		throw new Error("config.drivers.manager is not defined.");
-	}
-	const driver = driverConfig.drivers.manager;
+	const driver = runConfig.driver.manager;
 	const router = new OpenAPIHono();
 
-	const upgradeWebSocket = driverConfig.getUpgradeWebSocket?.(
+	const upgradeWebSocket = runConfig.getUpgradeWebSocket?.(
 		router as unknown as Hono,
 	);
 
 	router.use("*", loggerMiddleware(logger()));
 
-	if (registryConfig.cors) {
-		const corsConfig = registryConfig.cors;
+	if (runConfig.cors) {
+		const corsConfig = runConfig.cors;
 
 		router.use("*", async (c, next) => {
-			const path = c.req.path;
-
 			// Don't apply to WebSocket routes
-			if (path === "/workers/connect/websocket" || path === "/inspect") {
+			// HACK: This could be insecure if we had a varargs path. We have to check the path suffix for WS since we don't know the path that this router was mounted.
+			const path = c.req.path;
+			if (
+				path.endsWith("/workers/connect/websocket") ||
+				path.endsWith("/inspect")
+			) {
 				return next();
 			}
 
 			return cors({
 				...corsConfig,
 				allowHeaders: [
-					...(registryConfig.cors?.allowHeaders ?? []),
+					...(corsConfig?.allowHeaders ?? []),
 					...ALL_PUBLIC_HEADERS,
+					"Content-Type",
+					"User-Agent",
 				],
 			})(c, next);
 		});
 	}
 
 	// GET /
-	router.get("/", (c) => {
+	router.get("/", (c: HonoContext) => {
 		return c.text(
-			"This is an RivetKit server.\n\nLearn more at https://rivetkit.org",
+			"This is an RivetKit registry.\n\nLearn more at https://rivetkit.org",
 		);
-	});
-
-	// GET /health
-	router.get("/health", (c) => {
-		return c.text("ok");
 	});
 
 	// POST /workers/resolve
@@ -207,6 +204,23 @@ export function createManagerRouter(
 
 	// GET /workers/connect/websocket
 	{
+		// HACK: WebSockets don't work with mounts, so we need to dynamically match the trailing path
+		router.use("*", (c, next) => {
+			if (c.req.path.endsWith("/workers/connect/websocket")) {
+				return handleWebSocketConnectRequest(
+					c,
+					upgradeWebSocket,
+					registryConfig,
+					runConfig,
+					driver,
+					handler,
+				);
+			}
+
+			return next();
+		});
+
+		// This route is a noop, just used to generate docs
 		const wsRoute = createRoute({
 			method: "get",
 			path: "/workers/connect/websocket",
@@ -217,16 +231,9 @@ export function createManagerRouter(
 			},
 		});
 
-		router.openapi(wsRoute, (c) =>
-			handleWebSocketConnectRequest(
-				c,
-				upgradeWebSocket,
-				registryConfig,
-				driverConfig,
-				driver,
-				handler,
-			),
-		);
+		router.openapi(wsRoute, () => {
+			throw new Error("Should be unreachable");
+		});
 	}
 
 	// GET /workers/connect/sse
@@ -254,7 +261,7 @@ export function createManagerRouter(
 		});
 
 		router.openapi(sseRoute, (c) =>
-			handleSseConnectRequest(c, registryConfig, driverConfig, driver, handler),
+			handleSseConnectRequest(c, registryConfig, runConfig, driver, handler),
 		);
 	}
 
@@ -309,7 +316,7 @@ export function createManagerRouter(
 		});
 
 		router.openapi(actionRoute, (c) =>
-			handleActionRequest(c, registryConfig, driverConfig, driver, handler),
+			handleActionRequest(c, registryConfig, runConfig, driver, handler),
 		);
 	}
 
@@ -349,7 +356,7 @@ export function createManagerRouter(
 		});
 
 		router.openapi(messageRoute, (c) =>
-			handleMessageRequest(c, registryConfig, handler),
+			handleMessageRequest(c, registryConfig, runConfig, handler),
 		);
 	}
 
@@ -399,7 +406,7 @@ export function createManagerRouter(
 		if (upgradeWebSocket) {
 			router.get(
 				".test/inline-driver/connect-websocket",
-				upgradeWebSocket(async (c) => {
+				upgradeWebSocket(async (c: any) => {
 					const {
 						workerQuery: workerQueryRaw,
 						params: paramsRaw,
@@ -555,6 +562,8 @@ export function createManagerRouter(
 		},
 	});
 
+	router.get("/foo", (c) => c.text("foo"));
+
 	router.notFound(handleRouteNotFound);
 	router.onError(handleRouteError.bind(undefined, {}));
 
@@ -643,7 +652,7 @@ export async function queryWorker(
 async function handleSseConnectRequest(
 	c: HonoContext,
 	registryConfig: RegistryConfig,
-	driverConfig: DriverConfig,
+	runConfig: RunConfig,
 	driver: ManagerDriver,
 	handler: ManagerRouterHandler,
 ): Promise<Response> {
@@ -694,7 +703,7 @@ async function handleSseConnectRequest(
 			return await handleSseConnect(
 				c,
 				registryConfig,
-				driverConfig,
+				runConfig,
 				handler.routingHandler.inline.handlers.onConnectSse,
 				workerId,
 				authData,
@@ -784,7 +793,7 @@ async function handleWebSocketConnectRequest(
 		  ) => (c: HonoContext, next: Next) => Promise<Response>)
 		| undefined,
 	registryConfig: RegistryConfig,
-	driverConfig: DriverConfig,
+	runConfig: RunConfig,
 	driver: ManagerDriver,
 	handler: ManagerRouterHandler,
 ): Promise<Response> {
@@ -890,6 +899,7 @@ async function handleWebSocketConnectRequest(
 				return handleWebSocketConnect(
 					c,
 					registryConfig,
+					runConfig,
 					onConnectWebSocket,
 					workerId,
 					params.data.encoding,
@@ -972,6 +982,7 @@ async function handleWebSocketConnectRequest(
 async function handleMessageRequest(
 	c: HonoContext,
 	registryConfig: RegistryConfig,
+	runConfig: RunConfig,
 	handler: ManagerRouterHandler,
 ): Promise<Response> {
 	logger().debug("connection message request received");
@@ -1013,6 +1024,7 @@ async function handleMessageRequest(
 			return handleConnectionMessage(
 				c,
 				registryConfig,
+				runConfig,
 				handler.routingHandler.inline.handlers.onConnMessage,
 				connId,
 				connToken as string,
@@ -1057,7 +1069,7 @@ async function handleMessageRequest(
 async function handleActionRequest(
 	c: HonoContext,
 	registryConfig: RegistryConfig,
-	driverConfig: DriverConfig,
+	runConfig: RunConfig,
 	driver: ManagerDriver,
 	handler: ManagerRouterHandler,
 ): Promise<Response> {
@@ -1105,7 +1117,7 @@ async function handleActionRequest(
 			return handleAction(
 				c,
 				registryConfig,
-				driverConfig,
+				runConfig,
 				handler.routingHandler.inline.handlers.onAction,
 				actionName,
 				workerId,

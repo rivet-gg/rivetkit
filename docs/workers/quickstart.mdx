@@ -30,7 +30,6 @@ const myRealtime = realtime({
 
 const registry = setup({
 	registry: { counter, myWorkflow, myRealtime },
-	maxConnParamLength: 123
 });
 
 export type Registry = typeof registry;

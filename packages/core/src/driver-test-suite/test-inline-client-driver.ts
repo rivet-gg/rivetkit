@@ -85,10 +85,11 @@ export function createTestInlineClientDriver(
 			logger().debug("connecting to websocket", { url: finalWsUrl });
 
 			// Create and return the WebSocket
+			// Node & browser WebSocket types are incompatible
 			return new WebSocket(finalWsUrl, [
 				// HACK: See packages/platforms/cloudflare-workers/src/websocket.ts
 				"rivetkit",
-			]);
+			]) as any;
 		},
 
 		connectSse: async (

@@ -8,16 +8,16 @@ import type { CoordinateDriver } from "../driver";
 import { RelayConn } from "../conn/mod";
 import { publishMessageToLeader } from "../node/message";
 import type { WorkerDriver } from "@/worker/driver";
-import type { DriverConfig } from "@/driver-helpers/config";
 import type { RegistryConfig } from "@/registry/config";
 import {
 	ConnectWebSocketOpts,
 	ConnectWebSocketOutput,
 } from "@/worker/router-endpoints";
+import { DriverConfig, RunConfig } from "@/registry/run-config";
 
 export async function serveWebSocket(
 	registryConfig: RegistryConfig,
-	driverConfig: DriverConfig,
+	runConfig: RunConfig,
 	workerDriver: WorkerDriver,
 	CoordinateDriver: CoordinateDriver,
 	globalState: GlobalState,
@@ -29,7 +29,7 @@ export async function serveWebSocket(
 		onOpen: async (ws: WSContext) => {
 			conn = new RelayConn(
 				registryConfig,
-				driverConfig,
+				runConfig,
 				workerDriver,
 				CoordinateDriver,
 				globalState,
@@ -55,7 +55,7 @@ export async function serveWebSocket(
 
 			await publishMessageToLeader(
 				registryConfig,
-				driverConfig,
+				runConfig,
 				CoordinateDriver,
 				globalState,
 				workerId,

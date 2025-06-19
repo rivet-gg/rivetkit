@@ -1,7 +1,7 @@
-import { DriverConfigSchema } from "@/driver-helpers/mod";
+import { RunConfigSchema } from "@/registry/run-config";
 import { z } from "zod";
 
-export const ConfigSchema = DriverConfigSchema.extend({
+export const ConfigSchema = RunConfigSchema.extend({
 	hostname: z
 		.string()
 		.optional()
@@ -10,5 +10,5 @@ export const ConfigSchema = DriverConfigSchema.extend({
 		.number()
 		.optional()
 		.default(Number.parseInt(process.env.PORT ?? "6420")),
-}).default({});
+}).partial({ driver: true });
 export type InputConfig = z.input<typeof ConfigSchema>;

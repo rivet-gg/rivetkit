@@ -4,13 +4,13 @@ import { encodeDataToString, serialize } from "@/worker/protocol/serde";
 import type { CoordinateDriver } from "../driver";
 import { RelayConn } from "../conn/mod";
 import type { WorkerDriver } from "@/worker/driver";
-import { DriverConfig } from "@/driver-helpers/config";
 import { RegistryConfig } from "@/registry/config";
 import { ConnectSseOpts, ConnectSseOutput } from "@/worker/router-endpoints";
+import {  RunConfig } from "@/registry/run-config";
 
 export async function serveSse(
 	registryConfig: RegistryConfig,
-	driverConfig: DriverConfig,
+	runConfig: RunConfig,
 	workerDriver: WorkerDriver,
 	CoordinateDriver: CoordinateDriver,
 	globalState: GlobalState,
@@ -22,7 +22,7 @@ export async function serveSse(
 		onOpen: async (stream) => {
 			conn = new RelayConn(
 				registryConfig,
-				driverConfig,
+				runConfig,
 				workerDriver,
 				CoordinateDriver,
 				globalState,

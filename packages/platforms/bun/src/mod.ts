@@ -35,22 +35,22 @@ export function createRouter(
 
 	// Configure default configuration
 	if (!config.topology) config.topology = "standalone";
-	if (!config.drivers.manager || !config.drivers.worker) {
+	if (!config.driver.manager || !config.driver.worker) {
 		if (config.mode === "file-system") {
 			const fsState = new FileSystemGlobalState();
-			if (!config.drivers.manager) {
-				config.drivers.manager = new FileSystemManagerDriver(registry, fsState);
+			if (!config.driver.manager) {
+				config.driver.manager = new FileSystemManagerDriver(registry, fsState);
 			}
-			if (!config.drivers.worker) {
-				config.drivers.worker = new FileSystemWorkerDriver(fsState);
+			if (!config.driver.worker) {
+				config.driver.worker = new FileSystemWorkerDriver(fsState);
 			}
 		} else if (config.mode === "memory") {
 			const memoryState = new MemoryGlobalState();
-			if (!config.drivers.manager) {
-				config.drivers.manager = new MemoryManagerDriver(registry, memoryState);
+			if (!config.driver.manager) {
+				config.driver.manager = new MemoryManagerDriver(registry, memoryState);
 			}
-			if (!config.drivers.worker) {
-				config.drivers.worker = new MemoryWorkerDriver(memoryState);
+			if (!config.driver.worker) {
+				config.driver.worker = new MemoryWorkerDriver(memoryState);
 			}
 		} else {
 			assertUnreachable(config.mode);

@@ -11,7 +11,7 @@ export default defineConfig({
 		lib: {
 			entry: resolve(__dirname, "lib/mod.ts"),
 			fileName: "mod",
-			formats: ["es"],
+			formats: ["cjs", "es"],
 		},
 	},
 });

@@ -1,13 +1,11 @@
-# RivetKit for Cloudflare Workers
+# RivetKit Cloudflare Workers Adapter
 
-_The Stateful Serverless Framework_
+_Lightweight Libraries for Backends_
 
-## Resources
+[Learn More →](https://github.com/rivet-gg/rivetkit)
 
-- [Cloudflare Workers Quickstart](https://rivetkit.org/platforms/cloudflare-workers)
-- [RivetKit Package](http://npmjs.com/rivetkit)
+[Discord](https://rivet.gg/discord) — [Documentation](https://rivetkit.org) — [Issues](https://github.com/rivet-gg/rivetkit/issues)
 
 ## License
 
 Apache 2.0
-

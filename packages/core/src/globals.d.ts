@@ -1,3 +1,6 @@
-declare const Deno: any;
-declare const navigator: any;
+declare global {
+	const Deno: any;
+	const navigator: any;
+}
 
+export {};

@@ -3,8 +3,8 @@ import { logger } from "../log";
 import pRetry, { AbortError } from "p-retry";
 import type { CoordinateDriver } from "../driver";
 import type { NodeMessage } from "./protocol";
-import { DriverConfig } from "@/driver-helpers/config";
 import { RegistryConfig } from "@/registry/config";
+import { DriverConfig, RunConfig } from "@/registry/run-config";
 
 /**
  * Publishes a message and waits for an ack. If no ack is received, then retries accordingly.
@@ -13,7 +13,7 @@ import { RegistryConfig } from "@/registry/config";
  */
 export async function publishMessageToLeader(
 	registryConfig: RegistryConfig,
-	driverConfig: DriverConfig,
+	runConfig: RunConfig,
 	CoordinateDriver: CoordinateDriver,
 	globalState: GlobalState,
 	workerId: string,
@@ -32,7 +32,7 @@ export async function publishMessageToLeader(
 		() =>
 			publishMessageToLeaderInner(
 				registryConfig,
-				driverConfig,
+				runConfig,
 				CoordinateDriver,
 				globalState,
 				workerId,
@@ -56,7 +56,7 @@ export async function publishMessageToLeader(
 
 async function publishMessageToLeaderInner(
 	registryConfig: RegistryConfig,
-	driverConfig: DriverConfig,
+	runConfig: RunConfig,
 	CoordinateDriver: CoordinateDriver,
 	globalState: GlobalState,
 	workerId: string,
@@ -92,7 +92,7 @@ async function publishMessageToLeaderInner(
 	// Throw error on timeout
 	const timeoutId = setTimeout(
 		() => ackReject(new Error("Ack timed out")),
-		registryConfig.workerPeer.messageAckTimeout,
+		runConfig.workerPeer.messageAckTimeout,
 	);
 
 	try {

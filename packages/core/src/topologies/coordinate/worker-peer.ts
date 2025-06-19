@@ -8,12 +8,12 @@ import {
 	CONN_DRIVER_COORDINATE_RELAY,
 	createCoordinateRelayDriver,
 } from "./conn/driver";
-import { DriverConfig } from "@/driver-helpers/config";
 import { RegistryConfig, RegistryConfigSchema } from "@/registry/config";
+import { DriverConfig, RunConfig } from "@/registry/run-config";
 
 export class WorkerPeer {
 	#registryConfig: RegistryConfig;
-	#driverConfig: DriverConfig;
+	#runConfig: RunConfig;
 	#coordinateDriver: CoordinateDriver;
 	#workerDriver: WorkerDriver;
 	#globalState: GlobalState;
@@ -44,14 +44,14 @@ export class WorkerPeer {
 
 	constructor(
 		registryConfig: RegistryConfig,
-		driverConfig: DriverConfig,
+		runConfig: RunConfig,
 		CoordinateDriver: CoordinateDriver,
 		workerDriver: WorkerDriver,
 		globalState: GlobalState,
 		workerId: string,
 	) {
 		this.#registryConfig = registryConfig;
-		this.#driverConfig = driverConfig;
+		this.#runConfig = runConfig;
 		this.#coordinateDriver = CoordinateDriver;
 		this.#workerDriver = workerDriver;
 		this.#globalState = globalState;
@@ -61,7 +61,7 @@ export class WorkerPeer {
 	/** Acquires a `WorkerPeer` for a connection and includes the connection ID in the references. */
 	static async acquire(
 		registryConfig: RegistryConfig,
-		driverConfig: DriverConfig,
+		runConfig: RunConfig,
 		workerDriver: WorkerDriver,
 		CoordinateDriver: CoordinateDriver,
 		globalState: GlobalState,
@@ -74,7 +74,7 @@ export class WorkerPeer {
 		if (!peer) {
 			peer = new WorkerPeer(
 				registryConfig,
-				driverConfig,
+				runConfig,
 				CoordinateDriver,
 				workerDriver,
 				globalState,
@@ -133,7 +133,7 @@ export class WorkerPeer {
 		const { worker } = await this.#coordinateDriver.startWorkerAndAcquireLease(
 			this.#workerId,
 			this.#globalState.nodeId,
-			this.#registryConfig.workerPeer.leaseDuration,
+			this.#runConfig.workerPeer.leaseDuration,
 		);
 		// Log
 		logger().debug("starting worker peer", {
@@ -189,13 +189,13 @@ export class WorkerPeer {
 		let hbTimeout: number;
 		if (this.#isLeader) {
 			hbTimeout =
-				this.#registryConfig.workerPeer.leaseDuration -
-				this.#registryConfig.workerPeer.renewLeaseGrace;
+				this.#runConfig.workerPeer.leaseDuration -
+				this.#runConfig.workerPeer.renewLeaseGrace;
 		} else {
 			// TODO: Add jitter
 			hbTimeout =
-				this.#registryConfig.workerPeer.checkLeaseInterval +
-				Math.random() * this.#registryConfig.workerPeer.checkLeaseJitter;
+				this.#runConfig.workerPeer.checkLeaseInterval +
+				Math.random() * this.#runConfig.workerPeer.checkLeaseJitter;
 		}
 		if (hbTimeout < 0)
 			throw new Error("Worker peer heartbeat timeout is negative, check config");
@@ -240,7 +240,7 @@ export class WorkerPeer {
 		const { leaseValid } = await this.#coordinateDriver.extendLease(
 			this.#workerId,
 			this.#globalState.nodeId,
-			this.#registryConfig.workerPeer.leaseDuration,
+			this.#runConfig.workerPeer.leaseDuration,
 		);
 		if (leaseValid) {
 			logger().debug("lease is valid", { workerId: this.#workerId });
@@ -260,7 +260,7 @@ export class WorkerPeer {
 			await this.#coordinateDriver.attemptAcquireLease(
 				this.#workerId,
 				this.#globalState.nodeId,
-				this.#registryConfig.workerPeer.leaseDuration,
+				this.#runConfig.workerPeer.leaseDuration,
 			);
 
 		// Check if the lease was successfully acquired and promoted to leader

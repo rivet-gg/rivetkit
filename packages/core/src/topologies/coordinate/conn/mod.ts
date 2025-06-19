@@ -7,9 +7,9 @@ import { WorkerPeer } from "../worker-peer";
 import { publishMessageToLeader } from "../node/message";
 import { generateConnId, generateConnToken } from "@/worker/connection";
 import type { WorkerDriver } from "@/worker/driver";
-import { DriverConfig } from "@/driver-helpers/config";
 import { RegistryConfig } from "@/registry/config";
 import { unknown } from "zod";
+import { RunConfig } from "@/registry/run-config";
 
 export interface RelayConnDriver {
 	sendMessage(message: messageToClient.ToClient): void;
@@ -21,7 +21,7 @@ export interface RelayConnDriver {
  */
 export class RelayConn {
 	#registryConfig: RegistryConfig;
-	#driverConfig: DriverConfig;
+	#runConfig: RunConfig;
 	#coordinateDriver: CoordinateDriver;
 	#workerDriver: WorkerDriver;
 	#globalState: GlobalState;
@@ -51,7 +51,7 @@ export class RelayConn {
 
 	constructor(
 		registryConfig: RegistryConfig,
-		driverConfig: DriverConfig,
+		runConfig: RunConfig,
 		workerDriver: WorkerDriver,
 		CoordinateDriver: CoordinateDriver,
 		globalState: GlobalState,
@@ -61,7 +61,7 @@ export class RelayConn {
 		authData: unknown,
 	) {
 		this.#registryConfig = registryConfig;
-		this.#driverConfig = driverConfig;
+		this.#runConfig = runConfig;
 		this.#coordinateDriver = CoordinateDriver;
 		this.#workerDriver = workerDriver;
 		this.#driver = driver;
@@ -88,7 +88,7 @@ export class RelayConn {
 		// Create worker peer
 		this.#workerPeer = await WorkerPeer.acquire(
 			this.#registryConfig,
-			this.#driverConfig,
+			this.#runConfig,
 			this.#workerDriver,
 			this.#coordinateDriver,
 			this.#globalState,
@@ -101,7 +101,7 @@ export class RelayConn {
 		// Publish connection open
 		await publishMessageToLeader(
 			this.#registryConfig,
-			this.#driverConfig,
+			this.#runConfig,
 			this.#coordinateDriver,
 			this.#globalState,
 			this.#workerId,
@@ -151,7 +151,7 @@ export class RelayConn {
 				// Publish connection close
 				await publishMessageToLeader(
 					this.#registryConfig,
-					this.#driverConfig,
+					this.#runConfig,
 					this.#coordinateDriver,
 					this.#globalState,
 					this.#workerId,

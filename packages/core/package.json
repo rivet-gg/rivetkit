@@ -2,13 +2,18 @@
   "name": "rivetkit",
   "version": "0.9.0-rc.1",
   "license": "Apache-2.0",
-  "files": [
-    "dist",
-    "src",
-    "deno.json",
-    "bun.json",
-    "package.json"
+  "keywords": [
+    "rivetkit",
+    "stateful",
+    "serverless",
+    "workers",
+    "agents",
+    "realtime",
+    "websocket",
+    "actors",
+    "framework"
   ],
+  "files": ["dist", "src", "deno.json", "bun.json", "package.json"],
   "type": "module",
   "exports": {
     ".": {
@@ -161,13 +166,21 @@
   },
   "peerDependencies": {
     "eventsource": "^3.0.5",
-    "ws": "^8.0.0"
+    "ws": "^8.0.0",
+    "@hono/node-server": "^1.14.0",
+    "@hono/node-ws": "^1.1.1"
   },
   "peerDependenciesMeta": {
     "eventsource": {
       "optional": true
     },
     "ws": {
+      "optional": true
+    },
+    "@hono/node-server": {
+      "optional": true
+    },
+    "@hono/node-ws": {
       "optional": true
     }
   },

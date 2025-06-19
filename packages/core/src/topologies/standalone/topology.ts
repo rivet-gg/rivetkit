@@ -18,7 +18,6 @@ import {
 	type GenericWebSocketDriverState,
 } from "../common/generic-conn-driver";
 import { ActionContext } from "@/worker/action";
-import type { DriverConfig } from "@/driver-helpers/config";
 import type { RegistryConfig } from "@/registry/config";
 import { createManagerRouter } from "@/manager/router";
 import type {
@@ -35,6 +34,7 @@ import { createInlineClientDriver } from "@/inline-client-driver/mod";
 import invariant from "invariant";
 import { ClientDriver } from "@/client/client";
 import { ConnRoutingHandler } from "@/worker/conn-routing-handler";
+import { DriverConfig, RunConfig } from "@/mod";
 
 class WorkerHandler {
 	/** Will be undefined if not yet loaded. */
@@ -55,7 +55,7 @@ export class StandaloneTopology {
 	router: Hono;
 
 	#registryConfig: RegistryConfig;
-	#driverConfig: DriverConfig;
+	#runConfig: RunConfig;
 	#workers = new Map<string, WorkerHandler>();
 
 	async #getWorker(
@@ -76,14 +76,8 @@ export class StandaloneTopology {
 		handler = new WorkerHandler();
 		this.#workers.set(workerId, handler);
 
-		// Validate config
-		if (!this.#driverConfig.drivers?.worker)
-			throw new Error("config.drivers.worker is not defined.");
-		if (!this.#driverConfig.drivers?.manager)
-			throw new Error("config.drivers.manager is not defined.");
-
 		// Load worker meta
-		const workerMetadata = await this.#driverConfig.drivers.manager.getForId({
+		const workerMetadata = await this.#runConfig.driver.manager.getForId({
 			workerId,
 		});
 		if (!workerMetadata) throw new Error(`No worker found for ID ${workerId}`);
@@ -105,7 +99,7 @@ export class StandaloneTopology {
 		// Start worker
 		await handler.worker.start(
 			connDrivers,
-			this.#driverConfig.drivers.worker,
+			this.#runConfig.driver.worker,
 			workerId,
 			workerMetadata.name,
 			workerMetadata.key,
@@ -119,17 +113,14 @@ export class StandaloneTopology {
 		return { handler, worker };
 	}
 
-	constructor(registryConfig: RegistryConfig, driverConfig: DriverConfig) {
+	constructor(registryConfig: RegistryConfig, runConfig: RunConfig) {
 		this.#registryConfig = registryConfig;
-		this.#driverConfig = driverConfig;
-
-		if (!driverConfig.drivers?.worker)
-			throw new Error("config.drivers.worker not defined.");
+		this.#runConfig = runConfig;
 
 		// Build router
 		const router = new Hono();
 
-		const upgradeWebSocket = driverConfig.getUpgradeWebSocket?.(router);
+		const upgradeWebSocket = runConfig.getUpgradeWebSocket?.(router);
 
 		// Create shared connection handlers that will be used by both manager and worker routers
 		const sharedConnectionHandlers: ConnectionHandlers = {
@@ -217,7 +208,10 @@ export class StandaloneTopology {
 					const { worker } = await this.#getWorker(opts.workerId);
 
 					// Create conn
-					const connState = await worker.prepareConn(opts.params, opts.req?.raw);
+					const connState = await worker.prepareConn(
+						opts.params,
+						opts.req?.raw,
+					);
 					conn = await worker.createConn(
 						generateConnId(),
 						generateConnToken(),
@@ -268,38 +262,43 @@ export class StandaloneTopology {
 		};
 
 		// Build client driver
-		const managerDriver = this.#driverConfig.drivers.manager;
+		const managerDriver = this.#runConfig.driver.manager;
 		invariant(managerDriver, "missing manager driver");
 		this.clientDriver = createInlineClientDriver(managerDriver, routingHandler);
 
 		// Build manager router
-		const managerRouter = createManagerRouter(registryConfig, driverConfig, this.clientDriver, {
-			routingHandler,
-			// onConnectInspector: async () => {
-			// 	const inspector = driverConfig.drivers?.manager?.inspector;
-			// 	if (!inspector) throw new errors.Unsupported("inspector");
-			//
-			// 	let conn: ManagerInspectorConnection | undefined;
-			// 	return {
-			// 		onOpen: async (ws) => {
-			// 			conn = inspector.createConnection(ws);
-			// 		},
-			// 		onMessage: async (message) => {
-			// 			if (!conn) {
-			// 				logger().warn("`conn` does not exist");
-			// 				return;
-			// 			}
-			//
-			// 			inspector.processMessage(conn, message);
-			// 		},
-			// 		onClose: async () => {
-			// 			if (conn) {
-			// 				inspector.removeConnection(conn);
-			// 			}
-			// 		},
-			// 	};
-			// },
-		});
+		const managerRouter = createManagerRouter(
+			registryConfig,
+			runConfig,
+			this.clientDriver,
+			{
+				routingHandler,
+				// onConnectInspector: async () => {
+				// 	const inspector = driverConfig.drivers?.manager?.inspector;
+				// 	if (!inspector) throw new errors.Unsupported("inspector");
+				//
+				// 	let conn: ManagerInspectorConnection | undefined;
+				// 	return {
+				// 		onOpen: async (ws) => {
+				// 			conn = inspector.createConnection(ws);
+				// 		},
+				// 		onMessage: async (message) => {
+				// 			if (!conn) {
+				// 				logger().warn("`conn` does not exist");
+				// 				return;
+				// 			}
+				//
+				// 			inspector.processMessage(conn, message);
+				// 		},
+				// 		onClose: async () => {
+				// 			if (conn) {
+				// 				inspector.removeConnection(conn);
+				// 			}
+				// 		},
+				// 	};
+				// },
+			},
+		);
 
 		router.route("/", managerRouter);
 

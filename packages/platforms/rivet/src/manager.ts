@@ -82,8 +82,8 @@ export async function startManager(
 
 	// Setup manager driver
 	if (!driverConfig.drivers) driverConfig.drivers = {};
-	if (!driverConfig.drivers.manager) {
-		driverConfig.drivers.manager = new RivetManagerDriver(clientConfig);
+	if (!driverConfig.driver.manager) {
+		driverConfig.driver.manager = new RivetManagerDriver(clientConfig);
 	}
 
 	// Setup WebSocket routing for Node

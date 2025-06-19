@@ -1,6 +1,7 @@
 {
   "name": "@rivetkit/redis",
   "version": "0.9.0-rc.1",
+  "keywords": ["rivetkit", "driver", "redis", "storage", "production", "coordination", "persistence"],
   "files": [
     "src",
     "dist",

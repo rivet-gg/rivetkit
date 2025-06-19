@@ -1,7 +1,6 @@
 import { createManagerRouter } from "@/manager/router";
 import { RegistryConfig, RegistryConfigSchema, Encoding, setup } from "@/mod";
 import { ConnectionHandlers } from "@/worker/router-endpoints";
-import { DriverConfig } from "@/driver-helpers/config";
 import {
 	TestGlobalState,
 	TestWorkerDriver,
@@ -16,19 +15,27 @@ import { WorkerQuery } from "@/manager/protocol/query";
 import { ToServer } from "@/worker/protocol/message/to-server";
 import { EventSource } from "eventsource";
 import { Context } from "hono";
+import {
+	DriverConfig,
+	RunConfig,
+	RunConfigSchema,
+} from "@/registry/run-config";
 
 function main() {
-	const registryConfig: RegistryConfig = RegistryConfigSchema.parse({ workers: {} });
+	const registryConfig: RegistryConfig = RegistryConfigSchema.parse({
+		workers: {},
+	});
 	const registry = setup(registryConfig);
 
 	const memoryState = new TestGlobalState();
-	const driverConfig: DriverConfig = {
-		drivers: {
+	const driverConfig: RunConfig = RunConfigSchema.parse({
+		driver: {
+			topology: "standalone",
 			worker: new TestWorkerDriver(memoryState),
-			manager: new TestManagerDriver(registry, memoryState),
+			manager: new TestManagerDriver(memoryState),
 		},
 		getUpgradeWebSocket: () => () => unimplemented(),
-	};
+	});
 
 	const sharedConnectionHandlers: ConnectionHandlers = {
 		onConnectWebSocket: async () => {

@@ -21,7 +21,6 @@ import {
 } from "../common/generic-conn-driver";
 import type { ConnDriver } from "@/worker/driver";
 import type { WorkerKey } from "@/common/utils";
-import type { DriverConfig } from "@/driver-helpers/config";
 import type { RegistryConfig } from "@/registry/config";
 import { createManagerRouter } from "@/manager/router";
 import type {
@@ -45,6 +44,7 @@ import {
 } from "@/worker/conn-routing-handler";
 import invariant from "invariant";
 import type { WebSocket } from "ws";
+import type { DriverConfig, RunConfig } from "@/registry/run-config";
 
 export type SendRequestHandler = (
 	workerRequest: Request,
@@ -62,20 +62,20 @@ export class PartitionTopologyManager {
 
 	constructor(
 		registryConfig: RegistryConfig,
-		driverConfig: DriverConfig,
+		runConfig: RunConfig,
 		customRoutingHandlers: ConnRoutingHandlerCustom,
 	) {
 		const routingHandler: ConnRoutingHandler = {
 			custom: customRoutingHandlers,
 		};
 
-		const managerDriver = driverConfig.drivers.manager;
+		const managerDriver = runConfig.driver.manager;
 		invariant(managerDriver, "missing manager driver");
 		this.clientDriver = createInlineClientDriver(managerDriver, routingHandler);
 
 		this.router = createManagerRouter(
 			registryConfig,
-			driverConfig,
+			runConfig,
 			this.clientDriver,
 			{
 				routingHandler,
@@ -113,7 +113,7 @@ export class PartitionTopologyWorker {
 	router: Hono;
 
 	#registryConfig: RegistryConfig;
-	#driverConfig: DriverConfig;
+	#runConfig: RunConfig;
 	#connDrivers: Record<string, ConnDriver>;
 	#worker?: AnyWorkerInstance;
 
@@ -127,15 +127,15 @@ export class PartitionTopologyWorker {
 	 **/
 	#workerStartedPromise?: PromiseWithResolvers<void> = Promise.withResolvers();
 
-	constructor(registryConfig: RegistryConfig, driverConfig: DriverConfig) {
+	constructor(registryConfig: RegistryConfig, runConfig: RunConfig) {
 		this.#registryConfig = registryConfig;
-		this.#driverConfig = driverConfig;
+		this.#runConfig = runConfig;
 
 		const genericConnGlobalState = new GenericConnGlobalState();
 		this.#connDrivers = createGenericConnDrivers(genericConnGlobalState);
 
 		// TODO: Store this worker router globally so we're not re-initializing it for every DO
-		this.router = createWorkerRouter(registryConfig, driverConfig, {
+		this.router = createWorkerRouter(registryConfig, runConfig, {
 			getWorkerId: async () => {
 				if (this.#workerStartedPromise)
 					await this.#workerStartedPromise.promise;
@@ -332,8 +332,7 @@ export class PartitionTopologyWorker {
 	}
 
 	async start(id: string, name: string, key: WorkerKey, region: string) {
-		const workerDriver = this.#driverConfig.drivers?.worker;
-		if (!workerDriver) throw new Error("config.drivers.worker not defined.");
+		const workerDriver = this.#runConfig.driver.worker;
 
 		// Find worker prototype
 		const definition = this.#registryConfig.workers[name];

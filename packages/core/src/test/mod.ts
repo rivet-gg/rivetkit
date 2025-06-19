@@ -14,6 +14,7 @@ import { type InputConfig, ConfigSchema } from "./config";
 import { type TestContext, vi } from "vitest";
 import { type Client, createClient } from "@/client/mod";
 import { createServer } from "node:net";
+import { RunConfigSchema } from "@/registry/run-config";
 
 function createRouter(
 	registry: Registry<any>,
@@ -25,15 +26,13 @@ function createRouter(
 	const config = ConfigSchema.parse(inputConfig);
 
 	// Configure default configuration
-	if (!config.topology) config.topology = "standalone";
-	if (!config.drivers.manager || !config.drivers.worker) {
+	if (!config.driver) {
 		const memoryState = new TestGlobalState();
-		if (!config.drivers.manager) {
-			config.drivers.manager = new TestManagerDriver(registry, memoryState);
-		}
-		if (!config.drivers.worker) {
-			config.drivers.worker = new TestWorkerDriver(memoryState);
-		}
+		config.driver = {
+			topology: "standalone",
+			manager: new TestManagerDriver(memoryState),
+			worker: new TestWorkerDriver(memoryState),
+		};
 	}
 
 	// Setup WebSocket routing for Node
@@ -49,18 +48,19 @@ function createRouter(
 	}
 
 	// Setup topology
-	if (config.topology === "standalone") {
-		const topology = new StandaloneTopology(registry.config, config);
+	const runConfig = RunConfigSchema.parse(inputConfig);
+	if (config.driver.topology === "standalone") {
+		const topology = new StandaloneTopology(registry.config, runConfig);
 		if (!injectWebSocket) throw new Error("injectWebSocket not defined");
 		return { router: topology.router, injectWebSocket };
-	} else if (config.topology === "partition") {
+	} else if (config.driver.topology === "partition") {
 		throw new Error("Node.js only supports standalone & coordinate topology.");
-	} else if (config.topology === "coordinate") {
-		const topology = new CoordinateTopology(registry.config, config);
+	} else if (config.driver.topology === "coordinate") {
+		const topology = new CoordinateTopology(registry.config, runConfig);
 		if (!injectWebSocket) throw new Error("injectWebSocket not defined");
 		return { router: topology.router, injectWebSocket };
 	} else {
-		assertUnreachable(config.topology);
+		assertUnreachable(config.driver.topology);
 	}
 }
 

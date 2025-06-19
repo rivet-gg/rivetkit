@@ -16,7 +16,7 @@ import type { InputData } from "@/worker/protocol/serde";
 import { assertUnreachable } from "./utils";
 import { deconstructError, stringifyError } from "@/common/utils";
 import type { RegistryConfig } from "@/registry/config";
-import type { DriverConfig } from "@/driver-helpers/config";
+import { DriverConfig, RunConfig } from "@/registry/run-config";
 
 export interface ConnectWebSocketOpts {
 	req?: HonoRequest;
@@ -84,6 +84,7 @@ export interface ConnectionHandlers {
 export function handleWebSocketConnect(
 	context: HonoContext,
 	registryConfig: RegistryConfig,
+	runConfig: RunConfig,
 	handler: (opts: ConnectWebSocketOpts) => Promise<ConnectWebSocketOutput>,
 	workerId: string,
 	encoding: Encoding,
@@ -140,7 +141,7 @@ export function handleWebSocketConnect(
 				const value = evt.data.valueOf() as InputData;
 				const message = await parseMessage(value, {
 					encoding: encoding,
-					maxIncomingMessageSize: registryConfig.maxIncomingMessageSize,
+					maxIncomingMessageSize: runConfig.maxIncomingMessageSize,
 				});
 
 				await wsHandler.onMessage(message);
@@ -216,13 +217,13 @@ export function handleWebSocketConnect(
 export async function handleSseConnect(
 	c: HonoContext,
 	registryConfig: RegistryConfig,
-	driverConfig: DriverConfig,
+	runConfig: RunConfig,
 	handler: (opts: ConnectSseOpts) => Promise<ConnectSseOutput>,
 	workerId: string,
 	authData: unknown,
 ) {
 	const encoding = getRequestEncoding(c.req);
-	const parameters = getRequestConnParams(c.req, registryConfig, driverConfig);
+	const parameters = getRequestConnParams(c.req, registryConfig, runConfig);
 
 	const sseHandler = await handler({
 		req: c.req,
@@ -274,14 +275,14 @@ export async function handleSseConnect(
 export async function handleAction(
 	c: HonoContext,
 	registryConfig: RegistryConfig,
-	driverConfig: DriverConfig,
+	runConfig: RunConfig,
 	handler: (opts: ActionOpts) => Promise<ActionOutput>,
 	actionName: string,
 	workerId: string,
 	authData: unknown,
 ) {
 	const encoding = getRequestEncoding(c.req);
-	const parameters = getRequestConnParams(c.req, registryConfig, driverConfig);
+	const parameters = getRequestConnParams(c.req, registryConfig, runConfig);
 
 	logger().debug("handling action", { actionName, encoding });
 
@@ -359,6 +360,7 @@ export async function handleAction(
 export async function handleConnectionMessage(
 	c: HonoContext,
 	registryConfig: RegistryConfig,
+	runConfig: RunConfig,
 	handler: (opts: ConnsMessageOpts) => Promise<void>,
 	connId: string,
 	connToken: string,
@@ -380,7 +382,7 @@ export async function handleConnectionMessage(
 			const uint8Array = new Uint8Array(value);
 			message = await parseMessage(uint8Array as unknown as InputData, {
 				encoding,
-				maxIncomingMessageSize: registryConfig.maxIncomingMessageSize,
+				maxIncomingMessageSize: runConfig.maxIncomingMessageSize,
 			});
 		} catch (err) {
 			throw new errors.InvalidRequest(
@@ -481,7 +483,7 @@ export const ALL_PUBLIC_HEADERS = [
 export function getRequestConnParams(
 	req: HonoRequest,
 	registryConfig: RegistryConfig,
-	driverConfig: DriverConfig,
+	runConfig: RunConfig,
 ): unknown {
 	const paramsParam = req.header(HEADER_CONN_PARAMS);
 	if (!paramsParam) {

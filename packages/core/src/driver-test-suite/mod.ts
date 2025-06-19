@@ -1,14 +1,14 @@
 import { serve as honoServe } from "@hono/node-server";
-import {
-	WorkerDriver,
-	CoordinateDriver,
-	DriverConfig,
-	ManagerDriver,
-} from "@/driver-helpers/mod";
 import { runWorkerDriverTests } from "./tests/worker-driver";
 import { runManagerDriverTests } from "./tests/manager-driver";
 import { describe } from "vitest";
-import { CoordinateTopology, StandaloneTopology, Registry } from "@/mod";
+import {
+	CoordinateTopology,
+	StandaloneTopology,
+	Registry,
+	RunConfig,
+	DriverConfig,
+} from "@/mod";
 import { createNodeWebSocket, type NodeWebSocket } from "@hono/node-ws";
 import invariant from "invariant";
 import { bundleRequire } from "bundle-require";
@@ -22,6 +22,7 @@ import { runWorkerConnStateTests } from "./tests/worker-conn-state";
 import { runWorkerMetadataTests } from "./tests/worker-metadata";
 import { runWorkerErrorHandlingTests } from "./tests/worker-error-handling";
 import { runWorkerAuthTests } from "./tests/worker-auth";
+import { RunConfigSchema } from "@/registry/run-config";
 
 export interface DriverTestConfig {
 	/** Deploys an registry and returns the connection endpoint. */
@@ -105,9 +106,7 @@ export function runDriverTests(
 export async function createTestRuntime(
 	registryPath: string,
 	driverFactory: (registry: Registry<any>) => Promise<{
-		workerDriver: WorkerDriver;
-		managerDriver: ManagerDriver;
-		coordinateDriver?: CoordinateDriver;
+		driver: DriverConfig;
 		cleanup?: () => Promise<void>;
 	}>,
 ): Promise<DriverDeployOutput> {
@@ -122,32 +121,24 @@ export async function createTestRuntime(
 	registry.config.test.enabled = true;
 
 	// Build drivers
-	const {
-		workerDriver,
-		managerDriver,
-		coordinateDriver,
-		cleanup: driverCleanup,
-	} = await driverFactory(registry);
+	const { driver, cleanup: driverCleanup } = await driverFactory(registry);
 
 	// Build driver config
 	let injectWebSocket: NodeWebSocket["injectWebSocket"] | undefined;
-	const config: DriverConfig = {
-		drivers: {
-			worker: workerDriver,
-			manager: managerDriver,
-			coordinate: coordinateDriver,
-		},
-		getUpgradeWebSocket: (router) => {
+	const config: RunConfig = RunConfigSchema.parse({
+		driver,
+		getUpgradeWebSocket: (router: any) => {
 			const webSocket = createNodeWebSocket({ app: router });
 			injectWebSocket = webSocket.injectWebSocket;
 			return webSocket.upgradeWebSocket;
 		},
-	};
+	});
 
 	// Build topology
-	const topology = coordinateDriver
-		? new CoordinateTopology(registry.config, config)
-		: new StandaloneTopology(registry.config, config);
+	const topology =
+		config.driver.topology === "coordinate"
+			? new CoordinateTopology(registry.config, config)
+			: new StandaloneTopology(registry.config, config);
 	if (!injectWebSocket) throw new Error("injectWebSocket not defined");
 
 	// Start server

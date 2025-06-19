@@ -1,6 +1,7 @@
 {
   "name": "@rivetkit/file-system",
   "version": "0.9.0-rc.1",
+  "keywords": ["rivetkit", "driver", "filesystem", "storage", "development", "persistence"],
   "files": [
     "src",
     "dist",

@@ -1,11 +1,33 @@
-# RivetKit Snippets
+# Code Snippets for RivetKit
 
-This directory contains the full source code for examples shown in the documentation.
+Example project demonstrating various RivetKit patterns and integrations with [RivetKit](https://rivetkit.org).
 
-These snippets are not intended to be complete examples.
+[Learn More →](https://github.com/rivet-gg/rivetkit)
 
-Each example has these files in a single folder:
-- `actor-json.ts` - Server implementation with JavaScript state
-- `actor-sqlite.ts` - Server implementation with SQLite state
-- `Registry.tsx` - React client implementation
+[Discord](https://rivet.gg/discord) — [Documentation](https://rivetkit.org) — [Issues](https://github.com/rivet-gg/rivetkit/issues)
 
+## Getting Started
+
+### Prerequisites
+
+- Node.js
+
+### Installation
+
+```sh
+git clone https://github.com/rivet-gg/rivetkit
+cd rivetkit/examples/snippets
+npm install
+```
+
+### Development
+
+```sh
+npm run dev
+```
+
+Browse the individual snippet folders to see different implementation patterns with JavaScript state and SQLite state examples.
+
+## License
+
+Apache 2.0

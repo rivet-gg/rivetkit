@@ -199,7 +199,8 @@ export function createInlineClientDriver(
 					params,
 				);
 
-				return ws;
+				// Node & browser WebSocket types are incompatible
+				return ws as any;
 			} else {
 				assertUnreachable(routingHandler);
 			}

@@ -9,7 +9,6 @@ import type {
 import { WorkerAlreadyExists } from "rivetkit/errors";
 import type { MemoryGlobalState } from "./global-state";
 import * as crypto from "node:crypto";
-import type { Registry } from "rivetkit";
 
 export class MemoryManagerDriver implements ManagerDriver {
 	#state: MemoryGlobalState;
@@ -19,10 +18,7 @@ export class MemoryManagerDriver implements ManagerDriver {
 	// 	getAllTypesOfWorkers: () => Object.keys(this.registry.config.workers),
 	// });
 
-	constructor(
-		private readonly registry: Registry<any>,
-		state: MemoryGlobalState,
-	) {
+	constructor(state: MemoryGlobalState) {
 		this.#state = state;
 	}
 

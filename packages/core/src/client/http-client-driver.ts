@@ -160,7 +160,8 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 				assertUnreachable(encodingKind);
 			}
 
-			return ws;
+			// Node & web WebSocket types not compatible
+			return ws as any;
 		},
 
 		connectSse: async (

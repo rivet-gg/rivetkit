@@ -2,6 +2,7 @@
 	"name": "docs-middleware",
 	"version": "0.9.0-rc.1",
 	"private": true,
+	"keywords": ["rivetkit", "docs", "middleware", "documentation", "utilities"],
 	"scripts": {
 		"deploy": "wrangler deploy",
 		"dev": "wrangler dev",

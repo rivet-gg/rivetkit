@@ -20,7 +20,6 @@ import { upgradeWebSocket } from "./websocket";
 import invariant from "invariant";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { InternalError } from "rivetkit/errors";
-import type { WebSocket } from "ws";
 
 /** Cloudflare Workers env */
 export interface Bindings {
@@ -82,9 +81,8 @@ export function createRouter(
 	// Configure drivers
 	//
 	// Worker driver will get set in `WorkerHandler`
-	if (!driverConfig.drivers) driverConfig.drivers = {};
-	if (!driverConfig.drivers.manager)
-		driverConfig.drivers.manager = new CloudflareWorkersManagerDriver();
+	if (!driverConfig.driver.manager)
+		driverConfig.driver.manager = new CloudflareWorkersManagerDriver();
 
 	// Setup WebSockets
 	if (!driverConfig.getUpgradeWebSocket)

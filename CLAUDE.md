@@ -5,6 +5,29 @@
 - Use `RivetKit` when referring to the project in documentation and plain English
 - Use `rivetkit` when referring to the project in code, package names, and imports
 
+## `packages/**/package.json`
+
+- Always include relevant keywords for the packages
+
+## `packages/**/README.md`
+
+Always include a README.md for new packages. The `README.md` should always follow this structure:
+
+    ```md
+    # RivetKit {subname, e.g. library: RivetKit Workers, driver and platform: RivetKit Redis Adapter, RivetKit Cloudflare Workers Adapter}
+
+    _Lightweight Libraries for Backends_
+
+    [Learn More →](https://github.com/rivet-gg/rivetkit)
+
+    [Discord](https://rivet.gg/discord) — [Documentation](https://rivetkit.org) — [Issues](https://github.com/rivet-gg/rivetkit/issues)
+
+    ## License
+
+    Apache 2.0
+    ```
+
+
 ## Common Terminology
 
 - **Worker**: A stateful, long-lived entity that processes messages and maintains state
@@ -20,12 +43,14 @@
 
 ## Build Commands
 
+Run these commands from the root of the project. They depend on Turborepo, so you cannot run the commands within the package itself. Running these commands are important in order to ensure that all dependencies are automatically built.
+
 - **Type Check:** `pnpm check-types` - Verify TypeScript types
 - **Check specific package:** `pnpm check-types -F rivetkit` - Check only specified package
 - **Build:** `pnpm build` - Production build using Turbopack
 - **Build specific package:** `pnpm build -F rivetkit` - Build only specified package
 - **Format:** `pnpm fmt` - Format code with Biome
-- Do not run the format command automatically.
+    - Do not run the format command automatically.
 
 ## Core Concepts
 
@@ -44,6 +69,7 @@ Driver interfaces define the contract between rivetkit and various backends:
 - **WorkerDriver:** Manages worker state, lifecycle, and persistence
 - **ManagerDriver:** Manages worker discovery, routing, and scaling
 - **CoordinateDriver:** Handles peer-to-peer communication between worker instances
+    - Only applicable in coordinate topologies
 
 ### Driver Implementations
 
@@ -75,6 +101,7 @@ This ensures imports resolve correctly across different build environments and p
 ## Code Style Guidelines
 
 - **Formatting:** Uses Biome for consistent formatting
+    - See biome.json for reference on formatting rules
 - **Imports:** Organized imports enforced, unused imports warned
 - **TypeScript:** Strict mode enabled, target ESNext
 - **Naming:** 
@@ -83,26 +110,28 @@ This ensures imports resolve correctly across different build environments and p
   - UPPER_CASE for constants
   - Use `#` prefix for private class members (not `private` keyword)
 - **Error Handling:** 
-  - Extend from `WorkerError` base class
+  - Extend from `WorkerError` base class (packages/core/src/worker/errors.ts)
   - Use `UserError` for client-safe errors
   - Use `InternalError` for internal errors
 - Don't try to fix type issues by casting to unknown or any. If you need to do this, then stop and ask me to manually intervene.
 - Write log messages in lowercase
-- Instead of returning raw HTTP responses with c.json, use or write an error in packages/rivetkit/src/worker/errors.ts and throw that instead. The middleware will automatically serialize the response for you.
+- Use `logger()` to log messages
+    - Do not store `logger()` as a variable, always call it using `logger().info("...")`
+    - Use structured logging where it makes sense, for example: `logger().info("foo", { bar: 5, baz: 10 })`
+    - Supported logging methods are: trace, debug, info, warn, error, critical
+- Instead of returning errors as raw HTTP responses with c.json, use or write an error in packages/rivetkit/src/worker/errors.ts and throw that instead. The middleware will automatically serialize the response for you.
 
 ## Project Structure
 
 - Monorepo with pnpm workspaces and Turborepo
-- Core code in `packages/rivetkit/`
+- Core code in `packages/core/`
 - Platform implementations in `packages/platforms/`
 - Driver implementations in `packages/drivers/`
 
 ## Development Notes
 
-- Prefer classes over factory functions
 - Use zod for runtime type validation
 - Use `assertUnreachable(x: never)` for exhaustive type checking in switch statements
-- Follow existing patterns for P2P networking
 - Add proper JSDoc comments for public APIs
 - Ensure proper error handling with descriptive messages
 - Run `pnpm check-types` regularly during development to catch type errors early. Prefer `pnpm check-types` instead of `pnpm build`.
@@ -112,3 +141,58 @@ This ensures imports resolve correctly across different build environments and p
 ## Test Guidelines
 
 - Do not check if errors are an instanceOf WorkerError in tests. Many error types do not have the same prototype chain when sent over the network, but still have the same properties so you can safely cast with `as`.
+
+## Examples
+
+Examples live in the `examples/` folder.
+
+### `examples/*/package.json`
+
+- Always name the example `example-{name}`
+- Always use `workspace:*` for dependencies
+- Use `tsx` unless otherwise instructed
+- Always have a `dev` and `check-types` scripts
+    - `dev` should use `tsx --watch` unless otherwise instructed
+    - `check-types` should use `tsc --noEmit`
+
+### `examples/*/README.md`
+
+Always include a README.md. The `README.md` should always follow this structure:
+
+    ```md
+    # {human readable title} for RivetKit
+
+    Example project demonstrating {specific feature} with [RivetKit](https://rivetkit.org).
+
+    [Learn More →](https://github.com/rivet-gg/rivetkit)
+
+    [Discord](https://rivet.gg/discord) — [Documentation](https://rivetkit.org) — [Issues](https://github.com/rivet-gg/rivetkit/issues)
+
+    ## Getting Started
+
+    ### Prerequisites
+
+    - {node or bun based on demo}
+    - {any other related services if this integrates with external SaaS}
+
+    ### Installation
+
+    ```sh
+    git clone https://github.com/rivet-gg/rivetkit
+    cd rivetkit/examples/{name}
+    npm install
+    ```
+
+    ### Development
+
+    ```sh
+    npm run dev
+    ```
+
+    {instructions to either open browser or run script to test it}
+
+    ## License
+
+    Apache 2.0
+    ```
+

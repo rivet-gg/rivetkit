@@ -1,104 +1,61 @@
 import { serve as honoServe, type ServerType } from "@hono/node-server";
-import { createNodeWebSocket, type NodeWebSocket } from "@hono/node-ws";
-import { assertUnreachable } from "rivetkit/utils";
-import { CoordinateTopology } from "rivetkit/topologies/coordinate";
 import { logger } from "./log";
-import type { Hono } from "hono";
-import { StandaloneTopology, type Registry } from "rivetkit";
-import {
-	MemoryGlobalState,
-	MemoryManagerDriver,
-	MemoryWorkerDriver,
-} from "@rivetkit/memory";
-import { type InputConfig, ConfigSchema } from "./config";
-import {
-	FileSystemWorkerDriver,
-	FileSystemGlobalState,
-	FileSystemManagerDriver,
-} from "@rivetkit/file-system";
+import type { Registry } from "rivetkit";
+import { z } from "zod";
+import type { Client } from "rivetkit/client";
+import { createNodeWebSocket, type NodeWebSocket } from "@hono/node-ws";
+import { RunConfigSchema } from "rivetkit/driver-helpers";
+import { RegistryWorkers } from "rivetkit";
+import { Hono } from "hono";
 
-export { InputConfig as Config } from "./config";
+const ConfigSchema = RunConfigSchema.extend({
+	basePath: z.string().optional().default("/registry"),
+	hostname: z
+		.string()
+		.optional()
+		.default(process.env.HOSTNAME ?? "127.0.0.1"),
+	port: z
+		.number()
+		.optional()
+		.default(Number.parseInt(process.env.PORT ?? "6420")),
+});
 
-export function createRouter(
-	registry: Registry<any>,
-	inputConfig?: InputConfig,
-): {
-	router: Hono;
-	injectWebSocket: NodeWebSocket["injectWebSocket"];
-} {
-	const config = ConfigSchema.parse(inputConfig);
+export type InputConfig = z.input<typeof ConfigSchema>;
 
-	// Configure default configuration
-	if (!config.topology) config.topology = "standalone";
-	if (!config.drivers.manager || !config.drivers.worker) {
-		if (config.mode === "file-system") {
-			const fsState = new FileSystemGlobalState();
-			if (!config.drivers.manager) {
-				config.drivers.manager = new FileSystemManagerDriver(registry, fsState);
-			}
-			if (!config.drivers.worker) {
-				config.drivers.worker = new FileSystemWorkerDriver(fsState);
-			}
-		} else if (config.mode === "memory") {
-			const memoryState = new MemoryGlobalState();
-			if (!config.drivers.manager) {
-				config.drivers.manager = new MemoryManagerDriver(registry, memoryState);
-			}
-			if (!config.drivers.worker) {
-				config.drivers.worker = new MemoryWorkerDriver(memoryState);
-			}
-		} else {
-			assertUnreachable(config.mode);
-		}
-	}
+export function serve<A extends RegistryWorkers>(
+	registry: Registry<A>,
+	inputConfig: InputConfig,
+): { server: ServerType; client: Client<Registry<A>> } {
+	const runConfig = ConfigSchema.parse(inputConfig);
 
 	// Setup WebSocket routing for Node
 	//
 	// Save `injectWebSocket` for after server is created
 	let injectWebSocket: NodeWebSocket["injectWebSocket"] | undefined;
-	if (!config.getUpgradeWebSocket) {
-		config.getUpgradeWebSocket = (router) => {
+	if (!runConfig.getUpgradeWebSocket) {
+		runConfig.getUpgradeWebSocket = (router) => {
 			const webSocket = createNodeWebSocket({ app: router });
 			injectWebSocket = webSocket.injectWebSocket;
 			return webSocket.upgradeWebSocket;
 		};
 	}
 
-	// Setup topology
-	if (config.topology === "standalone") {
-		const topology = new StandaloneTopology(registry.config, config);
-		if (!injectWebSocket) throw new Error("injectWebSocket not defined");
-		return { router: topology.router, injectWebSocket };
-	} else if (config.topology === "partition") {
-		throw new Error("Node.js only supports standalone & coordinate topology.");
-	} else if (config.topology === "coordinate") {
-		const topology = new CoordinateTopology(registry.config, config);
-		if (!injectWebSocket) throw new Error("injectWebSocket not defined");
-		return { router: topology.router, injectWebSocket };
-	} else {
-		assertUnreachable(config.topology);
-	}
-}
+	const { client, hono: rawHono } = registry.run(runConfig);
 
-export function serve(
-	registry: Registry<any>,
-	inputConfig?: InputConfig,
-): ServerType {
-	const config = ConfigSchema.parse(inputConfig);
-
-	const { router, injectWebSocket } = createRouter(registry, config);
+	const hono = new Hono().route(runConfig.basePath, rawHono);
 
 	const server = honoServe({
-		fetch: router.fetch,
-		hostname: config.hostname,
-		port: config.port,
+		fetch: hono.fetch,
+		hostname: runConfig.hostname,
+		port: runConfig.port,
 	});
+	if (!injectWebSocket) throw new Error("missing injectWebSocket");
 	injectWebSocket(server);
 
 	logger().info("rivetkit started", {
-		hostname: config.hostname,
-		port: config.port,
+		hostname: runConfig.hostname,
+		port: runConfig.port,
 	});
 
-	return server;
+	return { server, client };
 }

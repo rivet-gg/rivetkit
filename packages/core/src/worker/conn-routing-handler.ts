@@ -2,7 +2,6 @@ import type { UpgradeWebSocket } from "@/utils";
 import type { Encoding } from "./protocol/serde";
 import type { ConnectionHandlers as ConnHandlers } from "./router-endpoints";
 import type { Context as HonoContext } from "hono";
-import type { WebSocket } from "ws";
 
 /**
  * Deterines how requests to workers should be routed.
