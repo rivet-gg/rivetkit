@@ -1,16 +1,6 @@
 {
   "private": true,
-  "packageManager": "yarn@4.2.2",
   "name": "@rivetkit/workspace",
-  "workspaces": [
-    "packages/*",
-    "packages/platforms/*",
-    "packages/drivers/*",
-    "packages/components/*",
-    "packages/misc/*",
-    "packages/frameworks/*",
-    "examples/*"
-  ],
   "scripts": {
     "start": "npx turbo watch build",
     "dev": "npx turbo watch dev",
@@ -18,11 +8,11 @@
     "test": "npx turbo test",
     "test:watch": "npx turbo watch test",
     "check-types": "npx turbo check-types",
-    "fmt": "yarn biome check --write .",
-    "dev-docs": "cd docs && yarn dlx mintlify@latest dev",
-    "dev-docs-middleware": "cd packages/misc/docs-middleware && yarn dev",
-    "deploy-docs-middleware": "cd packages/misc/docs-middleware && yarn deploy",
-    "docs-broken-links": "cd docs && yarn dlx mintlify@latest broken-links",
+    "fmt": "pnpm biome check --write .",
+    "dev-docs": "cd docs && pnpm dlx mintlify@latest dev",
+    "dev-docs-middleware": "cd packages/misc/docs-middleware && pnpm dev",
+    "deploy-docs-middleware": "cd packages/misc/docs-middleware && pnpm deploy",
+    "docs-broken-links": "cd docs && pnpm dlx mintlify@latest broken-links",
     "docs-bump": "git checkout main && git pull --ff && date > docs/.bump && git add docs/.bump && git commit -m \"chore: bump mintlify\" && git push origin main"
   },
   "devDependencies": {
@@ -43,5 +33,6 @@
   },
   "dependencies": {
     "esbuild": "^0.25.1"
-  }
+  },
+  "packageManager": "pnpm@10.7.1+sha512.2d92c86b7928dc8284f53494fb4201f983da65f0fb4f0d40baafa5cf628fa31dae3e5968f12466f17df7e97310e30f343a648baea1b9b350685dafafffdf5808"
 }

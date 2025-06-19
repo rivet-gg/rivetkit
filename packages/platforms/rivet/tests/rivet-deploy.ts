@@ -47,7 +47,7 @@ async function writeFile(
 }
 
 /**
- * Pack a package using yarn pack and return the path to the packed tarball
+ * Pack a package using pnpm pack and return the path to the packed tarball
  */
 async function packPackage(
 	packageDir: string,
@@ -59,8 +59,8 @@ async function packPackage(
 	const outputFileName = `${packageName}-${crypto.randomUUID()}.tgz`;
 	const outputPath = path.join(tmpDir, outputFileName);
 
-	// Run yarn pack with specific output path
-	await execPromise(`yarn pack --install-if-needed --out ${outputPath}`, {
+	// Run pnpm pack with specific output path
+	await execPromise(`pnpm pack --install-if-needed --out ${outputPath}`, {
 		cwd: packageDir,
 	});
 	console.log(`Generated tarball at ${outputPath}`);
@@ -115,7 +115,7 @@ export async function deployToRivet(projectPath: string) {
 			typescript: "^5.3.0",
 		},
 		packageManager:
-			"yarn@4.7.0+sha512.5a0afa1d4c1d844b3447ee3319633797bcd6385d9a44be07993ae52ff4facabccafb4af5dcd1c2f9a94ac113e5e9ff56f6130431905884414229e284e37bb7c9",
+			"pnpm@10.7.1+sha512.2d92c86b7928dc8284f53494fb4201f983da65f0fb4f0d40baafa5cf628fa31dae3e5968f12466f17df7e97310e30f343a648baea1b9b350685dafafffdf5808",
 	};
 	await writeFile(tmpDir, "package.json", packageJson);
 
@@ -158,18 +158,18 @@ RUN npm i -g corepack && corepack enable
 
 WORKDIR /app
 
-COPY package.json .yarnrc.yml ./
+COPY package.json pnpm-lock.yaml ./
 COPY *.tgz ./
 
-RUN --mount=type=cache,target=/app/.yarn/cache \
-    yarn install
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm install --frozen-lockfile
 
 COPY . .
 # HACK: Remove worker.ts bc file is invalid in Node
-RUN rm src/worker.ts && yarn build
+RUN rm src/worker.ts && pnpm build
 
-RUN --mount=type=cache,target=/app/.yarn/cache \
-    yarn workspaces focus --production
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm install --prod --frozen-lockfile
 
 FROM node:22-alpine AS runtime
 
@@ -219,7 +219,7 @@ node_modules
 	// Install deps
 	console.log("Installing dependencies...");
 	try {
-		const installOutput = await execPromise("yarn install", { cwd: tmpDir });
+		const installOutput = await execPromise("pnpm install", { cwd: tmpDir });
 		console.log("Install output:", installOutput.stdout);
 	} catch (error) {
 		console.error("Error installing dependencies:", error);

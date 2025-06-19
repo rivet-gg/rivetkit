@@ -41,6 +41,7 @@
   "dependencies": {
     "@hono/node-server": "^1.13.8",
     "@hono/node-ws": "^1.0.8",
+    "@types/node": "^24.0.3",
     "zod": "^3.24.2"
   },
   "stableVersion": "0.8.0"

@@ -25,7 +25,7 @@ impl MockServer {
             .find(|p| p.join("package.json").exists())
             .expect("Failed to find repo root");
 
-        // Run `yarn build -F rivetkit` in the root of this repo
+        // Run `pnpm build -F rivetkit` in the root of this repo
         let status = Command::new("yarn")
             .args(["build", "-F", "rivetkit"])
             .current_dir(&repo_root)

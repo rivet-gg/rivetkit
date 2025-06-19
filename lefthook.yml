@@ -9,7 +9,7 @@
 #       tags:
 #         - frontend
 #         - security
-#       run: yarn audit
+#       run: pnpm audit
 #
 #     - name: gems audit
 #       tags:
@@ -20,7 +20,7 @@
 # pre-commit:
 #   parallel: true
 #   jobs:
-#     - run: yarn eslint {staged_files}
+#     - run: pnpm eslint {staged_files}
 #       glob: "*.{js,ts,jsx,tsx}"
 #
 #     - name: rubocop

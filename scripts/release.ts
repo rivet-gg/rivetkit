@@ -44,7 +44,7 @@ async function runTypeCheck() {
 	return;
 	try {
 		// --force to skip cache in case of Turborepo bugs
-		await $`yarn check-types --force`;
+		await $`pnpm check-types --force`;
 		console.log(chalk.green("✅ Type check passed"));
 	} catch (err) {
 		console.error(chalk.red("❌ Type check failed"));
@@ -56,7 +56,7 @@ async function runBuild() {
 	console.log(chalk.blue("Running build..."));
 	try {
 		// --force to skip cache in case of Turborepo bugs
-		await $`yarn build --force`;
+		await $`pnpm build --force`;
 		console.log(chalk.green("✅ Build finished"));
 	} catch (err) {
 		console.error(chalk.red("❌ Build failed"));
@@ -312,7 +312,7 @@ function getVersionFromArgs() {
 
 async function bumpPackageVersions(version: string) {
 	console.log(chalk.blue(`Setting version to ${version}...`));
-	await $`yarn workspaces foreach -A -t version ${version}`;
+	await $`pnpm workspaces foreach -A -t version ${version}`;
 }
 
 async function commitVersionChanges(version: string) {
@@ -341,7 +341,7 @@ async function commitVersionChanges(version: string) {
 async function getPublicPackages() {
 	console.log(chalk.blue("Getting list of public packages..."));
 	const { stdout: packagesStdout } =
-		await $`yarn workspaces list --json --no-private`;
+		await $`pnpm workspaces list --json --no-private`;
 
 	return packagesStdout
 		.trim()
@@ -463,7 +463,7 @@ async function publishPackage(pkg: any, version: string) {
 
 		await $({
 			stdio: "inherit",
-		})`yarn workspace ${name} npm publish --access public --tag ${tag}`;
+		})`pnpm workspace ${name} npm publish --access public --tag ${tag}`;
 
 		console.log(chalk.green(`✅ Published ${name} with tag '${tag}'`));
 	} catch (err) {

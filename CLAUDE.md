@@ -20,11 +20,11 @@
 
 ## Build Commands
 
-- **Type Check:** `yarn check-types` - Verify TypeScript types
-- **Check specific package:** `yarn check-types -F rivetkit` - Check only specified package
-- **Build:** `yarn build` - Production build using Turbopack
-- **Build specific package:** `yarn build -F rivetkit` - Build only specified package
-- **Format:** `yarn fmt` - Format code with Biome
+- **Type Check:** `pnpm check-types` - Verify TypeScript types
+- **Check specific package:** `pnpm check-types -F rivetkit` - Check only specified package
+- **Build:** `pnpm build` - Production build using Turbopack
+- **Build specific package:** `pnpm build -F rivetkit` - Build only specified package
+- **Format:** `pnpm fmt` - Format code with Biome
 - Do not run the format command automatically.
 
 ## Core Concepts
@@ -92,7 +92,7 @@ This ensures imports resolve correctly across different build environments and p
 
 ## Project Structure
 
-- Monorepo with Yarn workspaces and Turborepo
+- Monorepo with pnpm workspaces and Turborepo
 - Core code in `packages/rivetkit/`
 - Platform implementations in `packages/platforms/`
 - Driver implementations in `packages/drivers/`
@@ -105,7 +105,7 @@ This ensures imports resolve correctly across different build environments and p
 - Follow existing patterns for P2P networking
 - Add proper JSDoc comments for public APIs
 - Ensure proper error handling with descriptive messages
-- Run `yarn check-types` regularly during development to catch type errors early. Prefer `yarn check-types` instead of `yarn build`.
+- Run `pnpm check-types` regularly during development to catch type errors early. Prefer `pnpm check-types` instead of `pnpm build`.
 - Use `tsx` CLI to execute TypeScript scripts directly (e.g., `tsx script.ts` instead of `node script.js`).
 - Do not auto-commit changes
 

@@ -7,6 +7,6 @@ export RIVET_CLOUD_TOKEN=xxxxx
 # If not using Rivet Cloud
 export RIVET_ENDPOINT=http://localhost:8080
 rivet shell
-yarn test
+pnpm test
 ```
 

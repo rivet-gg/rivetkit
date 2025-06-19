@@ -28,7 +28,7 @@ runDriverTests({
 
 		// Start wrangler dev
 		const wranglerProcess = spawn(
-			"yarn",
+			"pnpm",
 			[
 				"start",
 				"src/index.ts",
@@ -122,23 +122,19 @@ async function setupProject(projectPath: string) {
 			rivetkit: "workspace:*",
 		},
 		packageManager:
-			"yarn@4.7.0+sha512.5a0afa1d4c1d844b3447ee3319633797bcd6385d9a44be07993ae52ff4facabccafb4af5dcd1c2f9a94ac113e5e9ff56f6130431905884414229e284e37bb7c9",
+			"pnpm@10.7.1+sha512.2d92c86b7928dc8284f53494fb4201f983da65f0fb4f0d40baafa5cf628fa31dae3e5968f12466f17df7e97310e30f343a648baea1b9b350685dafafffdf5808",
 	};
 	await fs.writeFile(
 		path.join(tmpDir, "package.json"),
 		JSON.stringify(packageJson, null, 2),
 	);
 
-	// Disable PnP
-	const yarnPnp = "nodeLinker: node-modules";
-	await fs.writeFile(path.join(tmpDir, ".yarnrc.yml"), yarnPnp);
-
 	// Get the current workspace root path and link the workspace
 	const workspaceRoot = path.resolve(__dirname, "../../../..");
-	await execPromise(`yarn link -A ${workspaceRoot}`, { cwd: tmpDir });
+	await execPromise(`pnpm link -A ${workspaceRoot}`, { cwd: tmpDir });
 
 	// Install deps
-	await execPromise("yarn install", { cwd: tmpDir });
+	await execPromise("pnpm install", { cwd: tmpDir });
 
 	// Create a wrangler.json file
 	const wranglerConfig = {

@@ -127,7 +127,7 @@
   },
   "sideEffects": false,
   "scripts": {
-    "dev": "yarn build --watch",
+    "dev": "pnpm build --watch",
     "build": "tsup src/mod.ts src/client/mod.ts src/common/log.ts src/common/websocket.ts src/worker/errors.ts src/topologies/coordinate/mod.ts src/topologies/partition/mod.ts src/utils.ts src/driver-helpers/mod.ts src/driver-test-suite/mod.ts src/test/mod.ts",
     "check-types": "tsc --noEmit",
     "boop": "tsc --outDir dist/test -d",

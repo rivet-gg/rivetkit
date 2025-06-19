@@ -170,6 +170,7 @@ export function createWorkerDurableObject(
 						passThroughOnException() {
 							// Do nothing
 						},
+						props: {},
 					} satisfies ExecutionContext,
 				);
 			});

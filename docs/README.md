@@ -1,6 +1,6 @@
 # Mintlify Documentation
 
 ```
-yarn dlx mintlify dev
+pnpm dlx mintlify dev
 ```
 

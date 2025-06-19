@@ -149,23 +149,6 @@ To expose your local webhook server to the internet:
 npm run ngrok
 ```
 
-#### Local Testing
-
-For local testing without actual webhooks, you can use the debugging CLI tools:
-
-```bash
-# Check the status of a specific issue
-yarn cli status <ISSUE-ID>
-
-# Get debug information for a specific issue
-yarn cli debug <ISSUE-ID>
-
-# View conversation history with the LLM
-yarn cli history <ISSUE-ID>
-```
-
-This allows you to monitor and debug the agent's behavior for specific issues.
-
 ### Configuration
 
 Set the following environment variables:

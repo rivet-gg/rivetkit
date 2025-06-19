@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently --raw \"yarn dev:actors\" \"yarn dev:server\" \"yarn dev:ngrok\"",
+    "dev": "concurrently --raw \"pnpm dev:actors\" \"pnpm dev:server\" \"pnpm dev:ngrok\"",
     "dev:actors": "npx rivetkit/cli@latest dev src/workers/registry.ts",
     "dev:server": "tsx --watch src/server/index.ts",
     "dev:ngrok": "ngrok http 3000",
