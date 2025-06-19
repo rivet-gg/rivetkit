@@ -82,7 +82,7 @@
               "description": "Worker query information"
             },
             "required": true,
-            "name": "X-AC-Query",
+            "name": "X-RivetKit-Query",
             "in": "header"
           }
         ],
@@ -134,7 +134,7 @@
               "example": "json"
             },
             "required": true,
-            "name": "X-AC-Encoding",
+            "name": "X-RivetKit-Encoding",
             "in": "header"
           },
           {
@@ -143,7 +143,7 @@
               "description": "Worker query information"
             },
             "required": true,
-            "name": "X-AC-Query",
+            "name": "X-RivetKit-Query",
             "in": "header"
           },
           {
@@ -152,7 +152,7 @@
               "description": "Connection parameters"
             },
             "required": false,
-            "name": "X-AC-Conn-Params",
+            "name": "X-RivetKit-Conn-Params",
             "in": "header"
           }
         ],
@@ -189,7 +189,7 @@
               "example": "json"
             },
             "required": true,
-            "name": "X-AC-Encoding",
+            "name": "X-RivetKit-Encoding",
             "in": "header"
           },
           {
@@ -198,7 +198,7 @@
               "description": "Connection parameters"
             },
             "required": false,
-            "name": "X-AC-Conn-Params",
+            "name": "X-RivetKit-Conn-Params",
             "in": "header"
           }
         ],
@@ -241,7 +241,7 @@
               "example": "worker-123456"
             },
             "required": true,
-            "name": "X-AC-Worker",
+            "name": "X-RivetKit-Worker",
             "in": "header"
           },
           {
@@ -251,7 +251,7 @@
               "example": "conn-123456"
             },
             "required": true,
-            "name": "X-AC-Conn",
+            "name": "X-RivetKit-Conn",
             "in": "header"
           },
           {
@@ -261,7 +261,7 @@
               "example": "json"
             },
             "required": true,
-            "name": "X-AC-Encoding",
+            "name": "X-RivetKit-Encoding",
             "in": "header"
           },
           {
@@ -270,7 +270,7 @@
               "description": "Connection token"
             },
             "required": true,
-            "name": "X-AC-Conn-Token",
+            "name": "X-RivetKit-Conn-Token",
             "in": "header"
           }
         ],

@@ -444,24 +444,24 @@ export function getRequestQuery(c: HonoContext): unknown {
 	}
 }
 
-export const HEADER_WORKER_QUERY = "X-AC-Query";
+export const HEADER_WORKER_QUERY = "X-RivetKit-Query";
 
-export const HEADER_ENCODING = "X-AC-Encoding";
+export const HEADER_ENCODING = "X-RivetKit-Encoding";
 
 // Internal header
-export const HEADER_EXPOSE_INTERNAL_ERROR = "X-AC-Expose-Internal-Error";
+export const HEADER_EXPOSE_INTERNAL_ERROR = "X-RivetKit-Expose-Internal-Error";
 
 // IMPORTANT: Params must be in headers or in an E2EE part of the request (i.e. NOT the URL or query string) in order to ensure that tokens can be securely passed in params.
-export const HEADER_CONN_PARAMS = "X-AC-Conn-Params";
+export const HEADER_CONN_PARAMS = "X-RivetKit-Conn-Params";
 
 // Internal header
-export const HEADER_AUTH_DATA = "X-AC-Auth-Data";
+export const HEADER_AUTH_DATA = "X-RivetKit-Auth-Data";
 
-export const HEADER_WORKER_ID = "X-AC-Worker";
+export const HEADER_WORKER_ID = "X-RivetKit-Worker";
 
-export const HEADER_CONN_ID = "X-AC-Conn";
+export const HEADER_CONN_ID = "X-RivetKit-Conn";
 
-export const HEADER_CONN_TOKEN = "X-AC-Conn-Token";
+export const HEADER_CONN_TOKEN = "X-RivetKit-Conn-Token";
 
 /**
  * Headers that publics can send from public clients.
