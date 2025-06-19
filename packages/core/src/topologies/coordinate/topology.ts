@@ -135,9 +135,9 @@ export class CoordinateTopology {
 			this.clientDriver,
 			{
 				routingHandler,
-				onConnectInspector: () => {
-					throw new errors.Unsupported("inspect");
-				},
+				// onConnectInspector: () => {
+				// 	throw new errors.Unsupported("inspect");
+				// },
 			},
 		);
 

@@ -10,7 +10,6 @@ import { WorkerAlreadyExists } from "rivetkit/errors";
 import type Redis from "ioredis";
 import * as crypto from "node:crypto";
 import { KEYS } from "./keys";
-import { ManagerInspector } from "rivetkit/inspector";
 import type { Registry } from "rivetkit";
 
 interface Worker {
@@ -26,24 +25,21 @@ export class RedisManagerDriver implements ManagerDriver {
 	#redis: Redis;
 	#registry?: Registry<any>;
 
-	/**
-	 * @internal
-	 */
-	inspector: ManagerInspector = new ManagerInspector(this, {
-		getAllWorkers: () => {
-			// Create a function that returns an array of workers directly
-			// Not returning a Promise since the ManagerInspector expects a synchronous function
-			const workers: Worker[] = [];
-
-			// Return empty array since we can't do async operations here
-			// The actual data will be fetched when needed by calling getAllWorkers() manually
-			return workers;
-		},
-		getAllTypesOfWorkers: () => {
-			if (!this.#registry) return [];
-			return Object.keys(this.#registry.config.workers);
-		},
-	});
+	// inspector: ManagerInspector = new ManagerInspector(this, {
+	// 	getAllWorkers: () => {
+	// 		// Create a function that returns an array of workers directly
+	// 		// Not returning a Promise since the ManagerInspector expects a synchronous function
+	// 		const workers: Worker[] = [];
+	//
+	// 		// Return empty array since we can't do async operations here
+	// 		// The actual data will be fetched when needed by calling getAllWorkers() manually
+	// 		return workers;
+	// 	},
+	// 	getAllTypesOfWorkers: () => {
+	// 		if (!this.#registry) return [];
+	// 		return Object.keys(this.#registry.config.workers);
+	// 	},
+	// });
 
 	constructor(redis: Redis, registry?: Registry<any>) {
 		this.#redis = redis;
@@ -121,13 +117,13 @@ export class RedisManagerDriver implements ManagerDriver {
 		await pipeline.exec();
 
 		// Notify inspector of worker creation
-		this.inspector.onWorkersChange([
-			{
-				id: workerId,
-				name,
-				key,
-			},
-		]);
+		// this.inspector.onWorkersChange([
+		// 	{
+		// 		id: workerId,
+		// 		name,
+		// 		key,
+		// 	},
+		// ]);
 
 		return {
 			workerId,

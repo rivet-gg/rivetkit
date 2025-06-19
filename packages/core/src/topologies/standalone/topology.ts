@@ -21,7 +21,6 @@ import { ActionContext } from "@/worker/action";
 import type { DriverConfig } from "@/driver-helpers/config";
 import type { RegistryConfig } from "@/registry/config";
 import { createManagerRouter } from "@/manager/router";
-import type { ManagerInspectorConnection } from "@/inspector/manager";
 import type {
 	ConnectWebSocketOpts,
 	ConnectWebSocketOutput,
@@ -276,30 +275,30 @@ export class StandaloneTopology {
 		// Build manager router
 		const managerRouter = createManagerRouter(registryConfig, driverConfig, this.clientDriver, {
 			routingHandler,
-			onConnectInspector: async () => {
-				const inspector = driverConfig.drivers?.manager?.inspector;
-				if (!inspector) throw new errors.Unsupported("inspector");
-
-				let conn: ManagerInspectorConnection | undefined;
-				return {
-					onOpen: async (ws) => {
-						conn = inspector.createConnection(ws);
-					},
-					onMessage: async (message) => {
-						if (!conn) {
-							logger().warn("`conn` does not exist");
-							return;
-						}
-
-						inspector.processMessage(conn, message);
-					},
-					onClose: async () => {
-						if (conn) {
-							inspector.removeConnection(conn);
-						}
-					},
-				};
-			},
+			// onConnectInspector: async () => {
+			// 	const inspector = driverConfig.drivers?.manager?.inspector;
+			// 	if (!inspector) throw new errors.Unsupported("inspector");
+			//
+			// 	let conn: ManagerInspectorConnection | undefined;
+			// 	return {
+			// 		onOpen: async (ws) => {
+			// 			conn = inspector.createConnection(ws);
+			// 		},
+			// 		onMessage: async (message) => {
+			// 			if (!conn) {
+			// 				logger().warn("`conn` does not exist");
+			// 				return;
+			// 			}
+			//
+			// 			inspector.processMessage(conn, message);
+			// 		},
+			// 		onClose: async () => {
+			// 			if (conn) {
+			// 				inspector.removeConnection(conn);
+			// 			}
+			// 		},
+			// 	};
+			// },
 		});
 
 		router.route("/", managerRouter);

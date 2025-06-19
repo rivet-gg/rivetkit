@@ -9,19 +9,15 @@ import type {
 import { WorkerAlreadyExists } from "rivetkit/errors";
 import type { MemoryGlobalState } from "./global-state";
 import * as crypto from "node:crypto";
-import { ManagerInspector } from "rivetkit/inspector";
 import type { Registry } from "rivetkit";
 
 export class MemoryManagerDriver implements ManagerDriver {
 	#state: MemoryGlobalState;
 
-	/**
-	 * @internal
-	 */
-	inspector: ManagerInspector = new ManagerInspector(this, {
-		getAllWorkers: () => this.#state.getAllWorkers(),
-		getAllTypesOfWorkers: () => Object.keys(this.registry.config.workers),
-	});
+	// inspector: ManagerInspector = new ManagerInspector(this, {
+	// 	getAllWorkers: () => this.#state.getAllWorkers(),
+	// 	getAllTypesOfWorkers: () => Object.keys(this.registry.config.workers),
+	// });
 
 	constructor(
 		private readonly registry: Registry<any>,
@@ -103,7 +99,7 @@ export class MemoryManagerDriver implements ManagerDriver {
 		const workerId = crypto.randomUUID();
 		this.#state.createWorker(workerId, name, key, input);
 
-		this.inspector.onWorkersChange(this.#state.getAllWorkers());
+		// this.inspector.onWorkersChange(this.#state.getAllWorkers());
 
 		return { workerId, name, key };
 	}

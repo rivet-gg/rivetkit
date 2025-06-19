@@ -18,7 +18,6 @@ import { Schedule } from "./schedule";
 import * as wsToClient from "@/worker/protocol/message/to-client";
 import type * as wsToServer from "@/worker/protocol/message/to-server";
 import { CachedSerializer } from "./protocol/serde";
-import { WorkerInspector } from "@/inspector/worker";
 import { WorkerContext } from "./context";
 import invariant from "invariant";
 import type {
@@ -131,11 +130,7 @@ export class WorkerInstance<S, CP, CS, V, I, AD> {
 
 	#schedule!: Schedule;
 
-	/**
-	 * Inspector for the worker.
-	 * @internal
-	 */
-	inspector!: WorkerInspector;
+	// inspector!: WorkerInspector;
 
 	get id() {
 		return this.#workerId;
@@ -168,7 +163,7 @@ export class WorkerInstance<S, CP, CS, V, I, AD> {
 		this.#key = key;
 		this.#region = region;
 		this.#schedule = new Schedule(this);
-		this.inspector = new WorkerInspector(this);
+		// this.inspector = new WorkerInspector(this);
 
 		// Initialize server
 		//
@@ -459,7 +454,7 @@ export class WorkerInstance<S, CP, CS, V, I, AD> {
 				this.#persistChanged = true;
 
 				// Call inspect handler
-				this.inspector.onStateChange(this.#persistRaw.s);
+				// this.inspector.onStateChange(this.#persistRaw.s);
 
 				// Call onStateChange if it exists
 				if (this.#config.onStateChange && this.#ready) {
@@ -594,7 +589,7 @@ export class WorkerInstance<S, CP, CS, V, I, AD> {
 			this.#removeSubscription(eventName, conn, true);
 		}
 
-		this.inspector.onConnChange(this.#connections);
+		// this.inspector.onConnChange(this.#connections);
 		if (this.#config.onDisconnect) {
 			try {
 				const result = this.#config.onDisconnect(this.workerContext, conn);
@@ -714,7 +709,7 @@ export class WorkerInstance<S, CP, CS, V, I, AD> {
 		this.#persist.c.push(persist);
 		this.saveState({ immediate: true });
 
-		this.inspector.onConnChange(this.#connections);
+		// this.inspector.onConnChange(this.#connections);
 
 		// Handle connection
 		if (this.#config.onConnect) {

@@ -37,10 +37,6 @@ import {
 	stringifyError,
 } from "@/common/utils";
 import type { DriverConfig } from "@/driver-helpers/config";
-import {
-	type ManagerInspectorConnHandler,
-	createManagerInspectorRouter,
-} from "@/inspector/manager";
 import { Hono, type Context as HonoContext, type Next } from "hono";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { z } from "@hono/zod-openapi";
@@ -66,7 +62,7 @@ import { authenticateEndpoint } from "./auth";
 import type { WebSocket, MessageEvent, CloseEvent } from "ws";
 
 type ManagerRouterHandler = {
-	onConnectInspector?: ManagerInspectorConnHandler;
+	// onConnectInspector?: ManagerInspectorConnHandler;
 	routingHandler: ConnRoutingHandler;
 };
 
@@ -357,16 +353,16 @@ export function createManagerRouter(
 		);
 	}
 
-	if (registryConfig.inspector.enabled) {
-		router.route(
-			"/inspect",
-			createManagerInspectorRouter(
-				upgradeWebSocket,
-				handler.onConnectInspector,
-				registryConfig.inspector,
-			),
-		);
-	}
+	// if (registryConfig.inspector.enabled) {
+	// 	router.route(
+	// 		"/inspect",
+	// 		createManagerInspectorRouter(
+	// 			upgradeWebSocket,
+	// 			handler.onConnectInspector,
+	// 			registryConfig.inspector,
+	// 		),
+	// 	);
+	// }
 
 	if (registryConfig.test.enabled) {
 		// Add HTTP endpoint to test the inline client

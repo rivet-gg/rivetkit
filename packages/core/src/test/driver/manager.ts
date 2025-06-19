@@ -8,20 +8,16 @@ import type {
 import { WorkerAlreadyExists } from "@/worker/errors";
 import type { TestGlobalState } from "./global-state";
 import * as crypto from "node:crypto";
-import { ManagerInspector } from "@/inspector/manager";
 import type { Registry } from "@/registry/mod";
 import { WorkerOutput } from "@/manager/driver";
 
 export class TestManagerDriver implements ManagerDriver {
 	#state: TestGlobalState;
 
-	/**
-	 * @internal
-	 */
-	inspector: ManagerInspector = new ManagerInspector(this, {
-		getAllWorkers: () => this.#state.getAllWorkers(),
-		getAllTypesOfWorkers: () => Object.keys(this.registry.config.workers),
-	});
+	// inspector: ManagerInspector = new ManagerInspector(this, {
+	// 	getAllWorkers: () => this.#state.getAllWorkers(),
+	// 	getAllTypesOfWorkers: () => Object.keys(this.registry.config.workers),
+	// });
 
 	constructor(
 		private readonly registry: Registry<any>,
@@ -134,7 +130,7 @@ export class TestManagerDriver implements ManagerDriver {
 		const workerId = crypto.randomUUID();
 		this.#state.createWorker(workerId, name, key, input);
 
-		this.inspector.onWorkersChange(this.#state.getAllWorkers());
+		// this.inspector.onWorkersChange(this.#state.getAllWorkers());
 
 		return {
 			workerId,

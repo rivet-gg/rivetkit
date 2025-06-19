@@ -3,7 +3,6 @@
 import { z } from "zod";
 import type { cors } from "hono/cors";
 import { WorkerDefinition, AnyWorkerDefinition } from "@/worker/definition";
-import { InspectorConfigSchema } from "@/inspector/config";
 // Define CORS options schema
 type CorsOptions = NonNullable<Parameters<typeof cors>[0]>;
 
@@ -71,8 +70,7 @@ export const RegistryConfigSchema = z.object({
 	/** Peer configuration for coordinated topology. */
 	workerPeer: WorkerPeerConfigSchema.optional().default({}),
 
-	/** Inspector configuration. */
-	inspector: InspectorConfigSchema.optional().default({ enabled: false }),
+	// inspector: InspectorConfigSchema.optional().default({ enabled: false }),
 
 	// TODO: Find a better way of passing around the test config
 	/** 

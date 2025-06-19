@@ -23,9 +23,7 @@ import type { ConnDriver } from "@/worker/driver";
 import type { WorkerKey } from "@/common/utils";
 import type { DriverConfig } from "@/driver-helpers/config";
 import type { RegistryConfig } from "@/registry/config";
-import type { WorkerInspectorConnection } from "@/inspector/worker";
 import { createManagerRouter } from "@/manager/router";
-import type { ManagerInspectorConnection } from "@/inspector/manager";
 import type {
 	ConnectWebSocketOpts,
 	ConnectSseOpts,
@@ -81,30 +79,30 @@ export class PartitionTopologyManager {
 			this.clientDriver,
 			{
 				routingHandler,
-				onConnectInspector: async () => {
-					const inspector = driverConfig.drivers?.manager?.inspector;
-					if (!inspector) throw new errors.Unsupported("inspector");
-
-					let conn: ManagerInspectorConnection | undefined;
-					return {
-						onOpen: async (ws) => {
-							conn = inspector.createConnection(ws);
-						},
-						onMessage: async (message) => {
-							if (!conn) {
-								logger().warn("`conn` does not exist");
-								return;
-							}
-
-							inspector.processMessage(conn, message);
-						},
-						onClose: async () => {
-							if (conn) {
-								inspector.removeConnection(conn);
-							}
-						},
-					};
-				},
+				// onConnectInspector: async () => {
+				// 	const inspector = driverConfig.drivers?.manager?.inspector;
+				// 	if (!inspector) throw new errors.Unsupported("inspector");
+				//
+				// 	let conn: ManagerInspectorConnection | undefined;
+				// 	return {
+				// 		onOpen: async (ws) => {
+				// 			conn = inspector.createConnection(ws);
+				// 		},
+				// 		onMessage: async (message) => {
+				// 			if (!conn) {
+				// 				logger().warn("`conn` does not exist");
+				// 				return;
+				// 			}
+				//
+				// 			inspector.processMessage(conn, message);
+				// 		},
+				// 		onClose: async () => {
+				// 			if (conn) {
+				// 				inspector.removeConnection(conn);
+				// 			}
+				// 		},
+				// 	};
+				// },
 			},
 		);
 	}
@@ -303,33 +301,33 @@ export class PartitionTopologyWorker {
 					await worker.processMessage(opts.message, conn);
 				},
 			},
-			onConnectInspector: async () => {
-				if (this.#workerStartedPromise)
-					await this.#workerStartedPromise.promise;
-
-				const worker = this.#worker;
-				if (!worker) throw new Error("Worker should be defined");
-
-				let conn: WorkerInspectorConnection | undefined;
-				return {
-					onOpen: async (ws) => {
-						conn = worker.inspector.createConnection(ws);
-					},
-					onMessage: async (message) => {
-						if (!conn) {
-							logger().warn("`conn` does not exist");
-							return;
-						}
-
-						worker.inspector.processMessage(conn, message);
-					},
-					onClose: async () => {
-						if (conn) {
-							worker.inspector.removeConnection(conn);
-						}
-					},
-				};
-			},
+			// onConnectInspector: async () => {
+			// 	if (this.#workerStartedPromise)
+			// 		await this.#workerStartedPromise.promise;
+			//
+			// 	const worker = this.#worker;
+			// 	if (!worker) throw new Error("Worker should be defined");
+			//
+			// 	let conn: WorkerInspectorConnection | undefined;
+			// 	return {
+			// 		onOpen: async (ws) => {
+			// 			conn = worker.inspector.createConnection(ws);
+			// 		},
+			// 		onMessage: async (message) => {
+			// 			if (!conn) {
+			// 				logger().warn("`conn` does not exist");
+			// 				return;
+			// 			}
+			//
+			// 			worker.inspector.processMessage(conn, message);
+			// 		},
+			// 		onClose: async () => {
+			// 			if (conn) {
+			// 				worker.inspector.removeConnection(conn);
+			// 			}
+			// 		},
+			// 	};
+			// },
 		});
 	}
 

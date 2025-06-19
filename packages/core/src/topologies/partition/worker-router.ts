@@ -9,10 +9,6 @@ import {
 import type { DriverConfig } from "@/driver-helpers/config";
 import type { RegistryConfig } from "@/registry/config";
 import {
-	type WorkerInspectorConnHandler,
-	createWorkerInspectorRouter,
-} from "@/inspector/worker";
-import {
 	type ConnectWebSocketOpts,
 	type ConnectWebSocketOutput,
 	type ConnectSseOpts,
@@ -51,7 +47,7 @@ export interface WorkerRouterHandler {
 	// Connection handlers as a required subobject
 	connectionHandlers: ConnectionHandlers;
 
-	onConnectInspector?: WorkerInspectorConnHandler;
+	// onConnectInspector?: WorkerInspectorConnHandler;
 }
 
 /**
@@ -206,16 +202,16 @@ export function createWorkerRouter(
 		);
 	});
 
-	if (registryConfig.inspector.enabled) {
-		router.route(
-			"/inspect",
-			createWorkerInspectorRouter(
-				upgradeWebSocket,
-				handler.onConnectInspector,
-				registryConfig.inspector,
-			),
-		);
-	}
+	// if (registryConfig.inspector.enabled) {
+	// 	router.route(
+	// 		"/inspect",
+	// 		createWorkerInspectorRouter(
+	// 			upgradeWebSocket,
+	// 			handler.onConnectInspector,
+	// 			registryConfig.inspector,
+	// 		),
+	// 	);
+	// }
 
 	router.notFound(handleRouteNotFound);
 	router.onError(

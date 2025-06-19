@@ -12,18 +12,14 @@ import { logger } from "./log";
 import type { FileSystemGlobalState } from "./global-state";
 import { WorkerState } from "./global-state";
 import type { Registry } from "rivetkit";
-import { ManagerInspector } from "rivetkit/inspector";
 
 export class FileSystemManagerDriver implements ManagerDriver {
 	#state: FileSystemGlobalState;
 
-	/**
-	 * @internal
-	 */
-	inspector: ManagerInspector = new ManagerInspector(this, {
-		getAllWorkers: () => this.#state.getAllWorkers(),
-		getAllTypesOfWorkers: () => Object.keys(this.registry.config.workers),
-	});
+	// inspector: ManagerInspector = new ManagerInspector(this, {
+	// 	getAllWorkers: () => this.#state.getAllWorkers(),
+	// 	getAllTypesOfWorkers: () => Object.keys(this.registry.config.workers),
+	// });
 
 	constructor(
 		private readonly registry: Registry<any>,
@@ -94,7 +90,7 @@ export class FileSystemManagerDriver implements ManagerDriver {
 		await this.#state.createWorker(workerId, name, key, input);
 
 		// Notify inspector about worker changes
-		this.inspector.onWorkersChange(this.#state.getAllWorkers());
+		// this.inspector.onWorkersChange(this.#state.getAllWorkers());
 
 		return {
 			workerId,

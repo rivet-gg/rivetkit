@@ -120,36 +120,6 @@
         "types": "./dist/test/mod.d.cts",
         "default": "./dist/test/mod.cjs"
       }
-    },
-    "./inspector": {
-      "import": {
-        "types": "./dist/inspector/mod.d.ts",
-        "default": "./dist/inspector/mod.js"
-      },
-      "require": {
-        "types": "./dist/inspector/mod.d.cts",
-        "default": "./dist/inspector/mod.cjs"
-      }
-    },
-    "./inspector/protocol/worker": {
-      "import": {
-        "types": "./dist/inspector/protocol/worker/mod.d.ts",
-        "default": "./dist/inspector/protocol/worker/mod.js"
-      },
-      "require": {
-        "types": "./dist/inspector/protocol/worker/mod.d.cts",
-        "default": "./dist/inspector/protocol/worker/mod.cjs"
-      }
-    },
-    "./inspector/protocol/manager": {
-      "import": {
-        "types": "./dist/inspector/protocol/manager/mod.d.ts",
-        "default": "./dist/inspector/protocol/manager/mod.js"
-      },
-      "require": {
-        "types": "./dist/inspector/protocol/manager/mod.d.cts",
-        "default": "./dist/inspector/protocol/manager/mod.cjs"
-      }
     }
   },
   "engines": {
@@ -158,7 +128,7 @@
   "sideEffects": false,
   "scripts": {
     "dev": "yarn build --watch",
-    "build": "tsup src/mod.ts src/client/mod.ts src/common/log.ts src/common/websocket.ts src/worker/errors.ts src/topologies/coordinate/mod.ts src/topologies/partition/mod.ts src/utils.ts src/driver-helpers/mod.ts src/driver-test-suite/mod.ts src/worker/protocol/inspector/mod.ts src/test/mod.ts src/inspector/protocol/worker/mod.ts src/inspector/protocol/manager/mod.ts src/inspector/mod.ts",
+    "build": "tsup src/mod.ts src/client/mod.ts src/common/log.ts src/common/websocket.ts src/worker/errors.ts src/topologies/coordinate/mod.ts src/topologies/partition/mod.ts src/utils.ts src/driver-helpers/mod.ts src/driver-test-suite/mod.ts src/test/mod.ts",
     "check-types": "tsc --noEmit",
     "boop": "tsc --outDir dist/test -d",
     "test": "vitest run",
