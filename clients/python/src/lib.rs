@@ -6,7 +6,7 @@ mod simple;
 mod events;
 
 #[pymodule]
-fn actor_core_client(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn rivetkit_client(m: &Bound<'_, PyModule>) -> PyResult<()> {
     simple::init_module(m)?;
     events::init_module(m)?;
 

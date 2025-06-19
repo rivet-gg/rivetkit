@@ -1,4 +1,4 @@
-use actor_core_client::{self as actor_core_rs, CreateOptions, GetOptions, GetWithIdOptions};
+use rivetkit_client::{self as rivetkit_rs, CreateOptions, GetOptions, GetWithIdOptions};
 use pyo3::prelude::*;
 
 use super::handle::ActorHandle;
@@ -6,7 +6,7 @@ use crate::util::{try_opts_from_kwds, PyKwdArgs, SYNC_RUNTIME};
 
 #[pyclass(name = "Client")]
 pub struct Client {
-    client: actor_core_rs::Client,
+    client: rivetkit_rs::Client,
 }
 
 #[pymethods]
@@ -24,7 +24,7 @@ impl Client {
     ) -> PyResult<Self> {
         let transport_kind = try_transport_kind_from_str(&transport_kind)?;
         let encoding_kind = try_encoding_kind_from_str(&encoding_kind)?;
-        let client = actor_core_rs::Client::new(
+        let client = rivetkit_rs::Client::new(
             endpoint.to_string(),
             transport_kind,
             encoding_kind
@@ -83,10 +83,10 @@ impl Client {
 
 fn try_transport_kind_from_str(
     transport_kind: &str
-) -> PyResult<actor_core_rs::TransportKind> {
+) -> PyResult<rivetkit_rs::TransportKind> {
     match transport_kind {
-        "websocket" => Ok(actor_core_rs::TransportKind::WebSocket),
-        "sse" => Ok(actor_core_rs::TransportKind::Sse),
+        "websocket" => Ok(rivetkit_rs::TransportKind::WebSocket),
+        "sse" => Ok(rivetkit_rs::TransportKind::Sse),
         _ => Err(py_value_err!(
             "Invalid transport kind: {}",
             transport_kind
@@ -96,10 +96,10 @@ fn try_transport_kind_from_str(
 
 fn try_encoding_kind_from_str(
     encoding_kind: &str
-) -> PyResult<actor_core_rs::EncodingKind> {
+) -> PyResult<rivetkit_rs::EncodingKind> {
     match encoding_kind {
-        "json" => Ok(actor_core_rs::EncodingKind::Json),
-        "cbor" => Ok(actor_core_rs::EncodingKind::Cbor),
+        "json" => Ok(rivetkit_rs::EncodingKind::Json),
+        "cbor" => Ok(rivetkit_rs::EncodingKind::Cbor),
         _ => Err(py_value_err!(
             "Invalid encoding kind: {}",
             encoding_kind

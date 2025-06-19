@@ -1,6 +1,6 @@
 import pytest
-from actor_core_client import AsyncClient as ActorClient
-from actor_core_test import setup_test
+from rivetkit_client import AsyncClient as ActorClient
+from rivetkit_test import setup_test
 from typing import TypedDict, List
 
 

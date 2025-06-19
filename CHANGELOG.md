@@ -173,7 +173,7 @@
 * add ws & eventsource as dev dependencies of rivetkit so it can build ([1cdf9c4](https://github.com/rivet-gg/rivetkit/commit/1cdf9c4351367a152224697029b047e5ef66518a))
 * changelog for 0.6.3 ([cf6d723](https://github.com/rivet-gg/rivetkit/commit/cf6d723a081029e8241a643186d41a09701192bd))
 * fix grammar on index ([#689](https://github.com/rivet-gg/rivetkit/issues/689)) ([dac5660](https://github.com/rivet-gg/rivetkit/commit/dac566058490c28ad34511dcee77c962602c6a3e))
-* fix typo of "Actor Core" -&gt; "ActorCore" ([#707](https://github.com/rivet-gg/rivetkit/issues/707)) ([d1e8be5](https://github.com/rivet-gg/rivetkit/commit/d1e8be523fc75e1c55ad529bd85bc832a545b12a))
+* fix typo of "Actor Core" -&gt; "RivetKit" ([#707](https://github.com/rivet-gg/rivetkit/issues/707)) ([d1e8be5](https://github.com/rivet-gg/rivetkit/commit/d1e8be523fc75e1c55ad529bd85bc832a545b12a))
 * increase RPC timeout from 5s to 60s ([#705](https://github.com/rivet-gg/rivetkit/issues/705)) ([ec6a478](https://github.com/rivet-gg/rivetkit/commit/ec6a478e9ffff91028e8f2f718c79e65d3479354))
 * **main:** release 0.6.2 ([#693](https://github.com/rivet-gg/rivetkit/issues/693)) ([73c3399](https://github.com/rivet-gg/rivetkit/commit/73c3399a96a720ff5663ee359e686aa6e573737b))
 * **main:** release 0.6.3 ([#697](https://github.com/rivet-gg/rivetkit/issues/697)) ([40fbcc1](https://github.com/rivet-gg/rivetkit/commit/40fbcc11d115761f27a843f6cac816449fc61ceb))
@@ -196,7 +196,7 @@
 * update changelog for 0.7.0 ([#715](https://github.com/rivet-gg/rivetkit/issues/715)) ([dba8085](https://github.com/rivet-gg/rivetkit/commit/dba808513f2fb42ebd84f0d1dd21b3798223fda1))
 * update changelog for 0.7.1 ([#731](https://github.com/rivet-gg/rivetkit/issues/731)) ([f2e0cb3](https://github.com/rivet-gg/rivetkit/commit/f2e0cb3b18131086765478812498e605d3be2ff8))
 * update lockfile ([7b61057](https://github.com/rivet-gg/rivetkit/commit/7b6105796a2bbec69d75dbd0cae717b2e8fd7827))
-* update platforms to support `ActorCoreApp` ([#712](https://github.com/rivet-gg/rivetkit/issues/712)) ([576a101](https://github.com/rivet-gg/rivetkit/commit/576a101dcfcbe5c44ff771db1db64b275a68cf81))
+* update platforms to support `RivetKitApp` ([#712](https://github.com/rivet-gg/rivetkit/issues/712)) ([576a101](https://github.com/rivet-gg/rivetkit/commit/576a101dcfcbe5c44ff771db1db64b275a68cf81))
 
 ## [0.7.0](https://github.com/rivet-gg/rivetkit/compare/v0.6.3...v0.7.0) (2025-03-16)
 
@@ -226,7 +226,7 @@
 ### Chores
 
 * add ws & eventsource as dev dependencies of rivetkit so it can build ([1cdf9c4](https://github.com/rivet-gg/rivetkit/commit/1cdf9c4351367a152224697029b047e5ef66518a))
-* fix typo of "Actor Core" -&gt; "ActorCore" ([#707](https://github.com/rivet-gg/rivetkit/issues/707)) ([d1e8be5](https://github.com/rivet-gg/rivetkit/commit/d1e8be523fc75e1c55ad529bd85bc832a545b12a))
+* fix typo of "Actor Core" -&gt; "RivetKit" ([#707](https://github.com/rivet-gg/rivetkit/issues/707)) ([d1e8be5](https://github.com/rivet-gg/rivetkit/commit/d1e8be523fc75e1c55ad529bd85bc832a545b12a))
 * increase RPC timeout from 5s to 60s ([#705](https://github.com/rivet-gg/rivetkit/issues/705)) ([ec6a478](https://github.com/rivet-gg/rivetkit/commit/ec6a478e9ffff91028e8f2f718c79e65d3479354))
 * release 0.7.0 ([0a9b745](https://github.com/rivet-gg/rivetkit/commit/0a9b745f966379ed324be2a354d91999cb65e1f1))
 * release version 0.7.0 ([0fbc3da](https://github.com/rivet-gg/rivetkit/commit/0fbc3da0430581cc47543d2904c8241fa38d4f0e))
@@ -234,7 +234,7 @@
 * rename rpcs -&gt; actions ([#711](https://github.com/rivet-gg/rivetkit/issues/711)) ([8957e56](https://github.com/rivet-gg/rivetkit/commit/8957e560572e7594db03d9ea631bf32995a61bd0))
 * show full subpath to value that cannot be serialized when setting invalid state ([#706](https://github.com/rivet-gg/rivetkit/issues/706)) ([a666bc3](https://github.com/rivet-gg/rivetkit/commit/a666bc37644966d7482f54370ab92c5b259136b9))
 * update changelog for 0.7.0 ([#715](https://github.com/rivet-gg/rivetkit/issues/715)) ([dba8085](https://github.com/rivet-gg/rivetkit/commit/dba808513f2fb42ebd84f0d1dd21b3798223fda1))
-* update platforms to support `ActorCoreApp` ([#712](https://github.com/rivet-gg/rivetkit/issues/712)) ([576a101](https://github.com/rivet-gg/rivetkit/commit/576a101dcfcbe5c44ff771db1db64b275a68cf81))
+* update platforms to support `RivetKitApp` ([#712](https://github.com/rivet-gg/rivetkit/issues/712)) ([576a101](https://github.com/rivet-gg/rivetkit/commit/576a101dcfcbe5c44ff771db1db64b275a68cf81))
 
 ## [0.6.3](https://github.com/rivet-gg/rivetkit/compare/v0.6.2...v0.6.3) (2025-03-13)
 

@@ -60,7 +60,7 @@ function Counter() {
 			<button
 				type="button"
 				onClick={() => worker?.connection?.increment(1)}
-				disabled={!actor}
+				disabled={!worker}
 			>
 				Increment
 			</button>

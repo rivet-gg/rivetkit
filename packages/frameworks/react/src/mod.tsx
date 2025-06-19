@@ -15,7 +15,7 @@
 //	useSyncExternalStore,
 //} from "react";
 //
-//export function createReactActorCore<Client extends ClientRaw>(client: Client) {
+//export function createReactRivetKit<Client extends ClientRaw>(client: Client) {
 //	type Registry = ExtractAppFromClient<Client>;
 //	type Registry = ExtractActorsFromRegistry<Registry>;
 //	return {

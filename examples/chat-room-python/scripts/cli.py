@@ -1,5 +1,5 @@
 import asyncio
-from actor_core_client import AsyncClient as ActorClient
+from rivetkit_client import AsyncClient as ActorClient
 import prompt_toolkit
 from prompt_toolkit.patch_stdout import patch_stdout
 from typing import TypedDict, List

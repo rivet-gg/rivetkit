@@ -9,7 +9,7 @@ import StepRunStudio from "/snippets/step-run-studio.mdx";
 import StepDeploy from "/snippets/step-deploy.mdx";
 import SetupNextSteps from "/snippets/setup-next-steps.mdx";
 
-The ActorCore Rust client provides a way to connect to and interact with actors from Rust applications.
+The RivetKit Rust client provides a way to connect to and interact with actors from Rust applications.
 
 <MvpWarning />
 
@@ -26,10 +26,10 @@ The ActorCore Rust client provides a way to connect to and interact with actors 
   </Step>
 
   <Step title="Add dependencies">
-    Add ActorCore client & related dependencies to your project:
+    Add RivetKit client & related dependencies to your project:
     
     ```sh
-    cargo add actor-core-client
+    cargo add rivetkit-client
     cargo add serde_json
     cargo add tokio --features full
     ```
@@ -41,7 +41,7 @@ The ActorCore Rust client provides a way to connect to and interact with actors 
     Modify `src/main.rs` to connect to your actor:
 
     ```rust src/main.rs
-    use actor_core_client::{Client, EncodingKind, GetOrCreateOptions, TransportKind};
+    use rivetkit_client::{Client, EncodingKind, GetOrCreateOptions, TransportKind};
     use serde_json::json;
     use std::time::Duration;
 

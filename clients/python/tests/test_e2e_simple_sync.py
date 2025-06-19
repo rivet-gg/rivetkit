@@ -1,4 +1,4 @@
-from actor_core_client import SimpleClient as ActorClient
+from rivetkit_client import SimpleClient as ActorClient
 from common import start_mock_server, logger
 
 

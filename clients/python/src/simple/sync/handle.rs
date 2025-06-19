@@ -1,4 +1,4 @@
-use actor_core_client::{self as actor_core_rs};
+use rivetkit_client::{self as rivetkit_rs};
 use futures_util::FutureExt;
 use pyo3::{prelude::*, types::{PyList, PyString, PyTuple}};
 use tokio::sync::mpsc;
@@ -14,13 +14,13 @@ struct ActorEvent {
 
 #[pyclass]
 pub struct ActorHandle {
-    handle: actor_core_rs::connection::ActorHandle,
+    handle: rivetkit_rs::connection::ActorHandle,
     event_rx: Option<mpsc::Receiver<ActorEvent>>,
     event_tx: mpsc::Sender<ActorEvent>,
 }
 
 impl ActorHandle {
-    pub fn new(handle: actor_core_rs::connection::ActorHandle) -> Self {
+    pub fn new(handle: rivetkit_rs::connection::ActorHandle) -> Self {
         let (event_tx, event_rx) = mpsc::channel(EVENT_BUFFER_SIZE);
 
         Self {

@@ -1,13 +1,13 @@
 import { Derived, Effect, Store, type Updater } from "@tanstack/store";
-import type { AnyWorkerDefinition, WorkerCoreApp } from "rivetkit";
+import type { AnyWorkerDefinition, Registry } from "rivetkit";
 import type {
 	Client,
-	ExtractWorkersFromApp,
+	ExtractWorkersFromRegistry,
 	WorkerConn,
 	WorkerHandle,
 } from "rivetkit/client";
 
-export type AnyWorkerRegistry = WorkerCoreApp<any>;
+export type AnyWorkerRegistry = Registry<any>;
 
 interface WorkerStateReference<AD extends AnyWorkerDefinition> {
 	/**
@@ -69,7 +69,7 @@ interface WorkerStateReference<AD extends AnyWorkerDefinition> {
 
 interface InternalRivetKitStore<
 	Registry extends AnyWorkerRegistry,
-	Workers extends ExtractWorkersFromApp<Registry>,
+	Workers extends ExtractWorkersFromRegistry<Registry>,
 > {
 	workers: Record<string, WorkerStateReference<Workers>>;
 }
@@ -79,7 +79,7 @@ interface InternalRivetKitStore<
  */
 export interface WorkerOptions<
 	Registry extends AnyWorkerRegistry,
-	WorkerName extends keyof ExtractWorkersFromApp<Registry>,
+	WorkerName extends keyof ExtractWorkersFromRegistry<Registry>,
 > {
 	/**
 	 * Typesafe name of the worker.
@@ -96,7 +96,7 @@ export interface WorkerOptions<
 	/**
 	 * Parameters for the worker.
 	 */
-	params?: Registry[ExtractWorkersFromApp<Registry>]["params"];
+	params?: Registry[ExtractWorkersFromRegistry<Registry>]["params"];
 	/**
 	 * Whether the worker is enabled.
 	 * Defaults to true.
@@ -110,7 +110,7 @@ export interface CreateRivetKitOptions<Registry extends AnyWorkerRegistry> {
 
 export function createRivetKit<
 	Registry extends AnyWorkerRegistry,
-	Workers extends ExtractWorkersFromApp<Registry>,
+	Workers extends ExtractWorkersFromRegistry<Registry>,
 	WorkerNames extends keyof Workers,
 >(client: Client<Registry>, opts: CreateRivetKitOptions<Registry> = {}) {
 	type RivetKitStore = InternalRivetKitStore<Registry, Workers>;

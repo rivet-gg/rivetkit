@@ -24,7 +24,7 @@ rivetkit-client = "0.1.0"
 ### Step 2: Connect to Actor
 
 ```rust
-use actor_core_client::{Client, EncodingKind, GetOrCreateOptions, TransportKind};
+use rivetkit_client::{Client, EncodingKind, GetOrCreateOptions, TransportKind};
 use serde_json::json;
 
 #[tokio::main]

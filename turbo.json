@@ -26,8 +26,7 @@
       "dependsOn": ["^check-types", "check-types", "build"]
     },
     "test": {
-      "dependsOn": ["^build", "check-types"],
-      "env": ["_RIVETKIT_ERROR_STACK"]
+      "dependsOn": ["^build", "check-types"]
     }
   }
 }

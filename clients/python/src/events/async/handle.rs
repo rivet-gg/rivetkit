@@ -1,12 +1,12 @@
 
-use actor_core_client::{self as actor_core_rs};
+use rivetkit_client::{self as rivetkit_rs};
 use pyo3::{prelude::*, types::PyTuple};
 
 use crate::util;
 
 #[pyclass]
 pub struct ActorHandle {
-    pub handle: actor_core_rs::connection::ActorHandle,
+    pub handle: rivetkit_rs::connection::ActorHandle,
 }
 
 #[pymethods]

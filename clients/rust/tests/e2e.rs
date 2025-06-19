@@ -1,4 +1,4 @@
-use actor_core_client::{Client, EncodingKind, GetOrCreateOptions, TransportKind};
+use rivetkit_client::{Client, EncodingKind, GetOrCreateOptions, TransportKind};
 use fs_extra;
 use portpicker;
 use serde_json::json;
@@ -169,7 +169,7 @@ async fn e2e() {
     // Configure logging
     let subscriber = tracing_subscriber::fmt()
         .with_max_level(tracing::Level::DEBUG)
-        // .with_env_filter(EnvFilter::new("actor_core_client=trace,hyper=error"))
+        // .with_env_filter(EnvFilter::new("rivetkit_client=trace,hyper=error"))
         .finish();
     let _guard = tracing::subscriber::set_default(subscriber);
 

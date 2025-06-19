@@ -10,7 +10,7 @@ edition = "2021"
 publish = false
 
 [lib]
-name = "actor_core_client"
+name = "rivetkit_client"
 crate-type = ["cdylib"]
 
 [dependencies]

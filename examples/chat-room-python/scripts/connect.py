@@ -1,6 +1,6 @@
 import asyncio
 import os
-from actor_core_client import AsyncClient as ActorClient
+from rivetkit_client import AsyncClient as ActorClient
 
 async def main():
     # Create client

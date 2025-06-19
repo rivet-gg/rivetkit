@@ -1,9 +1,9 @@
 import { createClient } from "rivetkit/client";
-import { createReactActorCore } from "@rivetkit/react";
+import { createReactRivetKit } from "@rivetkit/react";
 import { useState, useEffect } from "react";
 
 const client = createClient("http://localhost:6420");
-const { useActor, useActorEvent } = createReactActorCore(client);
+const { useActor, useActorEvent } = createReactRivetKit(client);
 
 export function NotesApp({ userId }: { userId: string }) {
   const [notes, setNotes] = useState<Array<{ id: string, content: string }>>([]);

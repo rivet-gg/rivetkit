@@ -1,11 +1,11 @@
 import { createClient } from "rivetkit/client";
-import { createReactActorCore } from "@rivetkit/react";
+import { createReactRivetKit } from "@rivetkit/react";
 import { useState, useEffect } from "react";
 import type { Registry } from "../workers/registry";
 
 // Create client and hooks
 const client = createClient<Registry>("http://localhost:6420");
-const { useActor } = createReactActorCore(client);
+const { useActor } = createReactRivetKit(client);
 
 export function OrgDashboard({ orgId }: { orgId: string }) {
   // State for data

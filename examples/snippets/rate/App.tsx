@@ -1,10 +1,10 @@
 import { createClient } from "rivetkit/client";
-import { createReactActorCore } from "@rivetkit/react";
+import { createReactRivetKit } from "@rivetkit/react";
 import { useState } from "react";
 import type { Registry } from "../workers/registry";
 
 const client = createClient<Registry>("http://localhost:6420");
-const { useActor } = createReactActorCore(client);
+const { useActor } = createReactRivetKit(client);
 
 export function RateLimiter() {
   // Connect to API rate limiter for user-123

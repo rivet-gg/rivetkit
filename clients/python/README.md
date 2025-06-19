@@ -21,7 +21,7 @@ pip install python-rivetkit-client
 ### Step 2: Connect to Actor
 
 ```python
-from python_actor_core_client import AsyncClient as ActorClient
+from python_rivetkit_client import AsyncClient as ActorClient
 import asyncio
 
 async def main():

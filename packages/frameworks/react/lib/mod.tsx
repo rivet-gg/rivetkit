@@ -5,7 +5,7 @@ import {
 	type WorkerOptions,
 	createRivetKit as createVanillaRivetKit,
 } from "@rivetkit/framework-base";
-import type { Client, ExtractWorkersFromApp } from "rivetkit/client";
+import type { Client, ExtractWorkersFromRegistry } from "rivetkit/client";
 import { useEffect } from "react";
 
 export { createClient } from "rivetkit/client";
@@ -16,8 +16,8 @@ export function createRivetKit<Registry extends AnyWorkerRegistry>(
 ) {
 	const { getOrCreateWorker } = createVanillaRivetKit<
 		Registry,
-		ExtractWorkersFromApp<Registry>,
-		keyof ExtractWorkersFromApp<Registry>
+		ExtractWorkersFromRegistry<Registry>,
+		keyof ExtractWorkersFromRegistry<Registry>
 	>(client, opts);
 
 	/**
@@ -27,7 +27,7 @@ export function createRivetKit<Registry extends AnyWorkerRegistry>(
 	 * @param opts - Options for the worker, including its name, key, and parameters.
 	 * @returns An object containing the worker's state and a method to listen for events.
 	 */
-	function useWorker<WorkerName extends keyof ExtractWorkersFromApp<Registry>>(
+	function useWorker<WorkerName extends keyof ExtractWorkersFromRegistry<Registry>>(
 		opts: WorkerOptions<Registry, WorkerName>,
 	) {
 		const { mount, setState, state } = getOrCreateWorker<WorkerName>(opts);

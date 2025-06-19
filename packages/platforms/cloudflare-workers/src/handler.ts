@@ -20,6 +20,7 @@ import { upgradeWebSocket } from "./websocket";
 import invariant from "invariant";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { InternalError } from "rivetkit/errors";
+import type { WebSocket } from "ws";
 
 /** Cloudflare Workers env */
 export interface Bindings {
@@ -155,13 +156,14 @@ export function createRouter(
 
 					webSocket.accept();
 
+					// TODO: Is this still needed?
 					// HACK: Cloudflare does not call onopen automatically, so we need
 					// to call this on the next tick
 					setTimeout(() => {
-						webSocket.onopen?.(new Event("open"));
-					}, 100);
+						(webSocket as any).onopen?.(new Event("open"));
+					}, 0);
 
-					return webSocket;
+					return webSocket as unknown as WebSocket;
 				},
 
 				proxyRequest: async (c, workerRequest, workerId): Promise<Response> => {

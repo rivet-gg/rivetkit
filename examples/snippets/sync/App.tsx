@@ -1,10 +1,10 @@
 import { createClient } from "rivetkit/client";
-import { createReactActorCore } from "@rivetkit/react";
+import { createReactRivetKit } from "@rivetkit/react";
 import { useState, useEffect, useRef } from "react";
 import type { Contact } from "./actor";
 
 const client = createClient("http://localhost:6420");
-const { useActor, useActorEvent } = createReactActorCore(client);
+const { useActor, useActorEvent } = createReactRivetKit(client);
 
 export function ContactsApp() {
   const { actor } = useActor("contacts");

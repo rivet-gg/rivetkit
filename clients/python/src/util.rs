@@ -1,4 +1,4 @@
-use actor_core_client::{
+use rivetkit_client::{
     client, CreateOptions, GetOptions, GetWithIdOptions
 };
 use once_cell::sync::Lazy;
