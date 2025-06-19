@@ -20,9 +20,9 @@ export type {
 	ActionContextOf,
 } from "./definition";
 
-export function worker<S, CP, CS, V, R extends Actions<S, CP, CS, V>>(
-	input: WorkerConfigInput<S, CP, CS, V, R>,
-): WorkerDefinition<S, CP, CS, V, R> {
-	const config = WorkerConfigSchema.parse(input) as WorkerConfig<S, CP, CS, V>;
+export function worker<S, CP, CS, V, I, AD, R extends Actions<S, CP, CS, V, I, AD>>(
+	input: WorkerConfigInput<S, CP, CS, V, I, AD, R>,
+): WorkerDefinition<S, CP, CS, V, I, AD, R> {
+	const config = WorkerConfigSchema.parse(input) as WorkerConfig<S, CP, CS, V, I, AD>;
 	return new WorkerDefinition(config);
 }

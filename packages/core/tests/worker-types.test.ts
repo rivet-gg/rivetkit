@@ -22,6 +22,14 @@ describe("WorkerDefinition", () => {
 				foo: string;
 			}
 
+			interface TestInput {
+				bar: string;
+			}
+
+			interface TestAuthData {
+				baz: string;
+			}
+
 			// For testing type utilities, we don't need a real worker instance
 			// We just need a properly typed WorkerDefinition to check against
 			type TestActions = Record<never, never>;
@@ -30,12 +38,21 @@ describe("WorkerDefinition", () => {
 				TestConnParams,
 				TestConnState,
 				TestVars,
+				TestInput,
+				TestAuthData,
 				TestActions
 			>;
 
 			// Use expectTypeOf to verify our type utility works correctly
 			expectTypeOf<WorkerContextOf<typeof dummyDefinition>>().toEqualTypeOf<
-				WorkerContext<TestState, TestConnParams, TestConnState, TestVars>
+				WorkerContext<
+					TestState,
+					TestConnParams,
+					TestConnState,
+					TestVars,
+					TestInput,
+					TestAuthData
+				>
 			>();
 
 			// Make sure that different types are not compatible
@@ -44,7 +61,14 @@ describe("WorkerDefinition", () => {
 			}
 
 			expectTypeOf<WorkerContextOf<typeof dummyDefinition>>().not.toEqualTypeOf<
-				WorkerContext<DifferentState, TestConnParams, TestConnState, TestVars>
+				WorkerContext<
+					DifferentState,
+					TestConnParams,
+					TestConnState,
+					TestVars,
+					TestInput,
+					TestAuthData
+				>
 			>();
 		});
 	});

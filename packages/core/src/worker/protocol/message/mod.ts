@@ -69,24 +69,24 @@ export async function parseMessage(
 	return message;
 }
 
-export interface ProcessMessageHandler<S, CP, CS, V> {
+export interface ProcessMessageHandler<S, CP, CS, V, I, AD> {
 	onExecuteAction?: (
-		ctx: ActionContext<S, CP, CS, V>,
+		ctx: ActionContext<S, CP, CS, V, I, AD>,
 		name: string,
 		args: unknown[],
 	) => Promise<unknown>;
-	onSubscribe?: (eventName: string, conn: Conn<S, CP, CS, V>) => Promise<void>;
+	onSubscribe?: (eventName: string, conn: Conn<S, CP, CS, V, I, AD>) => Promise<void>;
 	onUnsubscribe?: (
 		eventName: string,
-		conn: Conn<S, CP, CS, V>,
+		conn: Conn<S, CP, CS, V, I, AD>,
 	) => Promise<void>;
 }
 
-export async function processMessage<S, CP, CS, V>(
+export async function processMessage<S, CP, CS, V, I, AD>(
 	message: wsToServer.ToServer,
-	worker: WorkerInstance<S, CP, CS, V>,
-	conn: Conn<S, CP, CS, V>,
-	handler: ProcessMessageHandler<S, CP, CS, V>,
+	worker: WorkerInstance<S, CP, CS, V, I, AD>,
+	conn: Conn<S, CP, CS, V, I, AD>,
+	handler: ProcessMessageHandler<S, CP, CS, V, I, AD>,
 ) {
 	let actionId: number | undefined;
 	let actionName: string | undefined;
@@ -110,7 +110,7 @@ export async function processMessage<S, CP, CS, V>(
 				argsCount: args.length,
 			});
 
-			const ctx = new ActionContext<S, CP, CS, V>(worker.workerContext, conn);
+			const ctx = new ActionContext<S, CP, CS, V, I, AD>(worker.workerContext, conn);
 
 			// Process the action request and wait for the result
 			// This will wait for async actions to complete

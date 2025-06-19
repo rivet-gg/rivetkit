@@ -17,7 +17,7 @@ export function generateConnToken(): string {
 
 export type ConnId = string;
 
-export type AnyConn = Conn<any, any, any, any>;
+export type AnyConn = Conn<any, any, any, any, any, any>;
 
 /**
  * Represents a client connection to a worker.
@@ -26,13 +26,13 @@ export type AnyConn = Conn<any, any, any, any>;
  *
  * @see {@link https://rivet.gg/docs/connections|Connection Documentation}
  */
-export class Conn<S, CP, CS, V> {
+export class Conn<S, CP, CS, V, I, AD> {
 	subscriptions: Set<string> = new Set<string>();
 
 	#stateEnabled: boolean;
 
 	// TODO: Remove this cyclical reference
-	#worker: WorkerInstance<S, CP, CS, V>;
+	#worker: WorkerInstance<S, CP, CS, V, I, AD>;
 
 	/**
 	 * The proxied state that notifies of changes automatically.
@@ -103,7 +103,7 @@ export class Conn<S, CP, CS, V> {
 	 * @protected
 	 */
 	public constructor(
-		worker: WorkerInstance<S, CP, CS, V>,
+		worker: WorkerInstance<S, CP, CS, V, I, AD>,
 		persist: PersistedConn<CP, CS>,
 		driver: ConnDriver,
 		stateEnabled: boolean,
@@ -157,6 +157,11 @@ export class Conn<S, CP, CS, V> {
 	 * @param reason - The reason for disconnection.
 	 */
 	public async disconnect(reason?: string) {
-		await this.#driver.disconnect(this.#worker, this, this.__persist.ds, reason);
+		await this.#driver.disconnect(
+			this.#worker,
+			this,
+			this.__persist.ds,
+			reason,
+		);
 	}
 }

@@ -21,7 +21,9 @@
     },
     "dev": {
       // Both builds & checks types for this repo and all dependencies
-      "dependsOn": ["build", "^check-types", "check-types"]
+      //
+      // Build after checking types since check types will return errors faster
+      "dependsOn": ["^check-types", "check-types", "build"]
     },
     "test": {
       "dependsOn": ["^build", "check-types"],

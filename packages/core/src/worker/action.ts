@@ -13,8 +13,8 @@ import { WorkerContext } from "./context";
  *
  * @typeParam A Worker this action belongs to
  */
-export class ActionContext<S, CP, CS, V> {
-	#workerContext: WorkerContext<S, CP, CS, V>;
+export class ActionContext<S, CP, CS, V, I, AD> {
+	#workerContext: WorkerContext<S, CP, CS, V, I, AD>;
 
 	/**
 	 * Should not be called directly.
@@ -23,8 +23,8 @@ export class ActionContext<S, CP, CS, V> {
 	 * @param conn - The connection associated with the action
 	 */
 	constructor(
-		workerContext: WorkerContext<S, CP, CS, V>,
-		public readonly conn: Conn<S, CP, CS, V>,
+		workerContext: WorkerContext<S, CP, CS, V, I, AD>,
+		public readonly conn: Conn<S, CP, CS, V, I, AD>,
 	) {
 		this.#workerContext = workerContext;
 	}
@@ -95,7 +95,7 @@ export class ActionContext<S, CP, CS, V> {
 	/**
 	 * Gets the map of connections.
 	 */
-	get conns(): Map<ConnId, Conn<S, CP, CS, V>> {
+	get conns(): Map<ConnId, Conn<S, CP, CS, V, I, AD>> {
 		return this.#workerContext.conns;
 	}
 

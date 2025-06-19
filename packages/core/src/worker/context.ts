@@ -8,10 +8,10 @@ import { Schedule } from "./schedule";
 /**
  * WorkerContext class that provides access to worker methods and state
  */
-export class WorkerContext<S, CP, CS, V> {
-	#worker: WorkerInstance<S, CP, CS, V>;
+export class WorkerContext<S, CP, CS, V, I, AD> {
+	#worker: WorkerInstance<S, CP, CS, V, I, AD>;
 
-	constructor(worker: WorkerInstance<S, CP, CS, V>) {
+	constructor(worker: WorkerInstance<S, CP, CS, V, I, AD>) {
 		this.#worker = worker;
 	}
 
@@ -84,7 +84,7 @@ export class WorkerContext<S, CP, CS, V> {
 	/**
 	 * Gets the map of connections.
 	 */
-	get conns(): Map<ConnId, Conn<S, CP, CS, V>> {
+	get conns(): Map<ConnId, Conn<S, CP, CS, V, I, AD>> {
 		return this.#worker.conns;
 	}
 

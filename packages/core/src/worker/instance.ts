@@ -39,11 +39,15 @@ export interface SaveStateOptions {
 
 /** Worker type alias with all `any` types. Used for `extends` in classes referencing this worker. */
 // biome-ignore lint/suspicious/noExplicitAny: Needs to be used in `extends`
-export type AnyWorkerInstance = WorkerInstance<any, any, any, any>;
+export type AnyWorkerInstance = WorkerInstance<any, any, any, any, any, any>;
 
 export type ExtractWorkerState<A extends AnyWorkerInstance> =
 	A extends WorkerInstance<
 		infer State,
+		// biome-ignore lint/suspicious/noExplicitAny: Must be used for `extends`
+		any,
+		// biome-ignore lint/suspicious/noExplicitAny: Must be used for `extends`
+		any,
 		// biome-ignore lint/suspicious/noExplicitAny: Must be used for `extends`
 		any,
 		// biome-ignore lint/suspicious/noExplicitAny: Must be used for `extends`
@@ -62,6 +66,10 @@ export type ExtractWorkerConnParams<A extends AnyWorkerInstance> =
 		// biome-ignore lint/suspicious/noExplicitAny: Must be used for `extends`
 		any,
 		// biome-ignore lint/suspicious/noExplicitAny: Must be used for `extends`
+		any,
+		// biome-ignore lint/suspicious/noExplicitAny: Must be used for `extends`
+		any,
+		// biome-ignore lint/suspicious/noExplicitAny: Must be used for `extends`
 		any
 	>
 		? ConnParams
@@ -75,14 +83,18 @@ export type ExtractWorkerConnState<A extends AnyWorkerInstance> =
 		any,
 		infer ConnState,
 		// biome-ignore lint/suspicious/noExplicitAny: Must be used for `extends`
+		any,
+		// biome-ignore lint/suspicious/noExplicitAny: Must be used for `extends`
+		any,
+		// biome-ignore lint/suspicious/noExplicitAny: Must be used for `extends`
 		any
 	>
 		? ConnState
 		: never;
 
-export class WorkerInstance<S, CP, CS, V> {
+export class WorkerInstance<S, CP, CS, V, I, AD> {
 	// Shared worker context for this instance
-	workerContext: WorkerContext<S, CP, CS, V>;
+	workerContext: WorkerContext<S, CP, CS, V, I, AD>;
 	isStopping = false;
 
 	#persistChanged = false;
@@ -105,7 +117,7 @@ export class WorkerInstance<S, CP, CS, V> {
 	#vars?: V;
 
 	#backgroundPromises: Promise<void>[] = [];
-	#config: WorkerConfig<S, CP, CS, V>;
+	#config: WorkerConfig<S, CP, CS, V, I, AD>;
 	#connectionDrivers!: ConnDrivers;
 	#workerDriver!: WorkerDriver;
 	#workerId!: string;
@@ -114,8 +126,8 @@ export class WorkerInstance<S, CP, CS, V> {
 	#region!: string;
 	#ready = false;
 
-	#connections = new Map<ConnId, Conn<S, CP, CS, V>>();
-	#subscriptionIndex = new Map<string, Set<Conn<S, CP, CS, V>>>();
+	#connections = new Map<ConnId, Conn<S, CP, CS, V, I, AD>>();
+	#subscriptionIndex = new Map<string, Set<Conn<S, CP, CS, V, I, AD>>>();
 
 	#schedule!: Schedule;
 
@@ -136,7 +148,7 @@ export class WorkerInstance<S, CP, CS, V> {
 	 *
 	 * @private
 	 */
-	constructor(config: WorkerConfig<S, CP, CS, V>) {
+	constructor(config: WorkerConfig<S, CP, CS, V, I, AD>) {
 		this.#config = config;
 		this.workerContext = new WorkerContext(this);
 	}
@@ -169,6 +181,8 @@ export class WorkerInstance<S, CP, CS, V> {
 			if ("createVars" in this.#config) {
 				const dataOrPromise = this.#config.createVars(
 					this.workerContext as unknown as WorkerContext<
+						undefined,
+						undefined,
 						undefined,
 						undefined,
 						undefined,
@@ -482,7 +496,7 @@ export class WorkerInstance<S, CP, CS, V> {
 			for (const connPersist of this.#persist.c) {
 				// Create connections
 				const driver = this.__getConnDriver(connPersist.d);
-				const conn = new Conn<S, CP, CS, V>(
+				const conn = new Conn<S, CP, CS, V, I, AD>(
 					this,
 					connPersist,
 					driver,
@@ -498,7 +512,7 @@ export class WorkerInstance<S, CP, CS, V> {
 		} else {
 			logger().info("worker creating");
 
-			const input = await this.#workerDriver.readInput(this.#workerId);
+			const input = (await this.#workerDriver.readInput(this.#workerId)) as I;
 
 			// Initialize worker state
 			let stateData: unknown = undefined;
@@ -511,6 +525,8 @@ export class WorkerInstance<S, CP, CS, V> {
 					// Convert state to undefined since state is not defined yet here
 					stateData = await this.#config.createState(
 						this.workerContext as unknown as WorkerContext<
+							undefined,
+							undefined,
 							undefined,
 							undefined,
 							undefined,
@@ -546,14 +562,14 @@ export class WorkerInstance<S, CP, CS, V> {
 		}
 	}
 
-	__getConnForId(id: string): Conn<S, CP, CS, V> | undefined {
+	__getConnForId(id: string): Conn<S, CP, CS, V, I, AD> | undefined {
 		return this.#connections.get(id);
 	}
 
 	/**
 	 * Removes a connection and cleans up its resources.
 	 */
-	__removeConn(conn: Conn<S, CP, CS, V> | undefined) {
+	__removeConn(conn: Conn<S, CP, CS, V, I, AD> | undefined) {
 		if (!conn) {
 			logger().warn("`conn` does not exist");
 			return;
@@ -625,6 +641,8 @@ export class WorkerInstance<S, CP, CS, V> {
 						undefined,
 						undefined,
 						undefined,
+						undefined,
+						undefined,
 						undefined
 					>,
 					onBeforeConnectOpts,
@@ -667,7 +685,7 @@ export class WorkerInstance<S, CP, CS, V> {
 		driverId: string,
 		driverState: unknown,
 		authData: unknown,
-	): Promise<Conn<S, CP, CS, V>> {
+	): Promise<Conn<S, CP, CS, V, I, AD>> {
 		if (this.#connections.has(connectionId)) {
 			throw new Error(`Connection already exists: ${connectionId}`);
 		}
@@ -684,7 +702,7 @@ export class WorkerInstance<S, CP, CS, V> {
 			a: authData,
 			su: [],
 		};
-		const conn = new Conn<S, CP, CS, V>(
+		const conn = new Conn<S, CP, CS, V, I, AD>(
 			this,
 			persist,
 			driver,
@@ -738,7 +756,10 @@ export class WorkerInstance<S, CP, CS, V> {
 	}
 
 	// MARK: Messages
-	async processMessage(message: wsToServer.ToServer, conn: Conn<S, CP, CS, V>) {
+	async processMessage(
+		message: wsToServer.ToServer,
+		conn: Conn<S, CP, CS, V, I, AD>,
+	) {
 		await processMessage(message, this, conn, {
 			onExecuteAction: async (ctx, name, args) => {
 				return await this.executeAction(ctx, name, args);
@@ -755,7 +776,7 @@ export class WorkerInstance<S, CP, CS, V> {
 	// MARK: Events
 	#addSubscription(
 		eventName: string,
-		connection: Conn<S, CP, CS, V>,
+		connection: Conn<S, CP, CS, V, I, AD>,
 		fromPersist: boolean,
 	) {
 		if (connection.subscriptions.has(eventName)) {
@@ -785,7 +806,7 @@ export class WorkerInstance<S, CP, CS, V> {
 
 	#removeSubscription(
 		eventName: string,
-		connection: Conn<S, CP, CS, V>,
+		connection: Conn<S, CP, CS, V, I, AD>,
 		fromRemoveConn: boolean,
 	) {
 		if (!connection.subscriptions.has(eventName)) {
@@ -844,7 +865,7 @@ export class WorkerInstance<S, CP, CS, V> {
 	 * @internal
 	 */
 	async executeAction(
-		ctx: ActionContext<S, CP, CS, V>,
+		ctx: ActionContext<S, CP, CS, V, I, AD>,
 		actionName: string,
 		args: unknown[],
 	): Promise<unknown> {
@@ -988,7 +1009,7 @@ export class WorkerInstance<S, CP, CS, V> {
 	/**
 	 * Gets the map of connections.
 	 */
-	get conns(): Map<ConnId, Conn<S, CP, CS, V>> {
+	get conns(): Map<ConnId, Conn<S, CP, CS, V, I, AD>> {
 		return this.#connections;
 	}
 
