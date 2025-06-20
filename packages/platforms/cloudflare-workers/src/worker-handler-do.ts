@@ -1,7 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
-import type { Registry, WorkerKey } from "rivetkit";
+import type { Registry, RunConfig, WorkerKey } from "rivetkit";
 import { logger } from "./log";
-import type { Config } from "./config";
 import { PartitionTopologyWorker } from "rivetkit/topologies/partition";
 import {
 	CloudflareDurableObjectGlobalState,
@@ -43,7 +42,7 @@ interface LoadedWorker {
 
 export function createWorkerDurableObject(
 	registry: Registry<any>,
-	config: Config,
+	runConfig: RunConfig,
 ): DurableObjectConstructor {
 	const globalState = new CloudflareDurableObjectGlobalState();
 
@@ -100,12 +99,13 @@ export function createWorkerDurableObject(
 
 			if (!this.#initialized) throw new Error("Not initialized");
 
-			// Create topology
-			if (!config.drivers) config.drivers = {};
-			if (!config.driver.worker) {
-				config.driver.worker = new CloudflareWorkersWorkerDriver(globalState);
-			}
-			const workerTopology = new PartitionTopologyWorker(registry.config, config);
+			// Configure worker driver
+			runConfig.driver.worker = new CloudflareWorkersWorkerDriver(globalState);
+
+			const workerTopology = new PartitionTopologyWorker(
+				registry.config,
+				runConfig,
+			);
 
 			// Register DO with global state
 			// HACK: This leaks the DO context, but DO does not provide a native way

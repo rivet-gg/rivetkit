@@ -50,8 +50,8 @@ async function startWorker(
 		throw "Invalid port";
 	}
 
-	const endpoint = Deno.env.get("RIVET_API_ENDPOINT");
-	if (!endpoint) throw new Error("missing RIVET_API_ENDPOINT");
+	const endpoint = Deno.env.get("RIVET_ENDPOINT");
+	if (!endpoint) throw new Error("missing RIVET_ENDPOINT");
 
 	// Initialization promise
 	const initializedPromise = Promise.withResolvers<void>();

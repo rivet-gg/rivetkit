@@ -127,7 +127,7 @@ export async function deployToRivet(projectPath: string) {
 				dockerfile: "Dockerfile",
 				runtime: {
 					environment: {
-						RIVET_API_ENDPOINT: apiEndpoint,
+						RIVET_ENDPOINT: apiEndpoint,
 						RIVET_SERVICE_TOKEN: rivetCloudToken, // TODO: This should be a service token, but both work
 						RIVET_PROJECT: project,
 						RIVET_ENVIRONMENT: environment,

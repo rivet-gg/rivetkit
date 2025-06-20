@@ -36,8 +36,8 @@ export async function startManager(
 		throw "Invalid port";
 	}
 
-	const endpoint = process.env.RIVET_API_ENDPOINT;
-	if (!endpoint) throw new Error("missing RIVET_API_ENDPOINT");
+	const endpoint = process.env.RIVET_ENDPOINT;
+	if (!endpoint) throw new Error("missing RIVET_ENDPOINT");
 	const token = process.env.RIVET_SERVICE_TOKEN;
 	if (!token) throw new Error("missing RIVET_SERVICE_TOKEN");
 	const project = process.env.RIVET_PROJECT;

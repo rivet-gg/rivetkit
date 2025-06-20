@@ -1,0 +1,6 @@
+{
+  "rivetkit": {
+    "registry": "./src/registry.ts",
+    "dockerfile": "Dockerfile"
+  }
+}
