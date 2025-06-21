@@ -1,7 +1,5 @@
 on:
   pull_request:
-    paths:
-      - packages/**
 
 jobs:
   publish:
@@ -10,11 +8,6 @@ jobs:
       - uses: actions/checkout@v4
       - run: corepack enable
       - uses: actions/setup-node@v4
-      - run: yarn install
-      - run: yarn build
-      - run: yarn install # re-install to detect CLIs
-      # create examples
-      - run: ./node_modules/.bin/create-actor --platform nodejs --template chat-room templates/chat-room
-      - run: ./node_modules/.bin/create-actor --platform nodejs --template counter templates/counter
-      # TODO: Add --compact once we publish them to npm
-      - run: yarn dlx pkg-pr-new publish 'packages/**/platforms/*' 'packages/*' 'packages/frameworks/*' --template './templates/*' --packageManager yarn
+      - run: pnpm install
+      - run: pnpm build
+      - run: pnpm dlx pkg-pr-new publish 'packages/*' 'packages/**/platforms/*' 'packages/frameworks/*' 'packages/drivers/*' --packageManager pnpm
