@@ -6,17 +6,19 @@ import { PartitionTopologyWorker } from "rivetkit/topologies/partition";
 import { RivetWorkerDriver } from "./worker-driver";
 import invariant from "invariant";
 import type { ActorContext } from "@rivet-gg/actor-core";
-import { Registry } from "rivetkit";
+import { Registry, RunConfig } from "rivetkit";
 import { type Config, ConfigSchema, type InputConfig } from "./config";
 import { stringifyError } from "rivetkit/utils";
+import { RivetManagerDriver } from "./manager-driver";
+import { RivetClientConfig } from "./rivet-client";
 
 export function createWorkerHandler(
 	registry: Registry<any>,
 	inputConfig?: InputConfig,
 ): RivetHandler {
-	let driverConfig: Config;
+	let config: Config;
 	try {
-		driverConfig = ConfigSchema.parse(inputConfig);
+		config = ConfigSchema.parse(inputConfig);
 	} catch (error) {
 		logger().error("failed to start manager", { error: stringifyError(error) });
 		Deno.exit(1);
@@ -26,7 +28,7 @@ export function createWorkerHandler(
 		async start(ctx: ActorContext) {
 			const role = ctx.metadata.actor.tags.role;
 			if (role === "worker") {
-				await startWorker(ctx, registry, driverConfig);
+				await startWorker(ctx, registry, config);
 			} else {
 				throw new Error(`Unexpected role (must be worker): ${role}`);
 			}
@@ -37,7 +39,7 @@ export function createWorkerHandler(
 async function startWorker(
 	ctx: ActorContext,
 	registry: Registry<any>,
-	driverConfig: Config,
+	config: Config,
 ): Promise<void> {
 	setupLogging();
 
@@ -52,22 +54,38 @@ async function startWorker(
 
 	const endpoint = Deno.env.get("RIVET_ENDPOINT");
 	if (!endpoint) throw new Error("missing RIVET_ENDPOINT");
+	const token = Deno.env.get("RIVET_SERVICE_TOKEN");
+	if (!token) throw new Error("missing RIVET_SERVICE_TOKEN");
+	const project = Deno.env.get("RIVET_PROJECT");
+	if (!project) throw new Error("missing RIVET_PROJECT");
+	const environment = Deno.env.get("RIVET_ENVIRONMENT");
+	if (!environment) throw new Error("missing RIVET_ENVIRONMENT");
+
+	const clientConfig: RivetClientConfig = {
+		endpoint,
+		token,
+		project,
+		environment,
+	};
+
+	const runConfig = {
+		driver: {
+			topology: "partition",
+			manager: new RivetManagerDriver(clientConfig),
+			worker: new RivetWorkerDriver(ctx),
+		},
+		getUpgradeWebSocket: () => upgradeWebSocket,
+		...config,
+	} satisfies RunConfig;
 
 	// Initialization promise
+	//
+	// Resolve immediately if already initialized
+	//
+	// Otherwise, will wait for `POST /initialize` request
 	const initializedPromise = Promise.withResolvers<void>();
 	if ((await ctx.kv.get(["rivetkit", "initialized"])) === true) {
 		initializedPromise.resolve(undefined);
-	}
-
-	// Setup worker driver
-	if (!driverConfig.drivers) driverConfig.drivers = {};
-	if (!driverConfig.driver.worker) {
-		driverConfig.driver.worker = new RivetWorkerDriver(ctx);
-	}
-
-	// Setup WebSocket upgrader
-	if (!driverConfig.getUpgradeWebSocket) {
-		driverConfig.getUpgradeWebSocket = () => upgradeWebSocket;
 	}
 
 	//registry.config.inspector = {
@@ -117,8 +135,10 @@ async function startWorker(
 	//};
 
 	// Create worker topology
-	driverConfig.topology = driverConfig.topology ?? "partition";
-	const workerTopology = new PartitionTopologyWorker(registry.config, driverConfig);
+	const workerTopology = new PartitionTopologyWorker(
+		registry.config,
+		runConfig,
+	);
 
 	// Set a catch-all route
 	const router = workerTopology.router;

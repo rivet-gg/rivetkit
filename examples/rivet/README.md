@@ -39,6 +39,16 @@ export RIVET_ENVIRONMENT=your_environment
 npm run dev
 ```
 
+This will start the RivetKit server locally at http://localhost:6420.
+
+### Testing the Client
+
+In a separate terminal, run the client script to interact with your workers:
+
+```sh
+npm run client
+```
+
 ### Deployment
 
 Deploy to Rivet Cloud:

@@ -10,9 +10,9 @@
     "jsx": "react-jsx",
 
     /* Specify what module code is generated. */
-    "module": "esnext",
+    "module": "nodenext",
     /* Specify how TypeScript looks up a file from a given module specifier. */
-    "moduleResolution": "bundler",
+    "moduleResolution": "nodenext",
     /* Specify type package names to be included without being referenced in a source file. */
     "types": ["node"],
     /* Enable importing .json files */
@@ -22,9 +22,6 @@
     "allowJs": true,
     /* Enable error reporting in type-checked JavaScript files. */
     "checkJs": false,
-
-    /* Disable emitting files from a compilation. */
-    "noEmit": true,
 
     /* Ensure that each file can be safely transpiled without relying on other imports. */
     "isolatedModules": true,
@@ -37,7 +34,8 @@
     "strict": true,
 
     /* Skip type checking all .d.ts files. */
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "outDir": "dist"
   },
   "include": ["src/**/*"]
 }

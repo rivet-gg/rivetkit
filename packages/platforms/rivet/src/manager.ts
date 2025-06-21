@@ -8,7 +8,7 @@ import { PartitionTopologyManager } from "rivetkit/topologies/partition";
 import { proxy } from "hono/proxy";
 import invariant from "invariant";
 import { ConfigSchema, InputConfig } from "./config";
-import type { Registry } from "rivetkit";
+import type { Registry, RunConfig } from "rivetkit";
 import { createWebSocketProxy } from "./ws-proxy";
 import { flushCache, getWorkerMeta } from "./worker-meta";
 import {
@@ -18,14 +18,13 @@ import {
 	HEADER_EXPOSE_INTERNAL_ERROR,
 } from "rivetkit/driver-helpers";
 import { importWebSocket } from "rivetkit/driver-helpers/websocket";
+import { RivetWorkerDriver } from "./worker-driver";
 
 export async function startManager(
 	registry: Registry<any>,
 	inputConfig?: InputConfig,
 ): Promise<void> {
 	setupLogging();
-
-	const driverConfig = ConfigSchema.parse(inputConfig);
 
 	const portStr = process.env.PORT_HTTP;
 	if (!portStr) {
@@ -51,6 +50,26 @@ export async function startManager(
 		project,
 		environment,
 	};
+
+	const config = ConfigSchema.parse(inputConfig);
+	let injectWebSocket: NodeWebSocket["injectWebSocket"] | undefined;
+	const runConfig = {
+		driver: {
+			topology: "partition",
+			manager: new RivetManagerDriver(clientConfig),
+			// HACK: We can't build the worker driver until we're inside the worker
+			worker: undefined as any,
+		},
+		// Setup WebSocket routing for Node
+		//
+		// Save `injectWebSocket` for after server is created
+		getUpgradeWebSocket: (app) => {
+			const webSocket = createNodeWebSocket({ app });
+			injectWebSocket = webSocket.injectWebSocket;
+			return webSocket.upgradeWebSocket;
+		},
+		...config,
+	} satisfies RunConfig;
 
 	//// Force disable inspector
 	//driverConfig.registry.config.inspector = {
@@ -80,29 +99,10 @@ export async function startManager(
 	//	},
 	//};
 
-	// Setup manager driver
-	if (!driverConfig.drivers) driverConfig.drivers = {};
-	if (!driverConfig.driver.manager) {
-		driverConfig.driver.manager = new RivetManagerDriver(clientConfig);
-	}
-
-	// Setup WebSocket routing for Node
-	//
-	// Save `injectWebSocket` for after server is created
-	let injectWebSocket: NodeWebSocket["injectWebSocket"] | undefined;
-	if (!driverConfig.getUpgradeWebSocket) {
-		driverConfig.getUpgradeWebSocket = (app) => {
-			const webSocket = createNodeWebSocket({ app });
-			injectWebSocket = webSocket.injectWebSocket;
-			return webSocket.upgradeWebSocket;
-		};
-	}
-
 	// Create manager topology
-	driverConfig.topology = driverConfig.topology ?? "partition";
 	const managerTopology = new PartitionTopologyManager(
 		registry.config,
-		driverConfig,
+		runConfig,
 		{
 			sendRequest: async (workerId, workerRequest) => {
 				const meta = await getWorkerMeta(clientConfig, workerId);
@@ -200,10 +200,12 @@ export async function startManager(
 	);
 
 	// HACK: Expose endpoint for tests to flush cache
-	managerTopology.router.post("/.test/rivet/flush-cache", (c) => {
-		flushCache();
-		return c.text("ok");
-	});
+	if (registry.config.test.enabled) {
+		managerTopology.router.post("/.test/rivet/flush-cache", (c) => {
+			flushCache();
+			return c.text("ok");
+		});
+	}
 
 	// Start server with ambient env wrapper
 	logger().info("server running", { port });

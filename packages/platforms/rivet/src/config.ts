@@ -1,6 +1,9 @@
-import { DriverConfigSchema } from "rivetkit/driver-helpers";
+import { RunConfigSchema } from "rivetkit/driver-helpers";
 import { z } from "zod";
 
-export const ConfigSchema = DriverConfigSchema.default({});
+export const ConfigSchema = RunConfigSchema.omit({
+	driver: true,
+	getUpgradeWebSocket: true,
+}).default({});
 export type InputConfig = z.input<typeof ConfigSchema>;
 export type Config = z.infer<typeof ConfigSchema>;

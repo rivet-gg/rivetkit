@@ -17,7 +17,7 @@ export async function createWebSocketProxy(
 ) {
 	const WebSocket = await importWebSocket();
 
-	let targetWs: WebSocket | undefined = undefined;
+	let targetWs: any | undefined = undefined; // WS not compatible between Node & browser
 	const messageQueue: any[] = [];
 
 	return {
@@ -39,11 +39,11 @@ export async function createWebSocketProxy(
 				}
 			};
 
-			targetWs.onmessage = (event) => {
+			targetWs.onmessage = (event: any) => {
 				wsContext.send(event.data as any);
 			};
 
-			targetWs.onclose = (event) => {
+			targetWs.onclose = (event: any) => {
 				logger().debug("target websocket closed", {
 					code: event.code,
 					reason: event.reason,
@@ -55,7 +55,7 @@ export async function createWebSocketProxy(
 				}
 			};
 
-			targetWs.onerror = (event) => {
+			targetWs.onerror = () => {
 				logger().warn("target websocket error");
 
 				if (wsContext.readyState === WebSocket.OPEN) {

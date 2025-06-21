@@ -123,11 +123,13 @@ export class RivetManagerDriver implements ManagerDriver {
 				},
 			},
 			runtime: {
-				environment: workerLogLevel
-					? {
-							_LOG_LEVEL: workerLogLevel,
-						}
-					: {},
+				environment: {
+					RIVET_ENDPOINT: this.#clientConfig.endpoint,
+					RIVET_SERVICE_TOKEN: this.#clientConfig.token,
+					RIVET_PROJECT: this.#clientConfig.project,
+					RIVET_ENVIRONMENT: this.#clientConfig.environment,
+					...(workerLogLevel ? { _LOG_LEVEL: workerLogLevel } : {}),
+				},
 			},
 			lifecycle: {
 				durable: true,
