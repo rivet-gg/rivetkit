@@ -1,0 +1,9 @@
+{
+  "name": "rivetkit",
+  "version": "0.9.0-rc.1",
+  "description": "",
+  "keywords": [],
+  "author": "",
+  "license": "Apache-2.0",
+  "packageManager": "pnpm@10.7.1"
+}

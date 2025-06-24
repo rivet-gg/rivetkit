@@ -1,6 +1,6 @@
 import { MemoryGlobalState } from "@/global-state";
 import { createMemoryDriver } from "@/mod";
-import { runDriverTests, createTestRuntime } from "rivetkit/driver-test-suite";
+import { runDriverTests, createTestRuntime } from "@rivetkit/core/driver-test-suite";
 
 runDriverTests({
 	async start(appPath: string) {

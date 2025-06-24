@@ -1,11 +1,11 @@
 import { serve as honoServe, type ServerType } from "@hono/node-server";
 import { logger } from "./log";
-import type { Registry } from "rivetkit";
+import type { Registry } from "@rivetkit/core";
 import { z } from "zod";
-import type { Client } from "rivetkit/client";
+import type { Client } from "@rivetkit/core/client";
 import { createNodeWebSocket, type NodeWebSocket } from "@hono/node-ws";
-import { RunConfigSchema } from "rivetkit/driver-helpers";
-import { RegistryWorkers } from "rivetkit";
+import { RunConfigSchema } from "@rivetkit/core/driver-helpers";
+import { RegistryWorkers } from "@rivetkit/core";
 import { Hono } from "hono";
 
 const ConfigSchema = RunConfigSchema.extend({
@@ -24,7 +24,7 @@ export type InputConfig = z.input<typeof ConfigSchema>;
 
 export function serve<A extends RegistryWorkers>(
 	registry: Registry<A>,
-	inputConfig: InputConfig,
+	inputConfig?: InputConfig,
 ): { server: ServerType; client: Client<Registry<A>> } {
 	const runConfig = ConfigSchema.parse(inputConfig);
 

@@ -73,6 +73,9 @@ importers:
         specifier: ^18.2.0
         version: 18.2.0(react@18.3.1)
     devDependencies:
+      '@rivetkit/worker':
+        specifier: workspace:*
+        version: link:../../packages/worker
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
@@ -88,9 +91,6 @@ importers:
       concurrently:
         specifier: ^8.2.2
         version: 8.2.2
-      rivetkit:
-        specifier: workspace:*
-        version: link:../../packages/core
       tsx:
         specifier: ^3.12.7
         version: 3.14.0
@@ -110,6 +110,9 @@ importers:
         specifier: workspace:*
         version: link:../../packages/platforms/nodejs
     devDependencies:
+      '@rivetkit/worker':
+        specifier: workspace:*
+        version: link:../../packages/worker
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
@@ -119,9 +122,6 @@ importers:
       prompts:
         specifier: ^2.4.2
         version: 2.4.2
-      rivetkit:
-        specifier: workspace:*
-        version: link:../../packages/core
       tsx:
         specifier: ^3.12.7
         version: 3.14.0
@@ -141,12 +141,12 @@ importers:
       '@cloudflare/workers-types':
         specifier: ^4.20250129.0
         version: 4.20250619.0
+      '@rivetkit/worker':
+        specifier: workspace:*
+        version: link:../../packages/worker
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
-      rivetkit:
-        specifier: workspace:*
-        version: link:../../packages/core
       tsx:
         specifier: ^3.12.7
         version: 3.14.0
@@ -163,12 +163,12 @@ importers:
         specifier: workspace:*
         version: link:../../packages/platforms/nodejs
     devDependencies:
+      '@rivetkit/worker':
+        specifier: workspace:*
+        version: link:../../packages/worker
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
-      rivetkit:
-        specifier: workspace:*
-        version: link:../../packages/core
       tsx:
         specifier: ^3.12.7
         version: 3.14.0
@@ -197,12 +197,12 @@ importers:
         specifier: ^18.2.0
         version: 18.2.0(react@18.3.1)
     devDependencies:
+      '@rivetkit/worker':
+        specifier: workspace:*
+        version: link:../../packages/worker
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
-      rivetkit:
-        specifier: workspace:*
-        version: link:../../packages/core
       typescript:
         specifier: ^5.5.2
         version: 5.8.3
@@ -225,15 +225,15 @@ importers:
         specifier: ^18.2.0
         version: 18.2.0(react@18.3.1)
     devDependencies:
+      '@rivetkit/worker':
+        specifier: workspace:*
+        version: link:../../packages/worker
       '@types/express':
         specifier: ^4.17.21
         version: 4.17.23
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
-      rivetkit:
-        specifier: workspace:*
-        version: link:../../packages/core
       tsx:
         specifier: ^3.12.7
         version: 3.14.0
@@ -253,12 +253,12 @@ importers:
         specifier: ^4.7.0
         version: 4.8.0
     devDependencies:
+      '@rivetkit/worker':
+        specifier: workspace:*
+        version: link:../../packages/worker
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
-      rivetkit:
-        specifier: workspace:*
-        version: link:../../packages/core
       tsx:
         specifier: ^3.12.7
         version: 3.14.0
@@ -287,6 +287,9 @@ importers:
         specifier: ^18.2.0
         version: 18.2.0(react@18.3.1)
     devDependencies:
+      '@rivetkit/worker':
+        specifier: workspace:*
+        version: link:../../packages/worker
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
@@ -302,9 +305,6 @@ importers:
       concurrently:
         specifier: ^8.2.2
         version: 8.2.2
-      rivetkit:
-        specifier: workspace:*
-        version: link:../../packages/core
       tsx:
         specifier: ^3.12.7
         version: 3.14.0
@@ -327,12 +327,12 @@ importers:
         specifier: workspace:0.9.0-rc.1
         version: link:../../packages/platforms/nodejs
     devDependencies:
+      '@rivetkit/worker':
+        specifier: workspace:*
+        version: link:../../packages/worker
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
-      rivetkit:
-        specifier: workspace:*
-        version: link:../../packages/core
       tsx:
         specifier: ^3.12.7
         version: 3.14.0
@@ -358,6 +358,9 @@ importers:
         specifier: ^18.2.0
         version: 18.2.0(react@18.3.1)
     devDependencies:
+      '@rivetkit/worker':
+        specifier: workspace:*
+        version: link:../../packages/worker
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
@@ -373,9 +376,6 @@ importers:
       concurrently:
         specifier: ^8.2.2
         version: 8.2.2
-      rivetkit:
-        specifier: workspace:*
-        version: link:../../packages/core
       tsx:
         specifier: ^3.12.7
         version: 3.14.0
@@ -394,9 +394,9 @@ importers:
       '@rivetkit/rivet':
         specifier: https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/rivet@65c3659
         version: https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/rivet@65c3659(rivetkit@https://pkg.pr.new/rivet-gg/rivetkit@65c3659(@hono/node-server@1.14.4(hono@4.8.0))(@hono/node-ws@1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0))(eventsource@3.0.7)(ws@8.18.2))
-      rivetkit:
+      '@rivetkit/worker':
         specifier: https://pkg.pr.new/rivet-gg/rivetkit@65c3659
-        version: https://pkg.pr.new/rivet-gg/rivetkit@65c3659(@hono/node-server@1.14.4(hono@4.8.0))(@hono/node-ws@1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0))(eventsource@3.0.7)(ws@8.18.2)
+        version: rivetkit@https://pkg.pr.new/rivet-gg/rivetkit@65c3659(@hono/node-server@1.14.4(hono@4.8.0))(@hono/node-ws@1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0))(eventsource@3.0.7)(ws@8.18.2)
     devDependencies:
       '@types/node':
         specifier: ^22.13.9
@@ -423,12 +423,12 @@ importers:
         specifier: ^3.24.1
         version: 3.25.67
     devDependencies:
+      '@rivetkit/worker':
+        specifier: workspace:*
+        version: link:../../packages/worker
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
-      rivetkit:
-        specifier: workspace:*
-        version: link:../../packages/core
       tsx:
         specifier: ^3.12.7
         version: 3.14.0
@@ -512,15 +512,15 @@ importers:
         specifier: ^2.2.4
         version: 2.2.4
     devDependencies:
+      '@rivetkit/core':
+        specifier: workspace:*
+        version: link:../../core
       '@types/invariant':
         specifier: ^2
         version: 2.2.37
       '@types/node':
         specifier: ^22.14.0
         version: 22.15.32
-      rivetkit:
-        specifier: workspace:*
-        version: link:../../core
       tsup:
         specifier: ^8.4.0
         version: 8.5.0(@microsoft/api-extractor@7.52.8(@types/node@22.15.32))(postcss@8.5.6)(tsx@4.20.3)(typescript@5.8.3)(yaml@2.8.0)
@@ -543,7 +543,7 @@ importers:
         specifier: ^3.1.1
         version: 3.2.4(@types/node@22.15.32)(@vitest/ui@3.1.1)(tsx@4.20.3)(yaml@2.8.0)
     devDependencies:
-      rivetkit:
+      '@rivetkit/core':
         specifier: workspace:*
         version: link:../../core
       tsup:
@@ -574,7 +574,7 @@ importers:
         specifier: ^7.2.3
         version: 7.2.3
     devDependencies:
-      rivetkit:
+      '@rivetkit/core':
         specifier: workspace:*
         version: link:../../core
       tsup:
@@ -593,7 +593,7 @@ importers:
         specifier: ^0.7.1
         version: 0.7.1
     devDependencies:
-      rivetkit:
+      '@rivetkit/core':
         specifier: workspace:*
         version: link:../../core
       typescript:
@@ -624,15 +624,15 @@ importers:
         specifier: ^19.0.0
         version: 19.1.0(react@19.1.0)
     devDependencies:
+      '@rivetkit/core':
+        specifier: workspace:^
+        version: link:../../core
       '@types/react':
         specifier: ^19.1.8
         version: 19.1.8
       '@types/react-dom':
         specifier: ^19.1.6
         version: 19.1.6(@types/react@19.1.8)
-      rivetkit:
-        specifier: workspace:^
-        version: link:../../core
       tsup:
         specifier: ^8.4.0
         version: 8.5.0(@microsoft/api-extractor@7.52.8(@types/node@24.0.3))(postcss@8.5.6)(tsx@4.20.3)(typescript@5.8.3)(yaml@2.8.0)
@@ -677,15 +677,15 @@ importers:
       '@cloudflare/workers-types':
         specifier: ^4.20250129.0
         version: 4.20250619.0
+      '@rivetkit/core':
+        specifier: workspace:*
+        version: link:../../core
       '@types/invariant':
         specifier: ^2
         version: 2.2.37
       '@types/node':
         specifier: ^24.0.3
         version: 24.0.3
-      rivetkit:
-        specifier: workspace:*
-        version: link:../../core
       tsup:
         specifier: ^8.4.0
         version: 8.5.0(@microsoft/api-extractor@7.52.8(@types/node@24.0.3))(postcss@8.5.6)(tsx@4.20.3)(typescript@5.8.3)(yaml@2.8.0)
@@ -714,6 +714,9 @@ importers:
         specifier: ^3.24.2
         version: 3.25.67
     devDependencies:
+      '@rivetkit/core':
+        specifier: workspace:*
+        version: link:../../core
       '@rivetkit/file-system':
         specifier: workspace:*
         version: link:../../drivers/file-system
@@ -723,9 +726,6 @@ importers:
       hono:
         specifier: ^4.7.0
         version: 4.8.0
-      rivetkit:
-        specifier: workspace:*
-        version: link:../../core
       tsup:
         specifier: ^8.4.0
         version: 8.5.0(@microsoft/api-extractor@7.52.8(@types/node@24.0.3))(postcss@8.5.6)(tsx@4.20.3)(typescript@5.8.3)(yaml@2.8.0)
@@ -757,6 +757,9 @@ importers:
       '@rivet-gg/api':
         specifier: ^25.4.2
         version: 25.4.2
+      '@rivetkit/core':
+        specifier: workspace:*
+        version: link:../../core
       '@types/deno':
         specifier: ^2.0.0
         version: 2.3.0
@@ -766,9 +769,6 @@ importers:
       '@types/node':
         specifier: ^22.13.1
         version: 22.15.32
-      rivetkit:
-        specifier: workspace:*
-        version: link:../../core
       tsup:
         specifier: ^8.4.0
         version: 8.5.0(@microsoft/api-extractor@7.52.8(@types/node@22.15.32))(postcss@8.5.6)(tsx@4.20.3)(typescript@5.8.3)(yaml@2.8.0)
@@ -778,6 +778,24 @@ importers:
       vitest:
         specifier: ^3.1.1
         version: 3.2.4(@types/node@22.15.32)(@vitest/ui@3.1.1)(tsx@4.20.3)(yaml@2.8.0)
+
+  packages/rivetkit: {}
+
+  packages/worker:
+    dependencies:
+      '@rivetkit/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@types/node':
+        specifier: ^22.14.0
+        version: 22.15.32
+      tsup:
+        specifier: ^8.4.0
+        version: 8.5.0(@microsoft/api-extractor@7.52.8(@types/node@22.15.32))(postcss@8.5.6)(tsx@4.20.3)(typescript@5.8.3)(yaml@2.8.0)
+      typescript:
+        specifier: ^5.5.2
+        version: 5.8.3
 
 packages:
 

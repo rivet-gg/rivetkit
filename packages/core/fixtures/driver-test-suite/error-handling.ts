@@ -1,4 +1,4 @@
-import { worker, UserError } from "rivetkit";
+import { worker, UserError } from "@rivetkit/core";
 
 export const errorHandlingWorker = worker({
 	onAuth: () => {},

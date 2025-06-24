@@ -1,4 +1,4 @@
-import { worker } from "rivetkit";
+import { worker } from "@rivetkit/core";
 
 // Worker with static vars
 export const staticVarWorker = worker({

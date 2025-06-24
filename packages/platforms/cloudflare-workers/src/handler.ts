@@ -4,22 +4,22 @@ import {
 	createWorkerDurableObject,
 } from "./worker-handler-do";
 import { ConfigSchema, type InputConfig } from "./config";
-import { assertUnreachable } from "rivetkit/utils";
+import { assertUnreachable } from "@rivetkit/core/utils";
 import {
 	HEADER_AUTH_DATA,
 	HEADER_CONN_PARAMS,
 	HEADER_ENCODING,
 	HEADER_EXPOSE_INTERNAL_ERROR,
-} from "rivetkit/driver-helpers";
+} from "@rivetkit/core/driver-helpers";
 import type { Hono } from "hono";
-import { PartitionTopologyManager } from "rivetkit/topologies/partition";
+import { PartitionTopologyManager } from "@rivetkit/core/topologies/partition";
 import { logger } from "./log";
 import { CloudflareWorkersManagerDriver } from "./manager-driver";
-import { Encoding, Registry, RunConfig } from "rivetkit";
+import { Encoding, Registry, RunConfig } from "@rivetkit/core";
 import { upgradeWebSocket } from "./websocket";
 import invariant from "invariant";
 import { AsyncLocalStorage } from "node:async_hooks";
-import { InternalError } from "rivetkit/errors";
+import { InternalError } from "@rivetkit/core/errors";
 
 /** Cloudflare Workers env */
 export interface Bindings {

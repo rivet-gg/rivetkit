@@ -1,4 +1,4 @@
-import { worker, setup } from "rivetkit";
+import { worker, setup } from "@rivetkit/worker";
 
 export const counter = worker({
 	onAuth: () => {

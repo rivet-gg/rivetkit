@@ -1,4 +1,4 @@
-import { worker, setup } from "rivetkit";
+import { worker, setup } from "@rivetkit/worker";
 import { auth, type Session, type User } from "./auth";
 
 export const chatRoom = worker({

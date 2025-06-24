@@ -1,11 +1,11 @@
-import { runDriverTests } from "rivetkit/driver-test-suite";
+import { runDriverTests } from "@rivetkit/core/driver-test-suite";
 import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import { spawn, exec } from "node:child_process";
 import crypto from "node:crypto";
 import { promisify } from "node:util";
-import { getPort } from "rivetkit/test";
+import { getPort } from "@rivetkit/core/test";
 
 const execPromise = promisify(exec);
 

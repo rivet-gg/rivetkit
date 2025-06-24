@@ -1,4 +1,4 @@
-import { worker, UserError } from "rivetkit";
+import { worker, UserError } from "@rivetkit/core";
 
 // Basic auth worker - requires API key
 export const authWorker = worker({

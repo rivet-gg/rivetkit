@@ -1,4 +1,4 @@
-import type { WorkerDriver, AnyWorkerInstance } from "rivetkit/driver-helpers";
+import type { WorkerDriver, AnyWorkerInstance } from "@rivetkit/core/driver-helpers";
 import type Redis from "ioredis";
 import { KEYS } from "./keys";
 

@@ -28,13 +28,13 @@
     "test": "vitest run tests"
   },
   "peerDependencies": {
-    "rivetkit": "*"
+    "@rivetkit/core": "*"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250129.0",
     "@types/invariant": "^2",
     "@types/node": "^24.0.3",
-    "rivetkit": "workspace:*",
+    "@rivetkit/core": "workspace:*",
     "tsup": "^8.4.0",
     "typescript": "^5.5.2",
     "vitest": "^3.1.1",

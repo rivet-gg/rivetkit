@@ -1,4 +1,4 @@
-import { assertUnreachable } from "rivetkit/utils";
+import { assertUnreachable } from "@rivetkit/core/utils";
 import { RivetActor, RivetClientConfig, rivetRequest } from "./rivet-client";
 import { deserializeKeyFromTag, convertKeyToRivetTags } from "./util";
 import invariant from "invariant";

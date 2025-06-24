@@ -28,12 +28,12 @@
   "peerDependencies": {
     "react": "^18 || ^19",
     "react-dom": "^18 || ^19",
-    "rivetkit": "*"
+    "@rivetkit/core": "*"
   },
   "devDependencies": {
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
-    "rivetkit": "workspace:^",
+    "@rivetkit/core": "workspace:^",
     "tsup": "^8.4.0",
     "typescript": "^5.5.2"
   },

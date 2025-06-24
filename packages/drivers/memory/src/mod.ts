@@ -1,4 +1,4 @@
-import type { DriverConfig } from "rivetkit";
+import type { DriverConfig } from "@rivetkit/core";
 import { MemoryManagerDriver } from "./manager";
 import { MemoryGlobalState } from "./global-state";
 import { MemoryWorkerDriver } from "./worker";

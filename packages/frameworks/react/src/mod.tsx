@@ -5,10 +5,10 @@ import {
 	type WorkerOptions,
 	createRivetKit as createVanillaRivetKit,
 } from "@rivetkit/framework-base";
-import type { Client, ExtractWorkersFromRegistry } from "rivetkit/client";
+import type { Client, ExtractWorkersFromRegistry } from "@rivetkit/core/client";
 import { useEffect } from "react";
 
-export { createClient } from "rivetkit/client";
+export { createClient } from "@rivetkit/core/client";
 
 export function createRivetKit<Registry extends AnyWorkerRegistry>(
 	client: Client<Registry>,

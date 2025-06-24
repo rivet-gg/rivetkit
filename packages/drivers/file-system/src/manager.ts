@@ -6,12 +6,12 @@ import type {
 	ManagerDriver,
 	WorkerOutput,
 	CreateInput,
-} from "rivetkit/driver-helpers";
-import { WorkerAlreadyExists } from "rivetkit/errors";
+} from "@rivetkit/core/driver-helpers";
+import { WorkerAlreadyExists } from "@rivetkit/core/errors";
 import { logger } from "./log";
 import type { FileSystemGlobalState } from "./global-state";
 import { WorkerState } from "./global-state";
-import type { Registry } from "rivetkit";
+import type { Registry } from "@rivetkit/core";
 
 export class FileSystemManagerDriver implements ManagerDriver {
 	#state: FileSystemGlobalState;

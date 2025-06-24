@@ -2,7 +2,7 @@ import { WSContext } from "hono/ws";
 import { logger } from "./log";
 import invariant from "invariant";
 import type { WebSocket, CloseEvent } from "ws";
-import { importWebSocket } from "rivetkit/driver-helpers/websocket";
+import { importWebSocket } from "@rivetkit/core/driver-helpers/websocket";
 
 /**
  * Creates a WebSocket proxy to forward connections to a target endpoint

@@ -1,4 +1,4 @@
-import type { WorkerKey } from "rivetkit";
+import type { WorkerKey } from "@rivetkit/core";
 
 export interface WorkerState {
 	id: string;

@@ -27,10 +27,10 @@
     "check-types": "tsc --noEmit"
   },
   "peerDependencies": {
-    "rivetkit": "*"
+    "@rivetkit/core": "*"
   },
   "devDependencies": {
-    "rivetkit": "workspace:*",
+    "@rivetkit/core": "workspace:*",
     "typescript": "^5.5.2",
     "vite": "^6.3.5",
     "vite-plugin-dts": "^4.5.4",

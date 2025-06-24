@@ -1,4 +1,4 @@
-import { worker } from "rivetkit";
+import { worker } from "@rivetkit/core";
 
 export interface State {
 	initialInput?: unknown;

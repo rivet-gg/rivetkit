@@ -1,7 +1,7 @@
 import {
 	runDriverTests,
 	createTestRuntime,
-} from "rivetkit/driver-test-suite";
+} from "@rivetkit/core/driver-test-suite";
 import {
 	FileSystemWorkerDriver,
 	FileSystemManagerDriver,

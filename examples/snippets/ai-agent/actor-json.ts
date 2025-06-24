@@ -1,4 +1,4 @@
-import { actor } from "rivetkit";
+import { actor } from "@rivetkit/worker";
 import { generateText, tool } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { getWeather } from "./my-utils";

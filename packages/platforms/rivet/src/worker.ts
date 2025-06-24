@@ -1,14 +1,14 @@
-import { setupLogging } from "rivetkit/log";
+import { setupLogging } from "@rivetkit/core/log";
 import { upgradeWebSocket } from "hono/deno";
 import { logger } from "./log";
 import { deserializeKeyFromTag, type RivetHandler } from "./util";
-import { PartitionTopologyWorker } from "rivetkit/topologies/partition";
+import { PartitionTopologyWorker } from "@rivetkit/core/topologies/partition";
 import { RivetWorkerDriver } from "./worker-driver";
 import invariant from "invariant";
 import type { ActorContext } from "@rivet-gg/actor-core";
-import { Registry, RunConfig } from "rivetkit";
+import { Registry, RunConfig } from "@rivetkit/core";
 import { type Config, ConfigSchema, type InputConfig } from "./config";
-import { stringifyError } from "rivetkit/utils";
+import { stringifyError } from "@rivetkit/core/utils";
 import { RivetManagerDriver } from "./manager-driver";
 import { RivetClientConfig } from "./rivet-client";
 

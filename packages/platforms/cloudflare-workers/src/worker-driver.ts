@@ -1,4 +1,4 @@
-import { WorkerDriver, AnyWorkerInstance } from "rivetkit/driver-helpers";
+import { WorkerDriver, AnyWorkerInstance } from "@rivetkit/core/driver-helpers";
 import invariant from "invariant";
 import { KEYS } from "./worker-handler-do";
 

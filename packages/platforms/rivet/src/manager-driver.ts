@@ -1,5 +1,5 @@
-import { assertUnreachable } from "rivetkit/utils";
-import { WorkerAlreadyExists, InternalError } from "rivetkit/errors";
+import { assertUnreachable } from "@rivetkit/core/utils";
+import { WorkerAlreadyExists, InternalError } from "@rivetkit/core/errors";
 import type {
 	ManagerDriver,
 	GetForIdInput,
@@ -7,7 +7,7 @@ import type {
 	WorkerOutput,
 	GetOrCreateWithKeyInput,
 	CreateInput,
-} from "rivetkit/driver-helpers";
+} from "@rivetkit/core/driver-helpers";
 import { logger } from "./log";
 import {
 	RivetActor,

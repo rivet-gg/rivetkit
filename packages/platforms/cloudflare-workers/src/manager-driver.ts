@@ -5,8 +5,8 @@ import type {
 	WorkerOutput,
 	CreateInput,
 	GetOrCreateWithKeyInput,
-} from "rivetkit/driver-helpers";
-import { WorkerAlreadyExists } from "rivetkit/errors";
+} from "@rivetkit/core/driver-helpers";
+import { WorkerAlreadyExists } from "@rivetkit/core/errors";
 import { Bindings } from "./mod";
 import { logger } from "./log";
 import { serializeNameAndKey, serializeKey } from "./util";

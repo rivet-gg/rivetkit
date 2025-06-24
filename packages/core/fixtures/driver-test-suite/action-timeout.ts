@@ -1,4 +1,4 @@
-import { worker } from "rivetkit";
+import { worker } from "@rivetkit/core";
 
 // Short timeout worker
 export const shortTimeoutWorker = worker({

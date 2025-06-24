@@ -12,7 +12,7 @@
     "@types/node": "^22.13.9",
     "@types/prompts": "^2",
     "prompts": "^2.4.2",
-    "rivetkit": "workspace:*",
+    "@rivetkit/worker": "workspace:*",
     "tsx": "^3.12.7",
     "typescript": "^5.5.2",
     "vitest": "^3.1.1"

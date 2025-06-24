@@ -1,4 +1,4 @@
-import { worker, setup } from "rivetkit";
+import { worker, setup } from "@rivetkit/worker";
 
 // state managed by the actor
 export interface State {

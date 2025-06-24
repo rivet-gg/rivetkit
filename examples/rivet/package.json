@@ -14,7 +14,7 @@
     "typescript": "^5.5.2"
   },
   "dependencies": {
-    "rivetkit": "https://pkg.pr.new/rivet-gg/rivetkit@65c3659",
+    "@rivetkit/worker": "https://pkg.pr.new/rivet-gg/rivetkit@65c3659",
     "@rivetkit/rivet": "https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/rivet@65c3659"
   },
   "example": {

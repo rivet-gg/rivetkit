@@ -1,4 +1,4 @@
-import { RunConfigSchema } from "rivetkit/driver-helpers";
+import { RunConfigSchema } from "@rivetkit/core/driver-helpers";
 import { z } from "zod";
 
 export const ConfigSchema = RunConfigSchema.omit({ driver: true, getUpgradeWebSocket: true }).default({});

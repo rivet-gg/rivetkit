@@ -1,4 +1,4 @@
-import { actor } from "rivetkit";
+import { actor } from "@rivetkit/worker";
 import * as Y from 'yjs';
 import { encodeStateAsUpdate, applyUpdate } from 'yjs';
 

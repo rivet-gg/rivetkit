@@ -5,12 +5,12 @@ import type {
 	GetOrCreateWithKeyInput,
 	GetWithKeyInput,
 	ManagerDriver,
-} from "rivetkit/driver-helpers";
-import { WorkerAlreadyExists } from "rivetkit/errors";
+} from "@rivetkit/core/driver-helpers";
+import { WorkerAlreadyExists } from "@rivetkit/core/errors";
 import type Redis from "ioredis";
 import * as crypto from "node:crypto";
 import { KEYS } from "./keys";
-import type { Registry } from "rivetkit";
+import type { Registry } from "@rivetkit/core";
 
 interface Worker {
 	id: string;

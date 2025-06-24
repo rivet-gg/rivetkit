@@ -5,8 +5,8 @@ import type {
 	GetOrCreateWithKeyInput,
 	WorkerOutput,
 	ManagerDriver,
-} from "rivetkit/driver-helpers";
-import { WorkerAlreadyExists } from "rivetkit/errors";
+} from "@rivetkit/core/driver-helpers";
+import { WorkerAlreadyExists } from "@rivetkit/core/errors";
 import type { MemoryGlobalState } from "./global-state";
 import * as crypto from "node:crypto";
 

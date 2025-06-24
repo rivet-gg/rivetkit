@@ -10,7 +10,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Simple counter worker definition to deploy
 const COUNTER_WORKER = `
-import { worker, setup } from "rivetkit";
+import { worker, setup } from "@rivetkit/core";
 
 const counter = worker({
   state: { count: 0 },

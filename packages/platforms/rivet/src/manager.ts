@@ -1,14 +1,14 @@
-import { setupLogging } from "rivetkit/log";
+import { setupLogging } from "@rivetkit/core/log";
 import { serve as honoServe } from "@hono/node-server";
 import { createNodeWebSocket, NodeWebSocket } from "@hono/node-ws";
 import { logger } from "./log";
 import { GetWorkerMeta, RivetManagerDriver } from "./manager-driver";
 import type { RivetClientConfig } from "./rivet-client";
-import { PartitionTopologyManager } from "rivetkit/topologies/partition";
+import { PartitionTopologyManager } from "@rivetkit/core/topologies/partition";
 import { proxy } from "hono/proxy";
 import invariant from "invariant";
 import { ConfigSchema, InputConfig } from "./config";
-import type { Registry, RunConfig } from "rivetkit";
+import type { Registry, RunConfig } from "@rivetkit/core";
 import { createWebSocketProxy } from "./ws-proxy";
 import { flushCache, getWorkerMeta } from "./worker-meta";
 import {
@@ -16,8 +16,8 @@ import {
 	HEADER_CONN_PARAMS,
 	HEADER_ENCODING,
 	HEADER_EXPOSE_INTERNAL_ERROR,
-} from "rivetkit/driver-helpers";
-import { importWebSocket } from "rivetkit/driver-helpers/websocket";
+} from "@rivetkit/core/driver-helpers";
+import { importWebSocket } from "@rivetkit/core/driver-helpers/websocket";
 import { RivetWorkerDriver } from "./worker-driver";
 
 export async function startManager(

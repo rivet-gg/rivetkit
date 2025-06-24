@@ -1,4 +1,4 @@
-import { createClient } from "rivetkit/client";
+import { createClient } from "@rivetkit/worker/client";
 import type { Registry } from "../src/registry.js";
 
 // Create RivetKit client

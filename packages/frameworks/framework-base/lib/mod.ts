@@ -1,11 +1,11 @@
 import { Derived, Effect, Store, type Updater } from "@tanstack/store";
-import type { AnyWorkerDefinition, Registry } from "rivetkit";
+import type { AnyWorkerDefinition, Registry } from "@rivetkit/core";
 import type {
 	Client,
 	ExtractWorkersFromRegistry,
 	WorkerConn,
 	WorkerHandle,
-} from "rivetkit/client";
+} from "@rivetkit/core/client";
 
 // biome-ignore lint/suspicious/noExplicitAny: its a generic worker registry
 export type AnyWorkerRegistry = Registry<any>;

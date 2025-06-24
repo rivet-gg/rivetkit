@@ -1,4 +1,4 @@
-import { actor } from "rivetkit";
+import { actor } from "@rivetkit/worker";
 
 export type Position = { x: number; y: number };
 export type Input = { x: number; y: number };

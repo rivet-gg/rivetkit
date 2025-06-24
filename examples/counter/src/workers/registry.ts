@@ -1,4 +1,4 @@
-import { worker, setup } from "rivetkit";
+import { worker, setup } from "@rivetkit/worker";
 
 const counter = worker({
 	state: { count: 0 },

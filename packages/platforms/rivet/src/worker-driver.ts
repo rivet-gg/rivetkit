@@ -1,5 +1,5 @@
 import { ActorContext } from "@rivet-gg/actor-core";
-import type { WorkerDriver, AnyWorkerInstance } from "rivetkit/driver-helpers";
+import type { WorkerDriver, AnyWorkerInstance } from "@rivetkit/core/driver-helpers";
 
 export interface WorkerDriverContext {
 	ctx: ActorContext;

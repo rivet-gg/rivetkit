@@ -1,7 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as fsSync from "node:fs";
 import * as path from "node:path";
-import type { WorkerKey } from "rivetkit";
+import type { WorkerKey } from "@rivetkit/core";
 import { logger } from "./log";
 import {
 	getStoragePath,

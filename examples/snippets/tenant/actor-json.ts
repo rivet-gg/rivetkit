@@ -1,4 +1,4 @@
-import { actor } from "rivetkit";
+import { actor } from "@rivetkit/worker";
 import { authenticate } from "./my-utils";
 
 // Simple tenant organization actor

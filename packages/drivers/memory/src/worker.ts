@@ -1,4 +1,4 @@
-import type { WorkerDriver, AnyWorkerInstance } from "rivetkit/driver-helpers";
+import type { WorkerDriver, AnyWorkerInstance } from "@rivetkit/core/driver-helpers";
 import type { MemoryGlobalState } from "./global-state";
 
 export type WorkerDriverContext = Record<never, never>;

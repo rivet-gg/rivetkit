@@ -1,4 +1,4 @@
-import { actor } from "rivetkit";
+import { actor } from "@rivetkit/worker";
 import { drizzle } from "@rivetkit/drizzle";
 import { limiters } from "./schema";
 

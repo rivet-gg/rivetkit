@@ -1,4 +1,4 @@
-import { setup } from "rivetkit";
+import { setup } from "@rivetkit/core";
 
 // Import workers from individual files
 import { counter } from "./counter";

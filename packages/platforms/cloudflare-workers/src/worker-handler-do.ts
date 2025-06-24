@@ -1,7 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
-import type { Registry, RunConfig, WorkerKey } from "rivetkit";
+import type { Registry, RunConfig, WorkerKey } from "@rivetkit/core";
 import { logger } from "./log";
-import { PartitionTopologyWorker } from "rivetkit/topologies/partition";
+import { PartitionTopologyWorker } from "@rivetkit/core/topologies/partition";
 import {
 	CloudflareDurableObjectGlobalState,
 	CloudflareWorkersWorkerDriver,

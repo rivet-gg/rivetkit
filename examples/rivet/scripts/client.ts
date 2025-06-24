@@ -1,4 +1,4 @@
-import { createClient } from "rivetkit/client";
+import { createClient } from "@rivetkit/worker/client";
 import { execSync } from "node:child_process";
 import type { registry } from "../src/registry.js";
 

@@ -1,4 +1,4 @@
-import { worker } from "rivetkit";
+import { worker } from "@rivetkit/core";
 
 // Note: For testing only - metadata API will need to be mocked
 // in tests since this is implementation-specific

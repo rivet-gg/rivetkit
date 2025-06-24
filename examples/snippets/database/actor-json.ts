@@ -1,4 +1,4 @@
-import { actor } from "rivetkit";
+import { actor } from "@rivetkit/worker";
 import { authenticate } from "./my-utils";
 
 export type Note = { id: string; content: string; updatedAt: number };

@@ -34,13 +34,13 @@
   "peerDependencies": {
     "@rivetkit/file-system": "*",
     "@rivetkit/memory": "*",
-    "rivetkit": "*"
+    "@rivetkit/core": "*"
   },
   "devDependencies": {
     "@rivetkit/file-system": "workspace:*",
     "@rivetkit/memory": "workspace:*",
     "hono": "^4.8.0",
-    "rivetkit": "workspace:*",
+    "@rivetkit/core": "workspace:*",
     "tsup": "^8.4.0",
     "typescript": "^5.5.2"
   },
