@@ -1,47 +1,23 @@
 ---
-title: Node.js & Bun
-icon: node-js
+title: Better Auth
 ---
 
 <Steps>
 <Step title="Install">
 
 ```sh
-npm install @rivetkit/worker
-```
-
-</Step>
-<Step title="Write Worker">
-
-```ts registry.ts
-import { worker, setup } from "@rivetkit/worker";
-
-export const counter = worker({
-	state: { count: 0 },
-	actions: {
-		increment: (c, x: number) => {
-			c.state.count += x;
-			return c.state.count;
-		},
-	},
-});
-
-export const registry = setup({
-	workers: { counter },
-});
+npm install better-auth
 ```
 
 </Step>
 
-
-<Step title="Setup server">
+<Step title="Update server">
 
 <CodeGroup>
 
 ```ts Hono
 import { registry } from "./registry";
 import { Hono } from "hono";
-import { serve } from "@hono/node-server";
 
 // Start RivetKit
 //
@@ -64,9 +40,8 @@ app.post("/increment/:name", async (c) => {
 	return c.text(`New Count: ${newCount}`);
 });
 
-serve({ fetch: app.fetch, port: 8080 }, (x) =>
-	console.log("Listening at http://localhost:8080"),
-);
+// app.fetch will be used to run the server
+export { registry, default: app.fetch };
 ```
 
 ```ts Express.js
@@ -84,6 +59,36 @@ TODO
 </Info>
 
 _If you want to run without export fetch (i.e. standalone Node.js), see below._
+
+</Step>
+
+<Step title="Integrate with RivetKit">
+
+<CodeGroup>
+
+```ts Worker
+import { worker, setup } from "@rivetkit/worker";
+
+export const counter = worker({
+    onAuth: () => { ... },
+	state: { count: 0 },
+	actions: {
+		increment: (c, x: number) => {
+			c.state.count += x;
+			return c.state.count;
+		},
+	},
+});
+
+export const registry = setup({
+	workers: { counter },
+});
+```
+
+```ts Workflow
+```
+
+</CodeGroup>
 
 </Step>
 
@@ -129,17 +134,8 @@ curl -X POST localhost:8080/increment/foo
 
 <Tab title="Rivet">
 
-```json
-{
-  "rivetkit": {
-    "registry": "src/registry.ts",
-    "server": "src/server.ts"
-  }
-}
-```
-
 ```sh
-npx rivet-cli deploy
+npx rivet-cli deploy src/server.ts
 ```
 
 Your endpoint is now TODO

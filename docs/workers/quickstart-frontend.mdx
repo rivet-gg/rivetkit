@@ -1,0 +1,140 @@
+---
+title: React
+icon: react
+---
+
+<Steps>
+<Step title="Install">
+
+```sh
+npm install rivetkit
+```
+
+</Step>
+<Step title="Write Worker">
+
+```ts registry.ts
+import { worker, setup } from "rivetkit";
+
+export const counter = worker({
+	state: { count: 0 },
+	actions: {
+		increment: (c, x: number) => {
+			c.state.count += x;
+			return c.state.count;
+		},
+	},
+});
+
+export const registry = setup({
+	workers: { counter },
+});
+```
+
+TODO: important registry name
+
+</Step>
+
+<Step title="Run dev server">
+
+```sh
+npx rivet-cli dev src/registry.ts
+```
+
+TODO: If you want to set up a custom backend server, see other quickstart
+
+</Step>
+
+<Step title="Write frontend">
+
+```tsx
+import { useState } from "react";
+import { createClient, createRivetKit } from "@rivetkit/react";
+import type { Registry } from "../backend/registry";
+
+const client = createClient<Registry>(`http://localhost:6420/registry`);
+const { useWorker } = createRivetKit(client);
+
+function App() {
+	const [count, setCount] = useState(0);
+	const [counterName, setCounterName] = useState("test-counter");
+
+	const counter = useWorker({
+		name: "counter",
+		key: [counterName],
+	});
+
+	counter.useEvent("newCount", (x: number) => setCount(x));
+
+	const increment = async () => {
+		await counter.connection?.increment(1);
+	};
+
+	return (
+		<div>
+			<h1>Counter: {count}</h1>
+			<input
+				type="text"
+				value={counterName}
+				onChange={(e) => setCounterName(e.target.value)}
+				placeholder="Counter name"
+			/>
+			<button onClick={increment}>Increment</button>
+		</div>
+	);
+}
+
+export default App;
+```
+
+</Step>
+
+<Step title="Deploy">
+
+<Tabs>
+
+<Tab title="Rivet">
+
+```sh
+npx rivet-cli deploy src/registry.ts --frontend
+```
+
+Your endpoint is now TODO
+
+Test it with TODO
+
+</Tab>
+
+<Tab title="Cloudflare Workers">
+TODO
+</Tab>
+
+</Tabs>
+
+</Step>
+
+</Steps>
+
+## Configuration options
+
+### Configure storage driver
+
+TODO: See backend
+
+### Add your own endpoints
+
+TODO: See backend & integrate with frontend
+
+### Run standalone server (no dev CLI)
+
+TODO: See backend
+
+## Next Steps
+
+<CardGroup>
+	<Card title="Overview" href="/concepts/overview" icon="square-plus" horizontal={true} />
+	<Card title="Interacting with Workers" href="/concepts/interacting-with-workers" icon="square-plus" horizontal={true} />
+	<Card title="Actions" href="/concepts/actions" icon="bolt" horizontal={true} />
+	<Card title="State" href="/concepts/state" icon="floppy-disk" horizontal={true} />
+</CardGroup>
+

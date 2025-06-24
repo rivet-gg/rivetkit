@@ -25,8 +25,8 @@ import FAQ from "/snippets/landing-faq.mdx";
 		</h1>
 
     	<p className="landing-subtitle">
-			Simply install one package to get up and running.<br/>
-            Connect your database and scale to production.<br/>
+			Install one package to get up and running.<br/>
+            Scale seamlessly to production.<br/>
             **Just a library, no SaaS.**
     	</p>
 
@@ -55,7 +55,7 @@ import FAQ from "/snippets/landing-faq.mdx";
     		</div>
     	</div>*/}
 
-		<div className="libraries-grid" style={{ gridTemplateColumns: "repeat(2, 1fr)", maxWidth: "800px" }}>
+		<div className="libraries-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)", maxWidth: "800px" }}>
 			<a href="/worker/overview" className="library-box library-box-orange">
 				<div className="library-content">
 					<div className="library-title">
@@ -63,8 +63,21 @@ import FAQ from "/snippets/landing-faq.mdx";
 						<h3 className="not-prose">Workers</h3>
 					</div>
 					<div className="library-description">
-						<p>Stateful worker model for building reliable, scalable, and maintainable backend services.</p>
-						<p className="library-replaces">Replaces <span className="highlight">Durable Objects</span>, <span className="highlight">Orelans</span>, or <span className="highlight">Akka</span></p>
+						<p>Long running tasks with state persistence, hibernation, and realtime</p>
+						<p className="library-replaces">Replaces <span className="highlight">Durable Objects</span>, <span className="highlight">Orleans</span>, or <span className="highlight">Akka</span></p>
+					</div>
+				</div>
+				<div className="library-arrow"><Icon icon="arrow-right" color="rgba(255, 255, 255, 0.8)" size={20} /></div>
+			</a>
+			<a href="/experimental/concepts/multiplayer" className="library-box library-box-green">
+				<div className="library-content">
+					<div className="library-title">
+						<div className="library-icon"><Icon icon="tower-broadcast" color="#10b981" size={28} /></div>
+						<h3 className="not-prose">Realtime</h3>
+					</div>
+					<div className="library-description">
+						<p>Low-latency realtime collaboration for multiplayer experiences and collaborative apps powered by CRDT</p>
+						<p className="library-replaces">Replaces <span className="highlight">Firebase Realtime</span>, <span className="highlight">PartyKit</span>, or <span className="highlight">Liveblocks</span></p>
 					</div>
 				</div>
 				<div className="library-arrow"><Icon icon="arrow-right" color="rgba(255, 255, 255, 0.8)" size={20} /></div>
@@ -76,7 +89,7 @@ import FAQ from "/snippets/landing-faq.mdx";
 						<h3 className="not-prose">Workflows</h3>
 					</div>
 					<div className="library-description">
-						<p>Distributed workflow engine for durable business processes.</p>
+						<p>Workflow library for durable, multi-step execution</p>
 						<p className="library-replaces">Replaces <span className="highlight">Cloudflare Workflows</span>, <span className="highlight">Temporal</span>, or <span className="highlight">AWS Step Functions</span></p>
 					</div>
 				</div>
@@ -95,19 +108,6 @@ import FAQ from "/snippets/landing-faq.mdx";
 				</div>
 				<div className="library-arrow"><Icon icon="arrow-right" color="rgba(255, 255, 255, 0.8)" size={20} /></div>
 			</a> */}
-			{/* <a href="/experimental/concepts/multiplayer" className="library-box library-box-green">
-				<div className="library-content">
-					<div className="library-title">
-						<div className="library-icon"><Icon icon="tower-broadcast" color="#10b981" size={28} /></div>
-						<h3 className="not-prose">Realtime</h3>
-					</div>
-					<div className="library-description">
-						<p>Low-latency real-time communication for multiplayer experiences and collaborative apps.</p>
-						<p className="library-replaces">Replaces <span className="highlight">Socket.IO</span>, <span className="highlight">Pusher</span>, or <span className="highlight">Firebase</span></p>
-					</div>
-				</div>
-				<div className="library-arrow"><Icon icon="arrow-right" color="rgba(255, 255, 255, 0.8)" size={20} /></div>
-			</a> */}
 		</div>
 
         {/*<div className="features-grid">
@@ -122,7 +122,7 @@ import FAQ from "/snippets/landing-faq.mdx";
     			<Icon icon="database" color="#ff4f00" size={24} />
     			<h3 className="not-prose">Durable State Without a Database</h3>
     			<div className="feature-description">
-    				<p>Your code's state is saved automatically—no database, ORM, or config needed. Just use regular JavaScript objects or SQLite (available in June).</p>
+    				<p>Your code's state is saved automatically—no database, ORM, or config needed. Just use regular JavaScript objects or SQLite (available in July).</p>
     			</div>
     		</div>
     		<div className="feature-box group">
@@ -232,7 +232,7 @@ import FAQ from "/snippets/landing-faq.mdx";
 
 	<div className="landing-section-xl">
 		<h2 className="landing-section-heading">Reconsider What Your Backend Can Do</h2>
-		<p className="landing-section-text">Build powerful applications with RivetKit's comprehensive feature set.</p>
+		<p className="landing-section-text">Build powerful applications with RivetKit's libraries</p>
 
 		<div style={{ height: '20px' }} />
 		<Snippets />

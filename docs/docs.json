@@ -49,7 +49,14 @@
         "group": "Workers",
         "pages": [
 "workers/overview",
+{
+"group": "Quickstart",
+"icon": "forward",
+"pages": [
 "workers/quickstart",
+"workers/quickstart-frontend"
+]
+},
 "workers/state",
 "workers/actions",
 "workers/events",
@@ -82,6 +89,7 @@
       {
         "group": "Integrations",
         "pages": [
+          "integrations/better-auth",
           {
             "group": "Frameworks",
             "pages": [

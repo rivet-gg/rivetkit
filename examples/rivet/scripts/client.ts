@@ -1,13 +1,13 @@
 import { createClient } from "rivetkit/client";
 import { execSync } from "node:child_process";
-import type { Registry } from "../src/registry.js";
+import type { registry } from "../src/registry.js";
 
 // Get endpoint from rivet kit
 const endpoint = execSync("rivet kit endpoint", { encoding: "utf8" }).trim();
 console.log("🔗 Using endpoint:", endpoint);
 
 // Create RivetKit client
-const client = createClient<Registry>(endpoint);
+const client = createClient<typeof registry>(endpoint);
 
 async function main() {
 	console.log("🚀 Rivet Client Demo");
