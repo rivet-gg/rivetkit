@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import * as errors from "@/worker/errors";
 import type { Logger } from "./log";
+import { getEnvUniversal } from "@/utils";
 
 // Maximum size of a key component in bytes
 // Set to 128 bytes to allow for separators and escape characters in the full key
@@ -206,7 +207,7 @@ export function stringifyError(error: unknown): string {
 	if (error instanceof Error) {
 		if (
 			typeof process !== "undefined" &&
-			process.env._RIVETKIT_ERROR_STACK === "1"
+			getEnvUniversal("_RIVETKIT_ERROR_STACK") === "1"
 		) {
 			return `${error.name}: ${error.message}${error.stack ? `\n${error.stack}` : ""}`;
 		} else {

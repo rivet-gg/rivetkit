@@ -58,7 +58,7 @@ export function createWorkerRouter(
 	runConfig: RunConfig,
 	handler: WorkerRouterHandler,
 ): Hono {
-	const router = new Hono();
+	const router = new Hono({ strict: false });
 
 	const upgradeWebSocket = runConfig.getUpgradeWebSocket?.(router);
 

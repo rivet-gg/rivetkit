@@ -66,6 +66,16 @@
         "default": "./dist/utils.cjs"
       }
     },
+    "./drivers/rivet": {
+      "import": {
+        "types": "./dist/drivers/rivet/mod.d.ts",
+        "default": "./dist/drivers/rivet/mod.js"
+      },
+      "require": {
+        "types": "./dist/drivers/rivet/mod.d.cts",
+        "default": "./dist/drivers/rivet/mod.cjs"
+      }
+    },
     "./driver-helpers": {
       "import": {
         "types": "./dist/driver-helpers/mod.d.ts",
@@ -133,7 +143,7 @@
   "sideEffects": false,
   "scripts": {
     "dev": "pnpm build --watch",
-    "build": "tsup src/mod.ts src/client/mod.ts src/common/log.ts src/common/websocket.ts src/worker/errors.ts src/topologies/coordinate/mod.ts src/topologies/partition/mod.ts src/utils.ts src/driver-helpers/mod.ts src/driver-test-suite/mod.ts src/test/mod.ts",
+    "build": "tsup src/mod.ts src/client/mod.ts src/common/log.ts src/common/websocket.ts src/worker/errors.ts src/topologies/coordinate/mod.ts src/topologies/partition/mod.ts src/utils.ts src/drivers/rivet/mod.ts src/driver-helpers/mod.ts src/driver-test-suite/mod.ts src/test/mod.ts",
     "check-types": "tsc --noEmit",
     "boop": "tsc --outDir dist/test -d",
     "test": "vitest run",
@@ -152,6 +162,7 @@
   "devDependencies": {
     "@hono/node-server": "^1.14.0",
     "@hono/node-ws": "^1.1.1",
+    "@rivet-gg/actor-core": "^25.1.0",
     "@types/invariant": "^2",
     "@types/node": "^22.13.1",
     "@types/ws": "^8",
@@ -165,10 +176,10 @@
     "ws": "^8.18.1"
   },
   "peerDependencies": {
-    "eventsource": "^3.0.5",
-    "ws": "^8.0.0",
     "@hono/node-server": "^1.14.0",
-    "@hono/node-ws": "^1.1.1"
+    "@hono/node-ws": "^1.1.1",
+    "eventsource": "^3.0.5",
+    "ws": "^8.0.0"
   },
   "peerDependenciesMeta": {
     "eventsource": {

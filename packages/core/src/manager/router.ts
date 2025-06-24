@@ -59,8 +59,7 @@ import { ClientDriver } from "@/client/client";
 import { Transport } from "@/worker/protocol/message/mod";
 import { authenticateEndpoint } from "./auth";
 import type { WebSocket, MessageEvent, CloseEvent } from "ws";
-import { DriverConfig, RunConfig } from "@/registry/run-config";
-import { basePath, baseRoutePath, routePath } from "hono/route";
+import { RunConfig } from "@/registry/run-config";
 
 type ManagerRouterHandler = {
 	// onConnectInspector?: ManagerInspectorConnHandler;
@@ -118,9 +117,9 @@ export function createManagerRouter(
 	runConfig: RunConfig,
 	inlineClientDriver: ClientDriver,
 	handler: ManagerRouterHandler,
-) {
+): { router: Hono; openapi: OpenAPIHono } {
 	const driver = runConfig.driver.manager;
-	const router = new OpenAPIHono();
+	const router = new OpenAPIHono({ strict: false });
 
 	const upgradeWebSocket = runConfig.getUpgradeWebSocket?.(
 		router as unknown as Hono,
@@ -562,12 +561,24 @@ export function createManagerRouter(
 		},
 	});
 
-	router.get("/foo", (c) => c.text("foo"));
+	driver.modifyManagerRouter?.(registryConfig, router as unknown as Hono);
 
 	router.notFound(handleRouteNotFound);
 	router.onError(handleRouteError.bind(undefined, {}));
 
-	return router as unknown as Hono;
+	// Mount on both / and /registry
+	//
+	// We do this because the default requests are to `/registry/*`.
+	//
+	// If using `app.fetch` directly in a non-hono router, paths
+	// might not be truncated so they'll come to this router as
+	// `/registry/*`. If mounted correctly in Hono, requests will
+	// come in at the root as `/*`.
+	const mountedRouter = new Hono();
+	mountedRouter.route("/", router);
+	mountedRouter.route("/registry", router);
+
+	return { router: mountedRouter, openapi: router };
 }
 
 export interface TestInlineDriverCallRequest {

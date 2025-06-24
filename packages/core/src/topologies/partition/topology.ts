@@ -33,18 +33,11 @@ import type {
 	ActionOutput,
 } from "@/worker/router-endpoints";
 import { ClientDriver } from "@/client/client";
-import { ToServer } from "@/worker/protocol/message/to-server";
-import { WorkerQuery } from "@/manager/protocol/query";
-import { Encoding } from "@/mod";
-import { EventSource } from "eventsource";
 import { createInlineClientDriver } from "@/inline-client-driver/mod";
-import {
-	ConnRoutingHandler,
-	ConnRoutingHandlerCustom,
-} from "@/worker/conn-routing-handler";
+import { ConnRoutingHandler } from "@/worker/conn-routing-handler";
 import invariant from "invariant";
 import type { WebSocket } from "ws";
-import type { DriverConfig, RunConfig } from "@/registry/run-config";
+import type { RunConfig } from "@/registry/run-config";
 
 export type SendRequestHandler = (
 	workerRequest: Request,
@@ -60,20 +53,18 @@ export class PartitionTopologyManager {
 	clientDriver: ClientDriver;
 	router: Hono;
 
-	constructor(
-		registryConfig: RegistryConfig,
-		runConfig: RunConfig,
-		customRoutingHandlers: ConnRoutingHandlerCustom,
-	) {
-		const routingHandler: ConnRoutingHandler = {
-			custom: customRoutingHandlers,
-		};
+	constructor(registryConfig: RegistryConfig, runConfig: RunConfig) {
+		const routingHandler = runConfig.driver.manager.connRoutingHandler;
+		invariant(
+			routingHandler,
+			"partition run config must provide custom routing handler",
+		);
 
 		const managerDriver = runConfig.driver.manager;
 		invariant(managerDriver, "missing manager driver");
 		this.clientDriver = createInlineClientDriver(managerDriver, routingHandler);
 
-		this.router = createManagerRouter(
+		const {router}= createManagerRouter(
 			registryConfig,
 			runConfig,
 			this.clientDriver,
@@ -105,6 +96,7 @@ export class PartitionTopologyManager {
 				// },
 			},
 		);
+		this.router = router;
 	}
 }
 

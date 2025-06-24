@@ -60,7 +60,7 @@ function main() {
 		sendHttpMessage: unimplemented,
 	};
 
-	const managerRouter = createManagerRouter(
+	const { openapi } = createManagerRouter(
 		registryConfig,
 		driverConfig,
 		inlineClientDriver,
@@ -71,9 +71,9 @@ function main() {
 				},
 			},
 		},
-	) as unknown as OpenAPIHono;
+	);
 
-	const openApiDoc = managerRouter.getOpenAPIDocument({
+	const openApiDoc = openapi.getOpenAPIDocument({
 		openapi: "3.0.0",
 		info: {
 			version: VERSION,

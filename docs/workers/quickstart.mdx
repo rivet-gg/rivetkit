@@ -42,14 +42,18 @@ export const registry = setup({
 import { registry } from "./registry";
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
+import { createNodeWebSocket } from '@hono/node-ws'
+
+// Setup server
+const app = new Hono();
 
 // Start RivetKit
 //
 // State is stored in memory, this can be configured later
-const { client, hono } = registry.run();
-
-// Setup server
-const app = new Hono();
+const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app })  // TODO: do this before app
+const { client, hono } = registry.run({
+	getUpgradeWebSocket: () => upgradeWebSocket,
+});
 
 // Expose RivetKit to the frontend (optional)
 app.route("/registry", hono);
@@ -67,6 +71,7 @@ app.post("/increment/:name", async (c) => {
 serve({ fetch: app.fetch, port: 8080 }, (x) =>
 	console.log("Listening at http://localhost:8080"),
 );
+injectWebSocket(server)
 ```
 
 ```ts Express.js
@@ -76,6 +81,37 @@ TODO
 ```ts Elysia.js
 TODO
 ```
+
+```ts Hono
+import { registry } from "./registry";
+import { Hono } from "hono";
+
+// Start RivetKit
+//
+// State is stored in memory, this can be configured later
+const { client, serve } = registry.server();
+
+// Setup server
+const app = new Hono();
+
+// Example endpoint
+app.post("/increment/:name", async (c) => {
+	const name = c.req.param("name");
+
+	// Communicate with actor
+	const counter = client.counter.getOrCreate(name);
+	const newCount = await counter.increment(1);
+
+	return c.text(`New Count: ${newCount}`);
+});
+
+// Start server
+serve(app);
+```
+
+TODO: How to serve without registry helper
+
+TODO: Why we need to use our own custom serve fn
 
 </CodeGroup>
 

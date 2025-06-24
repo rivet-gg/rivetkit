@@ -17,4 +17,3 @@ export const registry = setup({
 	workers: { counter },
 });
 
-export type Registry = typeof registry;

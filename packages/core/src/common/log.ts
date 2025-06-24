@@ -1,3 +1,4 @@
+import { getEnvUniversal } from "@/utils";
 import {
 	type LevelIndex,
 	LevelNameMap,
@@ -75,13 +76,7 @@ export class Logger {
 const loggers: Record<string, Logger> = {};
 
 export function getLogger(name = "default"): Logger {
-	let defaultLogLevelEnv: LogLevel | undefined = undefined;
-	if (typeof Deno !== "undefined") {
-		defaultLogLevelEnv = Deno.env.get("_LOG_LEVEL") as LogLevel;
-	} else if (typeof process !== "undefined") {
-		// Do this after Deno since `process` is sometimes polyfilled
-		defaultLogLevelEnv = process.env._LOG_LEVEL as LogLevel;
-	}
+	const defaultLogLevelEnv: LogLevel | undefined = getEnvUniversal("_LOG_LEVEL") as LogLevel | undefined;
 
 	const defaultLogLevel: LogLevel = defaultLogLevelEnv ?? "INFO";
 	if (!loggers[name]) {

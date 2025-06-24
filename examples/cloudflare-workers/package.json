@@ -20,10 +20,5 @@
   "dependencies": {
     "@rivetkit/cloudflare-workers": "workspace:*"
   },
-  "example": {
-    "platforms": [
-      "cloudflare-workers"
-    ]
-  },
   "stableVersion": "0.8.0"
 }

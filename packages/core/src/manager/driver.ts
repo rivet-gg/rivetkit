@@ -1,12 +1,18 @@
 import { ClientDriver } from "@/client/client";
 import type { WorkerKey } from "@/common/utils";
-import type { Env, Context as HonoContext, HonoRequest } from "hono";
+import { RegistryConfig } from "@/registry/config";
+import { ConnRoutingHandler } from "@/worker/conn-routing-handler";
+import type { Env, Hono, Context as HonoContext } from "hono";
 
 export interface ManagerDriver {
 	getForId(input: GetForIdInput): Promise<WorkerOutput | undefined>;
 	getWithKey(input: GetWithKeyInput): Promise<WorkerOutput | undefined>;
 	getOrCreateWithKey(input: GetOrCreateWithKeyInput): Promise<WorkerOutput>;
 	createWorker(input: CreateInput): Promise<WorkerOutput>;
+
+	readonly connRoutingHandler?: ConnRoutingHandler;
+
+	modifyManagerRouter?: (registryConfig: RegistryConfig, router: Hono) => void;
 
 	// inspector?: ManagerInspector;
 }

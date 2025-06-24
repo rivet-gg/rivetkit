@@ -127,7 +127,7 @@ export class CoordinateTopology {
 		this.clientDriver = createInlineClientDriver(managerDriver, routingHandler);
 
 		// Build manager router
-		const managerRouter = createManagerRouter(
+		const { router: managerRouter } = createManagerRouter(
 			registryConfig,
 			runConfig,
 			this.clientDriver,

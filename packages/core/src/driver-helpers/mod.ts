@@ -1,5 +1,5 @@
 export type { WorkerInstance, AnyWorkerInstance } from "@/worker/instance";
-export {
+export type {
 	AttemptAcquireLease,
 	ExtendLeaseOutput,
 	GetWorkerLeaderOutput,
@@ -7,8 +7,8 @@ export {
 	CoordinateDriver,
 	StartWorkerAndAcquireLeaseOutput,
 } from "@/topologies/coordinate/driver";
-export { WorkerDriver } from "@/worker/driver";
-export {
+export type { WorkerDriver } from "@/worker/driver";
+export type {
 	ManagerDriver,
 	CreateInput,
 	GetForIdInput,

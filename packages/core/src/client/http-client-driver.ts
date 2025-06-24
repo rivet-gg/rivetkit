@@ -63,7 +63,7 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 
 			const responseData = await sendHttpRequest<ActionRequest, ActionResponse>(
 				{
-					url: `${managerEndpoint}/workers/actions/${encodeURIComponent(name)}`,
+					url: `${managerEndpoint}/registry/workers/actions/${encodeURIComponent(name)}`,
 					method: "POST",
 					headers: {
 						[HEADER_ENCODING]: encoding,
@@ -94,7 +94,7 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 					Record<never, never>,
 					protoHttpResolve.ResolveResponse
 				>({
-					url: `${managerEndpoint}/workers/resolve`,
+					url: `${managerEndpoint}/registry/workers/resolve`,
 					method: "POST",
 					headers: {
 						[HEADER_ENCODING]: encodingKind,
@@ -132,7 +132,7 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 			const endpoint = managerEndpoint
 				.replace(/^http:/, "ws:")
 				.replace(/^https:/, "wss:");
-			const url = `${endpoint}/workers/connect/websocket`;
+			const url = `${endpoint}/registry/workers/connect/websocket`;
 
 			// Pass sensitive data via protocol
 			const protocol = [
@@ -172,7 +172,7 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 		): Promise<EventSource> => {
 			const { EventSource } = await dynamicImports;
 
-			const url = `${managerEndpoint}/workers/connect/sse`;
+			const url = `${managerEndpoint}/registry/workers/connect/sse`;
 
 			logger().debug("connecting to sse", { url });
 			const eventSource = new EventSource(url, {
@@ -206,7 +206,7 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 			// TODO: Implement ordered messages, this is not guaranteed order. Needs to use an index in order to ensure we can pipeline requests efficiently.
 			// TODO: Validate that we're using HTTP/3 whenever possible for pipelining requests
 			const messageSerialized = serializeWithEncoding(encoding, message);
-			const res = await fetch(`${managerEndpoint}/workers/message`, {
+			const res = await fetch(`${managerEndpoint}/registry/workers/message`, {
 				method: "POST",
 				headers: {
 					"User-Agent": httpUserAgent(),

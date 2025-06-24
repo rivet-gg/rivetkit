@@ -58,6 +58,59 @@ export class StandaloneTopology {
 	#runConfig: RunConfig;
 	#workers = new Map<string, WorkerHandler>();
 
+	constructor(registryConfig: RegistryConfig, runConfig: RunConfig) {
+		this.#registryConfig = registryConfig;
+		this.#runConfig = runConfig;
+
+		// Build router
+		const router = new Hono();
+
+		const routingHandler: ConnRoutingHandler = this.#createRoutingHandlers();
+
+		// Build client driver
+		const managerDriver = this.#runConfig.driver.manager;
+		invariant(managerDriver, "missing manager driver");
+		this.clientDriver = createInlineClientDriver(managerDriver, routingHandler);
+
+		// Build manager router
+		const { router: managerRouter } = createManagerRouter(
+			registryConfig,
+			runConfig,
+			this.clientDriver,
+			{
+				routingHandler,
+				// onConnectInspector: async () => {
+				// 	const inspector = driverConfig.drivers?.manager?.inspector;
+				// 	if (!inspector) throw new errors.Unsupported("inspector");
+				//
+				// 	let conn: ManagerInspectorConnection | undefined;
+				// 	return {
+				// 		onOpen: async (ws) => {
+				// 			conn = inspector.createConnection(ws);
+				// 		},
+				// 		onMessage: async (message) => {
+				// 			if (!conn) {
+				// 				logger().warn("`conn` does not exist");
+				// 				return;
+				// 			}
+				//
+				// 			inspector.processMessage(conn, message);
+				// 		},
+				// 		onClose: async () => {
+				// 			if (conn) {
+				// 				inspector.removeConnection(conn);
+				// 			}
+				// 		},
+				// 	};
+				// },
+			},
+		);
+
+		router.route("/", managerRouter);
+
+		this.router = router;
+	}
+
 	async #getWorker(
 		workerId: string,
 	): Promise<{ handler: WorkerHandler; worker: AnyWorkerInstance }> {
@@ -113,17 +166,8 @@ export class StandaloneTopology {
 		return { handler, worker };
 	}
 
-	constructor(registryConfig: RegistryConfig, runConfig: RunConfig) {
-		this.#registryConfig = registryConfig;
-		this.#runConfig = runConfig;
-
-		// Build router
-		const router = new Hono();
-
-		const upgradeWebSocket = runConfig.getUpgradeWebSocket?.(router);
-
-		// Create shared connection handlers that will be used by both manager and worker routers
-		const sharedConnectionHandlers: ConnectionHandlers = {
+	#createRoutingHandlers(): ConnRoutingHandler {
+		const handlers: ConnectionHandlers = {
 			onConnectWebSocket: async (
 				opts: ConnectWebSocketOpts,
 			): Promise<ConnectWebSocketOutput> => {
@@ -257,51 +301,6 @@ export class StandaloneTopology {
 			},
 		};
 
-		const routingHandler: ConnRoutingHandler = {
-			inline: { handlers: sharedConnectionHandlers },
-		};
-
-		// Build client driver
-		const managerDriver = this.#runConfig.driver.manager;
-		invariant(managerDriver, "missing manager driver");
-		this.clientDriver = createInlineClientDriver(managerDriver, routingHandler);
-
-		// Build manager router
-		const managerRouter = createManagerRouter(
-			registryConfig,
-			runConfig,
-			this.clientDriver,
-			{
-				routingHandler,
-				// onConnectInspector: async () => {
-				// 	const inspector = driverConfig.drivers?.manager?.inspector;
-				// 	if (!inspector) throw new errors.Unsupported("inspector");
-				//
-				// 	let conn: ManagerInspectorConnection | undefined;
-				// 	return {
-				// 		onOpen: async (ws) => {
-				// 			conn = inspector.createConnection(ws);
-				// 		},
-				// 		onMessage: async (message) => {
-				// 			if (!conn) {
-				// 				logger().warn("`conn` does not exist");
-				// 				return;
-				// 			}
-				//
-				// 			inspector.processMessage(conn, message);
-				// 		},
-				// 		onClose: async () => {
-				// 			if (conn) {
-				// 				inspector.removeConnection(conn);
-				// 			}
-				// 		},
-				// 	};
-				// },
-			},
-		);
-
-		router.route("/", managerRouter);
-
-		this.router = router;
+		return { inline: { handlers } };
 	}
 }

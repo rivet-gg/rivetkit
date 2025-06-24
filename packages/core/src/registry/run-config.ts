@@ -5,6 +5,7 @@ import type { ManagerDriver } from "@/manager/driver";
 import type { WorkerDriver } from "@/worker/driver";
 import type { UpgradeWebSocket } from "@/utils";
 import type { cors } from "hono/cors";
+import { createMemoryDriver } from "@/drivers/memory/mod";
 
 type CorsOptions = NonNullable<Parameters<typeof cors>[0]>;
 
@@ -57,22 +58,23 @@ export const DriverConfigSchema = z.object({
 export type DriverConfig = z.infer<typeof DriverConfigSchema>;
 
 /** Base config used for the worker config across all platforms. */
-export const RunConfigSchema = z.object({
-	driver: DriverConfigSchema,
+export const RunConfigSchema = z
+	.object({
+		driver: DriverConfigSchema.optional().default(() => createMemoryDriver()),
 
-	// This is dynamic since NodeJS requires a reference to the router to initialize WebSockets
-	getUpgradeWebSocket: z.custom<GetUpgradeWebSocket>().optional(),
+		// This is dynamic since NodeJS requires a reference to the router to initialize WebSockets
+		getUpgradeWebSocket: z.custom<GetUpgradeWebSocket>().optional(),
 
-	/** CORS configuration for the router. Uses Hono's CORS middleware options. */
-	cors: z.custom<CorsOptions>().optional(),
+		/** CORS configuration for the router. Uses Hono's CORS middleware options. */
+		cors: z.custom<CorsOptions>().optional(),
 
-	maxIncomingMessageSize: z.number().optional().default(65_536),
+		maxIncomingMessageSize: z.number().optional().default(65_536),
 
-	/** Peer configuration for coordinated topology. */
-	workerPeer: WorkerPeerConfigSchema.optional().default({}),
+		/** Peer configuration for coordinated topology. */
+		workerPeer: WorkerPeerConfigSchema.optional().default({}),
 
-	// inspector: InspectorConfigSchema.optional().default({ enabled: false }),
-});
+		// inspector: InspectorConfigSchema.optional().default({ enabled: false }),
+	}).default({});
 
 export type RunConfig = z.infer<typeof RunConfigSchema>;
 export type RunConfigInput = z.input<typeof RunConfigSchema>;

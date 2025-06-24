@@ -14,13 +14,7 @@
     "typescript": "^5.5.2"
   },
   "dependencies": {
-    "@rivetkit/worker": "https://pkg.pr.new/rivet-gg/rivetkit@65c3659",
-    "@rivetkit/rivet": "https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/rivet@65c3659"
-  },
-  "example": {
-    "platforms": [
-      "*"
-    ]
+    "@rivetkit/worker": "https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/worker@38d8fca"
   },
   "stableVersion": "0.8.0"
 }

@@ -54,9 +54,6 @@ importers:
       '@hono/node-server':
         specifier: ^1.14.4
         version: 1.14.4(hono@4.8.0)
-      '@rivetkit/memory':
-        specifier: workspace:0.9.0-rc.1
-        version: link:../../packages/drivers/memory
       '@rivetkit/react':
         specifier: workspace:0.9.0-rc.1
         version: link:../../packages/frameworks/react
@@ -105,10 +102,6 @@ importers:
         version: 3.2.4(@types/node@22.15.32)(tsx@3.14.0)(yaml@2.8.0)
 
   examples/chat-room:
-    dependencies:
-      '@rivetkit/nodejs':
-        specifier: workspace:*
-        version: link:../../packages/platforms/nodejs
     devDependencies:
       '@rivetkit/worker':
         specifier: workspace:*
@@ -158,10 +151,6 @@ importers:
         version: 3.114.9(@cloudflare/workers-types@4.20250619.0)
 
   examples/counter:
-    dependencies:
-      '@rivetkit/nodejs':
-        specifier: workspace:*
-        version: link:../../packages/platforms/nodejs
     devDependencies:
       '@rivetkit/worker':
         specifier: workspace:*
@@ -181,9 +170,6 @@ importers:
 
   examples/elysia:
     dependencies:
-      '@rivetkit/memory':
-        specifier: workspace:0.9.0-rc.1
-        version: link:../../packages/drivers/memory
       '@rivetkit/react':
         specifier: workspace:0.9.0-rc.1
         version: link:../../packages/frameworks/react
@@ -209,9 +195,6 @@ importers:
 
   examples/express:
     dependencies:
-      '@rivetkit/memory':
-        specifier: workspace:0.9.0-rc.1
-        version: link:../../packages/drivers/memory
       '@rivetkit/react':
         specifier: workspace:0.9.0-rc.1
         version: link:../../packages/frameworks/react
@@ -246,9 +229,6 @@ importers:
       '@hono/node-server':
         specifier: ^1.14.4
         version: 1.14.4(hono@4.8.0)
-      '@rivetkit/memory':
-        specifier: workspace:0.9.0-rc.1
-        version: link:../../packages/drivers/memory
       hono:
         specifier: ^4.7.0
         version: 4.8.0
@@ -271,9 +251,6 @@ importers:
       '@hono/node-server':
         specifier: ^1.14.4
         version: 1.14.4(hono@4.8.0)
-      '@rivetkit/memory':
-        specifier: workspace:0.9.0-rc.1
-        version: link:../../packages/drivers/memory
       '@rivetkit/react':
         specifier: workspace:0.9.0-rc.1
         version: link:../../packages/frameworks/react
@@ -318,36 +295,8 @@ importers:
         specifier: ^3.1.1
         version: 3.2.4(@types/node@22.15.32)(tsx@3.14.0)(yaml@2.8.0)
 
-  examples/nodejs:
-    dependencies:
-      '@rivetkit/memory':
-        specifier: workspace:0.9.0-rc.1
-        version: link:../../packages/drivers/memory
-      '@rivetkit/nodejs':
-        specifier: workspace:0.9.0-rc.1
-        version: link:../../packages/platforms/nodejs
-    devDependencies:
-      '@rivetkit/worker':
-        specifier: workspace:*
-        version: link:../../packages/worker
-      '@types/node':
-        specifier: ^22.13.9
-        version: 22.15.32
-      tsx:
-        specifier: ^3.12.7
-        version: 3.14.0
-      typescript:
-        specifier: ^5.5.2
-        version: 5.8.3
-
   examples/react:
     dependencies:
-      '@rivetkit/memory':
-        specifier: workspace:0.9.0-rc.1
-        version: link:../../packages/drivers/memory
-      '@rivetkit/nodejs':
-        specifier: workspace:0.9.0-rc.1
-        version: link:../../packages/platforms/nodejs
       '@rivetkit/react':
         specifier: workspace:0.9.0-rc.1
         version: link:../../packages/frameworks/react
@@ -391,12 +340,9 @@ importers:
 
   examples/rivet:
     dependencies:
-      '@rivetkit/rivet':
-        specifier: https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/rivet@65c3659
-        version: https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/rivet@65c3659(rivetkit@https://pkg.pr.new/rivet-gg/rivetkit@65c3659(@hono/node-server@1.14.4(hono@4.8.0))(@hono/node-ws@1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0))(eventsource@3.0.7)(ws@8.18.2))
       '@rivetkit/worker':
-        specifier: https://pkg.pr.new/rivet-gg/rivetkit@65c3659
-        version: rivetkit@https://pkg.pr.new/rivet-gg/rivetkit@65c3659(@hono/node-server@1.14.4(hono@4.8.0))(@hono/node-ws@1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0))(eventsource@3.0.7)(ws@8.18.2)
+        specifier: https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/worker@38d8fca
+        version: https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/worker@38d8fca(@hono/node-server@1.14.4(hono@4.8.0))(@hono/node-ws@1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0))(eventsource@3.0.7)(ws@8.18.2)
     devDependencies:
       '@types/node':
         specifier: ^22.13.9
@@ -410,9 +356,6 @@ importers:
 
   examples/trpc:
     dependencies:
-      '@rivetkit/memory':
-        specifier: workspace:0.9.0-rc.1
-        version: link:../../packages/drivers/memory
       '@trpc/client':
         specifier: ^11.3.1
         version: 11.4.2(@trpc/server@11.4.2(typescript@5.8.3))(typescript@5.8.3)
@@ -466,6 +409,9 @@ importers:
       '@hono/node-ws':
         specifier: ^1.1.1
         version: 1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0)
+      '@rivet-gg/actor-core':
+        specifier: ^25.1.0
+        version: 25.2.0
       '@types/invariant':
         specifier: ^2
         version: 2.2.37
@@ -530,28 +476,6 @@ importers:
       vitest:
         specifier: ^3.1.1
         version: 3.2.4(@types/node@22.15.32)(@vitest/ui@3.1.1)(tsx@4.20.3)(yaml@2.8.0)
-
-  packages/drivers/memory:
-    dependencies:
-      '@types/node':
-        specifier: ^22.13.1
-        version: 22.15.32
-      hono:
-        specifier: ^4.7.0
-        version: 4.8.0
-      vitest:
-        specifier: ^3.1.1
-        version: 3.2.4(@types/node@22.15.32)(@vitest/ui@3.1.1)(tsx@4.20.3)(yaml@2.8.0)
-    devDependencies:
-      '@rivetkit/core':
-        specifier: workspace:*
-        version: link:../../core
-      tsup:
-        specifier: ^8.4.0
-        version: 8.5.0(@microsoft/api-extractor@7.52.8(@types/node@22.15.32))(postcss@8.5.6)(tsx@4.20.3)(typescript@5.8.3)(yaml@2.8.0)
-      typescript:
-        specifier: ^5.5.2
-        version: 5.8.3
 
   packages/drivers/redis:
     dependencies:
@@ -698,86 +622,6 @@ importers:
       wrangler:
         specifier: ^3.101.0
         version: 3.114.9(@cloudflare/workers-types@4.20250619.0)
-
-  packages/platforms/nodejs:
-    dependencies:
-      '@hono/node-server':
-        specifier: ^1.14.4
-        version: 1.14.4(hono@4.8.0)
-      '@hono/node-ws':
-        specifier: ^1.0.8
-        version: 1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0)
-      '@types/node':
-        specifier: ^24.0.3
-        version: 24.0.3
-      zod:
-        specifier: ^3.24.2
-        version: 3.25.67
-    devDependencies:
-      '@rivetkit/core':
-        specifier: workspace:*
-        version: link:../../core
-      '@rivetkit/file-system':
-        specifier: workspace:*
-        version: link:../../drivers/file-system
-      '@rivetkit/memory':
-        specifier: workspace:*
-        version: link:../../drivers/memory
-      hono:
-        specifier: ^4.7.0
-        version: 4.8.0
-      tsup:
-        specifier: ^8.4.0
-        version: 8.5.0(@microsoft/api-extractor@7.52.8(@types/node@24.0.3))(postcss@8.5.6)(tsx@4.20.3)(typescript@5.8.3)(yaml@2.8.0)
-      typescript:
-        specifier: ^5.5.2
-        version: 5.8.3
-
-  packages/platforms/rivet:
-    dependencies:
-      '@hono/node-server':
-        specifier: ^1.14.4
-        version: 1.14.4(hono@4.8.0)
-      '@hono/node-ws':
-        specifier: ^1.1.7
-        version: 1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0)
-      hono:
-        specifier: ^4.7.0
-        version: 4.8.0
-      invariant:
-        specifier: ^2.2.4
-        version: 2.2.4
-      zod:
-        specifier: ^3.24.2
-        version: 3.25.67
-    devDependencies:
-      '@rivet-gg/actor-core':
-        specifier: ^25.1.0
-        version: 25.2.0
-      '@rivet-gg/api':
-        specifier: ^25.4.2
-        version: 25.4.2
-      '@rivetkit/core':
-        specifier: workspace:*
-        version: link:../../core
-      '@types/deno':
-        specifier: ^2.0.0
-        version: 2.3.0
-      '@types/invariant':
-        specifier: ^2
-        version: 2.2.37
-      '@types/node':
-        specifier: ^22.13.1
-        version: 22.15.32
-      tsup:
-        specifier: ^8.4.0
-        version: 8.5.0(@microsoft/api-extractor@7.52.8(@types/node@22.15.32))(postcss@8.5.6)(tsx@4.20.3)(typescript@5.8.3)(yaml@2.8.0)
-      typescript:
-        specifier: ^5.5.2
-        version: 5.8.3
-      vitest:
-        specifier: ^3.1.1
-        version: 3.2.4(@types/node@22.15.32)(@vitest/ui@3.1.1)(tsx@4.20.3)(yaml@2.8.0)
 
   packages/rivetkit: {}
 
@@ -1858,14 +1702,28 @@ packages:
   '@rivet-gg/actor-core@25.2.0':
     resolution: {integrity: sha512-4K72XcDLVAz44Ae6G6GuyzWyxQZOLN8jM/W+sVKm6fHr70X8FNCSC5+/9hFIxz/OH9E6q6Wi3V/UN/k6immUBQ==}
 
-  '@rivet-gg/api@25.4.2':
-    resolution: {integrity: sha512-VmQ+1dfwWoDamF+49A+cB5htnjJbD4LzmQiaiycBS4ICqAiC3b9rW6l1UAyUfG32x02cSRRJ80yApBl54CdlqQ==}
-
-  '@rivetkit/rivet@https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/rivet@65c3659':
-    resolution: {tarball: https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/rivet@65c3659}
+  '@rivetkit/core@https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/core@38d8fcab136be6bdbd976a802f93581384c12fb2':
+    resolution: {tarball: https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/core@38d8fcab136be6bdbd976a802f93581384c12fb2}
     version: 0.9.0-rc.1
+    engines: {node: '>=22.0.0'}
     peerDependencies:
-      rivetkit: '*'
+      '@hono/node-server': ^1.14.0
+      '@hono/node-ws': ^1.1.1
+      eventsource: ^3.0.5
+      ws: ^8.0.0
+    peerDependenciesMeta:
+      '@hono/node-server':
+        optional: true
+      '@hono/node-ws':
+        optional: true
+      eventsource:
+        optional: true
+      ws:
+        optional: true
+
+  '@rivetkit/worker@https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/worker@38d8fca':
+    resolution: {tarball: https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/worker@38d8fca}
+    version: 0.9.0-rc.1
 
   '@rolldown/pluginutils@1.0.0-beta.11':
     resolution: {integrity: sha512-L/gAA/hyCSuzTF1ftlzUSI/IKr2POHsv1Dd78GfqkR83KMNuswWD61JxGV2L7nRwBBBSDr6R1gCkdTmoN7W4ag==}
@@ -2065,9 +1923,6 @@ packages:
   '@types/deep-eql@4.0.2':
     resolution: {integrity: sha512-c9h9dVVMigMPc4bwTvC5dxqtqJZwQPePsWjPlpSOnojbor6pGqdk541lfA7AqFQr5pB1BRdq0juY9db81BwyFw==}
 
-  '@types/deno@2.3.0':
-    resolution: {integrity: sha512-/4SyefQpKjwNKGkq9qG3Ln7MazfbWKvydyVFBnXzP5OQA4u1paoFtaOe1iHKycIWHHkhYag0lPxyheThV1ijzw==}
-
   '@types/estree@1.0.8':
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
 
@@ -2225,10 +2080,6 @@ packages:
   '@vue/shared@3.5.17':
     resolution: {integrity: sha512-CabR+UN630VnsJO/jHWYBC1YVXyMq94KKp6iF5MQgZJs5I8cmjw6oVMO1oDbtBkENSHSSn/UadWlW/OAgdmKrg==}
 
-  abort-controller@3.0.0:
-    resolution: {integrity: sha512-h8lQ8tacZYnR3vNQTgibj+tODHI5/+l06Au2Pcriv/Gmet0eaj4TwWH41sO9wnHDiQsEj19q0drzdWdeAHtweg==}
-    engines: {node: '>=6.5'}
-
   accepts@2.0.0:
     resolution: {integrity: sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng==}
     engines: {node: '>= 0.6'}
@@ -2305,14 +2156,8 @@ packages:
     resolution: {integrity: sha512-Izi8RQcffqCeNVgFigKli1ssklIbpHnCYc6AknXGYoB6grJqyeby7jv12JUQgmTAnIDnbck1uxksT4dzN3PWBA==}
     engines: {node: '>=12'}
 
-  asynckit@0.4.0:
-    resolution: {integrity: sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==}
-
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
-
-  base64-js@1.5.1:
-    resolution: {integrity: sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==}
 
   better-auth@1.2.10:
     resolution: {integrity: sha512-nEj1RG4DdLUuJiV5CR93ORyPCptGRBwksaPPCkUtGo9ka+UIlTpaiKoTaTqVLLYlqwX4bOj9tJ32oBNdf2G3Kg==}
@@ -2347,9 +2192,6 @@ packages:
 
   buffer-from@1.1.2:
     resolution: {integrity: sha512-E+XQCRwSbaaiChtv6k6Dwgc+bx+Bs6vuKJHHl5kox/BaKbhiXzqQOwK4cO22yElGp2OCmjwVhT3HmxgyPGnJfQ==}
-
-  buffer@6.0.3:
-    resolution: {integrity: sha512-FTiCpNxtwiZZHEZbcbTIcZjERVICn9yq/pDFkTl95/AxzD1naBctN7YO68riM/gLSDY7sdrMby8hofADYuuqOA==}
 
   bundle-require@5.1.0:
     resolution: {integrity: sha512-3WrrOuZiyaaZPWiEt4G3+IffISVC9HYlWueJEBWED4ZH4aIAC2PnkdnuRrR94M+w6yGWn4AglWtJtBI8YqvgoA==}
@@ -2427,10 +2269,6 @@ packages:
   color@4.2.3:
     resolution: {integrity: sha512-1rXeuUUiGGrykh+CeBdu5Ie7OJwinCgQY0bc7GCRxy5xVHy+moaqkpL/jqQq0MtQOeYcrqEz4abc5f0KtU7W4A==}
     engines: {node: '>=12.5.0'}
-
-  combined-stream@1.0.8:
-    resolution: {integrity: sha512-FQN4MRfuJeHf7cBbBMJFXhKSDq+2kAArBlmRBvcvFE5BB1HZKXtSFASDhdlz9zOYwxh8lDdnvmMOe/+5cdoEdg==}
-    engines: {node: '>= 0.8'}
 
   commander@4.1.1:
     resolution: {integrity: sha512-NOKm8xhkzAjzFx8B2v5OAHT+u5pRQc2UCa2Vq9jYL/31o2wi9mxBA7LIFs3sV5VSC49z6pEhfbMULvShKj26WA==}
@@ -2537,10 +2375,6 @@ packages:
   defu@6.1.4:
     resolution: {integrity: sha512-mEQCMmwJu317oSz8CwdIOdwf3xMif1ttiM8LTufzc3g6kR+9Pe236twL8j3IYT1F7GfRgGcW6MWxzZjLIkuHIg==}
 
-  delayed-stream@1.0.0:
-    resolution: {integrity: sha512-ZySD7Nf91aLB0RxL4KGrKHBXl7Eds1DAmEdcoVawXnLD7SDhpNgtuII2aAkg7a7QS41jxPSZ17p4VdGnMHk3MQ==}
-    engines: {node: '>=0.4.0'}
-
   denque@2.1.0:
     resolution: {integrity: sha512-HVQE3AAb/pxF8fQAoiqpvg9i3evqug3hoiwakOyZAwJm+6vZehbkYXZ0l4JxS+I3QxM97v5aaRNhj8v5oBhekw==}
     engines: {node: '>=0.10'}
@@ -2616,10 +2450,6 @@ packages:
     resolution: {integrity: sha512-FGgH2h8zKNim9ljj7dankFPcICIK9Cp5bm+c2gQSYePhpaG5+esrLODihIorn+Pe6FGJzWhXQotPv73jTaldXA==}
     engines: {node: '>= 0.4'}
 
-  es-set-tostringtag@2.1.0:
-    resolution: {integrity: sha512-j6vWzfrGVfyXxge+O0x5sh6cvxAog0a/4Rdd2K36zCMV5eJ+/+tOAngRO8cODMNWbVRdVlmGZQL2YS3yR8bIUA==}
-    engines: {node: '>= 0.4'}
-
   esbuild@0.17.19:
     resolution: {integrity: sha512-XQ0jAPFkK/u3LcVRcvVHQcTIqD6E2H1fvZMA5dQPSOWb3suUbWbfbRf94pjc0bNzRYLfIrDRQXr7X+LHIm5oHw==}
     engines: {node: '>=12'}
@@ -2666,14 +2496,6 @@ packages:
 
   event-stream@3.3.4:
     resolution: {integrity: sha512-QHpkERcGsR0T7Qm3HNJSyXKEEj8AHNxkY3PK8TS2KJvQ7NiSHe3DDpwVKKtoYprL/AreyzFBeIkBIWChAqn60g==}
-
-  event-target-shim@5.0.1:
-    resolution: {integrity: sha512-i/2XbnSz/uxRCU6+NdVJgKWDTM427+MqYbkQzD321DuCQJUqOuJKIA0IM2+W2xtYHdKOmZ4dR6fExsd4SXL+WQ==}
-    engines: {node: '>=6'}
-
-  events@3.3.0:
-    resolution: {integrity: sha512-mQw+2fkQbALzQ7V0MY0IqdnXNOeTtP4r0lN9z7AAawCXgqea7bDii20AYrIBrFd/Hx0M2Ocz6S111CaFkUcb0Q==}
-    engines: {node: '>=0.8.x'}
 
   eventsource-parser@3.0.2:
     resolution: {integrity: sha512-6RxOBZ/cYgd8usLwsEl+EC09Au/9BcmCKYF2/xbml6DNczf7nv0MQb+7BA2F+li6//I+28VNlQR37XfQtcAJuA==}
@@ -2755,10 +2577,6 @@ packages:
   foreground-child@3.3.1:
     resolution: {integrity: sha512-gIXjKqtFuWEgzFRJA9WCQeSJLZDjgJUOMCMzxtvFq/37KojM1BFGufqsCy0r4qSQmYLsZYMeyRqzIWOMup03sw==}
     engines: {node: '>=14'}
-
-  form-data@4.0.3:
-    resolution: {integrity: sha512-qsITQPfmvMOSAdeyZ+12I1c+CKSstAFAwu+97zrnWAbIr5u8wfsExUzCesVLC8NgHuRUqNN4Zy6UPWUTRGslcA==}
-    engines: {node: '>= 6'}
 
   formdata-polyfill@4.0.10:
     resolution: {integrity: sha512-buewHzMvYL29jdeQTVILecSaZKnt/RJWjoZCF5OW60Z67/GmSLBkOFM7qh1PI3zFNtJbaZL5eQu1vLfazOwj4g==}
@@ -2845,10 +2663,6 @@ packages:
 
   has-symbols@1.1.0:
     resolution: {integrity: sha512-1cDNdwJ2Jaohmb3sg4OmKaMBwuC48sYni5HUw2DvsC8LjGTLK9h+eb1X6RyuOHe4hT0ULCW68iomhjUoKUqlPQ==}
-    engines: {node: '>= 0.4'}
-
-  has-tostringtag@1.0.2:
-    resolution: {integrity: sha512-NqADB8VjPFLM2V0VvHUewwwsw0ZWBaIdgo+ieHtK3hasLz4qeCRjYcqfB6AQrBggRKppKF8L52/VqdVsO47Dlw==}
     engines: {node: '>= 0.4'}
 
   hasown@2.0.2:
@@ -2941,9 +2755,6 @@ packages:
   joycon@3.1.1:
     resolution: {integrity: sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==}
     engines: {node: '>=10'}
-
-  js-base64@3.7.7:
-    resolution: {integrity: sha512-7rCnleh0z2CkXhH67J8K1Ytz0b2Y+yxTPL+/KOJoa20hfnVQ/3/T6W/KflYI4bRHRagNeXeU2bkNGI3v1oS/lw==}
 
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
@@ -3105,16 +2916,8 @@ packages:
     resolution: {integrity: sha512-PXwfBhYu0hBCPw8Dn0E+WDYb7af3dSLVWKi3HGv84IdF4TyFoC0ysxFd0Goxw7nSv4T/PzEJQxsYsEiFCKo2BA==}
     engines: {node: '>=8.6'}
 
-  mime-db@1.52.0:
-    resolution: {integrity: sha512-sPU4uV7dYlvtWJxwwxHD0PuihVNiE7TyAbQ5SWxDCB9mUYvOgroQOwYQQOKPJ8CIbE+1ETVlOoK1UC2nU3gYvg==}
-    engines: {node: '>= 0.6'}
-
   mime-db@1.54.0:
     resolution: {integrity: sha512-aU5EJuIN2WDemCcAp2vFBfp/m4EAhWJnUNSSw0ixs7/kXbd6Pg64EmwJkNdFhB8aWt1sH2CTXrLxo/iAGV3oPQ==}
-    engines: {node: '>= 0.6'}
-
-  mime-types@2.1.35:
-    resolution: {integrity: sha512-ZDY+bPm5zTTF+YpCrAU9nK0UgICYPT0QtT1NZWFv4s++TNkcgVaT0g6+4R2uI4MjQjzysHB1zxuWL50hzaeXiw==}
     engines: {node: '>= 0.6'}
 
   mime-types@3.0.1:
@@ -3187,15 +2990,6 @@ packages:
     resolution: {integrity: sha512-/jKZoMpw0F8GRwl4/eLROPA3cfcXtLApP0QzLmUT/HuPCZWyB7IY9ZrMeKw2O/nFIqPQB3PVM9aYm0F312AXDQ==}
     engines: {node: '>=10.5.0'}
     deprecated: Use your platform's native DOMException instead
-
-  node-fetch@2.7.0:
-    resolution: {integrity: sha512-c4FRfUm/dbcWZ7U+1Wq0AwCyFL+3nt2bEw05wfxSz+DWpWsitgmSgYmy2dQdWyKC1694ELPqMs/YzUSNozLt8A==}
-    engines: {node: 4.x || >=6.0.0}
-    peerDependencies:
-      encoding: ^0.1.0
-    peerDependenciesMeta:
-      encoding:
-        optional: true
 
   node-fetch@3.3.1:
     resolution: {integrity: sha512-cRVc/kyto/7E5shrWca1Wsea4y6tL9iYJE5FBCius3JQfb/4P4I295PfhgbJQBLTx6lATE4z+wK0rPM4VS2uow==}
@@ -3334,10 +3128,6 @@ packages:
   printable-characters@1.0.42:
     resolution: {integrity: sha512-dKp+C4iXWK4vVYZmYSd0KBH5F/h1HoZRsbJ82AVKRO3PEo8L4lBS/vLwhVtpwwuYcoIsVY+1JYKR268yn480uQ==}
 
-  process@0.11.10:
-    resolution: {integrity: sha512-cdGef/drWFoydD1JsMzuFf8100nZl+GT+yacc2bEced5f9Rjk4z+WtFUTBu9PhOi9j/jfmBPu0mMEY4wIdAF8A==}
-    engines: {node: '>= 0.6.0'}
-
   prompts@2.4.2:
     resolution: {integrity: sha512-NxNv/kLguCA7p3jE8oL2aEBsrJWgAakBpgmgK6lpPWV+WuOmY6r2/zbAVnP+T8bQlA0nzHXSJSJW0Hq7ylaD2Q==}
     engines: {node: '>= 6'}
@@ -3402,10 +3192,6 @@ packages:
     resolution: {integrity: sha512-FS+XFBNvn3GTAWq26joslQgWNoFu08F4kl0J4CgdNKADkdSGXQyTCnKteIAJy96Br6YbpEU1LSzV5dYtjMkMDg==}
     engines: {node: '>=0.10.0'}
 
-  readable-stream@4.7.0:
-    resolution: {integrity: sha512-oIGGmcpTLwPga8Bn6/Z75SVaH1z5dUut2ibSyAMVhmUggWpmDn2dapB0n7f8nwaSiRtepAsfJyfXIO5DCVAODg==}
-    engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
-
   readdirp@4.1.2:
     resolution: {integrity: sha512-GDhwkLfywWL2s6vEjyhri+eXmfH6j1L7JE27WhqLeYzoh/A3DBaYGEj2H/HFZCn/kMfim73FXxEJTw06WtxQwg==}
     engines: {node: '>= 14.18.0'}
@@ -3445,25 +3231,6 @@ packages:
   reusify@1.1.0:
     resolution: {integrity: sha512-g6QUff04oZpHs0eG5p83rFLhHeV00ug/Yf9nZM6fLeUrPguBTkTQOdpAWWspMh55TZfVQDPaN3NQJfbVRAxdIw==}
     engines: {iojs: '>=1.0.0', node: '>=0.10.0'}
-
-  rivetkit@https://pkg.pr.new/rivet-gg/rivetkit@65c3659:
-    resolution: {tarball: https://pkg.pr.new/rivet-gg/rivetkit@65c3659}
-    version: 0.9.0-rc.1
-    engines: {node: '>=22.0.0'}
-    peerDependencies:
-      '@hono/node-server': ^1.14.0
-      '@hono/node-ws': ^1.1.1
-      eventsource: ^3.0.5
-      ws: ^8.0.0
-    peerDependenciesMeta:
-      '@hono/node-server':
-        optional: true
-      '@hono/node-ws':
-        optional: true
-      eventsource:
-        optional: true
-      ws:
-        optional: true
 
   rollup-plugin-inject@3.0.2:
     resolution: {integrity: sha512-ptg9PQwzs3orn4jkgXJ74bfs5vYz1NCZlSQMBUA0wKcGp5i5pA1AO3fOUEte8enhGUC+iapTCzEWw2jEFFUO/w==}
@@ -3653,9 +3420,6 @@ packages:
     resolution: {integrity: sha512-HnLOCR3vjcY8beoNLtcjZ5/nxn2afmME6lhrDrebokqMap+XbeW8n9TXpPDOqdGK5qcI3oT0GKTW6wC7EMiVqA==}
     engines: {node: '>=12'}
 
-  string_decoder@1.3.0:
-    resolution: {integrity: sha512-hkRX8U1WjJFd8LsDJ2yQ/wWWxaopEsABU1XfkM8A+j0+85JAGppt16cr1Whg6KIbb4okU6Mql6BOj+uup/wKeA==}
-
   strip-ansi@6.0.1:
     resolution: {integrity: sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A==}
     engines: {node: '>=8'}
@@ -3739,9 +3503,6 @@ packages:
   totalist@3.0.1:
     resolution: {integrity: sha512-sf4i37nQ2LBx4m3wB74y+ubopq6W/dIzXg0FDGjsYnZHVa1Da8FH853wlL2gtUhg+xJXjfk3kUZS3BRoQeoQBQ==}
     engines: {node: '>=6'}
-
-  tr46@0.0.3:
-    resolution: {integrity: sha512-N3WMsuqV66lT30CrXNbEjx4GEwlow3v6rr4mCcv6prnfwhS01rkgyFdjPNBYd9br7LpXV1+Emh01fHnq2Gdgrw==}
 
   tr46@1.0.1:
     resolution: {integrity: sha512-dTpowEjclQ7Kgx5SdBkqRzVhERQXov8/l9Ft9dVM9fmg0W0KQSVaXX9T4i6twCPNtYiZM53lpSSUAwJbFPOHxA==}
@@ -3878,10 +3639,6 @@ packages:
   uri-js@4.4.1:
     resolution: {integrity: sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg==}
 
-  url-join@5.0.0:
-    resolution: {integrity: sha512-n2huDr9h9yzd6exQVnH/jU5mr+Pfx08LRXXZhkLLetAMESRj+anQsTAh940iMrIetKAmry9coFuZQ2jY8/p3WA==}
-    engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
-
   use-sync-external-store@1.5.0:
     resolution: {integrity: sha512-Rb46I4cGGVBmjamjphe8L/UnvJD+uPPtTkNvX5mZgqdbavhI4EbgIWJiIHXJ8bc/i9EQGPRh4DwEURJ552Do0A==}
     peerDependencies:
@@ -4011,18 +3768,12 @@ packages:
     resolution: {integrity: sha512-d2JWLCivmZYTSIoge9MsgFCZrt571BikcWGYkjC1khllbTeDlGqZ2D8vD8E/lJa8WGWbb7Plm8/XJYV7IJHZZw==}
     engines: {node: '>= 8'}
 
-  webidl-conversions@3.0.1:
-    resolution: {integrity: sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ==}
-
   webidl-conversions@4.0.2:
     resolution: {integrity: sha512-YQ+BmxuTgd6UXZW3+ICGfyqRyHXVlD5GtQr5+qjiNW7bF0cqrzX500HVXPBOvgXb5YnzDd+h0zqyv61KUD7+Sg==}
 
   webpod@0.0.2:
     resolution: {integrity: sha512-cSwwQIeg8v4i3p4ajHhwgR7N6VyxAf+KYSSsY6Pd3aETE+xEU4vbitz7qQkB0I321xnhDdgtxuiSfk5r/FVtjg==}
     hasBin: true
-
-  whatwg-url@5.0.0:
-    resolution: {integrity: sha512-saE57nupxk6v3HY35+jzBwYa0rKSy0XR8JSxZPwgLr7ys0IBzhGviA1/TUGJLmSVqs8pb9AnvICXEuOHLprYTw==}
 
   whatwg-url@7.1.0:
     resolution: {integrity: sha512-WUu7Rg1DroM7oQvGWfOiAK21n74Gg+T4elXEQYkOhtyLeWiJFoOGLXPKI/9gzIie9CtwVLm8wtw6YJdKyxSjeg==}
@@ -4951,28 +4702,29 @@ snapshots:
     dependencies:
       zod: 3.25.67
 
-  '@rivet-gg/api@25.4.2':
+  '@rivetkit/core@https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/core@38d8fcab136be6bdbd976a802f93581384c12fb2(@hono/node-server@1.14.4(hono@4.8.0))(@hono/node-ws@1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0))(eventsource@3.0.7)(ws@8.18.2)':
     dependencies:
-      form-data: 4.0.3
-      js-base64: 3.7.7
-      node-fetch: 2.7.0
-      qs: 6.14.0
-      readable-stream: 4.7.0
-      url-join: 5.0.0
-    transitivePeerDependencies:
-      - encoding
-
-  '@rivetkit/rivet@https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/rivet@65c3659(rivetkit@https://pkg.pr.new/rivet-gg/rivetkit@65c3659(@hono/node-server@1.14.4(hono@4.8.0))(@hono/node-ws@1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0))(eventsource@3.0.7)(ws@8.18.2))':
-    dependencies:
-      '@hono/node-server': 1.14.4(hono@4.8.0)
-      '@hono/node-ws': 1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0)
+      '@hono/zod-openapi': 0.19.8(hono@4.8.0)(zod@3.25.67)
+      cbor-x: 1.6.0
       hono: 4.8.0
       invariant: 2.2.4
-      rivetkit: https://pkg.pr.new/rivet-gg/rivetkit@65c3659(@hono/node-server@1.14.4(hono@4.8.0))(@hono/node-ws@1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0))(eventsource@3.0.7)(ws@8.18.2)
+      on-change: 5.0.1
+      p-retry: 6.2.1
       zod: 3.25.67
+    optionalDependencies:
+      '@hono/node-server': 1.14.4(hono@4.8.0)
+      '@hono/node-ws': 1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0)
+      eventsource: 3.0.7
+      ws: 8.18.2
+
+  '@rivetkit/worker@https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/worker@38d8fca(@hono/node-server@1.14.4(hono@4.8.0))(@hono/node-ws@1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0))(eventsource@3.0.7)(ws@8.18.2)':
+    dependencies:
+      '@rivetkit/core': https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/core@38d8fcab136be6bdbd976a802f93581384c12fb2(@hono/node-server@1.14.4(hono@4.8.0))(@hono/node-ws@1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0))(eventsource@3.0.7)(ws@8.18.2)
     transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
+      - '@hono/node-server'
+      - '@hono/node-ws'
+      - eventsource
+      - ws
 
   '@rolldown/pluginutils@1.0.0-beta.11': {}
 
@@ -5190,8 +4942,6 @@ snapshots:
       '@types/node': 22.15.32
 
   '@types/deep-eql@4.0.2': {}
-
-  '@types/deno@2.3.0': {}
 
   '@types/estree@1.0.8': {}
 
@@ -5415,10 +5165,6 @@ snapshots:
 
   '@vue/shared@3.5.17': {}
 
-  abort-controller@3.0.0:
-    dependencies:
-      event-target-shim: 5.0.1
-
   accepts@2.0.0:
     dependencies:
       mime-types: 3.0.1
@@ -5482,11 +5228,7 @@ snapshots:
 
   assertion-error@2.0.1: {}
 
-  asynckit@0.4.0: {}
-
   balanced-match@1.0.2: {}
-
-  base64-js@1.5.1: {}
 
   better-auth@1.2.10:
     dependencies:
@@ -5549,11 +5291,6 @@ snapshots:
       update-browserslist-db: 1.1.3(browserslist@4.25.0)
 
   buffer-from@1.1.2: {}
-
-  buffer@6.0.3:
-    dependencies:
-      base64-js: 1.5.1
-      ieee754: 1.2.1
 
   bundle-require@5.1.0(esbuild@0.25.5):
     dependencies:
@@ -5641,10 +5378,6 @@ snapshots:
       color-string: 1.9.1
     optional: true
 
-  combined-stream@1.0.8:
-    dependencies:
-      delayed-stream: 1.0.0
-
   commander@4.1.1: {}
 
   compare-versions@6.1.1: {}
@@ -5717,8 +5450,6 @@ snapshots:
 
   defu@6.1.4: {}
 
-  delayed-stream@1.0.0: {}
-
   denque@2.1.0: {}
 
   depd@2.0.0: {}
@@ -5776,13 +5507,6 @@ snapshots:
   es-object-atoms@1.1.1:
     dependencies:
       es-errors: 1.3.0
-
-  es-set-tostringtag@2.1.0:
-    dependencies:
-      es-errors: 1.3.0
-      get-intrinsic: 1.3.0
-      has-tostringtag: 1.0.2
-      hasown: 2.0.2
 
   esbuild@0.17.19:
     optionalDependencies:
@@ -5914,10 +5638,6 @@ snapshots:
       stream-combiner: 0.0.4
       through: 2.3.8
 
-  event-target-shim@5.0.1: {}
-
-  events@3.3.0: {}
-
   eventsource-parser@3.0.2: {}
 
   eventsource@3.0.7:
@@ -6030,14 +5750,6 @@ snapshots:
       cross-spawn: 7.0.6
       signal-exit: 4.1.0
 
-  form-data@4.0.3:
-    dependencies:
-      asynckit: 0.4.0
-      combined-stream: 1.0.8
-      es-set-tostringtag: 2.1.0
-      hasown: 2.0.2
-      mime-types: 2.1.35
-
   formdata-polyfill@4.0.10:
     dependencies:
       fetch-blob: 3.2.0
@@ -6125,10 +5837,6 @@ snapshots:
 
   has-symbols@1.1.0: {}
 
-  has-tostringtag@1.0.2:
-    dependencies:
-      has-symbols: 1.1.0
-
   hasown@2.0.2:
     dependencies:
       function-bind: 1.1.2
@@ -6211,8 +5919,6 @@ snapshots:
   jose@5.10.0: {}
 
   joycon@3.1.1: {}
-
-  js-base64@3.7.7: {}
 
   js-tokens@4.0.0: {}
 
@@ -6338,13 +6044,7 @@ snapshots:
       braces: 3.0.3
       picomatch: 2.3.1
 
-  mime-db@1.52.0: {}
-
   mime-db@1.54.0: {}
-
-  mime-types@2.1.35:
-    dependencies:
-      mime-db: 1.52.0
 
   mime-types@3.0.1:
     dependencies:
@@ -6426,10 +6126,6 @@ snapshots:
   negotiator@1.0.0: {}
 
   node-domexception@1.0.0: {}
-
-  node-fetch@2.7.0:
-    dependencies:
-      whatwg-url: 5.0.0
 
   node-fetch@3.3.1:
     dependencies:
@@ -6542,8 +6238,6 @@ snapshots:
 
   printable-characters@1.0.42: {}
 
-  process@0.11.10: {}
-
   prompts@2.4.2:
     dependencies:
       kleur: 3.0.3
@@ -6602,14 +6296,6 @@ snapshots:
 
   react@19.1.0: {}
 
-  readable-stream@4.7.0:
-    dependencies:
-      abort-controller: 3.0.0
-      buffer: 6.0.3
-      events: 3.3.0
-      process: 0.11.10
-      string_decoder: 1.3.0
-
   readdirp@4.1.2: {}
 
   redis-errors@1.2.0: {}
@@ -6635,21 +6321,6 @@ snapshots:
   retry@0.13.1: {}
 
   reusify@1.1.0: {}
-
-  rivetkit@https://pkg.pr.new/rivet-gg/rivetkit@65c3659(@hono/node-server@1.14.4(hono@4.8.0))(@hono/node-ws@1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0))(eventsource@3.0.7)(ws@8.18.2):
-    dependencies:
-      '@hono/zod-openapi': 0.19.8(hono@4.8.0)(zod@3.25.67)
-      cbor-x: 1.6.0
-      hono: 4.8.0
-      invariant: 2.2.4
-      on-change: 5.0.1
-      p-retry: 6.2.1
-      zod: 3.25.67
-    optionalDependencies:
-      '@hono/node-server': 1.14.4(hono@4.8.0)
-      '@hono/node-ws': 1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0)
-      eventsource: 3.0.7
-      ws: 8.18.2
 
   rollup-plugin-inject@3.0.2:
     dependencies:
@@ -6898,10 +6569,6 @@ snapshots:
       emoji-regex: 9.2.2
       strip-ansi: 7.1.0
 
-  string_decoder@1.3.0:
-    dependencies:
-      safe-buffer: 5.2.1
-
   strip-ansi@6.0.1:
     dependencies:
       ansi-regex: 5.0.1
@@ -6977,8 +6644,6 @@ snapshots:
       ieee754: 1.2.1
 
   totalist@3.0.1: {}
-
-  tr46@0.0.3: {}
 
   tr46@1.0.1:
     dependencies:
@@ -7145,8 +6810,6 @@ snapshots:
   uri-js@4.4.1:
     dependencies:
       punycode: 2.3.1
-
-  url-join@5.0.0: {}
 
   use-sync-external-store@1.5.0(react@19.1.0):
     dependencies:
@@ -7415,16 +7078,9 @@ snapshots:
 
   web-streams-polyfill@3.3.3: {}
 
-  webidl-conversions@3.0.1: {}
-
   webidl-conversions@4.0.2: {}
 
   webpod@0.0.2: {}
-
-  whatwg-url@5.0.0:
-    dependencies:
-      tr46: 0.0.3
-      webidl-conversions: 3.0.1
 
   whatwg-url@7.1.0:
     dependencies:

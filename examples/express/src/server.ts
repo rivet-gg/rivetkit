@@ -1,11 +1,8 @@
 import { registry } from "./registry";
 import express from "express";
-import { createMemoryDriver } from "@rivetkit/memory";
 
 // Start RivetKit
-const { client, handler } = registry.run({
-	driver: createMemoryDriver(),
-});
+const { client, handler } = registry.run();
 
 // Setup router
 const app = express();
