@@ -1,16 +1,16 @@
-import type { AnyActorDefinition } from  "@/actor/definition";
-import type { Encoding } from  "@/actor/protocol/serde";
+import type { AnyActorDefinition } from "@/actor/definition";
+import type { Encoding } from "@/actor/protocol/serde";
+import { assertUnreachable } from "@/actor/utils";
 import type { ActorQuery } from "@/manager/protocol/query";
-import { type ActorDefinitionActions } from  "./actor-common";
-import { type ActorConn, ActorConnRaw } from  "./actor-conn";
+import invariant from "invariant";
+import type { ActorDefinitionActions } from "./actor-common";
+import { type ActorConn, ActorConnRaw } from "./actor-conn";
 import {
-	ClientDriver,
 	CREATE_ACTOR_CONN_PROXY,
+	type ClientDriver,
 	type ClientRaw,
 } from "./client";
 import { logger } from "./log";
-import invariant from "invariant";
-import { assertUnreachable } from  "@/actor/utils";
 
 /**
  * Provides underlying functions for stateless {@link ActorHandle} for action calls.

@@ -1,20 +1,20 @@
-import { ClientDriver } from "@/client/client";
-import { type Encoding } from  "@/actor/protocol/serde";
-import type * as wsToServer from  "@/actor/protocol/message/to-server";
+import type * as wsToServer from "@/actor/protocol/message/to-server";
+import type { Encoding } from "@/actor/protocol/serde";
+import { assertUnreachable } from "@/actor/utils";
+import type { ClientDriver } from "@/client/client";
+import { ActorError as ClientActorError } from "@/client/errors";
+import type { Transport } from "@/client/mod";
+import { importWebSocket } from "@/common/websocket";
 import type { ActorQuery } from "@/manager/protocol/query";
-import { Context as HonoContext } from "hono";
-import type { EventSource } from "eventsource";
-import { Transport } from "@/client/mod";
-import { logger } from "./log";
-import {
+import type {
 	TestInlineDriverCallRequest,
 	TestInlineDriverCallResponse,
 } from "@/manager/router";
-import { assertUnreachable } from  "@/actor/utils";
 import * as cbor from "cbor-x";
-import { ActorError as ClientActorError } from "@/client/errors";
+import type { EventSource } from "eventsource";
+import type { Context as HonoContext } from "hono";
 import type { WebSocket } from "ws";
-import { importWebSocket } from "@/common/websocket";
+import { logger } from "./log";
 
 /**
  * Creates a client driver used for testing the inline client driver. This will send a request to the HTTP server which will then internally call the internal client and return the response.
@@ -30,7 +30,7 @@ export function createTestInlineClientDriver(
 			encoding: Encoding,
 			params: unknown,
 			name: string,
-			args: Args
+			args: Args,
 		): Promise<Response> => {
 			return makeInlineRequest<Response>(
 				endpoint,

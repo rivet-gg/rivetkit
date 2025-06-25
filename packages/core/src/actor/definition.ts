@@ -1,7 +1,7 @@
-import type { ActorConfig, Actions } from "./config";
-import { ActorInstance } from "./instance";
-import type { ActorContext } from "./context";
 import type { ActionContext } from "./action";
+import type { Actions, ActorConfig } from "./config";
+import type { ActorContext } from "./context";
+import { ActorInstance } from "./instance";
 
 export type AnyActorDefinition = ActorDefinition<
 	any,

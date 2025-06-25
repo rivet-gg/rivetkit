@@ -12,4 +12,4 @@ export function createRivetManagerDriver(): DriverConfig {
 	};
 }
 
-export { createActorHandler } from  "./actor";
+export { createActorHandler } from "./actor";

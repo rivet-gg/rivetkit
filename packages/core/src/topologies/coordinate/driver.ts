@@ -1,4 +1,4 @@
-import type { ActorKey } from "@/common/utils";
+import type { ActorKey } from "@/actor/mod";
 
 export type NodeMessageCallback = (message: string) => void;
 

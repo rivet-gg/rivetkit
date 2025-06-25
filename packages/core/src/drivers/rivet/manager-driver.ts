@@ -1,32 +1,31 @@
-import { assertUnreachable } from "@/common/utils";
-import { ActorAlreadyExists, InternalError } from  "@/actor/errors";
+import type { ConnRoutingHandler } from "@/actor/conn-routing-handler";
+import { ActorAlreadyExists, InternalError } from "@/actor/errors";
 import type {
-	ManagerDriver,
-	GetForIdInput,
-	GetWithKeyInput,
 	ActorOutput,
-	GetOrCreateWithKeyInput,
 	CreateInput,
+	GetForIdInput,
+	GetOrCreateWithKeyInput,
+	GetWithKeyInput,
+	ManagerDriver,
 } from "@/driver-helpers/mod";
-import { logger } from "./log";
-import {
-	RivetActor,
-	type RivetClientConfig,
-	rivetRequest,
-} from "./rivet-client";
-import { convertKeyToRivetTags } from "./util";
+import type { RegistryConfig } from "@/registry/mod";
+import { getEnvUniversal } from "@/utils";
+import type { Hono } from "hono";
+import invariant from "invariant";
 import {
 	flushCache,
 	getActorMeta,
 	getActorMetaWithKey,
 	populateCache,
-} from  "./actor-meta";
-import invariant from "invariant";
-import { getEnvUniversal } from "@/utils";
-import { ConnRoutingHandler } from  "@/actor/conn-routing-handler";
+} from "./actor-meta";
 import { createRivetConnRoutingHandler } from "./conn-routing-handler";
-import { Hono } from "hono";
-import { Registry, RegistryConfig } from "@/registry/mod";
+import { logger } from "./log";
+import {
+	type RivetActor,
+	type RivetClientConfig,
+	rivetRequest,
+} from "./rivet-client";
+import { convertKeyToRivetTags } from "./util";
 
 export interface ActorState {
 	key: string[];
@@ -48,9 +47,7 @@ export class RivetManagerDriver implements ManagerDriver {
 		this.connRoutingHandler = createRivetConnRoutingHandler(clientConfig);
 	}
 
-	async getForId({
-		actorId,
-	}: GetForIdInput): Promise<ActorOutput | undefined> {
+	async getForId({ actorId }: GetForIdInput): Promise<ActorOutput | undefined> {
 		try {
 			const meta = await getActorMeta(this.#clientConfig, actorId);
 			if (!meta) return undefined;
@@ -104,7 +101,7 @@ export class RivetManagerDriver implements ManagerDriver {
 		}
 
 		// Create the actor request
-		let actorLogLevel: string | undefined =
+		const actorLogLevel: string | undefined =
 			getEnvUniversal("_ACTOR_LOG_LEVEL");
 
 		const createRequest = {

@@ -1,12 +1,12 @@
-import * as errors from  "@/actor/errors";
-import type { Context as HonoContext } from "hono";
-import type { ActorQuery } from "./protocol/query";
-import type { AuthIntent } from  "@/actor/config";
-import type { AnyActorDefinition } from  "@/actor/definition";
+import type { AuthIntent } from "@/actor/config";
+import type { AnyActorDefinition } from "@/actor/definition";
+import * as errors from "@/actor/errors";
 import type { RegistryConfig } from "@/registry/config";
-import { ManagerDriver } from "./driver";
 import { stringifyError } from "@/utils";
+import type { Context as HonoContext } from "hono";
+import type { ManagerDriver } from "./driver";
 import { logger } from "./log";
+import type { ActorQuery } from "./protocol/query";
 
 /**
  * Get authentication intents from a actor query

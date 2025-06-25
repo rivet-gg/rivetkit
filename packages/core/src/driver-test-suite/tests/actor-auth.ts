@@ -1,7 +1,7 @@
-import { describe, test, expect } from "vitest";
+import type { ActorError } from "@/client/errors";
+import { describe, expect, test } from "vitest";
 import type { DriverTestConfig } from "../mod";
 import { setupDriverTest } from "../utils";
-import { ActorError } from "@/client/errors";
 
 export function runActorAuthTests(driverTestConfig: DriverTestConfig) {
 	describe("Actor Authentication Tests", () => {
@@ -21,7 +21,10 @@ export function runActorAuthTests(driverTestConfig: DriverTestConfig) {
 					expect(authData).toBeUndefined();
 				} else {
 					// HTTP clients should have auth data
-					expect(authData).toEqual({ userId: "user123", token: "valid-api-key" });
+					expect(authData).toEqual({
+						userId: "user123",
+						token: "valid-api-key",
+					});
 				}
 
 				// Should be able to call actions
@@ -183,7 +186,9 @@ export function runActorAuthTests(driverTestConfig: DriverTestConfig) {
 					// HTTP clients should enforce authentication
 					try {
 						await instance.getValue();
-						expect.fail("Expected access to be denied for actor without onAuth");
+						expect.fail(
+							"Expected access to be denied for actor without onAuth",
+						);
 					} catch (error) {
 						expect((error as ActorError).code).toBe("forbidden");
 					}

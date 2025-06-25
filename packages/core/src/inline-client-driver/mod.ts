@@ -1,37 +1,35 @@
-import * as errors from  "@/actor/errors";
-import * as protoHttpAction from  "@/actor/protocol/http/action";
-import { logger } from "./log";
-import type { EventSource } from "eventsource";
-import type * as wsToServer from  "@/actor/protocol/message/to-server";
-import { type Encoding, serialize } from  "@/actor/protocol/serde";
+import type { ConnRoutingHandler } from "@/actor/conn-routing-handler";
+import * as errors from "@/actor/errors";
+import type {
+	ActionRequest,
+	ActionResponse,
+} from "@/actor/protocol/http/action";
+import type * as wsToServer from "@/actor/protocol/message/to-server";
+import type { Encoding } from "@/actor/protocol/serde";
 import {
-	ConnectWebSocketOutput,
-	HEADER_CONN_PARAMS,
-	HEADER_ENCODING,
 	HEADER_CONN_ID,
+	HEADER_CONN_PARAMS,
 	HEADER_CONN_TOKEN,
-	type ConnectionHandlers,
+	HEADER_ENCODING,
 	HEADER_EXPOSE_INTERNAL_ERROR,
-} from  "@/actor/router-endpoints";
-import type { SSEStreamingApi } from "hono/streaming";
-import { HonoRequest, type Context as HonoContext, type Next } from "hono";
-import invariant from "invariant";
-import { ClientDriver } from "@/client/client";
-import { ManagerDriver } from "@/manager/driver";
-import { ActorQuery } from "@/manager/protocol/query";
-import { ConnRoutingHandler } from  "@/actor/conn-routing-handler";
-import { sendHttpRequest, serializeWithEncoding } from "@/client/utils";
-import { ActionRequest, ActionResponse } from  "@/actor/protocol/http/action";
-import { assertUnreachable } from  "@/actor/utils";
-import { FakeWebSocket } from "./fake-websocket";
-import { FakeEventSource } from "./fake-event-source";
-import { importWebSocket } from "@/common/websocket";
-import { importEventSource } from "@/common/eventsource";
-import onChange from "on-change";
-import { httpUserAgent } from "@/utils";
+} from "@/actor/router-endpoints";
+import { assertUnreachable } from "@/actor/utils";
+import type { ClientDriver } from "@/client/client";
 import { ActorError as ClientActorError } from "@/client/errors";
+import { sendHttpRequest } from "@/client/utils";
+import { importEventSource } from "@/common/eventsource";
 import { deconstructError } from "@/common/utils";
+import type { ManagerDriver } from "@/manager/driver";
+import type { ActorQuery } from "@/manager/protocol/query";
+import { httpUserAgent } from "@/utils";
+import type { EventSource } from "eventsource";
+import type { Context as HonoContext } from "hono";
+import invariant from "invariant";
+import onChange from "on-change";
 import type { WebSocket } from "ws";
+import { FakeEventSource } from "./fake-event-source";
+import { FakeWebSocket } from "./fake-websocket";
+import { logger } from "./log";
 
 /**
  * Client driver that calls the manager driver inline.

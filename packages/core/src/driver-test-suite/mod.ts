@@ -1,28 +1,28 @@
-import { serve as honoServe } from "@hono/node-server";
-import { runActorDriverTests } from  "./tests/actor-driver";
-import { runManagerDriverTests } from "./tests/manager-driver";
-import { describe } from "vitest";
+import type { Transport } from "@/client/mod";
 import {
 	CoordinateTopology,
+	type DriverConfig,
+	type Registry,
+	type RunConfig,
 	StandaloneTopology,
-	Registry,
-	RunConfig,
-	DriverConfig,
 } from "@/mod";
-import { createNodeWebSocket, type NodeWebSocket } from "@hono/node-ws";
-import invariant from "invariant";
-import { bundleRequire } from "bundle-require";
-import { getPort } from "@/test/mod";
-import { Transport } from "@/client/mod";
-import { runActorConnTests } from  "./tests/actor-conn";
-import { runActorHandleTests } from  "./tests/actor-handle";
-import { runActionFeaturesTests } from "./tests/action-features";
-import { runActorVarsTests } from  "./tests/actor-vars";
-import { runActorConnStateTests } from  "./tests/actor-conn-state";
-import { runActorMetadataTests } from  "./tests/actor-metadata";
-import { runActorErrorHandlingTests } from  "./tests/actor-error-handling";
-import { runActorAuthTests } from  "./tests/actor-auth";
 import { RunConfigSchema } from "@/registry/run-config";
+import { getPort } from "@/test/mod";
+import { serve as honoServe } from "@hono/node-server";
+import { type NodeWebSocket, createNodeWebSocket } from "@hono/node-ws";
+import { bundleRequire } from "bundle-require";
+import invariant from "invariant";
+import { describe } from "vitest";
+import { runActionFeaturesTests } from "./tests/action-features";
+import { runActorAuthTests } from "./tests/actor-auth";
+import { runActorConnTests } from "./tests/actor-conn";
+import { runActorConnStateTests } from "./tests/actor-conn-state";
+import { runActorDriverTests } from "./tests/actor-driver";
+import { runActorErrorHandlingTests } from "./tests/actor-error-handling";
+import { runActorHandleTests } from "./tests/actor-handle";
+import { runActorMetadataTests } from "./tests/actor-metadata";
+import { runActorVarsTests } from "./tests/actor-vars";
+import { runManagerDriverTests } from "./tests/manager-driver";
 
 export interface DriverTestConfig {
 	/** Deploys an registry and returns the connection endpoint. */

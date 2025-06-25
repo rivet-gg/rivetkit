@@ -1,40 +1,40 @@
-import type { AnyActorInstance } from  "@/actor/instance";
-import { Hono } from "hono";
+import { ActionContext } from "@/actor/action";
+import type { ConnRoutingHandler } from "@/actor/conn-routing-handler";
 import {
 	type AnyConn,
 	generateConnId,
 	generateConnToken,
-} from  "@/actor/connection";
-import { logger } from "./log";
-import * as errors from  "@/actor/errors";
+} from "@/actor/connection";
+import * as errors from "@/actor/errors";
+import type { AnyActorInstance } from "@/actor/instance";
+import type {
+	ActionOpts,
+	ActionOutput,
+	ConnectSseOpts,
+	ConnectSseOutput,
+	ConnectWebSocketOpts,
+	ConnectWebSocketOutput,
+	ConnectionHandlers,
+	ConnsMessageOpts,
+} from "@/actor/router-endpoints";
+import type { ClientDriver } from "@/client/client";
+import { createInlineClientDriver } from "@/inline-client-driver/mod";
+import { createManagerRouter } from "@/manager/router";
+import type { RunConfig } from "@/mod";
+import type { RegistryConfig } from "@/registry/config";
+import { Hono } from "hono";
+import invariant from "invariant";
 import {
 	CONN_DRIVER_GENERIC_HTTP,
 	CONN_DRIVER_GENERIC_SSE,
 	CONN_DRIVER_GENERIC_WEBSOCKET,
-	createGenericConnDrivers,
 	GenericConnGlobalState,
 	type GenericHttpDriverState,
 	type GenericSseDriverState,
 	type GenericWebSocketDriverState,
+	createGenericConnDrivers,
 } from "../common/generic-conn-driver";
-import { ActionContext } from  "@/actor/action";
-import type { RegistryConfig } from "@/registry/config";
-import { createManagerRouter } from "@/manager/router";
-import type {
-	ConnectWebSocketOpts,
-	ConnectWebSocketOutput,
-	ConnectSseOpts,
-	ConnectSseOutput,
-	ConnsMessageOpts,
-	ActionOpts,
-	ActionOutput,
-	ConnectionHandlers,
-} from  "@/actor/router-endpoints";
-import { createInlineClientDriver } from "@/inline-client-driver/mod";
-import invariant from "invariant";
-import { ClientDriver } from "@/client/client";
-import { ConnRoutingHandler } from  "@/actor/conn-routing-handler";
-import { DriverConfig, RunConfig } from "@/mod";
+import { logger } from "./log";
 
 class ActorHandler {
 	/** Will be undefined if not yet loaded. */
@@ -252,10 +252,7 @@ export class StandaloneTopology {
 					const { actor } = await this.#getActor(opts.actorId);
 
 					// Create conn
-					const connState = await actor.prepareConn(
-						opts.params,
-						opts.req?.raw,
-					);
+					const connState = await actor.prepareConn(opts.params, opts.req?.raw);
 					conn = await actor.createConn(
 						generateConnId(),
 						generateConnToken(),

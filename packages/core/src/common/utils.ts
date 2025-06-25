@@ -1,22 +1,7 @@
-import { z } from "zod";
-import type { ContentfulStatusCode } from "hono/utils/http-status";
-import * as errors from  "@/actor/errors";
-import type { Logger } from "./log";
+import * as errors from "@/actor/errors";
 import { getEnvUniversal } from "@/utils";
-
-// Maximum size of a key component in bytes
-// Set to 128 bytes to allow for separators and escape characters in the full key
-// Cloudflare's maximum key size is 512 bytes, so we need to be significantly smaller
-export const MAX_KEY_SIZE = 128;
-
-export const ActorKeySchema = z.array(z.string().max(MAX_KEY_SIZE));
-
-export type ActorKey = z.infer<typeof ActorKeySchema>;
-
-export interface RivetEnvironment {
-	project?: string;
-	environment?: string;
-}
+import type { ContentfulStatusCode } from "hono/utils/http-status";
+import type { Logger } from "./log";
 
 export function assertUnreachable(x: never): never {
 	throw new Error(`Unreachable case: ${x}`);

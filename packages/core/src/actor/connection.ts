@@ -1,11 +1,11 @@
-import type { ActorInstance } from "./instance";
-import * as errors from "./errors";
-import { generateSecureToken } from "./utils";
-import { CachedSerializer } from "./protocol/serde";
+import type * as messageToClient from "@/actor/protocol/message/to-client";
+import type * as wsToClient from "@/actor/protocol/message/to-client";
 import type { ConnDriver } from "./driver";
-import type * as messageToClient from  "@/actor/protocol/message/to-client";
+import * as errors from "./errors";
+import type { ActorInstance } from "./instance";
 import type { PersistedConn } from "./persisted";
-import type * as wsToClient from  "@/actor/protocol/message/to-client";
+import { CachedSerializer } from "./protocol/serde";
+import { generateSecureToken } from "./utils";
 
 export function generateConnId(): string {
 	return crypto.randomUUID();
@@ -157,11 +157,6 @@ export class Conn<S, CP, CS, V, I, AD, DB> {
 	 * @param reason - The reason for disconnection.
 	 */
 	public async disconnect(reason?: string) {
-		await this.#driver.disconnect(
-			this.#actor,
-			this,
-			this.__persist.ds,
-			reason,
-		);
+		await this.#driver.disconnect(this.#actor, this, this.__persist.ds, reason);
 	}
 }

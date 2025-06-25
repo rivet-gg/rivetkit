@@ -43,12 +43,12 @@ export const connStateActor = actor({
 	},
 	actions: {
 		// Action to increment the connection's counter
-		incrementConnCounter: (c, amount: number = 1) => {
+		incrementConnCounter: (c, amount = 1) => {
 			c.conn.state.counter += amount;
 		},
 
 		// Action to increment the shared counter
-		incrementSharedCounter: (c, amount: number = 1) => {
+		incrementSharedCounter: (c, amount = 1) => {
 			c.state.sharedCounter += amount;
 			return c.state.sharedCounter;
 		},
@@ -70,13 +70,18 @@ export const connStateActor = actor({
 
 		// Get all active connection states
 		getAllConnectionStates: (c) => {
-			return c.conns.entries().map(([id, conn]) => ({ id, ...conn.state })).toArray();
+			return c.conns
+				.entries()
+				.map(([id, conn]) => ({ id, ...conn.state }))
+				.toArray();
 		},
 
 		// Send message to a specific connection with matching ID
 		sendToConnection: (c, targetId: string, message: string) => {
 			if (c.conns.has(targetId)) {
-				c.conns.get(targetId)!.send("directMessage", { from: c.conn.id, message });
+				c.conns
+					.get(targetId)!
+					.send("directMessage", { from: c.conn.id, message });
 				return true;
 			} else {
 				return false;
@@ -90,8 +95,7 @@ export const connStateActor = actor({
 		) => {
 			if (updates.username) c.conn.state.username = updates.username;
 			if (updates.role) c.conn.state.role = updates.role;
-		return c.conn.state;
+			return c.conn.state;
 		},
 	},
 });
-

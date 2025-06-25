@@ -1,35 +1,32 @@
-import { Hono, type Context as HonoContext } from "hono";
-import { logger } from "./log";
-import { cors } from "hono/cors";
+import { EncodingSchema } from "@/actor/protocol/serde";
+import {
+	type ActionOpts,
+	type ActionOutput,
+	type ConnectSseOpts,
+	type ConnectSseOutput,
+	type ConnectWebSocketOpts,
+	type ConnectWebSocketOutput,
+	type ConnectionHandlers,
+	type ConnsMessageOpts,
+	HEADER_AUTH_DATA,
+	HEADER_CONN_ID,
+	HEADER_CONN_PARAMS,
+	HEADER_CONN_TOKEN,
+	HEADER_ENCODING,
+	handleAction,
+	handleConnectionMessage,
+	handleSseConnect,
+	handleWebSocketConnect,
+} from "@/actor/router-endpoints";
 import {
 	handleRouteError,
 	handleRouteNotFound,
 	loggerMiddleware,
 } from "@/common/router";
 import type { RegistryConfig } from "@/registry/config";
-import {
-	type ConnectWebSocketOpts,
-	type ConnectWebSocketOutput,
-	type ConnectSseOpts,
-	type ConnectSseOutput,
-	type ActionOpts,
-	type ActionOutput,
-	type ConnsMessageOpts,
-	type ConnectionHandlers,
-	handleWebSocketConnect,
-	handleSseConnect,
-	handleAction,
-	handleConnectionMessage,
-	HEADER_CONN_TOKEN,
-	HEADER_CONN_ID,
-	ALL_PUBLIC_HEADERS,
-	HEADER_CONN_PARAMS,
-	HEADER_AUTH_DATA,
-	HEADER_ENCODING,
-} from  "@/actor/router-endpoints";
-import invariant from "invariant";
-import { EncodingSchema } from  "@/actor/protocol/serde";
-import { DriverConfig, RunConfig } from "@/registry/run-config";
+import type { RunConfig } from "@/registry/run-config";
+import { Hono, type Context as HonoContext } from "hono";
+import { logger } from "./log";
 
 export type {
 	ConnectWebSocketOpts,

@@ -1,30 +1,29 @@
-import { Node } from "./node/mod";
-import type { ActorPeer } from  "./actor-peer";
-import * as errors from  "@/actor/errors";
 import * as events from "node:events";
-import { publishMessageToLeader } from "./node/message";
-import type { RelayConn } from "./conn/mod";
-import { Hono } from "hono";
-import { handleRouteError, handleRouteNotFound } from "@/common/router";
-import type { RegistryConfig } from "@/registry/config";
-import { createManagerRouter } from "@/manager/router";
+import type { ConnRoutingHandler } from "@/actor/conn-routing-handler";
+import * as errors from "@/actor/errors";
 import type {
-	ConnectWebSocketOpts,
-	ConnectSseOpts,
 	ActionOpts,
-	ConnsMessageOpts,
-	ConnectWebSocketOutput,
-	ConnectSseOutput,
 	ActionOutput,
+	ConnectSseOpts,
+	ConnectSseOutput,
+	ConnectWebSocketOpts,
+	ConnectWebSocketOutput,
 	ConnectionHandlers,
-} from  "@/actor/router-endpoints";
-import invariant from "invariant";
+	ConnsMessageOpts,
+} from "@/actor/router-endpoints";
+import type { ClientDriver } from "@/client/client";
 import { createInlineClientDriver } from "@/inline-client-driver/mod";
-import { serveWebSocket } from "./router/websocket";
+import { createManagerRouter } from "@/manager/router";
+import type { RegistryConfig } from "@/registry/config";
+import type { RunConfig } from "@/registry/run-config";
+import { Hono } from "hono";
+import invariant from "invariant";
+import type { ActorPeer } from "./actor-peer";
+import type { RelayConn } from "./conn/mod";
+import { publishMessageToLeader } from "./node/message";
+import { Node } from "./node/mod";
 import { serveSse } from "./router/sse";
-import { ClientDriver } from "@/client/client";
-import { ConnRoutingHandler } from  "@/actor/conn-routing-handler";
-import { DriverConfig, RunConfig } from "@/registry/run-config";
+import { serveWebSocket } from "./router/websocket";
 
 export interface GlobalState {
 	nodeId: string;

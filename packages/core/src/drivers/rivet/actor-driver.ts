@@ -1,5 +1,5 @@
-import { ActorContext } from "@rivet-gg/actor-core";
 import type { ActorDriver, AnyActorInstance } from "@/driver-helpers/mod";
+import type { ActorContext } from "@rivet-gg/actor-core";
 
 export interface ActorDriverContext {
 	ctx: ActorContext;

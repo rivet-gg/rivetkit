@@ -1,7 +1,7 @@
 import type { UpgradeWebSocket } from "@/utils";
+import type { Context as HonoContext } from "hono";
 import type { Encoding } from "./protocol/serde";
 import type { ConnectionHandlers as ConnHandlers } from "./router-endpoints";
-import type { Context as HonoContext } from "hono";
 
 /**
  * Deterines how requests to actors should be routed.
@@ -37,7 +37,7 @@ export type SendRequestHandler = (
 export type OpenWebSocketHandler = (
 	actorId: string,
 	encodingKind: Encoding,
-	params: unknown
+	params: unknown,
 ) => Promise<WebSocket>;
 
 export type ProxyRequestHandler = (

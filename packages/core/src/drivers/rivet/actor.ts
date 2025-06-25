@@ -1,19 +1,19 @@
 import { setupLogging } from "@/common/log";
-import { logger } from "./log";
-import { deserializeKeyFromTag, type RivetHandler } from "./util";
-import { PartitionTopologyActor } from "@/topologies/partition/mod";
-import { RivetActorDriver } from  "./actor-driver";
-import invariant from "invariant";
-import type { ActorContext } from "@rivet-gg/actor-core";
-import { Registry, RunConfig } from "@/registry/mod";
-import { type Config, ConfigSchema, type InputConfig } from "./config";
 import { stringifyError } from "@/common/utils";
+import type { Registry, RunConfig } from "@/registry/mod";
+import { PartitionTopologyActor } from "@/topologies/partition/mod";
+import type { ActorContext } from "@rivet-gg/actor-core";
+import invariant from "invariant";
+import { RivetActorDriver } from "./actor-driver";
+import { type Config, ConfigSchema, type InputConfig } from "./config";
+import { logger } from "./log";
 import { RivetManagerDriver } from "./manager-driver";
-import { getRivetClientConfig, RivetClientConfig } from "./rivet-client";
+import { type RivetClientConfig, getRivetClientConfig } from "./rivet-client";
+import { type RivetHandler, deserializeKeyFromTag } from "./util";
 
 export function createActorHandler(
 	registry: Registry<any>,
-	inputConfig?: InputConfig 
+	inputConfig?: InputConfig,
 ): RivetHandler {
 	let config: Config;
 	try {
@@ -122,10 +122,7 @@ async function startActor(
 	//};
 
 	// Create actor topology
-	const actorTopology = new PartitionTopologyActor(
-		registry.config,
-		runConfig,
-	);
+	const actorTopology = new PartitionTopologyActor(registry.config, runConfig);
 
 	// Set a catch-all route
 	const router = actorTopology.router;

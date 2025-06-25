@@ -1,4 +1,4 @@
-import type { ActorKey } from "@/common/utils";
+import type { ActorKey } from "@/actor/mod";
 
 export interface ActorState {
 	id: string;
@@ -51,9 +51,7 @@ export class MemoryGlobalState {
 		}
 	}
 
-	findActor(
-		filter: (actor: ActorState) => boolean,
-	): ActorState | undefined {
+	findActor(filter: (actor: ActorState) => boolean): ActorState | undefined {
 		for (const actor of this.#actors.values()) {
 			if (filter(actor)) {
 				return actor;

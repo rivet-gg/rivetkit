@@ -1,13 +1,13 @@
-import type { AnyActorInstance } from  "@/actor/instance";
-import { AnyConn, Conn } from  "@/actor/connection";
-import { logger } from "./log";
-import { CachedSerializer, Encoding } from  "@/actor/protocol/serde";
-import { ConnDriver } from  "@/actor/driver";
-import * as messageToClient from  "@/actor/protocol/message/to-client";
-import { encodeDataToString } from  "@/actor/protocol/serde";
-import { WSContext } from "hono/ws";
-import { SSEStreamingApi } from "hono/streaming";
+import type { AnyConn } from "@/actor/connection";
+import type { ConnDriver } from "@/actor/driver";
+import type { AnyActorInstance } from "@/actor/instance";
+import type * as messageToClient from "@/actor/protocol/message/to-client";
+import type { CachedSerializer, Encoding } from "@/actor/protocol/serde";
+import { encodeDataToString } from "@/actor/protocol/serde";
+import type { SSEStreamingApi } from "hono/streaming";
+import type { WSContext } from "hono/ws";
 import type { WebSocket } from "ws";
+import { logger } from "./log";
 
 // This state is different than `PersistedConn` state since the connection-specific state is persisted & must be serializable. This is also part of the connection driver, not part of the core actor.
 //

@@ -1,11 +1,11 @@
-import { z } from "zod";
-import type { Hono } from "hono";
-import type { CoordinateDriver } from "@/topologies/coordinate/driver";
-import type { ManagerDriver } from "@/manager/driver";
-import type { ActorDriver } from  "@/actor/driver";
-import type { UpgradeWebSocket } from "@/utils";
-import type { cors } from "hono/cors";
+import type { ActorDriver } from "@/actor/driver";
 import { createMemoryDriver } from "@/drivers/memory/mod";
+import type { ManagerDriver } from "@/manager/driver";
+import type { CoordinateDriver } from "@/topologies/coordinate/driver";
+import type { UpgradeWebSocket } from "@/utils";
+import type { Hono } from "hono";
+import type { cors } from "hono/cors";
+import { z } from "zod";
 
 type CorsOptions = NonNullable<Parameters<typeof cors>[0]>;
 
@@ -74,7 +74,8 @@ export const RunConfigSchema = z
 		actorPeer: ActorPeerConfigSchema.optional().default({}),
 
 		// inspector: InspectorConfigSchema.optional().default({ enabled: false }),
-	}).default({});
+	})
+	.default({});
 
 export type RunConfig = z.infer<typeof RunConfigSchema>;
 export type RunConfigInput = z.input<typeof RunConfigSchema>;

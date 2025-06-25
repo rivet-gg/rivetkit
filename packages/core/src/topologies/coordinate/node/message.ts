@@ -1,10 +1,10 @@
+import type { RegistryConfig } from "@/registry/config";
+import type { RunConfig } from "@/registry/run-config";
 import type { GlobalState } from "@/topologies/coordinate/topology";
-import { logger } from "../log";
 import pRetry, { AbortError } from "p-retry";
 import type { CoordinateDriver } from "../driver";
+import { logger } from "../log";
 import type { NodeMessage } from "./protocol";
-import { RegistryConfig } from "@/registry/config";
-import { DriverConfig, RunConfig } from "@/registry/run-config";
 
 /**
  * Publishes a message and waits for an ack. If no ack is received, then retries accordingly.

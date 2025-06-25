@@ -1,4 +1,13 @@
-import { Client, ClientDriver, createClientWithDriver } from "@/client/client";
+import {
+	type Client,
+	type ClientDriver,
+	createClientWithDriver,
+} from "@/client/client";
+import { PartitionTopologyActor, PartitionTopologyManager } from "@/mod";
+import { StandaloneTopology } from "@/topologies/standalone/mod";
+import { assertUnreachable } from "@/utils";
+import type { Hono } from "hono";
+import invariant from "invariant";
 import {
 	type RegistryActors,
 	type RegistryConfig,
@@ -6,17 +15,11 @@ import {
 	RegistryConfigSchema,
 } from "./config";
 import {
-	RunConfigSchema,
 	type DriverConfig,
 	type RunConfig,
 	type RunConfigInput,
+	RunConfigSchema,
 } from "./run-config";
-import { StandaloneTopology } from "@/topologies/standalone/mod";
-import invariant from "invariant";
-import { Hono } from "hono";
-import { assertUnreachable } from "@/utils";
-import { PartitionTopologyManager, PartitionTopologyActor } from "@/mod";
-import { logger } from "./log";
 import { crossPlatformServe } from "./serve";
 
 interface ServerOutput<A extends Registry<any>> {

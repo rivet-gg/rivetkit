@@ -1,43 +1,42 @@
-import { Hono, HonoRequest } from "hono";
-import { createActorRouter } from  "@/topologies/partition/actor-router";
-import type { AnyActorInstance } from  "@/actor/instance";
-import * as errors from  "@/actor/errors";
+import { ActionContext } from "@/actor/action";
 import {
 	type AnyConn,
 	generateConnId,
 	generateConnToken,
-} from  "@/actor/connection";
-import { logger } from "./log";
-import { ActionContext } from  "@/actor/action";
+} from "@/actor/connection";
+import type { ConnDriver } from "@/actor/driver";
+import * as errors from "@/actor/errors";
+import type { AnyActorInstance } from "@/actor/instance";
+import type {
+	ActionOpts,
+	ActionOutput,
+	ConnectSseOpts,
+	ConnectSseOutput,
+	ConnectWebSocketOpts,
+	ConnectWebSocketOutput,
+	ConnsMessageOpts,
+} from "@/actor/router-endpoints";
+import type { ClientDriver } from "@/client/client";
+import type { ActorKey } from "@/actor/mod";
+import { createInlineClientDriver } from "@/inline-client-driver/mod";
+import { createManagerRouter } from "@/manager/router";
+import type { RegistryConfig } from "@/registry/config";
+import type { RunConfig } from "@/registry/run-config";
+import { createActorRouter } from "@/topologies/partition/actor-router";
+import type { Hono } from "hono";
+import invariant from "invariant";
+import type { WebSocket } from "ws";
 import {
 	CONN_DRIVER_GENERIC_HTTP,
 	CONN_DRIVER_GENERIC_SSE,
 	CONN_DRIVER_GENERIC_WEBSOCKET,
-	createGenericConnDrivers,
 	GenericConnGlobalState,
 	type GenericHttpDriverState,
 	type GenericSseDriverState,
 	type GenericWebSocketDriverState,
+	createGenericConnDrivers,
 } from "../common/generic-conn-driver";
-import type { ConnDriver } from  "@/actor/driver";
-import type { ActorKey } from "@/common/utils";
-import type { RegistryConfig } from "@/registry/config";
-import { createManagerRouter } from "@/manager/router";
-import type {
-	ConnectWebSocketOpts,
-	ConnectSseOpts,
-	ActionOpts,
-	ConnsMessageOpts,
-	ConnectWebSocketOutput,
-	ConnectSseOutput,
-	ActionOutput,
-} from  "@/actor/router-endpoints";
-import { ClientDriver } from "@/client/client";
-import { createInlineClientDriver } from "@/inline-client-driver/mod";
-import { ConnRoutingHandler } from  "@/actor/conn-routing-handler";
-import invariant from "invariant";
-import type { WebSocket } from "ws";
-import type { RunConfig } from "@/registry/run-config";
+import { logger } from "./log";
 
 export type SendRequestHandler = (
 	actorRequest: Request,
@@ -64,7 +63,7 @@ export class PartitionTopologyManager {
 		invariant(managerDriver, "missing manager driver");
 		this.clientDriver = createInlineClientDriver(managerDriver, routingHandler);
 
-		const {router}= createManagerRouter(
+		const { router } = createManagerRouter(
 			registryConfig,
 			runConfig,
 			this.clientDriver,
@@ -129,8 +128,7 @@ export class PartitionTopologyActor {
 		// TODO: Store this actor router globally so we're not re-initializing it for every DO
 		this.router = createActorRouter(registryConfig, runConfig, {
 			getActorId: async () => {
-				if (this.#actorStartedPromise)
-					await this.#actorStartedPromise.promise;
+				if (this.#actorStartedPromise) await this.#actorStartedPromise.promise;
 				return this.actor.id;
 			},
 			connectionHandlers: {
@@ -145,10 +143,7 @@ export class PartitionTopologyActor {
 
 					const connId = generateConnId();
 					const connToken = generateConnToken();
-					const connState = await actor.prepareConn(
-						opts.params,
-						opts.req?.raw,
-					);
+					const connState = await actor.prepareConn(opts.params, opts.req?.raw);
 
 					let conn: AnyConn | undefined;
 					return {
@@ -199,10 +194,7 @@ export class PartitionTopologyActor {
 
 					const connId = generateConnId();
 					const connToken = generateConnToken();
-					const connState = await actor.prepareConn(
-						opts.params,
-						opts.req?.raw,
-					);
+					const connState = await actor.prepareConn(opts.params, opts.req?.raw);
 
 					let conn: AnyConn | undefined;
 					return {

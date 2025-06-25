@@ -1,6 +1,6 @@
 //! These configs configs hold anything that's not platform-specific about running actors.
 
-import { AnyActorDefinition, ActorDefinition } from  "@/actor/definition";
+import type { ActorDefinition, AnyActorDefinition } from "@/actor/definition";
 import { z } from "zod";
 
 export const ActorsSchema = z.record(

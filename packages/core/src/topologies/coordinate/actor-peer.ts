@@ -1,15 +1,15 @@
+import type { ActorDriver } from "@/actor/driver";
+import type { AnyActorInstance } from "@/actor/instance";
+import type { ActorKey } from "@/actor/mod";
+import type { RegistryConfig } from "@/registry/config";
+import type { RunConfig } from "@/registry/run-config";
 import type { GlobalState } from "@/topologies/coordinate/topology";
-import { logger } from "./log";
-import type { CoordinateDriver } from "./driver";
-import type { ActorInstance, AnyActorInstance } from  "@/actor/instance";
-import type { ActorKey } from "@/common/utils";
-import { ActorDriver } from  "@/actor/driver";
 import {
 	CONN_DRIVER_COORDINATE_RELAY,
 	createCoordinateRelayDriver,
 } from "./conn/driver";
-import { RegistryConfig, RegistryConfigSchema } from "@/registry/config";
-import { DriverConfig, RunConfig } from "@/registry/run-config";
+import type { CoordinateDriver } from "./driver";
+import { logger } from "./log";
 
 export class ActorPeer {
 	#registryConfig: RegistryConfig;
@@ -203,14 +203,16 @@ export class ActorPeer {
 	}
 
 	async #convertToLeader() {
-		if (!this.#actorName || !this.#actorKey) throw new Error("missing name or key");
+		if (!this.#actorName || !this.#actorKey)
+			throw new Error("missing name or key");
 
 		logger().debug("peer acquired leadership", { actorId: this.#actorId });
 
 		// Build actor
 		const actorName = this.#actorName;
 		const definition = this.#registryConfig.actors[actorName];
-		if (!definition) throw new Error(`no actor definition for name ${definition}`);
+		if (!definition)
+			throw new Error(`no actor definition for name ${definition}`);
 
 		// Create leader actor
 		const actor = definition.instantiate();

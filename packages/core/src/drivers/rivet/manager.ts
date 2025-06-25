@@ -1,13 +1,12 @@
 import { setupLogging } from "@/common/log";
-import { serve as honoServe } from "@hono/node-server";
-import { createNodeWebSocket, NodeWebSocket } from "@hono/node-ws";
-import { logger } from "./log";
-import { GetActorMeta, RivetManagerDriver } from "./manager-driver";
-import type { RivetClientConfig } from "./rivet-client";
-import { PartitionTopologyManager } from "@/topologies/partition/mod";
-import { ConfigSchema, InputConfig } from "./config";
 import type { Registry, RunConfig } from "@/registry/mod";
-import { flushCache, getActorMeta } from  "./actor-meta";
+import { PartitionTopologyManager } from "@/topologies/partition/mod";
+import { serve as honoServe } from "@hono/node-server";
+import { type NodeWebSocket, createNodeWebSocket } from "@hono/node-ws";
+import { ConfigSchema, type InputConfig } from "./config";
+import { logger } from "./log";
+import { RivetManagerDriver } from "./manager-driver";
+import type { RivetClientConfig } from "./rivet-client";
 
 export async function startManager(
 	registry: Registry<any>,

@@ -76,7 +76,9 @@ export class Logger {
 const loggers: Record<string, Logger> = {};
 
 export function getLogger(name = "default"): Logger {
-	const defaultLogLevelEnv: LogLevel | undefined = getEnvUniversal("_LOG_LEVEL") as LogLevel | undefined;
+	const defaultLogLevelEnv: LogLevel | undefined = getEnvUniversal(
+		"_LOG_LEVEL",
+	) as LogLevel | undefined;
 
 	const defaultLogLevel: LogLevel = defaultLogLevelEnv ?? "INFO";
 	if (!loggers[name]) {

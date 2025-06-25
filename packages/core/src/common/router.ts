@@ -1,12 +1,12 @@
-import type { Context as HonoContext, Next } from "hono";
-import { getLogger, Logger } from "./log";
-import { deconstructError, stringifyError } from "./utils";
+import type { ResponseError } from "@/actor/protocol/http/error";
+import { type Encoding, serialize } from "@/actor/protocol/serde";
 import {
 	getRequestEncoding,
 	getRequestExposeInternalError,
-} from  "@/actor/router-endpoints";
-import { Encoding, serialize } from  "@/actor/protocol/serde";
-import { ResponseError } from  "@/actor/protocol/http/error";
+} from "@/actor/router-endpoints";
+import type { Context as HonoContext, Next } from "hono";
+import { type Logger, getLogger } from "./log";
+import { deconstructError, stringifyError } from "./utils";
 
 export function logger() {
 	return getLogger("router");
@@ -47,8 +47,7 @@ export function handleRouteError(
 	c: HonoContext,
 ) {
 	const exposeInternalError =
-		opts.enableExposeInternalError &&
-		getRequestExposeInternalError(c.req);
+		opts.enableExposeInternalError && getRequestExposeInternalError(c.req);
 
 	const { statusCode, code, message, metadata } = deconstructError(
 		error,

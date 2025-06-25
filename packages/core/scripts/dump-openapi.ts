@@ -1,25 +1,16 @@
-import { createManagerRouter } from "@/manager/router";
-import { RegistryConfig, RegistryConfigSchema, Encoding, setup } from "@/mod";
-import { ConnectionHandlers } from  "@/actor/router-endpoints";
-import {
-	TestGlobalState,
-	TestActorDriver,
-	TestManagerDriver,
-} from "@/test/driver/mod";
-import { OpenAPIHono } from "@hono/zod-openapi";
-import { VERSION } from "@/utils";
 import * as fs from "node:fs/promises";
 import { resolve } from "node:path";
-import { ClientDriver } from "@/client/client";
-import { ActorQuery } from "@/manager/protocol/query";
-import { ToServer } from  "@/actor/protocol/message/to-server";
-import { EventSource } from "eventsource";
-import { Context } from "hono";
+import type { ConnectionHandlers } from "@/actor/router-endpoints";
+import type { ClientDriver } from "@/client/client";
+import { createManagerRouter } from "@/manager/router";
+import { type RegistryConfig, RegistryConfigSchema, setup } from "@/mod";
+import { type RunConfig, RunConfigSchema } from "@/registry/run-config";
 import {
-	DriverConfig,
-	RunConfig,
-	RunConfigSchema,
-} from "@/registry/run-config";
+	TestActorDriver,
+	TestGlobalState,
+	TestManagerDriver,
+} from "@/test/driver/mod";
+import { VERSION } from "@/utils";
 
 function main() {
 	const registryConfig: RegistryConfig = RegistryConfigSchema.parse({

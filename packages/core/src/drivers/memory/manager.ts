@@ -1,14 +1,14 @@
+import * as crypto from "node:crypto";
+import { ActorAlreadyExists } from "@/actor/errors";
 import type {
+	ActorOutput,
 	CreateInput,
 	GetForIdInput,
-	GetWithKeyInput,
 	GetOrCreateWithKeyInput,
-	ActorOutput,
+	GetWithKeyInput,
 	ManagerDriver,
 } from "@/driver-helpers/mod";
-import { ActorAlreadyExists } from  "@/actor/errors";
 import type { MemoryGlobalState } from "./global-state";
-import * as crypto from "node:crypto";
 
 export class MemoryManagerDriver implements ManagerDriver {
 	#state: MemoryGlobalState;
@@ -22,9 +22,7 @@ export class MemoryManagerDriver implements ManagerDriver {
 		this.#state = state;
 	}
 
-	async getForId({
-		actorId,
-	}: GetForIdInput): Promise<ActorOutput | undefined> {
+	async getForId({ actorId }: GetForIdInput): Promise<ActorOutput | undefined> {
 		// Validate the actor exists
 		const actor = this.#state.getActor(actorId);
 		if (!actor) {

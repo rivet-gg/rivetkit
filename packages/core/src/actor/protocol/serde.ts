@@ -1,8 +1,8 @@
+import * as errors from "@/actor/errors";
+import * as cbor from "cbor-x";
 import { z } from "zod";
-import * as errors from  "@/actor/errors";
 import { logger } from "../log";
 import { assertUnreachable } from "../utils";
-import * as cbor from "cbor-x";
 
 /** Data that can be deserialized. */
 export type InputData = string | Buffer | Blob | ArrayBufferLike | Uint8Array;

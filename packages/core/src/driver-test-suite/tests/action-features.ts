@@ -1,20 +1,16 @@
-import { describe, test, expect } from "vitest";
+import type { ActorError } from "@/client/errors";
+import { describe, expect, test } from "vitest";
 import type { DriverTestConfig } from "../mod";
 import { setupDriverTest } from "../utils";
-import { ActorError } from "@/client/errors";
 
 export function runActionFeaturesTests(driverTestConfig: DriverTestConfig) {
 	describe("Action Features", () => {
 		// TODO: These do not work with fake timers
 		describe.skip("Action Timeouts", () => {
-			let usesFakeTimers = !driverTestConfig.useRealTimers;
+			const usesFakeTimers = !driverTestConfig.useRealTimers;
 
 			test("should timeout actions that exceed the configured timeout", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// The quick action should complete successfully
 				const quickResult = await client.shortTimeoutActor
@@ -29,11 +25,7 @@ export function runActionFeaturesTests(driverTestConfig: DriverTestConfig) {
 			});
 
 			test("should respect the default timeout", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// This action should complete within the default timeout
 				const result = await client.defaultTimeoutActor
@@ -43,11 +35,7 @@ export function runActionFeaturesTests(driverTestConfig: DriverTestConfig) {
 			});
 
 			test("non-promise action results should not be affected by timeout", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Synchronous action should not be affected by timeout
 				const result = await client.syncTimeoutActor.getOrCreate().syncAction();
@@ -55,11 +43,7 @@ export function runActionFeaturesTests(driverTestConfig: DriverTestConfig) {
 			});
 
 			test("should allow configuring different timeouts for different actors", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// The short timeout actor should fail
 				await expect(
@@ -76,11 +60,7 @@ export function runActionFeaturesTests(driverTestConfig: DriverTestConfig) {
 
 		describe("Action Sync & Async", () => {
 			test("should support synchronous actions", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				const instance = client.syncActionActor.getOrCreate();
 
@@ -103,11 +83,7 @@ export function runActionFeaturesTests(driverTestConfig: DriverTestConfig) {
 			});
 
 			test("should support asynchronous actions", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				const instance = client.asyncActionActor.getOrCreate();
 
@@ -134,11 +110,7 @@ export function runActionFeaturesTests(driverTestConfig: DriverTestConfig) {
 			});
 
 			test("should handle promises returned from actions correctly", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				const instance = client.promiseActor.getOrCreate();
 

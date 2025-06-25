@@ -1,8 +1,8 @@
 import {
-	type ActorConfigInput,
-	ActorConfigSchema,
 	type Actions,
 	type ActorConfig,
+	type ActorConfigInput,
+	ActorConfigSchema,
 } from "./config";
 import { ActorDefinition } from "./definition";
 
@@ -11,8 +11,7 @@ export { UserError, type UserErrorOptions } from "./errors";
 export type { Conn } from "./connection";
 export type { ActionContext } from "./action";
 export type { ActorConfig, OnConnectOptions } from "./config";
-export type { Encoding } from  "@/actor/protocol/serde";
-export type { ActorKey } from "@/common/utils";
+export type { Encoding } from "@/actor/protocol/serde";
 export type {
 	ActorDefinition,
 	AnyActorDefinition,
@@ -43,3 +42,4 @@ export function actor<
 	>;
 	return new ActorDefinition(config);
 }
+export type { ActorKey } from "@/manager/protocol/query";

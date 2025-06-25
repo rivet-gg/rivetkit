@@ -1,7 +1,7 @@
+import { getEnvUniversal } from "@/utils";
 import { Hono } from "hono";
 import { logger } from "./log";
-import { RunConfig } from "./run-config";
-import { getEnvUniversal } from "@/utils";
+import type { RunConfig } from "./run-config";
 
 export async function crossPlatformServe(
 	config: RunConfig,
@@ -51,7 +51,7 @@ export async function crossPlatformServe(
 	config.getUpgradeWebSocket = () => upgradeWebSocket;
 
 	// Start server
-	const port = parseInt(
+	const port = Number.parseInt(
 		getEnvUniversal("PORT") ?? getEnvUniversal("PORT_HTTP") ?? "8080",
 	);
 	const server = serve({ fetch: app.fetch, port }, () =>

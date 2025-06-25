@@ -1,19 +1,22 @@
-import type { GlobalState } from "../topology";
-import { logger } from "../log";
+import { assertUnreachable } from "@/common/utils";
+import { ActorPeer } from "../actor-peer";
 import {
+	CONN_DRIVER_COORDINATE_RELAY,
+	type CoordinateRelayState,
+} from "../conn/driver";
+import type { CoordinateDriver } from "../driver";
+import { logger } from "../log";
+import type { GlobalState } from "../topology";
+import {
+	type Ack,
 	type NodeMessage,
 	NodeMessageSchema,
 	type ToFollowerConnectionClose,
 	type ToFollowerMessage,
-	type Ack,
 	type ToLeaderConnectionClose,
 	type ToLeaderConnectionOpen,
 	type ToLeaderMessage,
 } from "./protocol";
-import { ActorPeer } from  "../actor-peer";
-import type { CoordinateDriver } from "../driver";
-import { CONN_DRIVER_COORDINATE_RELAY, type CoordinateRelayState } from "../conn/driver";
-import { assertUnreachable } from "@/common/utils";
 
 export class Node {
 	#CoordinateDriver: CoordinateDriver;

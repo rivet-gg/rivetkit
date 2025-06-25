@@ -1,7 +1,11 @@
 import { assertUnreachable } from "@/utils";
-import { RivetActor, RivetClientConfig, rivetRequest } from "./rivet-client";
-import { deserializeKeyFromTag, convertKeyToRivetTags } from "./util";
 import invariant from "invariant";
+import {
+	type RivetActor,
+	type RivetClientConfig,
+	rivetRequest,
+} from "./rivet-client";
+import { convertKeyToRivetTags, deserializeKeyFromTag } from "./util";
 
 interface ActorMeta {
 	name: string;

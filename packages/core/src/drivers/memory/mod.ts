@@ -1,7 +1,7 @@
 import type { DriverConfig } from "@/registry/run-config";
-import { MemoryManagerDriver } from "./manager";
+import { MemoryActorDriver } from "./actor";
 import { MemoryGlobalState } from "./global-state";
-import { MemoryActorDriver } from  "./actor";
+import { MemoryManagerDriver } from "./manager";
 
 export function createMemoryDriver(): DriverConfig {
 	const state = new MemoryGlobalState();

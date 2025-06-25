@@ -74,5 +74,3 @@ export const metadataActor = actor({
 		},
 	},
 });
-
-

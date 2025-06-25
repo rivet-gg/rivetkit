@@ -1,7 +1,7 @@
-import type { Conn } from "./connection";
-import type { ActionContext } from "./action";
-import type { ActorContext } from "./context";
 import { z } from "zod";
+import type { ActionContext } from "./action";
+import type { Conn } from "./connection";
+import type { ActorContext } from "./context";
 
 // This schema is used to validate the input at runtime. The generic types are defined below in `ActorConfig`.
 //

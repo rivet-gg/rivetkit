@@ -1,4 +1,4 @@
-export type { ActorInstance, AnyActorInstance } from  "@/actor/instance";
+export type { ActorInstance, AnyActorInstance } from "@/actor/instance";
 export type {
 	AttemptAcquireLease,
 	ExtendLeaseOutput,
@@ -7,7 +7,7 @@ export type {
 	CoordinateDriver,
 	StartActorAndAcquireLeaseOutput,
 } from "@/topologies/coordinate/driver";
-export type { ActorDriver } from  "@/actor/driver";
+export type { ActorDriver } from "@/actor/driver";
 export type {
 	ManagerDriver,
 	CreateInput,
@@ -25,5 +25,5 @@ export {
 	HEADER_ACTOR_ID,
 	HEADER_CONN_ID,
 	HEADER_CONN_TOKEN,
-} from  "@/actor/router-endpoints";
+} from "@/actor/router-endpoints";
 export { RunConfigSchema, DriverConfigSchema } from "@/registry/run-config";

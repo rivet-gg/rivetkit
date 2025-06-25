@@ -1,23 +1,17 @@
-import { describe, test, expect } from "vitest";
-import type { DriverTestConfig } from "../mod";
-import { setupDriverTest } from "../utils";
-import { assertUnreachable } from  "@/actor/utils";
 import {
 	INTERNAL_ERROR_CODE,
 	INTERNAL_ERROR_DESCRIPTION,
-} from  "@/actor/errors";
+} from "@/actor/errors";
+import { assertUnreachable } from "@/actor/utils";
+import { describe, expect, test } from "vitest";
+import type { DriverTestConfig } from "../mod";
+import { setupDriverTest } from "../utils";
 
-export function runActorErrorHandlingTests(
-	driverTestConfig: DriverTestConfig,
-) {
+export function runActorErrorHandlingTests(driverTestConfig: DriverTestConfig) {
 	describe("Actor Error Handling Tests", () => {
 		describe("UserError Handling", () => {
 			test("should handle simple UserError with message", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Try to call an action that throws a simple UserError
 				const handle = client.errorHandlingActor.getOrCreate();
@@ -37,11 +31,7 @@ export function runActorErrorHandlingTests(
 			});
 
 			test("should handle detailed UserError with code and metadata", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Try to call an action that throws a detailed UserError
 				const handle = client.errorHandlingActor.getOrCreate();
@@ -63,11 +53,7 @@ export function runActorErrorHandlingTests(
 
 		describe("Internal Error Handling", () => {
 			test("should convert internal errors to safe format", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Try to call an action that throws an internal error
 				const handle = client.errorHandlingActor.getOrCreate();
@@ -96,11 +82,7 @@ export function runActorErrorHandlingTests(
 		// TODO: Does not work with fake timers
 		describe.skip("Action Timeout", () => {
 			test("should handle action timeouts with custom duration", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Call an action that should time out
 				const handle = client.errorHandlingActor.getOrCreate();
@@ -120,11 +102,7 @@ export function runActorErrorHandlingTests(
 			});
 
 			test("should successfully run actions within timeout", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Call an action with a delay shorter than the timeout
 				const handle = client.errorHandlingActor.getOrCreate();
@@ -135,11 +113,7 @@ export function runActorErrorHandlingTests(
 			});
 
 			test("should respect different timeouts for different actors", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// The following actors have different timeout settings:
 				// customTimeoutActor: 200ms timeout
@@ -164,11 +138,7 @@ export function runActorErrorHandlingTests(
 
 		describe("Error Recovery", () => {
 			test("should continue working after errors", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				const handle = client.errorHandlingActor.getOrCreate();
 

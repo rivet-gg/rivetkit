@@ -1,17 +1,13 @@
-import { describe, test, expect, vi } from "vitest";
+import type { ActorError } from "@/client/mod";
+import { describe, expect, test } from "vitest";
+import type { DriverTestConfig } from "../mod";
 import { setupDriverTest } from "../utils";
-import { ActorError } from "@/client/mod";
-import { DriverTestConfig } from "../mod";
 
 export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
 	describe("Manager Driver Tests", () => {
 		describe("Client Connection Methods", () => {
 			test("connect() - finds or creates a actor", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Basic connect() with no parameters creates a default actor
 				const counterA = client.counter.getOrCreate();
@@ -31,11 +27,7 @@ export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
 			});
 
 			test("throws ActorAlreadyExists when creating duplicate actors", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Create a unique actor with specific key
 				const uniqueKey = ["duplicate-actor-test", crypto.randomUUID()];
@@ -58,11 +50,7 @@ export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
 
 		describe("Connection Options", () => {
 			test("get without create prevents actor creation", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Try to get a nonexistent actor with no create
 				const nonexistentId = `nonexistent-${crypto.randomUUID()}`;
@@ -87,11 +75,7 @@ export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
 			});
 
 			test("connection params are passed to actors", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Create a actor with connection params
 				// Note: In a real test we'd verify these are received by the actor,
@@ -113,11 +97,7 @@ export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
 
 		describe("Actor Creation & Retrieval", () => {
 			test("creates and retrieves actors by ID", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Create a unique ID for this test
 				const uniqueId = `test-counter-${crypto.randomUUID()}`;
@@ -133,11 +113,7 @@ export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
 			});
 
 			test("passes input to actor during creation", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Test data to pass as input
 				const testInput = {
@@ -162,11 +138,7 @@ export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
 			});
 
 			test("input is undefined when not provided", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Create actor without providing input
 				const actor = await client.inputActor.create();
@@ -182,11 +154,7 @@ export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
 			});
 
 			test("getOrCreate passes input to actor during creation", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Create a unique key for this test
 				const uniqueKey = [`input-test-${crypto.randomUUID()}`];
@@ -251,11 +219,7 @@ export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
 
 		describe("Key Matching", () => {
 			test("matches actors only with exactly the same keys", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Create actor with multiple keys
 				const originalCounter = client.counter.getOrCreate([
@@ -289,11 +253,7 @@ export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
 			});
 
 			test("string key matches array with single string key", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Create actor with string key
 				const stringKeyCounter = client.counter.getOrCreate("string-key-test");
@@ -306,11 +266,7 @@ export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
 			});
 
 			test("undefined key matches empty array key and no key", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Create actor with undefined key
 				const undefinedKeyCounter = client.counter.getOrCreate(undefined);
@@ -328,11 +284,7 @@ export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
 			});
 
 			test("no keys does not match actors with keys", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Create counter with keys
 				const keyedCounter = client.counter.getOrCreate([
@@ -348,11 +300,7 @@ export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
 			});
 
 			test("actors with keys match actors with no keys", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Create a counter with no keys
 				const noKeysCounter = client.counter.getOrCreate();
@@ -373,11 +321,7 @@ export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
 		describe("Multiple Actor Instances", () => {
 			// TODO: This test is flakey https://github.com/rivet-gg/rivetkit/issues/873
 			test("creates multiple actor instances of the same type", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Create multiple instances with different IDs
 				const instance1 = client.counter.getOrCreate(["multi-1"]);
@@ -401,11 +345,7 @@ export function runManagerDriverTests(driverTestConfig: DriverTestConfig) {
 			});
 
 			test("handles default instance with no explicit ID", async (c) => {
-				const { client } = await setupDriverTest(
-					c,
-					driverTestConfig,
-					
-				);
+				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Get default instance (no ID specified)
 				const defaultCounter = client.counter.getOrCreate();

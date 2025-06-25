@@ -1,15 +1,14 @@
+import { generateConnId, generateConnToken } from "@/actor/connection";
+import type { ActorDriver } from "@/actor/driver";
+import * as errors from "@/actor/errors";
+import type * as messageToClient from "@/actor/protocol/message/to-client";
+import type { RegistryConfig } from "@/registry/config";
+import type { RunConfig } from "@/registry/run-config";
 import type { GlobalState } from "@/topologies/coordinate/topology";
-import type * as messageToClient from  "@/actor/protocol/message/to-client";
-import * as errors from  "@/actor/errors";
+import { ActorPeer } from "../actor-peer";
 import type { CoordinateDriver } from "../driver";
 import { logger } from "../log";
-import { ActorPeer } from  "../actor-peer";
 import { publishMessageToLeader } from "../node/message";
-import { generateConnId, generateConnToken } from  "@/actor/connection";
-import type { ActorDriver } from  "@/actor/driver";
-import { RegistryConfig } from "@/registry/config";
-import { unknown } from "zod";
-import { RunConfig } from "@/registry/run-config";
 
 export interface RelayConnDriver {
 	sendMessage(message: messageToClient.ToClient): void;
@@ -163,7 +162,7 @@ export class RelayConn {
 							},
 						},
 					},
-					undefined
+					undefined,
 				);
 			}
 

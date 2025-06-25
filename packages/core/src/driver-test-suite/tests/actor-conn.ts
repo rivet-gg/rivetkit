@@ -1,4 +1,4 @@
-import { describe, test, expect, vi } from "vitest";
+import { describe, expect, test } from "vitest";
 import type { DriverTestConfig } from "../mod";
 import { setupDriverTest } from "../utils";
 
@@ -27,9 +27,7 @@ export function runActorConnTests(driverTestConfig: DriverTestConfig) {
 				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Create a actor first to get its ID
-				const handle = client.counter.getOrCreate([
-					"test-get-for-id",
-				]);
+				const handle = client.counter.getOrCreate(["test-get-for-id"]);
 				await handle.increment(3);
 				const actorId = await handle.resolve();
 
@@ -49,9 +47,7 @@ export function runActorConnTests(driverTestConfig: DriverTestConfig) {
 				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Get or create actor and connect
-				const handle = client.counter.getOrCreate([
-					"test-get-or-create",
-				]);
+				const handle = client.counter.getOrCreate(["test-get-or-create"]);
 				const connection = handle.connect();
 
 				// Verify connection works
@@ -133,9 +129,7 @@ export function runActorConnTests(driverTestConfig: DriverTestConfig) {
 				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Create actor and connect
-				const handle = client.counter.getOrCreate([
-					"test-unsubscribe",
-				]);
+				const handle = client.counter.getOrCreate(["test-unsubscribe"]);
 				const connection = handle.connect();
 
 				// Set up event listener with unsubscribe
@@ -198,7 +192,9 @@ export function runActorConnTests(driverTestConfig: DriverTestConfig) {
 			test("should trigger lifecycle hooks", async (c) => {
 				const { client } = await setupDriverTest(c, driverTestConfig);
 
-				const handle = client.counterWithLifecycle.getOrCreate(["test-lifecycle"]);
+				const handle = client.counterWithLifecycle.getOrCreate([
+					"test-lifecycle",
+				]);
 
 				// Create and connect
 				const connHandle = client.counterWithLifecycle.getOrCreate(

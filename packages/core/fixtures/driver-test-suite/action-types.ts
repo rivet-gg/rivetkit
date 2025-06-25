@@ -1,4 +1,4 @@
-import { actor, UserError } from "@rivetkit/core";
+import { UserError, actor } from "@rivetkit/core";
 
 // Actor with synchronous actions
 export const syncActionActor = actor({
@@ -6,7 +6,7 @@ export const syncActionActor = actor({
 	state: { value: 0 },
 	actions: {
 		// Simple synchronous action that returns a value directly
-		increment: (c, amount: number = 1) => {
+		increment: (c, amount = 1) => {
 			c.state.value += amount;
 			return c.state.value;
 		},
@@ -30,7 +30,7 @@ export const asyncActionActor = actor({
 	state: { value: 0, data: null as any },
 	actions: {
 		// Async action with a delay
-		delayedIncrement: async (c, amount: number = 1) => {
+		delayedIncrement: async (c, amount = 1) => {
 			await Promise.resolve();
 			c.state.value += amount;
 			return c.state.value;
@@ -83,4 +83,3 @@ export const promiseActor = actor({
 		},
 	},
 });
-

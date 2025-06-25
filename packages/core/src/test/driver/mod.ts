@@ -1,10 +1,10 @@
-import { DriverConfig } from "@/mod";
+import type { DriverConfig } from "@/mod";
+import { TestActorDriver } from "./actor";
 import { TestGlobalState } from "./global-state";
 import { TestManagerDriver } from "./manager";
-import { TestActorDriver } from  "./actor";
 
 export { TestGlobalState } from "./global-state";
-export { TestActorDriver } from  "./actor";
+export { TestActorDriver } from "./actor";
 export { TestManagerDriver } from "./manager";
 
 export function createTestDriver(): DriverConfig {

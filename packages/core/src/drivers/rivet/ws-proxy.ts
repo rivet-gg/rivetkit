@@ -1,8 +1,8 @@
-import { WSContext } from "hono/ws";
-import { logger } from "./log";
-import invariant from "invariant";
-import type { WebSocket, CloseEvent } from "ws";
 import { importWebSocket } from "@/common/websocket";
+import type { WSContext } from "hono/ws";
+import invariant from "invariant";
+import type { CloseEvent } from "ws";
+import { logger } from "./log";
 
 /**
  * Creates a WebSocket proxy to forward connections to a target endpoint

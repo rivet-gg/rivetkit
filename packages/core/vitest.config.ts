@@ -1,6 +1,6 @@
-import defaultConfig from "../../vitest.base.ts";
-import { defineConfig } from "vitest/config";
 import { resolve } from "path";
+import { defineConfig } from "vitest/config";
+import defaultConfig from "../../vitest.base.ts";
 
 export default defineConfig({
 	...defaultConfig,

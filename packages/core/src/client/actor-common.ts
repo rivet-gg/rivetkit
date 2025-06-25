@@ -1,7 +1,4 @@
-import type {
-	AnyActorDefinition,
-	ActorDefinition,
-} from  "@/actor/definition";
+import type { ActorDefinition, AnyActorDefinition } from "@/actor/definition";
 
 /**
  * Action function returned by Actor connections and handles.

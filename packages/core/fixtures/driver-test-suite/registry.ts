@@ -1,39 +1,39 @@
 import { setup } from "@rivetkit/core";
 
-// Import actors from individual files
-import { counter } from "./counter";
-import { counterWithLifecycle } from "./lifecycle";
-import { scheduled } from "./scheduled";
-import { errorHandlingActor, customTimeoutActor } from "./error-handling";
 import { inputActor } from "./action-inputs";
 import {
-	shortTimeoutActor,
-	longTimeoutActor,
 	defaultTimeoutActor,
+	longTimeoutActor,
+	shortTimeoutActor,
 	syncTimeoutActor,
 } from "./action-timeout";
 import {
-	syncActionActor,
 	asyncActionActor,
 	promiseActor,
+	syncActionActor,
 } from "./action-types";
-import { counterWithParams } from "./conn-params";
-import { connStateActor } from "./conn-state";
-import { metadataActor } from "./metadata";
 import {
-	staticVarActor,
-	nestedVarActor,
-	dynamicVarActor,
-	uniqueVarActor,
-	driverCtxActor,
-} from "./vars";
-import {
+	asyncAuthActor,
 	authActor,
 	intentAuthActor,
-	publicActor,
 	noAuthActor,
-	asyncAuthActor,
+	publicActor,
 } from "./auth";
+import { counterWithParams } from "./conn-params";
+import { connStateActor } from "./conn-state";
+// Import actors from individual files
+import { counter } from "./counter";
+import { customTimeoutActor, errorHandlingActor } from "./error-handling";
+import { counterWithLifecycle } from "./lifecycle";
+import { metadataActor } from "./metadata";
+import { scheduled } from "./scheduled";
+import {
+	driverCtxActor,
+	dynamicVarActor,
+	nestedVarActor,
+	staticVarActor,
+	uniqueVarActor,
+} from "./vars";
 
 // Consolidated setup with all actors
 export const registry = setup({

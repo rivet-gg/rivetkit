@@ -1,16 +1,20 @@
-import type { Transport } from  "@/actor/protocol/message/mod";
-import type { Encoding } from  "@/actor/protocol/serde";
+import type { AnyActorDefinition } from "@/actor/definition";
+import type { Transport } from "@/actor/protocol/message/mod";
+import type * as wsToServer from "@/actor/protocol/message/to-server";
+import type { Encoding } from "@/actor/protocol/serde";
 import type { ActorQuery } from "@/manager/protocol/query";
-import { ActorConn, ActorConnRaw, CONNECT_SYMBOL } from  "./actor-conn";
-import { ActorHandle, ActorHandleRaw } from  "./actor-handle";
-import { ActorActionFunction } from  "./actor-common";
-import { logger } from "./log";
 import type { Registry } from "@/mod";
-import type { AnyActorDefinition } from  "@/actor/definition";
-import type * as wsToServer from  "@/actor/protocol/message/to-server";
 import type { EventSource } from "eventsource";
 import type { Context as HonoContext } from "hono";
 import type { WebSocket } from "ws";
+import type { ActorActionFunction } from "./actor-common";
+import {
+	type ActorConn,
+	type ActorConnRaw,
+	CONNECT_SYMBOL,
+} from "./actor-conn";
+import { type ActorHandle, ActorHandleRaw } from "./actor-handle";
+import { logger } from "./log";
 
 /** Extract the actor registry from the registry definition. */
 export type ExtractActorsFromRegistry<A extends Registry<any>> =

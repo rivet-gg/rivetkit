@@ -1,12 +1,12 @@
-import type { ConnDriver } from  "@/actor/driver";
-import type { GlobalState } from "../topology";
-import type { AnyActorInstance } from  "@/actor/instance";
-import type { AnyConn, Conn } from  "@/actor/connection";
-import type { CachedSerializer } from  "@/actor/protocol/serde";
-import type * as messageToClient from  "@/actor/protocol/message/to-client";
+import type { AnyConn } from "@/actor/connection";
+import type { ConnDriver } from "@/actor/driver";
+import type { AnyActorInstance } from "@/actor/instance";
+import type * as messageToClient from "@/actor/protocol/message/to-client";
+import type { CachedSerializer } from "@/actor/protocol/serde";
+import type { CoordinateDriver } from "../driver";
 import { logger } from "../log";
 import type { NodeMessage } from "../node/protocol";
-import type { CoordinateDriver } from "../driver";
+import type { GlobalState } from "../topology";
 
 export const CONN_DRIVER_COORDINATE_RELAY = "coordinateRelay";
 

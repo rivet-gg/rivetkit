@@ -1,65 +1,60 @@
-import * as errors from  "@/actor/errors";
-import * as cbor from "cbor-x";
-import type * as protoHttpResolve from  "@/actor/protocol/http/resolve";
-import type { ToClient } from  "@/actor/protocol/message/to-client";
+import type { ConnRoutingHandler } from "@/actor/conn-routing-handler";
+import * as errors from "@/actor/errors";
+import type * as protoHttpResolve from "@/actor/protocol/http/resolve";
+import type { Transport } from "@/actor/protocol/message/mod";
+import type { ToClient } from "@/actor/protocol/message/to-client";
+import { type Encoding, serialize } from "@/actor/protocol/serde";
 import {
-	type Encoding,
-	EncodingSchema,
-	serialize,
-} from  "@/actor/protocol/serde";
-import {
-	type ConnectionHandlers,
-	getRequestEncoding,
-	handleConnectionMessage,
-	handleAction,
-	handleSseConnect,
-	handleWebSocketConnect,
+	ALL_PUBLIC_HEADERS,
 	HEADER_ACTOR_ID,
+	HEADER_ACTOR_QUERY,
+	HEADER_AUTH_DATA,
 	HEADER_CONN_ID,
 	HEADER_CONN_PARAMS,
 	HEADER_CONN_TOKEN,
 	HEADER_ENCODING,
-	HEADER_ACTOR_QUERY,
-	ALL_PUBLIC_HEADERS,
+	getRequestEncoding,
 	getRequestQuery,
-	HEADER_AUTH_DATA,
-} from  "@/actor/router-endpoints";
-import { assertUnreachable } from  "@/actor/utils";
-import type { RegistryConfig } from "@/registry/config";
+	handleAction,
+	handleConnectionMessage,
+	handleSseConnect,
+	handleWebSocketConnect,
+} from "@/actor/router-endpoints";
+import { assertUnreachable } from "@/actor/utils";
+import type { ClientDriver } from "@/client/client";
 import {
 	handleRouteError,
 	handleRouteNotFound,
 	loggerMiddleware,
 } from "@/common/router";
 import {
-	DeconstructedError,
+	type DeconstructedError,
 	deconstructError,
 	stringifyError,
 } from "@/common/utils";
-import { Hono, type Context as HonoContext, type Next } from "hono";
+import type { RegistryConfig } from "@/registry/config";
+import type { RunConfig } from "@/registry/run-config";
+import { VERSION } from "@/utils";
 import { OpenAPIHono } from "@hono/zod-openapi";
-import { z } from "@hono/zod-openapi";
 import { createRoute } from "@hono/zod-openapi";
+import * as cbor from "cbor-x";
+import { Hono, type Context as HonoContext, type Next } from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
 import type { WSContext } from "hono/ws";
 import invariant from "invariant";
+import type { CloseEvent, MessageEvent, WebSocket } from "ws";
+import { z } from "zod";
+import { authenticateEndpoint } from "./auth";
 import type { ManagerDriver } from "./driver";
 import { logger } from "./log";
 import {
+	ConnMessageRequestSchema,
 	ConnectRequestSchema,
 	ConnectWebSocketRequestSchema,
-	ConnMessageRequestSchema,
 	ResolveRequestSchema,
 } from "./protocol/query";
 import type { ActorQuery } from "./protocol/query";
-import { VERSION } from "@/utils";
-import { ConnRoutingHandler } from  "@/actor/conn-routing-handler";
-import { ClientDriver } from "@/client/client";
-import { Transport } from  "@/actor/protocol/message/mod";
-import { authenticateEndpoint } from "./auth";
-import type { WebSocket, MessageEvent, CloseEvent } from "ws";
-import { RunConfig } from "@/registry/run-config";
 
 type ManagerRouterHandler = {
 	// onConnectInspector?: ManagerInspectorConnHandler;
@@ -1163,7 +1158,7 @@ async function handleActionRequest(
 			assertUnreachable(handler.routingHandler);
 		}
 	} catch (error) {
-		logger().error("error in action handler", { error });
+		logger().error("error in action handler", { error: stringifyError(error) });
 
 		// Use ProxyError if it's not already an ActorError
 		if (!errors.ActorError.isActorError(error)) {

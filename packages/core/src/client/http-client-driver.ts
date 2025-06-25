@@ -1,11 +1,8 @@
-import * as cbor from "cbor-x";
-import type { Encoding } from  "@/actor/protocol/serde";
-import type { ActorQuery } from "@/manager/protocol/query";
-import * as errors from "./errors";
-import { logger } from "./log";
-import type * as wsToServer from  "@/actor/protocol/message/to-server";
-import type * as protoHttpResolve from  "@/actor/protocol/http/resolve";
-import { assertUnreachable, httpUserAgent } from "@/utils";
+import type { ActionRequest } from "@/actor/protocol/http/action";
+import type * as protoHttpResolve from "@/actor/protocol/http/resolve";
+import type { ActionResponse } from "@/actor/protocol/message/to-client";
+import type * as wsToServer from "@/actor/protocol/message/to-server";
+import type { Encoding } from "@/actor/protocol/serde";
 import {
 	HEADER_ACTOR_ID,
 	HEADER_ACTOR_QUERY,
@@ -13,20 +10,18 @@ import {
 	HEADER_CONN_PARAMS,
 	HEADER_CONN_TOKEN,
 	HEADER_ENCODING,
-} from  "@/actor/router-endpoints";
-import type { EventSource } from "eventsource";
-import { importWebSocket } from "@/common/websocket";
+} from "@/actor/router-endpoints";
 import { importEventSource } from "@/common/eventsource";
-import {
-	sendHttpRequest,
-	serializeWithEncoding,
-	type WebSocketMessage,
-} from "./utils";
-import type { ActionRequest } from  "@/actor/protocol/http/action";
-import type { ActionResponse } from  "@/actor/protocol/message/to-client";
-import { ClientDriver } from "./client";
-import { HonoRequest, Context as HonoContext } from "hono";
+import { importWebSocket } from "@/common/websocket";
+import type { ActorQuery } from "@/manager/protocol/query";
+import { assertUnreachable, httpUserAgent } from "@/utils";
+import type { EventSource } from "eventsource";
+import type { Context as HonoContext } from "hono";
 import type { WebSocket } from "ws";
+import type { ClientDriver } from "./client";
+import * as errors from "./errors";
+import { logger } from "./log";
+import { sendHttpRequest, serializeWithEncoding } from "./utils";
 
 /**
  * Client driver that communicates with the manager via HTTP.

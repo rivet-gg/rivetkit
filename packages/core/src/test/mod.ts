@@ -1,20 +1,20 @@
-import { serve as honoServe, type ServerType } from "@hono/node-server";
-import { createNodeWebSocket, type NodeWebSocket } from "@hono/node-ws";
-import { assertUnreachable } from "@/utils";
+import { createServer } from "node:net";
+import { type Client, createClient } from "@/client/mod";
+import { type Registry, StandaloneTopology } from "@/mod";
+import { RunConfigSchema } from "@/registry/run-config";
 import { CoordinateTopology } from "@/topologies/coordinate/mod";
-import { logger } from "./log";
+import { assertUnreachable } from "@/utils";
+import { type ServerType, serve as honoServe } from "@hono/node-server";
+import { type NodeWebSocket, createNodeWebSocket } from "@hono/node-ws";
 import type { Hono } from "hono";
-import { StandaloneTopology, type Registry } from "@/mod";
+import { type TestContext, vi } from "vitest";
+import { ConfigSchema, type InputConfig } from "./config";
 import {
+	TestActorDriver,
 	TestGlobalState,
 	TestManagerDriver,
-	TestActorDriver,
 } from "./driver/mod";
-import { type InputConfig, ConfigSchema } from "./config";
-import { type TestContext, vi } from "vitest";
-import { type Client, createClient } from "@/client/mod";
-import { createServer } from "node:net";
-import { RunConfigSchema } from "@/registry/run-config";
+import { logger } from "./log";
 
 function createRouter(
 	registry: Registry<any>,
@@ -102,7 +102,7 @@ export async function setupTest<A extends Registry<any>>(
 
 	// Set up mock driver for testing createVars context
 	const mockDriverContext: any = {};
-	let setDriverContextFn = (ctx: any) => {
+	const setDriverContextFn = (ctx: any) => {
 		mockDriverContext.current = ctx;
 	};
 

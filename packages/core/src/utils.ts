@@ -1,12 +1,12 @@
 export { assertUnreachable } from "./common/utils";
 export { stringifyError } from "@/common/utils";
-import { Context as HonoContext, Handler as HonoHandler } from "hono";
+import type { Context as HonoContext, Handler as HonoHandler } from "hono";
 
 import pkgJson from "../package.json" with { type: "json" };
-import { DriverConfig, UserError } from "./mod";
+import { logger } from "./actor/log";
 import { createMemoryDriver } from "./drivers/memory/mod";
 import { createRivetManagerDriver } from "./drivers/rivet/mod";
-import { logger } from  "./actor/log";
+import { type DriverConfig, UserError } from "./mod";
 
 export const VERSION = pkgJson.version;
 

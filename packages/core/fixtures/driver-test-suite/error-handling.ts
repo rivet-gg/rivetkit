@@ -1,4 +1,4 @@
-import { actor, UserError } from "@rivetkit/core";
+import { UserError, actor } from "@rivetkit/core";
 
 export const errorHandlingActor = actor({
 	onAuth: () => {},
@@ -95,4 +95,3 @@ export const customTimeoutActor = actor({
 		},
 	},
 });
-

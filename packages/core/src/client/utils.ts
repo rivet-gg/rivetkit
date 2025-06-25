@@ -1,9 +1,9 @@
+import type { ResponseError } from "@/actor/protocol/http/error";
 import { assertUnreachable } from "@/common/utils";
+import type { Encoding } from "@/mod";
 import { httpUserAgent } from "@/utils";
-import { Encoding } from "@/mod";
 import * as cbor from "cbor-x";
 import { ActorError, HttpRequestError } from "./errors";
-import { ResponseError } from  "@/actor/protocol/http/error";
 import { logger } from "./log";
 
 export type WebSocketMessage = string | Blob | ArrayBuffer | Uint8Array;

@@ -1,7 +1,7 @@
 import type { Logger } from "@/common/log";
-import type { ActorInstance, SaveStateOptions } from "./instance";
+import type { ActorKey } from "@/actor/mod";
 import type { Conn, ConnId } from "./connection";
-import type { ActorKey } from "@/common/utils";
+import type { ActorInstance, SaveStateOptions } from "./instance";
 import type { Schedule } from "./schedule";
 
 /**

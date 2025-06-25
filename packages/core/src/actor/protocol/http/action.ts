@@ -10,6 +10,5 @@ export const ActionResponseSchema = z.object({
 	o: z.unknown(),
 });
 
-
 export type ActionRequest = z.infer<typeof ActionRequestSchema>;
 export type ActionResponse = z.infer<typeof ActionResponseSchema>;

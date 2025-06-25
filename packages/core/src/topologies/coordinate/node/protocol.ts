@@ -1,6 +1,6 @@
+import * as messageToClient from "@/actor/protocol/message/to-client";
+import * as messageToServer from "@/actor/protocol/message/to-server";
 import { z } from "zod";
-import * as messageToServer from  "@/actor/protocol/message/to-server"
-import * as messageToClient from  "@/actor/protocol/message/to-client"
 
 export const AckSchema = z.object({
 	// Message ID
@@ -22,7 +22,9 @@ export const ToLeaderConnectionOpenSchema = z.object({
 	ad: z.unknown(),
 });
 
-export type ToLeaderConnectionOpen = z.infer<typeof ToLeaderConnectionOpenSchema>;
+export type ToLeaderConnectionOpen = z.infer<
+	typeof ToLeaderConnectionOpenSchema
+>;
 
 export const ToLeaderConnectionCloseSchema = z.object({
 	// Actor ID
@@ -31,7 +33,9 @@ export const ToLeaderConnectionCloseSchema = z.object({
 	ci: z.string(),
 });
 
-export type ToLeaderConnectionClose = z.infer<typeof ToLeaderConnectionCloseSchema>;
+export type ToLeaderConnectionClose = z.infer<
+	typeof ToLeaderConnectionCloseSchema
+>;
 
 export const ToLeaderMessageSchema = z.object({
 	// Actor ID
@@ -53,7 +57,9 @@ export const ToFollowerConnectionCloseSchema = z.object({
 	r: z.string().optional(),
 });
 
-export type ToFollowerConnectionClose = z.infer<typeof ToFollowerConnectionCloseSchema>;
+export type ToFollowerConnectionClose = z.infer<
+	typeof ToFollowerConnectionCloseSchema
+>;
 
 export const ToFollowerMessageSchema = z.object({
 	// Connection ID

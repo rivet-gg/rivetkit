@@ -1,4 +1,4 @@
-import { actor, UserError } from "@rivetkit/core";
+import { UserError, actor } from "@rivetkit/core";
 
 // Basic auth actor - requires API key
 export const authActor = actor({
@@ -9,11 +9,11 @@ export const authActor = actor({
 		if (!apiKey) {
 			throw new UserError("API key required", { code: "missing_auth" });
 		}
-		
+
 		if (apiKey !== "valid-api-key") {
 			throw new UserError("Invalid API key", { code: "invalid_auth" });
 		}
-		
+
 		return { userId: "user123", token: apiKey };
 	},
 	actions: {
@@ -30,17 +30,21 @@ export const intentAuthActor = actor({
 	state: { value: 0 },
 	onAuth: (opts) => {
 		const { req, intents, params } = opts;
-		console.log('intents', intents, params);
+		console.log("intents", intents, params);
 		const role = (params as any)?.role;
-		
+
 		if (intents.has("create") && role !== "admin") {
-			throw new UserError("Admin role required for create operations", { code: "insufficient_permissions" });
+			throw new UserError("Admin role required for create operations", {
+				code: "insufficient_permissions",
+			});
 		}
-		
+
 		if (intents.has("action") && !["admin", "user"].includes(role || "")) {
-			throw new UserError("User or admin role required for actions", { code: "insufficient_permissions" });
+			throw new UserError("User or admin role required for actions", {
+				code: "insufficient_permissions",
+			});
 		}
-		
+
 		return { role, timestamp: Date.now() };
 	},
 	actions: {
@@ -79,20 +83,18 @@ export const noAuthActor = actor({
 export const asyncAuthActor = actor({
 	state: { count: 0 },
 	onAuth: async (opts) => {
-		const { req, intents, params } = opts;
-		// Simulate async auth check (e.g., database lookup)
-		await new Promise(resolve => setTimeout(resolve, 10));
-		
+		const { params } = opts;
+
 		const token = (params as any)?.token;
 		if (!token) {
 			throw new UserError("Token required", { code: "missing_token" });
 		}
-		
+
 		// Simulate token validation
 		if (token === "invalid") {
 			throw new UserError("Token is invalid", { code: "invalid_token" });
 		}
-		
+
 		return { userId: `user-${token}`, validated: true };
 	},
 	actions: {

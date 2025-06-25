@@ -1,17 +1,17 @@
-import { logger } from "./log";
-import { type RivetClientConfig } from "./rivet-client";
-import { getActorMeta } from  "./actor-meta";
-import invariant from "invariant";
-import { ConnRoutingHandler } from  "@/actor/conn-routing-handler";
+import type { ConnRoutingHandler } from "@/actor/conn-routing-handler";
+import { importWebSocket } from "@/common/websocket";
 import {
 	HEADER_AUTH_DATA,
 	HEADER_CONN_PARAMS,
 	HEADER_ENCODING,
 	HEADER_EXPOSE_INTERNAL_ERROR,
 } from "@/driver-helpers/mod";
-import { importWebSocket } from "@/common/websocket";
-import { createWebSocketProxy } from "./ws-proxy";
 import { proxy } from "hono/proxy";
+import invariant from "invariant";
+import { getActorMeta } from "./actor-meta";
+import { logger } from "./log";
+import type { RivetClientConfig } from "./rivet-client";
+import { createWebSocketProxy } from "./ws-proxy";
 
 export function createRivetConnRoutingHandler(
 	clientConfig: RivetClientConfig,

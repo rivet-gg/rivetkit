@@ -1,11 +1,11 @@
-import { type TestContext, vi } from "vitest";
-import { createClient, type Client } from "@/client/mod";
-import type { DriverTestConfig } from "./mod";
-import { assertUnreachable } from  "@/actor/utils";
-import { createClientWithDriver } from "@/client/client";
-import { createTestInlineClientDriver } from "./test-inline-client-driver";
 import { resolve } from "node:path";
+import { assertUnreachable } from "@/actor/utils";
+import { createClientWithDriver } from "@/client/client";
+import { type Client, createClient } from "@/client/mod";
+import { type TestContext, vi } from "vitest";
 import type { Registry } from "../../fixtures/driver-test-suite/registry";
+import type { DriverTestConfig } from "./mod";
+import { createTestInlineClientDriver } from "./test-inline-client-driver";
 
 // Must use `TestContext` since global hooks do not work when running concurrently
 export async function setupDriverTest(

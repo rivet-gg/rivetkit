@@ -1,14 +1,14 @@
-import type {
-	GetForIdInput,
-	GetWithKeyInput,
-	GetOrCreateWithKeyInput,
-	ManagerDriver,
-	CreateInput,
-} from "@/driver-helpers/mod";
-import { ActorAlreadyExists } from  "@/actor/errors";
-import type { TestGlobalState } from "./global-state";
 import * as crypto from "node:crypto";
-import { ActorOutput } from "@/manager/driver";
+import { ActorAlreadyExists } from "@/actor/errors";
+import type {
+	CreateInput,
+	GetForIdInput,
+	GetOrCreateWithKeyInput,
+	GetWithKeyInput,
+	ManagerDriver,
+} from "@/driver-helpers/mod";
+import type { ActorOutput } from "@/manager/driver";
+import type { TestGlobalState } from "./global-state";
 
 export class TestManagerDriver implements ManagerDriver {
 	#state: TestGlobalState;
@@ -18,9 +18,7 @@ export class TestManagerDriver implements ManagerDriver {
 	// 	getAllTypesOfActors: () => Object.keys(this.registry.config.actors),
 	// });
 
-	constructor(
-		state: TestGlobalState,
-	) {
+	constructor(state: TestGlobalState) {
 		this.#state = state;
 	}
 

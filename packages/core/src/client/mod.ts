@@ -1,5 +1,9 @@
 import type { Registry } from "@/registry/mod";
-import { type Client, type ClientOptions, createClientWithDriver } from "./client";
+import {
+	type Client,
+	type ClientOptions,
+	createClientWithDriver,
+} from "./client";
 import { createHttpClientDriver } from "./http-client-driver";
 
 export type {
@@ -15,14 +19,14 @@ export type {
 	ExtractRegistryFromClient,
 	ClientRaw,
 } from "./client";
-export type { ActorConn } from  "./actor-conn";
-export { ActorConnRaw } from  "./actor-conn";
-export type { EventUnsubscribe } from  "./actor-conn";
-export type { ActorHandle } from  "./actor-handle";
-export { ActorHandleRaw } from  "./actor-handle";
-export type { ActorActionFunction } from  "./actor-common";
-export type { Transport } from  "@/actor/protocol/message/mod";
-export type { Encoding } from  "@/actor/protocol/serde";
+export type { ActorConn } from "./actor-conn";
+export { ActorConnRaw } from "./actor-conn";
+export type { EventUnsubscribe } from "./actor-conn";
+export type { ActorHandle } from "./actor-handle";
+export { ActorHandleRaw } from "./actor-handle";
+export type { ActorActionFunction } from "./actor-common";
+export type { Transport } from "@/actor/protocol/message/mod";
+export type { Encoding } from "@/actor/protocol/serde";
 export type { CreateRequest } from "@/manager/protocol/query";
 export {
 	ActorClientError,
@@ -35,7 +39,7 @@ export {
 export {
 	AnyActorDefinition,
 	ActorDefinition,
-} from  "@/actor/definition";
+} from "@/actor/definition";
 
 /**
  * Creates a client with the actor accessor proxy.

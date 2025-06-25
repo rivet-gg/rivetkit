@@ -1,12 +1,15 @@
+import type { ActorDriver } from "@/actor/driver";
+import { encodeDataToString, serialize } from "@/actor/protocol/serde";
+import type {
+	ConnectSseOpts,
+	ConnectSseOutput,
+} from "@/actor/router-endpoints";
+import type { RegistryConfig } from "@/registry/config";
+import type { RunConfig } from "@/registry/run-config";
 import type { GlobalState } from "@/topologies/coordinate/topology";
-import { logger } from "../log";
-import { encodeDataToString, serialize } from  "@/actor/protocol/serde";
-import type { CoordinateDriver } from "../driver";
 import { RelayConn } from "../conn/mod";
-import type { ActorDriver } from  "@/actor/driver";
-import { RegistryConfig } from "@/registry/config";
-import { ConnectSseOpts, ConnectSseOutput } from  "@/actor/router-endpoints";
-import {  RunConfig } from "@/registry/run-config";
+import type { CoordinateDriver } from "../driver";
+import { logger } from "../log";
 
 export async function serveSse(
 	registryConfig: RegistryConfig,

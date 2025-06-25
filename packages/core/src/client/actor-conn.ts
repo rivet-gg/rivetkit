@@ -1,19 +1,17 @@
-import type { AnyActorDefinition } from  "@/actor/definition";
-import type { Transport } from  "@/actor/protocol/message/mod";
-import type * as wsToClient from  "@/actor/protocol/message/to-client";
-import type * as wsToServer from  "@/actor/protocol/message/to-server";
-import type { Encoding } from  "@/actor/protocol/serde";
-import { importEventSource } from "@/common/eventsource";
-import { MAX_CONN_PARAMS_SIZE } from "@/common/network";
-import { httpUserAgent } from "@/utils";
+import type { AnyActorDefinition } from "@/actor/definition";
+import type * as wsToClient from "@/actor/protocol/message/to-client";
+import type * as wsToServer from "@/actor/protocol/message/to-server";
+import type { Encoding } from "@/actor/protocol/serde";
 import { assertUnreachable, stringifyError } from "@/common/utils";
-import { importWebSocket } from "@/common/websocket";
 import type { ActorQuery } from "@/manager/protocol/query";
 import * as cbor from "cbor-x";
+import type { EventSource } from "eventsource";
 import pRetry from "p-retry";
+import type { CloseEvent, WebSocket } from "ws";
+import type { ActorDefinitionActions } from "./actor-common";
 import {
 	ACTOR_CONNS_SYMBOL,
-	ClientDriver,
+	type ClientDriver,
 	type ClientRaw,
 	TRANSPORT_SYMBOL,
 } from "./client";
@@ -24,17 +22,6 @@ import {
 	messageLength,
 	serializeWithEncoding,
 } from "./utils";
-import {
-	HEADER_ACTOR_ID,
-	HEADER_ACTOR_QUERY,
-	HEADER_CONN_ID,
-	HEADER_CONN_TOKEN,
-	HEADER_ENCODING,
-	HEADER_CONN_PARAMS,
-} from  "@/actor/router-endpoints";
-import type { EventSource } from "eventsource";
-import { ActorDefinitionActions } from  "./actor-common";
-import type { WebSocket, CloseEvent, ErrorEvent } from "ws";
 
 interface ActionInFlight {
 	name: string;

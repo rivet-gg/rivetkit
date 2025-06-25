@@ -13,4 +13,3 @@ export function logger() {
 export function instanceLogger() {
 	return getLogger(ACTOR_LOGGER_NAME);
 }
-

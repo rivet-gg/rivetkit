@@ -1,4 +1,4 @@
-import type { ActorKey } from "@/mod";
+import type { ActorKey } from "@/actor/mod";
 
 export interface ActorState {
 	id: string;

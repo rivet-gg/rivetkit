@@ -1,14 +1,22 @@
-import { ActorKeySchema } from "@/common//utils";
-import { z } from "zod";
-import { EncodingSchema } from  "@/actor/protocol/serde";
+import { EncodingSchema } from "@/actor/protocol/serde";
 import {
 	HEADER_ACTOR_ID,
+	HEADER_ACTOR_QUERY,
 	HEADER_CONN_ID,
 	HEADER_CONN_PARAMS,
 	HEADER_CONN_TOKEN,
 	HEADER_ENCODING,
-	HEADER_ACTOR_QUERY,
-} from  "@/actor/router-endpoints";
+} from "@/actor/router-endpoints";
+import { z } from "zod";
+
+// Maximum size of a key component in bytes
+// Set to 128 bytes to allow for separators and escape characters in the full key
+// Cloudflare's maximum key size is 512 bytes, so we need to be significantly smaller
+export const MAX_ACTOR_KEY_SIZE = 128;
+
+export const ActorKeySchema = z.array(z.string().max(MAX_ACTOR_KEY_SIZE));
+
+export type ActorKey = z.infer<typeof ActorKeySchema>;
 
 export const CreateRequestSchema = z.object({
 	name: z.string(),

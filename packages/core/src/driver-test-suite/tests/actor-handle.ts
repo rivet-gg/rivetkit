@@ -1,6 +1,6 @@
-import { describe, test, expect, vi } from "vitest";
+import { describe, expect, test } from "vitest";
 import type { DriverTestConfig } from "../mod";
-import { setupDriverTest, waitFor } from "../utils";
+import { setupDriverTest } from "../utils";
 
 export function runActorHandleTests(driverTestConfig: DriverTestConfig) {
 	describe("Actor Handle Tests", () => {

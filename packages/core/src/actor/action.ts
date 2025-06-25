@@ -1,10 +1,10 @@
-import type { Conn } from "./connection";
 import type { Logger } from "@/common/log";
-import type { ActorKey } from "@/common/utils";
-import type { Schedule } from "./schedule";
+import type { ActorKey } from "@/actor/mod";
+import type { Conn } from "./connection";
 import type { ConnId } from "./connection";
-import type { SaveStateOptions } from "./instance";
 import type { ActorContext } from "./context";
+import type { SaveStateOptions } from "./instance";
+import type { Schedule } from "./schedule";
 
 /**
  * Context for a remote procedure call.
