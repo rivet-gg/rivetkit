@@ -19,14 +19,14 @@ npm install resend
 ```
 </Step>
 
-<Step title="Create a worker with Resend">
-```typescript workers.ts
-import { worker, setup } from "rivetkit";
+<Step title="Create a actor with Resend">
+```typescript actors.ts
+import { actor, setup } from "rivetkit";
 import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const user = worker({
+const user = actor({
   state: {
     email: null as string | null,
   },
@@ -51,21 +51,21 @@ const user = worker({
   },
 });
 
-export const registry = setup({ workers: { user } });
+export const registry = setup({ actors: { user } });
 export type Registry = typeof registry;
 ```
 </Step>
 
-<Step title="Call your worker">
+<Step title="Call your actor">
 ```typescript client.ts
 import { createClient } from "rivetkit";
-import { App } from "./workers/app.ts";
+import { App } from "./actors/app.ts";
 
 const client = createClient<App>("http://localhost:8787");
-const userWorker = await client.user.get({ tags: { user: "user123" } });
+const userActor = await client.user.get({ tags: { user: "user123" } });
 
-await userWorker.register("user@example.com");
-await userWorker.sendExampleEmail();
+await userActor.register("user@example.com");
+await userActor.sendExampleEmail();
 ```
 </Step>
 </Steps>
@@ -77,8 +77,8 @@ await userWorker.sendExampleEmail();
 RivetKit's scheduling capabilities with Resend make it easy to send emails at specific times:
 
 <CodeGroup>
-```typescript workers.ts
-const emailScheduler = worker({
+```typescript actors.ts
+const emailScheduler = actor({
   state: {
     email: null as string | null,
   },
@@ -115,8 +115,8 @@ await scheduler.scheduleEmail("user@example.com", 60000); // 1 minute
 Send daily reminders to users based on their activity:
 
 <CodeGroup>
-```typescript workers.ts
-const reminder = worker({
+```typescript actors.ts
+const reminder = actor({
   state: {
     email: null as string | null,
     lastActive: null as number | null,
@@ -163,8 +163,8 @@ await userReminder.trackActivity("user@example.com");
 Monitor your systems and send alerts when issues are detected:
 
 <CodeGroup>
-```typescript workers.ts
-const monitor = worker({
+```typescript actors.ts
+const monitor = actor({
   state: {
     alertEmail: null as string | null,
     isHealthy: true,
@@ -212,12 +212,12 @@ await systemMonitor.configure("admin@example.com");
 
 ## Testing
 
-When testing workers that use Resend, you should mock the Resend API to avoid sending real emails during tests. RivetKit's testing utilities combined with Vitest make this straightforward:
+When testing actors that use Resend, you should mock the Resend API to avoid sending real emails during tests. RivetKit's testing utilities combined with Vitest make this straightforward:
 
 ```typescript
 import { test, expect, vi, beforeEach } from "vitest";
 import { setupTest } from "rivetkit/test";
-import { app } from "../workers/app";
+import { app } from "../actors/app";
 
 // Create mock for send method
 const mockSendEmail = vi.fn().mockResolvedValue({ success: true });
@@ -242,10 +242,10 @@ beforeEach(() => {
 
 test("email is sent when action is called", async (t) => {
   const { client } = await setupTest(t, app);
-  const worker = await client.user.get();
+  const actor = await client.user.get();
 
   // Call the action that should send an email
-  await worker.someActionThatSendsEmail("user@example.com");
+  await actor.someActionThatSendsEmail("user@example.com");
 
   // Verify the email was sent with the right parameters
   expect(mockSendEmail).toHaveBeenCalledWith(

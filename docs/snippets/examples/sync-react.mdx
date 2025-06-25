@@ -2,13 +2,13 @@
 import { createClient } from "rivetkit/client";
 import { createReactRivetKit } from "@rivetkit/react";
 import { useState, useEffect, useRef } from "react";
-import type { Contact } from "./worker";
+import type { Contact } from "./actor";
 
 const client = createClient("http://localhost:6420");
-const { useWorker, useWorkerEvent } = createReactRivetKit(client);
+const { useActor, useActorEvent } = createReactRivetKit(client);
 
 export function ContactsApp() {
-  const { worker } = useWorker("contacts");
+  const { actor } = useActor("contacts");
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -19,17 +19,17 @@ export function ContactsApp() {
   
   // Load initial contacts
   useEffect(() => {
-    if (!worker) return;
+    if (!actor) return;
     
-    worker.getChanges(0).then(data => {
+    actor.getChanges(0).then(data => {
       setContacts(data.changes);
       lastSyncTime.current = data.timestamp;
       setSyncStatus("Synced");
     });
-  }, [worker]);
+  }, [actor]);
   
   // Handle contact events
-  useWorkerEvent({ worker, event: "contactsChanged" }, ({ contacts: updatedContacts }) => {
+  useActorEvent({ actor, event: "contactsChanged" }, ({ contacts: updatedContacts }) => {
     setContacts(prev => {
       const contactMap = new Map(prev.map(c => [c.id, c]));
       
@@ -46,14 +46,14 @@ export function ContactsApp() {
   
   // Sync periodically
   useEffect(() => {
-    if (!worker) return;
+    if (!actor) return;
     
     const sync = async () => {
       setSyncStatus("Syncing...");
       
       try {
         // Get remote changes
-        const changes = await worker.getChanges(lastSyncTime.current);
+        const changes = await actor.getChanges(lastSyncTime.current);
         
         // Apply remote changes
         if (changes.changes.length > 0) {
@@ -74,7 +74,7 @@ export function ContactsApp() {
         // Push local changes
         const localChanges = contacts.filter(c => c.updatedAt > lastSyncTime.current);
         if (localChanges.length > 0) {
-          await worker.pushChanges(localChanges);
+          await actor.pushChanges(localChanges);
         }
         
         lastSyncTime.current = changes.timestamp;
@@ -87,7 +87,7 @@ export function ContactsApp() {
     const intervalId = setInterval(sync, 5000);
     
     return () => clearInterval(intervalId);
-  }, [worker, contacts]);
+  }, [actor, contacts]);
   
   // Add new contact (local first)
   const addContact = () => {
@@ -103,8 +103,8 @@ export function ContactsApp() {
     
     setContacts(prev => [...prev, newContact]);
     
-    if (worker) {
-      worker.pushChanges([newContact]);
+    if (actor) {
+      actor.pushChanges([newContact]);
     }
     
     setName("");
@@ -121,10 +121,10 @@ export function ContactsApp() {
           : c
       );
       
-      if (worker) {
+      if (actor) {
         const deleted = updatedContacts.find(c => c.id === id);
         if (deleted) {
-          worker.pushChanges([deleted]);
+          actor.pushChanges([deleted]);
         }
       }
       
@@ -134,16 +134,16 @@ export function ContactsApp() {
   
   // Manual sync
   const handleSync = async () => {
-    if (!worker) return;
+    if (!actor) return;
     
     setSyncStatus("Syncing...");
     
     try {
       // Push all contacts
-      await worker.pushChanges(contacts);
+      await actor.pushChanges(contacts);
       
       // Get all changes
-      const changes = await worker.getChanges(0);
+      const changes = await actor.getChanges(0);
       
       setContacts(changes.changes);
       lastSyncTime.current = changes.timestamp;

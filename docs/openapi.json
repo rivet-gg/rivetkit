@@ -11,7 +11,7 @@
         "properties": {
           "i": {
             "type": "string",
-            "example": "worker-123"
+            "example": "actor-123"
           }
         },
         "required": [
@@ -25,7 +25,7 @@
             "nullable": true,
             "example": {
               "getForId": {
-                "workerId": "worker-123"
+                "actorId": "actor-123"
               }
             }
           }
@@ -41,7 +41,7 @@
             "nullable": true,
             "example": {
               "getForId": {
-                "workerId": "worker-123"
+                "actorId": "actor-123"
               }
             }
           },
@@ -64,7 +64,7 @@
             "nullable": true,
             "example": {
               "type": "message",
-              "content": "Hello, worker!"
+              "content": "Hello, actor!"
             }
           }
         }
@@ -73,13 +73,13 @@
     "parameters": {}
   },
   "paths": {
-    "/workers/resolve": {
+    "/actors/resolve": {
       "post": {
         "parameters": [
           {
             "schema": {
               "type": "string",
-              "description": "Worker query information"
+              "description": "Actor query information"
             },
             "required": true,
             "name": "X-RivetKit-Query",
@@ -115,7 +115,7 @@
         }
       }
     },
-    "/workers/connect/websocket": {
+    "/actors/connect/websocket": {
       "get": {
         "responses": {
           "101": {
@@ -124,7 +124,7 @@
         }
       }
     },
-    "/workers/connect/sse": {
+    "/actors/connect/sse": {
       "get": {
         "parameters": [
           {
@@ -140,7 +140,7 @@
           {
             "schema": {
               "type": "string",
-              "description": "Worker query information"
+              "description": "Actor query information"
             },
             "required": true,
             "name": "X-RivetKit-Query",
@@ -170,7 +170,7 @@
         }
       }
     },
-    "/workers/actions/{action}": {
+    "/actors/actions/{action}": {
       "post": {
         "parameters": [
           {
@@ -231,17 +231,17 @@
         }
       }
     },
-    "/workers/message": {
+    "/actors/message": {
       "post": {
         "parameters": [
           {
             "schema": {
               "type": "string",
-              "description": "Worker ID (used in some endpoints)",
-              "example": "worker-123456"
+              "description": "Actor ID (used in some endpoints)",
+              "example": "actor-123456"
             },
             "required": true,
-            "name": "X-RivetKit-Worker",
+            "name": "X-RivetKit-Actor",
             "in": "header"
           },
           {

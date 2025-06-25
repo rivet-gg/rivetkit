@@ -5,13 +5,13 @@
 // const client = createClient<Registry>("http://localhost:6420/registry", {
 // 	transport: "sse",
 // });
-// const { useWorker } = createRivetKit(client);
+// const { useActor } = createRivetKit(client);
 //
 // function App() {
 // 	const [count, setCount] = useState(0);
 // 	const [counterName, setCounterName] = useState("test-counter");
 //
-// 	const counter = useWorker({
+// 	const counter = useActor({
 // 		name: "counter",
 // 		key: [counterName],
 // 	});

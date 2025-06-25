@@ -70,9 +70,9 @@ importers:
         specifier: ^18.2.0
         version: 18.2.0(react@18.3.1)
     devDependencies:
-      '@rivetkit/worker':
+      '@rivetkit/actor':
         specifier: workspace:*
-        version: link:../../packages/worker
+        version: link:../../packages/actor
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
@@ -103,9 +103,9 @@ importers:
 
   examples/chat-room:
     devDependencies:
-      '@rivetkit/worker':
+      '@rivetkit/actor':
         specifier: workspace:*
-        version: link:../../packages/worker
+        version: link:../../packages/actor
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
@@ -134,9 +134,9 @@ importers:
       '@cloudflare/workers-types':
         specifier: ^4.20250129.0
         version: 4.20250619.0
-      '@rivetkit/worker':
+      '@rivetkit/actor':
         specifier: workspace:*
-        version: link:../../packages/worker
+        version: link:../../packages/actor
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
@@ -152,9 +152,9 @@ importers:
 
   examples/counter:
     devDependencies:
-      '@rivetkit/worker':
+      '@rivetkit/actor':
         specifier: workspace:*
-        version: link:../../packages/worker
+        version: link:../../packages/actor
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
@@ -208,9 +208,9 @@ importers:
         specifier: ^18.2.0
         version: 18.2.0(react@18.3.1)
     devDependencies:
-      '@rivetkit/worker':
+      '@rivetkit/actor':
         specifier: workspace:*
-        version: link:../../packages/worker
+        version: link:../../packages/actor
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
@@ -233,9 +233,9 @@ importers:
         specifier: ^18.2.0
         version: 18.2.0(react@18.3.1)
     devDependencies:
-      '@rivetkit/worker':
+      '@rivetkit/actor':
         specifier: workspace:*
-        version: link:../../packages/worker
+        version: link:../../packages/actor
       '@types/express':
         specifier: ^4.17.21
         version: 4.17.23
@@ -258,9 +258,9 @@ importers:
         specifier: ^4.7.0
         version: 4.8.0
     devDependencies:
-      '@rivetkit/worker':
+      '@rivetkit/actor':
         specifier: workspace:*
-        version: link:../../packages/worker
+        version: link:../../packages/actor
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
@@ -289,9 +289,9 @@ importers:
         specifier: ^18.2.0
         version: 18.2.0(react@18.3.1)
     devDependencies:
-      '@rivetkit/worker':
+      '@rivetkit/actor':
         specifier: workspace:*
-        version: link:../../packages/worker
+        version: link:../../packages/actor
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
@@ -332,9 +332,9 @@ importers:
         specifier: ^18.2.0
         version: 18.2.0(react@18.3.1)
     devDependencies:
-      '@rivetkit/worker':
+      '@rivetkit/actor':
         specifier: workspace:*
-        version: link:../../packages/worker
+        version: link:../../packages/actor
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
@@ -365,9 +365,9 @@ importers:
 
   examples/rivet:
     dependencies:
-      '@rivetkit/worker':
-        specifier: https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/worker@38d8fca
-        version: https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/worker@38d8fca(@hono/node-server@1.14.4(hono@4.8.0))(@hono/node-ws@1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0))(eventsource@3.0.7)(ws@8.18.2)
+      '@rivetkit/actor':
+        specifier: workspace:*
+        version: link:../../packages/actor
     devDependencies:
       '@types/node':
         specifier: ^22.13.9
@@ -391,15 +391,31 @@ importers:
         specifier: ^3.24.1
         version: 3.25.67
     devDependencies:
-      '@rivetkit/worker':
+      '@rivetkit/actor':
         specifier: workspace:*
-        version: link:../../packages/worker
+        version: link:../../packages/actor
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
       tsx:
         specifier: ^3.12.7
         version: 3.14.0
+      typescript:
+        specifier: ^5.5.2
+        version: 5.8.3
+
+  packages/actor:
+    dependencies:
+      '@rivetkit/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@types/node':
+        specifier: ^22.14.0
+        version: 22.15.32
+      tsup:
+        specifier: ^8.4.0
+        version: 8.5.0(@microsoft/api-extractor@7.52.8(@types/node@22.15.32))(postcss@8.5.6)(tsx@4.20.3)(typescript@5.8.3)(yaml@2.8.0)
       typescript:
         specifier: ^5.5.2
         version: 5.8.3
@@ -680,22 +696,6 @@ importers:
         version: 3.114.9(@cloudflare/workers-types@4.20250619.0)
 
   packages/rivetkit: {}
-
-  packages/worker:
-    dependencies:
-      '@rivetkit/core':
-        specifier: workspace:*
-        version: link:../core
-    devDependencies:
-      '@types/node':
-        specifier: ^22.14.0
-        version: 22.15.32
-      tsup:
-        specifier: ^8.4.0
-        version: 8.5.0(@microsoft/api-extractor@7.52.8(@types/node@22.15.32))(postcss@8.5.6)(tsx@4.20.3)(typescript@5.8.3)(yaml@2.8.0)
-      typescript:
-        specifier: ^5.5.2
-        version: 5.8.3
 
 packages:
 
@@ -1768,29 +1768,6 @@ packages:
 
   '@rivet-gg/actor-core@25.2.0':
     resolution: {integrity: sha512-4K72XcDLVAz44Ae6G6GuyzWyxQZOLN8jM/W+sVKm6fHr70X8FNCSC5+/9hFIxz/OH9E6q6Wi3V/UN/k6immUBQ==}
-
-  '@rivetkit/core@https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/core@38d8fcab136be6bdbd976a802f93581384c12fb2':
-    resolution: {tarball: https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/core@38d8fcab136be6bdbd976a802f93581384c12fb2}
-    version: 0.9.0-rc.1
-    engines: {node: '>=22.0.0'}
-    peerDependencies:
-      '@hono/node-server': ^1.14.0
-      '@hono/node-ws': ^1.1.1
-      eventsource: ^3.0.5
-      ws: ^8.0.0
-    peerDependenciesMeta:
-      '@hono/node-server':
-        optional: true
-      '@hono/node-ws':
-        optional: true
-      eventsource:
-        optional: true
-      ws:
-        optional: true
-
-  '@rivetkit/worker@https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/worker@38d8fca':
-    resolution: {tarball: https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/worker@38d8fca}
-    version: 0.9.0-rc.1
 
   '@rolldown/pluginutils@1.0.0-beta.11':
     resolution: {integrity: sha512-L/gAA/hyCSuzTF1ftlzUSI/IKr2POHsv1Dd78GfqkR83KMNuswWD61JxGV2L7nRwBBBSDr6R1gCkdTmoN7W4ag==}
@@ -5017,30 +4994,6 @@ snapshots:
     dependencies:
       zod: 3.25.67
 
-  '@rivetkit/core@https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/core@38d8fcab136be6bdbd976a802f93581384c12fb2(@hono/node-server@1.14.4(hono@4.8.0))(@hono/node-ws@1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0))(eventsource@3.0.7)(ws@8.18.2)':
-    dependencies:
-      '@hono/zod-openapi': 0.19.8(hono@4.8.0)(zod@3.25.67)
-      cbor-x: 1.6.0
-      hono: 4.8.0
-      invariant: 2.2.4
-      on-change: 5.0.1
-      p-retry: 6.2.1
-      zod: 3.25.67
-    optionalDependencies:
-      '@hono/node-server': 1.14.4(hono@4.8.0)
-      '@hono/node-ws': 1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0)
-      eventsource: 3.0.7
-      ws: 8.18.2
-
-  '@rivetkit/worker@https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/worker@38d8fca(@hono/node-server@1.14.4(hono@4.8.0))(@hono/node-ws@1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0))(eventsource@3.0.7)(ws@8.18.2)':
-    dependencies:
-      '@rivetkit/core': https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/core@38d8fcab136be6bdbd976a802f93581384c12fb2(@hono/node-server@1.14.4(hono@4.8.0))(@hono/node-ws@1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0))(eventsource@3.0.7)(ws@8.18.2)
-    transitivePeerDependencies:
-      - '@hono/node-server'
-      - '@hono/node-ws'
-      - eventsource
-      - ws
-
   '@rolldown/pluginutils@1.0.0-beta.11': {}
 
   '@rollup/pluginutils@5.2.0(rollup@4.44.0)':
@@ -5411,30 +5364,6 @@ snapshots:
       '@vitest/utils': 3.2.4
       chai: 5.2.0
       tinyrainbow: 2.0.0
-
-  '@vitest/mocker@3.2.4(vite@6.3.5(@types/node@22.15.32)(tsx@3.14.0)(yaml@2.8.0))':
-    dependencies:
-      '@vitest/spy': 3.2.4
-      estree-walker: 3.0.3
-      magic-string: 0.30.17
-    optionalDependencies:
-      vite: 6.3.5(@types/node@22.15.32)(tsx@3.14.0)(yaml@2.8.0)
-
-  '@vitest/mocker@3.2.4(vite@6.3.5(@types/node@22.15.32)(tsx@4.20.3)(yaml@2.8.0))':
-    dependencies:
-      '@vitest/spy': 3.2.4
-      estree-walker: 3.0.3
-      magic-string: 0.30.17
-    optionalDependencies:
-      vite: 6.3.5(@types/node@22.15.32)(tsx@4.20.3)(yaml@2.8.0)
-
-  '@vitest/mocker@3.2.4(vite@6.3.5(@types/node@24.0.3)(tsx@4.20.3)(yaml@2.8.0))':
-    dependencies:
-      '@vitest/spy': 3.2.4
-      estree-walker: 3.0.3
-      magic-string: 0.30.17
-    optionalDependencies:
-      vite: 6.3.5(@types/node@24.0.3)(tsx@4.20.3)(yaml@2.8.0)
 
   '@vitest/mocker@3.2.4(vite@6.3.5(@types/node@24.0.4)(tsx@4.20.3)(yaml@2.8.0))':
     dependencies:
@@ -7533,7 +7462,7 @@ snapshots:
     dependencies:
       '@types/chai': 5.2.2
       '@vitest/expect': 3.2.4
-      '@vitest/mocker': 3.2.4(vite@6.3.5(@types/node@22.15.32)(tsx@4.20.3)(yaml@2.8.0))
+      '@vitest/mocker': 3.2.4(vite@6.3.5(@types/node@24.0.4)(tsx@4.20.3)(yaml@2.8.0))
       '@vitest/pretty-format': 3.2.4
       '@vitest/runner': 3.2.4
       '@vitest/snapshot': 3.2.4
@@ -7575,7 +7504,7 @@ snapshots:
     dependencies:
       '@types/chai': 5.2.2
       '@vitest/expect': 3.2.4
-      '@vitest/mocker': 3.2.4(vite@6.3.5(@types/node@22.15.32)(tsx@3.14.0)(yaml@2.8.0))
+      '@vitest/mocker': 3.2.4(vite@6.3.5(@types/node@24.0.4)(tsx@4.20.3)(yaml@2.8.0))
       '@vitest/pretty-format': 3.2.4
       '@vitest/runner': 3.2.4
       '@vitest/snapshot': 3.2.4
@@ -7616,7 +7545,7 @@ snapshots:
     dependencies:
       '@types/chai': 5.2.2
       '@vitest/expect': 3.2.4
-      '@vitest/mocker': 3.2.4(vite@6.3.5(@types/node@24.0.3)(tsx@4.20.3)(yaml@2.8.0))
+      '@vitest/mocker': 3.2.4(vite@6.3.5(@types/node@24.0.4)(tsx@4.20.3)(yaml@2.8.0))
       '@vitest/pretty-format': 3.2.4
       '@vitest/runner': 3.2.4
       '@vitest/snapshot': 3.2.4

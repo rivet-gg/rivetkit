@@ -2,8 +2,8 @@ import { assertUnreachable } from "@/common/utils";
 import { httpUserAgent } from "@/utils";
 import { Encoding } from "@/mod";
 import * as cbor from "cbor-x";
-import { WorkerError, HttpRequestError } from "./errors";
-import { ResponseError } from "@/worker/protocol/http/error";
+import { ActorError, HttpRequestError } from "./errors";
+import { ResponseError } from  "@/actor/protocol/http/error";
 import { logger } from "./log";
 
 export type WebSocketMessage = string | Blob | ArrayBuffer | Uint8Array;
@@ -115,7 +115,7 @@ export async function sendHttpRequest<
 		}
 
 		// Throw structured error
-		throw new WorkerError(responseData.c, responseData.m, responseData.md);
+		throw new ActorError(responseData.c, responseData.m, responseData.md);
 	}
 
 	// Some requests don't need the success response to be parsed, so this can speed things up

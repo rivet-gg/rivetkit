@@ -52,7 +52,7 @@
 //
 // 	server.accept?.();
 //
-// 	// note: cloudflare workers doesn't support 'open' event, so we call it immediately with a fake event
+// 	// note: cloudflare actors doesn't support 'open' event, so we call it immediately with a fake event
 // 	//
 // 	// we have to do this after `server.accept() is called`
 // 	events.onOpen?.(new Event("open"), wsContext);

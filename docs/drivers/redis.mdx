@@ -4,7 +4,7 @@ title: Redis
 
 import DriverNote from '/snippets/driver-note.mdx';
 
-The Redis Driver is a production-ready implementation that uses Redis for worker state persistence, coordination, and communication. It supports distributed worker systems and enables horizontal scaling across multiple instances.
+The Redis Driver is a production-ready implementation that uses Redis for actor state persistence, coordination, and communication. It supports distributed actor systems and enables horizontal scaling across multiple instances.
 
 <DriverNote />
 
@@ -57,7 +57,7 @@ The Redis Driver is a production-ready implementation that uses Redis for worker
     ```typescript src/index.ts
     import { serve } from "@rivetkit/nodejs"
     import { RedisManagerDriver } from "@rivetkit/redis/manager";
-    import { RedisWorkerDriver } from "@rivetkit/redis/worker";
+    import { RedisActorDriver } from "@rivetkit/redis/actor";
     import { RedisCoordinateDriver } from "@rivetkit/redis/coordinate";
     import Redis from "ioredis";
 
@@ -68,7 +68,7 @@ The Redis Driver is a production-ready implementation that uses Redis for worker
       topology: "coordinate", // Can be "standalone" or "coordinate"
       drivers: {
         manager: new RedisManagerDriver(redis),
-        worker: new RedisWorkerDriver(redis),
+        actor: new RedisActorDriver(redis),
         coordinate: new RedisCoordinateDriver(redis),
       },
     });
@@ -110,7 +110,7 @@ The Redis driver requires an [ioredis](https://github.com/redis/ioredis) connect
 ```typescript
 import Redis from "ioredis";
 import { RedisManagerDriver } from "@rivetkit/redis/manager";
-import { RedisWorkerDriver } from "@rivetkit/redis/worker";
+import { RedisActorDriver } from "@rivetkit/redis/actor";
 import { RedisCoordinateDriver } from "@rivetkit/redis/coordinate";
 
 // Create a Redis connection
@@ -122,7 +122,7 @@ const redis = new Redis({
 
 // Create the Redis drivers
 const managerDriver = new RedisManagerDriver(redis);
-const workerDriver = new RedisWorkerDriver(redis);
+const actorDriver = new RedisActorDriver(redis);
 const coordinateDriver = new RedisCoordinateDriver(redis);
 ```
 

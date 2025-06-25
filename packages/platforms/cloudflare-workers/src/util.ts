@@ -5,7 +5,7 @@
 // /**
 //  * Serializes an array of key strings into a single string for use with idFromName
 //  * 
-//  * @param name The worker name
+//  * @param name The actor name
 //  * @param key Array of key strings to serialize
 //  * @returns A single string containing the serialized name and key
 //  */

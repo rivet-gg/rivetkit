@@ -2,20 +2,20 @@
 import { createClient } from "rivetkit/client";
 import { createReactRivetKit } from "@rivetkit/react";
 import { useState, useEffect, useRef } from "react";
-import type { Player } from "./worker";
+import type { Player } from "./actor";
 
 const client = createClient("http://localhost:6420");
-const { useWorker, useWorkerEvent } = createReactRivetKit(client);
+const { useActor, useActorEvent } = createReactRivetKit(client);
 
 export function MultiplayerGame() {
-  const [{ worker, connectionId }] = useWorker("gameRoom");
+  const [{ actor, connectionId }] = useActor("gameRoom");
   const [players, setPlayers] = useState<Player[]>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const keysPressed = useRef<Record<string, boolean>>({});
   
   // Set up game
   useEffect(() => {
-    if (!worker) return;
+    if (!actor) return;
     
     // Set up keyboard handlers
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -38,7 +38,7 @@ export function MultiplayerGame() {
       if (keysPressed.current["a"] || keysPressed.current["arrowleft"]) input.x = -1;
       if (keysPressed.current["d"] || keysPressed.current["arrowright"]) input.x = 1;
       
-      worker.setInput(input);
+      actor.setInput(input);
     }, 50);
     
     // Rendering loop
@@ -71,10 +71,10 @@ export function MultiplayerGame() {
       clearInterval(inputInterval);
       cancelAnimationFrame(animationId);
     };
-  }, [worker, connectionId, players]);
+  }, [actor, connectionId, players]);
   
   // Listen for world updates
-  useWorkerEvent({ worker, event: "worldUpdate" }, ({ players: updatedPlayers }) => {
+  useActorEvent({ actor, event: "worldUpdate" }, ({ players: updatedPlayers }) => {
     setPlayers(updatedPlayers);
   });
   

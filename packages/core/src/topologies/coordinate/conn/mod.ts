@@ -1,12 +1,12 @@
 import type { GlobalState } from "@/topologies/coordinate/topology";
-import type * as messageToClient from "@/worker/protocol/message/to-client";
-import * as errors from "@/worker/errors";
+import type * as messageToClient from  "@/actor/protocol/message/to-client";
+import * as errors from  "@/actor/errors";
 import type { CoordinateDriver } from "../driver";
 import { logger } from "../log";
-import { WorkerPeer } from "../worker-peer";
+import { ActorPeer } from  "../actor-peer";
 import { publishMessageToLeader } from "../node/message";
-import { generateConnId, generateConnToken } from "@/worker/connection";
-import type { WorkerDriver } from "@/worker/driver";
+import { generateConnId, generateConnToken } from  "@/actor/connection";
+import type { ActorDriver } from  "@/actor/driver";
 import { RegistryConfig } from "@/registry/config";
 import { unknown } from "zod";
 import { RunConfig } from "@/registry/run-config";
@@ -17,20 +17,20 @@ export interface RelayConnDriver {
 }
 
 /**
- * This is different than `Connection`. `Connection` represents the data of the connection state on the worker itself, `RelayConnection` supports managing a connection for a worker running on another machine over pubsub.
+ * This is different than `Connection`. `Connection` represents the data of the connection state on the actor itself, `RelayConnection` supports managing a connection for a actor running on another machine over pubsub.
  */
 export class RelayConn {
 	#registryConfig: RegistryConfig;
 	#runConfig: RunConfig;
 	#coordinateDriver: CoordinateDriver;
-	#workerDriver: WorkerDriver;
+	#actorDriver: ActorDriver;
 	#globalState: GlobalState;
 	#driver: RelayConnDriver;
-	#workerId: string;
+	#actorId: string;
 	#parameters: unknown;
 	#authData: unknown;
 
-	#workerPeer?: WorkerPeer;
+	#actorPeer?: ActorPeer;
 
 	#connId?: string;
 	#connToken?: string;
@@ -52,21 +52,21 @@ export class RelayConn {
 	constructor(
 		registryConfig: RegistryConfig,
 		runConfig: RunConfig,
-		workerDriver: WorkerDriver,
+		actorDriver: ActorDriver,
 		CoordinateDriver: CoordinateDriver,
 		globalState: GlobalState,
 		driver: RelayConnDriver,
-		workerId: string,
+		actorId: string,
 		parameters: unknown,
 		authData: unknown,
 	) {
 		this.#registryConfig = registryConfig;
 		this.#runConfig = runConfig;
 		this.#coordinateDriver = CoordinateDriver;
-		this.#workerDriver = workerDriver;
+		this.#actorDriver = actorDriver;
 		this.#driver = driver;
 		this.#globalState = globalState;
-		this.#workerId = workerId;
+		this.#actorId = actorId;
 		this.#parameters = parameters;
 		this.#authData = authData;
 	}
@@ -81,18 +81,18 @@ export class RelayConn {
 		this.#connToken = connToken;
 
 		logger().info("starting relay connection", {
-			workerId: this.#workerId,
+			actorId: this.#actorId,
 			connId: this.#connId,
 		});
 
-		// Create worker peer
-		this.#workerPeer = await WorkerPeer.acquire(
+		// Create actor peer
+		this.#actorPeer = await ActorPeer.acquire(
 			this.#registryConfig,
 			this.#runConfig,
-			this.#workerDriver,
+			this.#actorDriver,
 			this.#coordinateDriver,
 			this.#globalState,
-			this.#workerId,
+			this.#actorId,
 			connId,
 		);
 
@@ -104,11 +104,11 @@ export class RelayConn {
 			this.#runConfig,
 			this.#coordinateDriver,
 			this.#globalState,
-			this.#workerId,
+			this.#actorId,
 			{
 				b: {
 					lco: {
-						ai: this.#workerId,
+						ai: this.#actorId,
 						ci: connId,
 						ct: connToken,
 						p: this.#parameters,
@@ -147,18 +147,18 @@ export class RelayConn {
 			this.#globalState.relayConns.delete(this.#connId);
 
 			// Publish connection close
-			if (!fromLeader && this.#workerPeer?.leaderNodeId) {
+			if (!fromLeader && this.#actorPeer?.leaderNodeId) {
 				// Publish connection close
 				await publishMessageToLeader(
 					this.#registryConfig,
 					this.#runConfig,
 					this.#coordinateDriver,
 					this.#globalState,
-					this.#workerId,
+					this.#actorId,
 					{
 						b: {
 							lcc: {
-								ai: this.#workerId,
+								ai: this.#actorId,
 								ci: this.#connId,
 							},
 						},
@@ -167,10 +167,10 @@ export class RelayConn {
 				);
 			}
 
-			// Remove reference to worker (will shut down if no more references)
+			// Remove reference to actor (will shut down if no more references)
 			//
 			// IMPORTANT: Do this last since we need to send the connection close event
-			await this.#workerPeer?.removeConnectionReference(this.#connId);
+			await this.#actorPeer?.removeConnectionReference(this.#connId);
 		} else {
 			logger().warn("disposing connection without connection id");
 		}

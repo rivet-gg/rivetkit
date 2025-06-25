@@ -52,11 +52,11 @@ Here are some useful prompts to try with Cursor when working with RivetKit:
 # Get an overview of RivetKit's architecture
 Explain the architecture of RivetKit and how the different topologies work
 
-# Understand how workers communicate
-Explain how workers communicate with each other in the coordinate topology
+# Understand how actors communicate
+Explain how actors communicate with each other in the coordinate topology
 
 # Learn about specific concepts
-Explain the lifecycle hooks for workers and when each one is called
+Explain the lifecycle hooks for actors and when each one is called
 ```
 
 ### Find Relevant Code
@@ -68,34 +68,34 @@ Find the files that implement the Redis driver
 # Locate examples of specific patterns
 Show me examples of RPC methods in the codebase
 
-# Understand worker state management
-Explain how worker state is persisted between restarts
+# Understand actor state management
+Explain how actor state is persisted between restarts
 ```
 
 ### Add New Features
 
 ```
-# Create a new worker implementation
-Help me create a new worker for managing user sessions
+# Create a new actor implementation
+Help me create a new actor for managing user sessions
 
-# Add authentication to a worker
-Show me how to add authentication to my worker's _onBeforeConnect method
+# Add authentication to a actor
+Show me how to add authentication to my actor's _onBeforeConnect method
 
 # Implement error handling
-Help me implement proper error handling for my worker's RPC methods
+Help me implement proper error handling for my actor's RPC methods
 ```
 
 ### Debug Issues
 
 ```
 # Diagnose connection problems
-My worker connections are dropping, help me debug why
+My actor connections are dropping, help me debug why
 
 # Fix state persistence issues
-My worker state isn't persisting between restarts, what could be wrong?
+My actor state isn't persisting between restarts, what could be wrong?
 
 # Address scaling problems
-My workers are using too much memory, how can I optimize them?
+My actors are using too much memory, how can I optimize them?
 ```
 
 ## Additional Resources

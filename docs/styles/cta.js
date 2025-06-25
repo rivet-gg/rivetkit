@@ -1,22 +1,22 @@
 // CTA titles array
 const CTA_TITLES = [
-  "Performance in every act - thanks to Rivet Workers.",
-  "Scale without drama - only with Rivet Workers.",
-  "It's time your backend took center-stage - with Rivet Workers.",
-  "SQLite the spotlight on performance - with Rivet Workers.",
-  "Backend scalability: the SQL - starring Rivet Workers.",
-  "Take your state to the edge - Rivet Workers makes it easy.",
-  "No state fright - just scalability with Rivet Workers.",
-  "Act now, deploy at the edge - with Rivet Workers.",
-  "Lights, camera, serverless - powered by Rivet Workers.",
-  "Your backend deserves a standing ovation - Rivet Workers delivers.",
-  "Cue your backend's best performance - enter Rivet Workers.",
-  "Backend performance worth applauding - only with Rivet Workers.",
-  "Put your backend center-stage - with Rivet Workers.",
-  "Make your backend the main worker - with Rivet Workers.",
-  "Give your backend its big break - use Rivet Workers.",
-  "Serverless, with no intermissions - powered by Rivet Workers.",
-  "Set the stage for serverless success - with Rivet Workers."
+  "Performance in every act - thanks to Rivet Actors.",
+  "Scale without drama - only with Rivet Actors.",
+  "It's time your backend took center-stage - with Rivet Actors.",
+  "SQLite the spotlight on performance - with Rivet Actors.",
+  "Backend scalability: the SQL - starring Rivet Actors.",
+  "Take your state to the edge - Rivet Actors makes it easy.",
+  "No state fright - just scalability with Rivet Actors.",
+  "Act now, deploy at the edge - with Rivet Actors.",
+  "Lights, camera, serverless - powered by Rivet Actors.",
+  "Your backend deserves a standing ovation - Rivet Actors delivers.",
+  "Cue your backend's best performance - enter Rivet Actors.",
+  "Backend performance worth applauding - only with Rivet Actors.",
+  "Put your backend center-stage - with Rivet Actors.",
+  "Make your backend the main actor - with Rivet Actors.",
+  "Give your backend its big break - use Rivet Actors.",
+  "Serverless, with no intermissions - powered by Rivet Actors.",
+  "Set the stage for serverless success - with Rivet Actors."
 ];
 
 function initializeAllCTAs() {

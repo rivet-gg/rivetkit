@@ -9,7 +9,7 @@ import { Icon } from "@/components/Icon";
     <div className="faq-section">
         <div className="faq-accordion" data-state="closed">
             <button className="faq-question">
-                How is RivetKit different than Rivet Workers?
+                How is RivetKit different than Rivet Actors?
                 <Icon icon="chevron-down" size={16} color="white" />
             </button>
             <div className="faq-answer">
@@ -21,11 +21,11 @@ import { Icon } from "@/components/Icon";
 
         <div className="faq-accordion" data-state="closed">
             <button className="faq-question">
-                How does stateful serverless compare to the traditional worker model?
+                How does stateful serverless compare to the traditional actor model?
                 <Icon icon="chevron-down" size={16} color="white" />
             </button>
             <div className="faq-answer">
-                <p>Stateful serverless is very similar to workers: it's essentially workers with persistence, and usually doesn't have as rigid constraints on message handling. This makes it more flexible while maintaining the core benefits of the worker model.</p>
+                <p>Stateful serverless is very similar to actors: it's essentially actors with persistence, and usually doesn't have as rigid constraints on message handling. This makes it more flexible while maintaining the core benefits of the actor model.</p>
             </div>
         </div>
 
@@ -78,7 +78,7 @@ import { Icon } from "@/components/Icon";
                 <Icon icon="chevron-down" size={16} color="white" />
             </button>
             <div className="faq-answer">
-                <p>Yes, but only as much as storing data in a single database row does. We're working on building out read replicas to allow you to perform read-only actions on workers.</p>
+                <p>Yes, but only as much as storing data in a single database row does. We're working on building out read replicas to allow you to perform read-only actions on actors.</p>
             </div>
         </div>
 

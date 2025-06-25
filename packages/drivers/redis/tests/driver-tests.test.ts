@@ -4,7 +4,7 @@
 //	createTestRuntime,
 //} from "@rivetkit/core/driver-test-suite";
 //import {
-//	RedisWorkerDriver,
+//	RedisActorDriver,
 //	RedisCoordinateDriver,
 //	RedisManagerDriver,
 //} from "../src/mod";
@@ -87,7 +87,7 @@
 //			});
 //
 //			return {
-//				workerDriver: new RedisWorkerDriver(redisClient),
+//				actorDriver: new RedisActorDriver(redisClient),
 //				managerDriver: new RedisManagerDriver(redisClient, registry),
 //				coordinateDriver: new RedisCoordinateDriver(redisClient),
 //				async cleanup() {

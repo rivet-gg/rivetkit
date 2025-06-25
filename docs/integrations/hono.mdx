@@ -11,19 +11,19 @@ When mounting the RivetKit router at a custom path, you **must** specify the sam
 ```typescript
 // Setup the RivetKit app
 const registry = setup({
-  workers: { counter },
+  actors: { counter },
   // IMPORTANT: Must specify the same basePath where your router is mounted
   basePath: "/my-path"
 });
 
 // Create a router from the app
-const { router: workerRouter } = createRouter(app);
+const { router: actorRouter } = createRouter(app);
 
 // Mount at the same path specified in basePath
-honoApp.route("/my-path", workerRouter);
+honoApp.route("/my-path", actorRouter);
 ```
 
-This ensures that WebSocket connections and other functionality work correctly when accessing your workers through the custom path.
+This ensures that WebSocket connections and other functionality work correctly when accessing your actors through the custom path.
 
 ## Platform-Specific Examples
 
@@ -46,22 +46,22 @@ honoApp.get("/hello", (c) => c.text("Hello, world!"));
 
 // Setup the RivetKit app
 const registry = setup({
-  workers: { counter },
+  actors: { counter },
   // IMPORTANT: Must specify the same basePath where your router is mounted
   basePath: "/my-path"
 });
 
 // Create a router and handler from the app
-const { router: workerRouter, WorkerHandler } = createRouter(app);
+const { router: actorRouter, ActorHandler } = createRouter(app);
 
 // Mount the RivetKit router at /my-path
-honoApp.route("/my-path", workerRouter);
+honoApp.route("/my-path", actorRouter);
 
 // Export the app type for client usage
 export type Registry = typeof registry;
 
-// IMPORTANT: Must export `WorkerHandler` as this exact name
-export { honoApp as default, WorkerHandler };
+// IMPORTANT: Must export `ActorHandler` as this exact name
+export { honoApp as default, ActorHandler };
 ```
 
 Make sure to update your client connection URL to include the custom path:
@@ -71,7 +71,7 @@ Make sure to update your client connection URL to include the custom path:
 import { createClient } from "rivetkit/client";
 import type { App } from "./src/index";
 
-const client = createClient<App>("https://your-worker.workers.dev/my-path");
+const client = createClient<App>("https://your-actor.actors.dev/my-path");
 ```
 
 For this to work with Cloudflare Workers, your `wrangler.json` **must** include specific Durable Object and KV namespace bindings with the exact names expected by RivetKit:
@@ -83,21 +83,21 @@ For this to work with Cloudflare Workers, your `wrangler.json` **must** include 
   "compatibility_date": "2025-01-29",
   "migrations": [
     {
-      "new_classes": ["WorkerHandler"],
+      "new_classes": ["ActorHandler"],
       "tag": "v1"
     }
   ],
   "durable_objects": {
     "bindings": [
       {
-        "class_name": "WorkerHandler", // Must match exported class
-        "name": "WORKER_DO"            // Must use this exact name
+        "class_name": "ActorHandler", // Must match exported class
+        "name": "ACTOR_DO"            // Must use this exact name
       }
     ]
   },
   "kv_namespaces": [
     {
-      "binding": "WORKER_KV",          // Must use this exact name
+      "binding": "ACTOR_KV",          // Must use this exact name
       "id": "YOUR_KV_NAMESPACE_ID"    // Replace with your KV ID
     }
   ]
@@ -122,16 +122,16 @@ honoApp.get("/hello", (c) => c.text("Hello, world!"));
 
 // Setup the RivetKit app
 const registry = setup({
-  workers: { counter },
+  actors: { counter },
   // IMPORTANT: Must specify the same basePath where your router is mounted
   basePath: "/my-path"
 });
 
 // Create a router from the app
-const { router: workerRouter, injectWebSocket } = createRouter(app);
+const { router: actorRouter, injectWebSocket } = createRouter(app);
 
 // Mount the RivetKit router at /my-path
-honoApp.route("/my-path", workerRouter);
+honoApp.route("/my-path", actorRouter);
 
 // Export the app type for client usage
 export type Registry = typeof registry;
@@ -174,16 +174,16 @@ honoApp.get("/hello", (c) => c.text("Hello, world!"));
 
 // Setup the RivetKit app
 const registry = setup({
-  workers: { counter },
+  actors: { counter },
   // IMPORTANT: Must specify the same basePath where your router is mounted
   basePath: "/my-path"
 });
 
 // Create a router from the app
-const { router: workerRouter, webSocketHandler } = createRouter(app);
+const { router: actorRouter, webSocketHandler } = createRouter(app);
 
 // Mount the RivetKit router at /my-path
-honoApp.route("/my-path", workerRouter);
+honoApp.route("/my-path", actorRouter);
 
 // Export the app type for client usage
 export type Registry = typeof registry;

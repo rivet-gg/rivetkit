@@ -4,7 +4,7 @@ title: File System
 
 import DriverNote from '/snippets/driver-note.mdx';
 
-The File System Driver is a simple file-based implementation designed for development and testing environments. It stores all worker state in local files, providing persistence between application restarts.
+The File System Driver is a simple file-based implementation designed for development and testing environments. It stores all actor state in local files, providing persistence between application restarts.
 
 <DriverNote />
 
@@ -56,14 +56,14 @@ The File System Driver is a simple file-based implementation designed for develo
 
     ```typescript src/index.ts
     import { serve } from "@rivetkit/nodejs"
-    import { FileSystemManagerDriver, FileSystemWorkerDriver, FileSystemGlobalState } from "@rivetkit/file-system";
+    import { FileSystemManagerDriver, FileSystemActorDriver, FileSystemGlobalState } from "@rivetkit/file-system";
 
     const fsState = new FileSystemGlobalState();
     serve(app, {
       topology: "standalone",
       drivers: {
         manager: new FileSystemManagerDriver(app, fsState),
-        worker: new FileSystemWorkerDriver(fsState),
+        actor: new FileSystemActorDriver(fsState),
       },
     });
     ```
@@ -101,7 +101,7 @@ The File System Driver is a simple file-based implementation designed for develo
 
 The File System driver provides several benefits for development:
 
-- **Persistence**: Worker state is stored in files and persists between application restarts
+- **Persistence**: Actor state is stored in files and persists between application restarts
 - **Durability**: Data is written to disk, providing protection against process crashes
 - **Visibility**: State files can be inspected for debugging purposes
 - **No External Dependencies**: Doesn't require additional services like Redis

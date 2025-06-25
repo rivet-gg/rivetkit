@@ -1,5 +1,5 @@
 export { getStoragePath } from "./utils";
-export { FileSystemWorkerDriver } from "./worker";
+export { FileSystemActorDriver } from  "./actor";
 export { FileSystemManagerDriver } from "./manager";
 export { FileSystemGlobalState } from "./global-state";
 

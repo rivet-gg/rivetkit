@@ -1,36 +1,36 @@
 import { useStore } from "@tanstack/react-store";
 import {
-	type AnyWorkerRegistry,
+	type AnyActorRegistry,
 	type CreateRivetKitOptions,
-	type WorkerOptions,
+	type ActorOptions,
 	createRivetKit as createVanillaRivetKit,
 } from "@rivetkit/framework-base";
-import type { Client, ExtractWorkersFromRegistry } from "@rivetkit/core/client";
+import type { Client, ExtractActorsFromRegistry } from "@rivetkit/core/client";
 import { useEffect } from "react";
 
 export { createClient } from "@rivetkit/core/client";
 
-export function createRivetKit<Registry extends AnyWorkerRegistry>(
+export function createRivetKit<Registry extends AnyActorRegistry>(
 	client: Client<Registry>,
 	opts: CreateRivetKitOptions<Registry> = {},
 ) {
-	const { getOrCreateWorker } = createVanillaRivetKit<
+	const { getOrCreateActor } = createVanillaRivetKit<
 		Registry,
-		ExtractWorkersFromRegistry<Registry>,
-		keyof ExtractWorkersFromRegistry<Registry>
+		ExtractActorsFromRegistry<Registry>,
+		keyof ExtractActorsFromRegistry<Registry>
 	>(client, opts);
 
 	/**
-	 * Hook to connect to a worker and retrieve its state. Using this hook with the same options
-	 * will return the same worker instance. This simplifies passing around the worker state in your components.
-	 * It also provides a method to listen for events emitted by the worker.
-	 * @param opts - Options for the worker, including its name, key, and parameters.
-	 * @returns An object containing the worker's state and a method to listen for events.
+	 * Hook to connect to a actor and retrieve its state. Using this hook with the same options
+	 * will return the same actor instance. This simplifies passing around the actor state in your components.
+	 * It also provides a method to listen for events emitted by the actor.
+	 * @param opts - Options for the actor, including its name, key, and parameters.
+	 * @returns An object containing the actor's state and a method to listen for events.
 	 */
-	function useWorker<
-		WorkerName extends keyof ExtractWorkersFromRegistry<Registry>,
-	>(opts: WorkerOptions<Registry, WorkerName>) {
-		const { mount, setState, state } = getOrCreateWorker<WorkerName>(opts);
+	function useActor<
+		ActorName extends keyof ExtractActorsFromRegistry<Registry>,
+	>(opts: ActorOptions<Registry, ActorName>) {
+		const { mount, setState, state } = getOrCreateActor<ActorName>(opts);
 
 		useEffect(() => {
 			setState((prev) => {
@@ -46,14 +46,14 @@ export function createRivetKit<Registry extends AnyWorkerRegistry>(
 			return mount();
 		}, [mount]);
 
-		const workerState = useStore(state) || {};
+		const actorState = useStore(state) || {};
 
 		/**
-		 * Hook to listen for events emitted by the worker.
-		 * This hook allows you to subscribe to specific events emitted by the worker and execute a handler function
+		 * Hook to listen for events emitted by the actor.
+		 * This hook allows you to subscribe to specific events emitted by the actor and execute a handler function
 		 * when the event occurs.
-		 * It uses the `useEffect` hook to set up the event listener when the worker connection is established.
-		 * It cleans up the listener when the component unmounts or when the worker connection changes.
+		 * It uses the `useEffect` hook to set up the event listener when the actor connection is established.
+		 * It cleans up the listener when the component unmounts or when the actor connection changes.
 		 * @param eventName The name of the event to listen for.
 		 * @param handler The function to call when the event is emitted.
 		 */
@@ -64,19 +64,19 @@ export function createRivetKit<Registry extends AnyWorkerRegistry>(
 		) => {
 			// biome-ignore lint/correctness/useExhaustiveDependencies: it's okay to not include all dependencies here
 			useEffect(() => {
-				if (!workerState?.connection) return;
+				if (!actorState?.connection) return;
 
-				const connection = workerState.connection;
+				const connection = actorState.connection;
 				return connection.on(eventName, handler);
-			}, [workerState.connection, workerState.isConnected, eventName, handler]);
+			}, [actorState.connection, actorState.isConnected, eventName, handler]);
 		};
 		return {
-			...workerState,
+			...actorState,
 			useEvent,
 		};
 	}
 
 	return {
-		useWorker,
+		useActor,
 	};
 }

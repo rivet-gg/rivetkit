@@ -1,14 +1,14 @@
 import { z } from "zod";
-import { WorkerQuerySchema } from "./query";
-import { TransportSchema } from "@/worker/protocol/message/mod";
+import { ActorQuerySchema } from "./query";
+import { TransportSchema } from  "@/actor/protocol/message/mod";
 export * from "./query";
 
-export const WorkersRequestSchema = z.object({
-	query: WorkerQuerySchema,
+export const ActorsRequestSchema = z.object({
+	query: ActorQuerySchema,
 });
 
-export const WorkersResponseSchema = z.object({
-	workerId: z.string(),
+export const ActorsResponseSchema = z.object({
+	actorId: z.string(),
 	supportedTransports: z.array(TransportSchema),
 });
 
@@ -18,7 +18,7 @@ export const WorkersResponseSchema = z.object({
 //	environment: z.string().optional(),
 //});
 
-export type WorkersRequest = z.infer<typeof WorkersRequestSchema>;
-export type WorkersResponse = z.infer<typeof WorkersResponseSchema>;
+export type ActorsRequest = z.infer<typeof ActorsRequestSchema>;
+export type ActorsResponse = z.infer<typeof ActorsResponseSchema>;
 //export type RivetConfigResponse = z.infer<typeof RivetConfigResponseSchema>;
 

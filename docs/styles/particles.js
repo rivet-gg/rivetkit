@@ -190,7 +190,7 @@
 //    // Size and opacity
 //    this.size = Particle.PARTICLE_RADIUS * 2;
 //    this.opacity = 1;
-//    this.opacityFworker = Math.random();
+//    this.opacityFactor = Math.random();
 //    this.opacityBase = Math.min(0, Math.random() - 0.5);
 //  }
 //
@@ -220,7 +220,7 @@
 //    // Fade out between 600px and 1200px from center
 //    const minDistance = 600;
 //    const maxDistance = 1200;
-//    this.opacity = this.opacityBase + Math.max(0, Math.min(1, 1 - (distance - minDistance) / (maxDistance - minDistance))) * this.opacityFworker;
+//    this.opacity = this.opacityBase + Math.max(0, Math.min(1, 1 - (distance - minDistance) / (maxDistance - minDistance))) * this.opacityFactor;
 //
 //    // Calculate velocity magnitude directly - simpler and more accurate
 //    const velocityMagnitude = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
@@ -454,8 +454,8 @@
 //          // Normalize mouse velocity to 0-1 range
 //          const normalizedSpeed = Math.min(mouseSpeed / PARTICLE_CONFIG.MAX_VELOCITY, 1);
 //
-//          // Calculate base force fworker with smoother distance falloff
-//          const forceFworker = Math.pow(1 - distance / FORCE_RADIUS, 1.5) *
+//          // Calculate base force factor with smoother distance falloff
+//          const forceFactor = Math.pow(1 - distance / FORCE_RADIUS, 1.5) *
 //                          normalizedSpeed * 
 //                          PARTICLE_CONFIG.BASE_PUSH_FORCE * 
 //                          PARTICLE_CONFIG.MOVEMENT_FORCE_MULTIPLIER * 
@@ -477,8 +477,8 @@
 //          const moveForce = mouseSpeed * PARTICLE_CONFIG.MOVEMENT_FORCE_RATIO;
 //
 //          // More emphasis on movement direction, less on repulsion
-//          const fx = (repelDirX * repelForce * 0.5 + mvx * moveForce) * forceFworker * movementInfluence;
-//          const fy = (repelDirY * repelForce * 0.5 + mvy * moveForce) * forceFworker * movementInfluence;
+//          const fx = (repelDirX * repelForce * 0.5 + mvx * moveForce) * forceFactor * movementInfluence;
+//          const fy = (repelDirY * repelForce * 0.5 + mvy * moveForce) * forceFactor * movementInfluence;
 //
 //          particle.applyForce(fx, fy);
 //        }

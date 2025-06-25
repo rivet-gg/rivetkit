@@ -1,72 +1,72 @@
-import type { WorkerKey } from "@/common/utils";
+import type { ActorKey } from "@/common/utils";
 
-export interface WorkerState {
+export interface ActorState {
 	id: string;
 	name: string;
-	key: WorkerKey;
+	key: ActorKey;
 	persistedData: unknown;
 	input?: unknown;
 }
 
 export class MemoryGlobalState {
-	#workers: Map<string, WorkerState> = new Map();
+	#actors: Map<string, ActorState> = new Map();
 
-	#getWorker(workerId: string): WorkerState {
-		const worker = this.#workers.get(workerId);
-		if (!worker) {
-			throw new Error(`Worker does not exist for ID: ${workerId}`);
+	#getActor(actorId: string): ActorState {
+		const actor = this.#actors.get(actorId);
+		if (!actor) {
+			throw new Error(`Actor does not exist for ID: ${actorId}`);
 		}
-		return worker;
+		return actor;
 	}
 
-	readInput(workerId: string): unknown | undefined {
-		return this.#getWorker(workerId).input;
+	readInput(actorId: string): unknown | undefined {
+		return this.#getActor(actorId).input;
 	}
 
-	readPersistedData(workerId: string): unknown | undefined {
-		return this.#getWorker(workerId).persistedData;
+	readPersistedData(actorId: string): unknown | undefined {
+		return this.#getActor(actorId).persistedData;
 	}
 
-	writePersistedData(workerId: string, data: unknown) {
-		this.#getWorker(workerId).persistedData = data;
+	writePersistedData(actorId: string, data: unknown) {
+		this.#getActor(actorId).persistedData = data;
 	}
 
-	createWorker(
-		workerId: string,
+	createActor(
+		actorId: string,
 		name: string,
-		key: WorkerKey,
+		key: ActorKey,
 		input?: unknown,
 	): void {
-		// Create worker state if it doesn't exist
-		if (!this.#workers.has(workerId)) {
-			this.#workers.set(workerId, {
-				id: workerId,
+		// Create actor state if it doesn't exist
+		if (!this.#actors.has(actorId)) {
+			this.#actors.set(actorId, {
+				id: actorId,
 				name,
 				key,
 				persistedData: undefined,
 				input,
 			});
 		} else {
-			throw new Error(`Worker already exists for ID: ${workerId}`);
+			throw new Error(`Actor already exists for ID: ${actorId}`);
 		}
 	}
 
-	findWorker(
-		filter: (worker: WorkerState) => boolean,
-	): WorkerState | undefined {
-		for (const worker of this.#workers.values()) {
-			if (filter(worker)) {
-				return worker;
+	findActor(
+		filter: (actor: ActorState) => boolean,
+	): ActorState | undefined {
+		for (const actor of this.#actors.values()) {
+			if (filter(actor)) {
+				return actor;
 			}
 		}
 		return undefined;
 	}
 
-	getWorker(workerId: string): WorkerState | undefined {
-		return this.#workers.get(workerId);
+	getActor(actorId: string): ActorState | undefined {
+		return this.#actors.get(actorId);
 	}
 
-	getAllWorkers(): WorkerState[] {
-		return Array.from(this.#workers.values());
+	getAllActors(): ActorState[] {
+		return Array.from(this.#actors.values());
 	}
 }

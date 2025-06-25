@@ -2,15 +2,15 @@
 import { createClient } from "rivetkit/client";
 import { createReactRivetKit } from "@rivetkit/react";
 import { useState, useEffect } from "react";
-import type { App } from "../workers/app";
-import type { Message } from "./worker";
+import type { App } from "../actors/app";
+import type { Message } from "./actor";
 
 const client = createClient<App>("http://localhost:6420");
-const { useWorker, useWorkerEvent } = createReactRivetKit(client);
+const { useActor, useActorEvent } = createReactRivetKit(client);
 
 export function ChatRoom({ roomId = "general" }) {
   // Connect to specific chat room using tags
-  const [{ worker }] = useWorker("chatRoom", { 
+  const [{ actor }] = useActor("chatRoom", { 
     tags: { roomId }
   });
   
@@ -19,20 +19,20 @@ export function ChatRoom({ roomId = "general" }) {
 
   // Load initial state
   useEffect(() => {
-    if (worker) {
+    if (actor) {
       // Load chat history
-      worker.getHistory().then(setMessages);
+      actor.getHistory().then(setMessages);
     }
-  }, [worker]);
+  }, [actor]);
 
   // Listen for real-time updates from the server
-  useWorkerEvent({ worker, event: "newMessage" }, (message) => {
+  useActorEvent({ actor, event: "newMessage" }, (message) => {
     setMessages(prev => [...prev, message]);
   });
 
   const sendMessage = () => {
-    if (worker && input.trim()) {
-      worker.sendMessage("User", input);
+    if (actor && input.trim()) {
+      actor.sendMessage("User", input);
       setInput("");
     }
   };

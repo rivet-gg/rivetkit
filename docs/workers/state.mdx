@@ -3,26 +3,26 @@ title: State
 icon: floppy-disk
 ---
 
-Worker state provides the best of both worlds: it's stored in-memory and persisted automatically. This lets you work with the data without added latency while still being able to survive crashes & upgrades.
+Actor state provides the best of both worlds: it's stored in-memory and persisted automatically. This lets you work with the data without added latency while still being able to survive crashes & upgrades.
 
 <Tip>
 **Using External SQL Databases**
 
-Workers can also be used with external SQL databases. This can be useful to integrate workers with existing
+Actors can also be used with external SQL databases. This can be useful to integrate actors with existing
 applications or for storing relational data. Read more [here](/concepts/external-sql).
 </Tip>
 
 ## Initializing State
 
-There are two ways to define a worker's initial state:
+There are two ways to define a actor's initial state:
 
 **Method 1: Static Initial State**
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
 // Simple state with a constant
-const counter = worker({
+const counter = actor({
   // Define state as a constant
   state: { count: 0 },
   
@@ -35,10 +35,10 @@ const counter = worker({
 **Method 2: Dynamic Initial State**
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
 // State with initialization logic
-const counter = worker({
+const counter = actor({
   // Define state using a creation function
   createState: () => {
     return { count: 0 };
@@ -50,16 +50,16 @@ const counter = worker({
 });
 ```
 
-The `createState` function is called once when the worker is first created. See [Lifecycle](/concepts/lifecycle) for more details.
+The `createState` function is called once when the actor is first created. See [Lifecycle](/concepts/lifecycle) for more details.
 
 ## Modifying State
 
 To update state, modify the `state` property on the context object (`c.state`) in your actions:
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
-const counter = worker({
+const counter = actor({
   state: { count: 0 },
   
   actions: {
@@ -84,14 +84,14 @@ Only state stored in the `state` object will be persisted. Any other variables o
 
 ## State Saves
 
-Workers automatically handle persisting state transparently. This happens at the end of every action if the state has changed.
+Actors automatically handle persisting state transparently. This happens at the end of every action if the state has changed.
 
 In the rare occasion you need to force a state change mid-action, you can use `c.saveState()`. This should only be used if your action makes an important state change that needs to be persisted before the action completes.
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
-const criticalProcess = worker({
+const criticalProcess = actor({
   state: { 
     steps: [],
     currentStep: 0
@@ -120,34 +120,34 @@ const criticalProcess = worker({
 
 ## State Isolation
 
-Each worker's state is completely isolated, meaning it cannot be accessed directly by other workers or clients. This allows workers to maintain a high level of security and data integrity, ensuring that state changes are controlled and predictable.
+Each actor's state is completely isolated, meaning it cannot be accessed directly by other actors or clients. This allows actors to maintain a high level of security and data integrity, ensuring that state changes are controlled and predictable.
 
-To interact with a worker's state, you must use [Actions](/concepts/actions). Actions provide a controlled way to read from and write to the state.
+To interact with a actor's state, you must use [Actions](/concepts/actions). Actions provide a controlled way to read from and write to the state.
 
-## Sharing State Between Workers
+## Sharing State Between Actors
 
-If you need a shared state between multiple workers, you have two options:
+If you need a shared state between multiple actors, you have two options:
 
-1. Create a worker that holds the shared state that other workers can make action calls to
+1. Create a actor that holds the shared state that other actors can make action calls to
 2. Use an external database, see [External SQL Databases](/concepts/external-sql)
 
 ## Ephemeral Variables
 
-In addition to persisted state, RivetKit provides a way to store ephemeral data that is not saved to permanent storage using `vars`. This is useful for temporary data that only needs to exist while the worker is running or data that cannot be serialized.
+In addition to persisted state, RivetKit provides a way to store ephemeral data that is not saved to permanent storage using `vars`. This is useful for temporary data that only needs to exist while the actor is running or data that cannot be serialized.
 
-`vars` is designed to complement `state`, not replace it. Most workers should use both: `state` for critical business data and `vars` for ephemeral or non-serializable data.
+`vars` is designed to complement `state`, not replace it. Most actors should use both: `state` for critical business data and `vars` for ephemeral or non-serializable data.
 
 ### Initializing Variables
 
-There are two ways to define a worker's initial vars:
+There are two ways to define a actor's initial vars:
 
 **Method 1: Static Initial Variables**
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
 // Define vars as a constant
-const counter = worker({
+const counter = actor({
   state: { count: 0 },
   
   // Define ephemeral variables
@@ -169,10 +169,10 @@ When using static `vars`, all values must be compatible with `structuredClone()`
 **Method 2: Dynamic Initial Variables**
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
 // Define vars with initialization logic
-const counter = worker({
+const counter = actor({
   state: { count: 0 },
   
   // Define vars using a creation function
@@ -194,10 +194,10 @@ const counter = worker({
 Vars can be accessed and modified through the context object with `c.vars`:
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 import { createNanoEvents } from "nanoevents";
 
-const counter = worker({
+const counter = actor({
   // Persistent state - saved to storage
   state: { count: 0 },
   
@@ -230,7 +230,7 @@ const counter = worker({
 
 ### When to Use `vars` vs `state`
 
-In practice, most workers will use both: `state` for critical business data and `vars` for ephemeral, non-serializable, or performance-sensitive data.
+In practice, most actors will use both: `state` for critical business data and `vars` for ephemeral, non-serializable, or performance-sensitive data.
 
 Use `vars` when:
 
@@ -239,8 +239,8 @@ Use `vars` when:
 
 Use `state` when:
 
-- The data must be preserved across worker sleeps, restarts, updates, or crashes
-- The information is essential to the worker's core functionality and business logic
+- The data must be preserved across actor sleeps, restarts, updates, or crashes
+- The information is essential to the actor's core functionality and business logic
 
 ## Limitations
 

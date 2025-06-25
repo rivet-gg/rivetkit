@@ -6,7 +6,7 @@ import pkgJson from "../package.json" with { type: "json" };
 import { DriverConfig, UserError } from "./mod";
 import { createMemoryDriver } from "./drivers/memory/mod";
 import { createRivetManagerDriver } from "./drivers/rivet/mod";
-import { logger } from "./worker/log";
+import { logger } from  "./actor/log";
 
 export const VERSION = pkgJson.version;
 

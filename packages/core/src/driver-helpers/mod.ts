@@ -1,29 +1,29 @@
-export type { WorkerInstance, AnyWorkerInstance } from "@/worker/instance";
+export type { ActorInstance, AnyActorInstance } from  "@/actor/instance";
 export type {
 	AttemptAcquireLease,
 	ExtendLeaseOutput,
-	GetWorkerLeaderOutput,
+	GetActorLeaderOutput,
 	NodeMessageCallback,
 	CoordinateDriver,
-	StartWorkerAndAcquireLeaseOutput,
+	StartActorAndAcquireLeaseOutput,
 } from "@/topologies/coordinate/driver";
-export type { WorkerDriver } from "@/worker/driver";
+export type { ActorDriver } from  "@/actor/driver";
 export type {
 	ManagerDriver,
 	CreateInput,
 	GetForIdInput,
 	GetWithKeyInput,
 	GetOrCreateWithKeyInput,
-	WorkerOutput,
+	ActorOutput,
 } from "@/manager/driver";
 export {
-	HEADER_WORKER_QUERY,
+	HEADER_ACTOR_QUERY,
 	HEADER_ENCODING,
 	HEADER_EXPOSE_INTERNAL_ERROR,
 	HEADER_CONN_PARAMS,
 	HEADER_AUTH_DATA,
-	HEADER_WORKER_ID,
+	HEADER_ACTOR_ID,
 	HEADER_CONN_ID,
 	HEADER_CONN_TOKEN,
-} from "@/worker/router-endpoints";
+} from  "@/actor/router-endpoints";
 export { RunConfigSchema, DriverConfigSchema } from "@/registry/run-config";

@@ -1,7 +1,7 @@
-// import { worker, setup } from "@rivetkit/worker";
+// import { actor, setup } from "@rivetkit/actor";
 // import { auth, type Session, type User } from "./auth";
 //
-// export const chatRoom = worker({
+// export const chatRoom = actor({
 // 	onAuth: async (c) => {
 // 		const authResult = await auth.api.getSession({
 // 			headers: c.req.headers,
@@ -42,7 +42,7 @@
 // });
 //
 // export const registry = setup({
-// 	workers: { chatRoom },
+// 	actors: { chatRoom },
 // });
 //
 // export type Registry = typeof registry;

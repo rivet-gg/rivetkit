@@ -3,7 +3,7 @@ import {
 	createTestRuntime,
 } from "@rivetkit/core/driver-test-suite";
 import {
-	FileSystemWorkerDriver,
+	FileSystemActorDriver,
 	FileSystemManagerDriver,
 	FileSystemGlobalState,
 } from "../src/mod";
@@ -23,7 +23,7 @@ runDriverTests({
 
 			const fileSystemState = new FileSystemGlobalState(testDir);
 			return {
-				workerDriver: new FileSystemWorkerDriver(fileSystemState),
+				actorDriver: new FileSystemActorDriver(fileSystemState),
 				managerDriver: new FileSystemManagerDriver(registry, fileSystemState),
 				async cleanup() {
 					await fs.rmdir(testDir, { recursive: true });

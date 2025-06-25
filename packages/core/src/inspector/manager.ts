@@ -5,7 +5,7 @@
 // 	ToServerSchema,
 // } from "@/inspector/protocol/manager/mod";
 // import { logger } from "@/manager/log";
-// import * as errors from "@/worker/errors";
+// import * as errors from  "@/actor/errors";
 // import {
 // 	createInspectorRoute,
 // 	Inspector,
@@ -14,11 +14,11 @@
 // } from "./common";
 // import type { InspectorConfig } from "./config";
 // import type { ManagerDriver } from "@/manager/driver";
-// import { throttle } from "@/worker/utils";
+// import { throttle } from  "@/actor/utils";
 //
 // export type ManagerInspectorConnHandler = InspectorConnHandler<ToServer>;
 //
-// interface Worker {
+// interface Actor {
 // 	id: string;
 // 	name: string;
 // 	key: string[];
@@ -46,34 +46,34 @@
 // }
 //
 // /**
-//  * Represents a connection to a worker.
+//  * Represents a connection to a actor.
 //  * @internal
 //  */
 // export type ManagerInspectorConnection = InspectorConnection<ToClient>;
 //
 // /**
-//  * Provides a unified interface for inspecting worker external and internal state.
+//  * Provides a unified interface for inspecting actor external and internal state.
 //  */
 // export class ManagerInspector extends Inspector<ToClient, ToServer> {
 // 	/**
-// 	 * Inspected worker instance.
+// 	 * Inspected actor instance.
 // 	 * @internal
 // 	 */
 // 	readonly driver: ManagerDriver;
 //
 // 	/**
-// 	 * Notify all inspector listeners of a worker's state change.
+// 	 * Notify all inspector listeners of a actor's state change.
 // 	 * @param state - The new state.
 // 	 */
-// 	public onWorkersChange = throttle((workers: Worker[]) => {
-// 		this.broadcast({ type: "workers", workers });
+// 	public onActorsChange = throttle((actors: Actor[]) => {
+// 		this.broadcast({ type: "actors", actors });
 // 	}, 500);
 //
 // 	constructor(
 // 		driver: ManagerDriver,
 // 		private readonly hooks: {
-// 			getAllWorkers: () => Worker[];
-// 			getAllTypesOfWorkers: () => string[];
+// 			getAllActors: () => Actor[];
+// 			getAllTypesOfActors: () => string[];
 // 		},
 // 	) {
 // 		super();
@@ -99,8 +99,8 @@
 // 		if (message.type === "info") {
 // 			return connection.send({
 // 				type: "info",
-// 				workers: this.hooks.getAllWorkers(),
-// 				types: this.hooks.getAllTypesOfWorkers(),
+// 				actors: this.hooks.getAllActors(),
+// 				types: this.hooks.getAllTypesOfActors(),
 // 			});
 // 		}
 //

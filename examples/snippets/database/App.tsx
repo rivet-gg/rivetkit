@@ -1,4 +1,4 @@
-import { createClient } from "@rivetkit/worker/client";
+import { createClient } from "@rivetkit/actor/client";
 import { createReactRivetKit } from "@rivetkit/react";
 import { useState, useEffect } from "react";
 

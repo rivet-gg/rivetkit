@@ -3,22 +3,22 @@ title: Authentication
 icon: fingerprint
 ---
 
-Authentication can be handled through the `onBeforeConnect` or `createConnState` lifecycle hook, which acts as middleware before allowing clients to interact with your worker.
+Authentication can be handled through the `onBeforeConnect` or `createConnState` lifecycle hook, which acts as middleware before allowing clients to interact with your actor.
 
 ## Using `onBeforeConnect` or `createConnState`
 
-The `onBeforeConnect` and `createConnState` hook is called whenever a new client attempts to connect to your worker. It receives a context object that contains the client's connection parameters. `createConnState` should return an object that will become the connection state.
+The `onBeforeConnect` and `createConnState` hook is called whenever a new client attempts to connect to your actor. It receives a context object that contains the client's connection parameters. `createConnState` should return an object that will become the connection state.
 
 Throwing an error in `onBeforeConnect` or `createConnState` will abort the connection.
 
 Here's a basic example:
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
-const exampleWorker = worker({
+const exampleActor = actor({
   state: {
-    // Worker state...
+    // Actor state...
   },
   
   createConnState: async (c, { params }) => {
@@ -36,7 +36,7 @@ const exampleWorker = worker({
   },
   
   actions: {
-    // Worker actions...
+    // Actor actions...
   }
 });
 ```
@@ -46,11 +46,11 @@ const exampleWorker = worker({
 After authentication, you can access the connection state in any action through the context object:
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
-const authenticatedWorker = worker({
+const authenticatedActor = actor({
   state: {
-    // Worker state...
+    // Actor state...
   },
   
   createConnState: (c) => {
@@ -80,11 +80,11 @@ const authenticatedWorker = worker({
 ### With API Server Authentication
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
-const apiAuthenticatedWorker = worker({
+const apiAuthenticatedActor = actor({
   state: {
-    // Worker state...
+    // Actor state...
   },
   
   createConnState: async (c, { params }) => {
@@ -108,7 +108,7 @@ const apiAuthenticatedWorker = worker({
   },
   
   actions: {
-    // Worker actions...
+    // Actor actions...
   }
 });
 ```
@@ -118,14 +118,14 @@ When authentication fails, throwing an error in `createConnState` will prevent t
 ### With JWT Authentication
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-const jwtAuthenticatedWorker = worker({
+const jwtAuthenticatedActor = actor({
   state: {
-    // Worker state...
+    // Actor state...
   },
   
   createConnState: (c, { params }) => {

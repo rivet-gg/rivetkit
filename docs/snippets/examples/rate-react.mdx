@@ -2,14 +2,14 @@
 import { createClient } from "rivetkit/client";
 import { createReactRivetKit } from "@rivetkit/react";
 import { useState } from "react";
-import type { App } from "../workers/app";
+import type { App } from "../actors/app";
 
 const client = createClient<App>("http://localhost:6420");
-const { useWorker } = createReactRivetKit(client);
+const { useActor } = createReactRivetKit(client);
 
 export function RateLimiter() {
   // Connect to API rate limiter for user-123
-  const [{ worker }] = useWorker("rateLimiter", { tags: { userId: "user-123" } });
+  const [{ actor }] = useActor("rateLimiter", { tags: { userId: "user-123" } });
   const [result, setResult] = useState<{
     allowed: boolean;
     remaining: number;
@@ -18,9 +18,9 @@ export function RateLimiter() {
   
   // Make a request
   const makeRequest = async () => {
-    if (!worker) return;
+    if (!actor) return;
     
-    const response = await worker.checkLimit();
+    const response = await actor.checkLimit();
     setResult(response);
   };
 

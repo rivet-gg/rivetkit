@@ -3,10 +3,10 @@ import type {
 	GetForIdInput,
 	GetWithKeyInput,
 	GetOrCreateWithKeyInput,
-	WorkerOutput,
+	ActorOutput,
 	ManagerDriver,
 } from "@/driver-helpers/mod";
-import { WorkerAlreadyExists } from "@/worker/errors";
+import { ActorAlreadyExists } from  "@/actor/errors";
 import type { MemoryGlobalState } from "./global-state";
 import * as crypto from "node:crypto";
 
@@ -14,8 +14,8 @@ export class MemoryManagerDriver implements ManagerDriver {
 	#state: MemoryGlobalState;
 
 	// inspector: ManagerInspector = new ManagerInspector(this, {
-	// 	getAllWorkers: () => this.#state.getAllWorkers(),
-	// 	getAllTypesOfWorkers: () => Object.keys(this.registry.config.workers),
+	// 	getAllActors: () => this.#state.getAllActors(),
+	// 	getAllTypesOfActors: () => Object.keys(this.registry.config.actors),
 	// });
 
 	constructor(state: MemoryGlobalState) {
@@ -23,51 +23,51 @@ export class MemoryManagerDriver implements ManagerDriver {
 	}
 
 	async getForId({
-		workerId,
-	}: GetForIdInput): Promise<WorkerOutput | undefined> {
-		// Validate the worker exists
-		const worker = this.#state.getWorker(workerId);
-		if (!worker) {
+		actorId,
+	}: GetForIdInput): Promise<ActorOutput | undefined> {
+		// Validate the actor exists
+		const actor = this.#state.getActor(actorId);
+		if (!actor) {
 			return undefined;
 		}
 
 		return {
-			workerId: worker.id,
-			name: worker.name,
-			key: worker.key,
+			actorId: actor.id,
+			name: actor.name,
+			key: actor.key,
 		};
 	}
 
 	async getWithKey({
 		name,
 		key,
-	}: GetWithKeyInput): Promise<WorkerOutput | undefined> {
-		// NOTE: This is a slow implementation that checks each worker individually.
+	}: GetWithKeyInput): Promise<ActorOutput | undefined> {
+		// NOTE: This is a slow implementation that checks each actor individually.
 		// This can be optimized with an index in the future.
 
-		// Search through all workers to find a match
-		const worker = this.#state.findWorker((worker) => {
-			if (worker.name !== name) return false;
+		// Search through all actors to find a match
+		const actor = this.#state.findActor((actor) => {
+			if (actor.name !== name) return false;
 
-			// If worker doesn't have a key, it's not a match
-			if (!worker.key || worker.key.length !== key.length) {
+			// If actor doesn't have a key, it's not a match
+			if (!actor.key || actor.key.length !== key.length) {
 				return false;
 			}
 
-			// Check if all elements in key are in worker.key
+			// Check if all elements in key are in actor.key
 			for (let i = 0; i < key.length; i++) {
-				if (key[i] !== worker.key[i]) {
+				if (key[i] !== actor.key[i]) {
 					return false;
 				}
 			}
 			return true;
 		});
 
-		if (worker) {
+		if (actor) {
 			return {
-				workerId: worker.id,
+				actorId: actor.id,
 				name,
-				key: worker.key,
+				key: actor.key,
 			};
 		}
 
@@ -76,27 +76,27 @@ export class MemoryManagerDriver implements ManagerDriver {
 
 	async getOrCreateWithKey(
 		input: GetOrCreateWithKeyInput,
-	): Promise<WorkerOutput> {
+	): Promise<ActorOutput> {
 		const getOutput = await this.getWithKey(input);
 		if (getOutput) {
 			return getOutput;
 		} else {
-			return await this.createWorker(input);
+			return await this.createActor(input);
 		}
 	}
 
-	async createWorker({ name, key, input }: CreateInput): Promise<WorkerOutput> {
-		// Check if worker with the same name and key already exists
-		const existingWorker = await this.getWithKey({ name, key });
-		if (existingWorker) {
-			throw new WorkerAlreadyExists(name, key);
+	async createActor({ name, key, input }: CreateInput): Promise<ActorOutput> {
+		// Check if actor with the same name and key already exists
+		const existingActor = await this.getWithKey({ name, key });
+		if (existingActor) {
+			throw new ActorAlreadyExists(name, key);
 		}
 
-		const workerId = crypto.randomUUID();
-		this.#state.createWorker(workerId, name, key, input);
+		const actorId = crypto.randomUUID();
+		this.#state.createActor(actorId, name, key, input);
 
-		// this.inspector.onWorkersChange(this.#state.getAllWorkers());
+		// this.inspector.onActorsChange(this.#state.getAllActors());
 
-		return { workerId, name, key };
+		return { actorId, name, key };
 	}
 }

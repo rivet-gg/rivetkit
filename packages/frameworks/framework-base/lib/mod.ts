@@ -1,67 +1,67 @@
 import { Derived, Effect, Store, type Updater } from "@tanstack/store";
-import type { AnyWorkerDefinition, Registry } from "@rivetkit/core";
+import type { AnyActorDefinition, Registry } from "@rivetkit/core";
 import type {
 	Client,
-	ExtractWorkersFromRegistry,
-	WorkerConn,
-	WorkerHandle,
+	ExtractActorsFromRegistry,
+	ActorConn,
+	ActorHandle,
 } from "@rivetkit/core/client";
 
-// biome-ignore lint/suspicious/noExplicitAny: its a generic worker registry
-export type AnyWorkerRegistry = Registry<any>;
+// biome-ignore lint/suspicious/noExplicitAny: its a generic actor registry
+export type AnyActorRegistry = Registry<any>;
 
-interface WorkerStateReference<AD extends AnyWorkerDefinition> {
+interface ActorStateReference<AD extends AnyActorDefinition> {
 	/**
-	 * The unique identifier for the worker.
-	 * This is a hash generated from the worker's options.
-	 * It is used to identify the worker instance in the store.
+	 * The unique identifier for the actor.
+	 * This is a hash generated from the actor's options.
+	 * It is used to identify the actor instance in the store.
 	 * @internal
 	 */
 	hash: string;
 	/**
-	 * The state of the worker, derived from the store.
-	 * This includes the worker's connection and handle.
+	 * The state of the actor, derived from the store.
+	 * This includes the actor's connection and handle.
 	 */
-	handle: WorkerHandle<AD> | null;
+	handle: ActorHandle<AD> | null;
 	/**
-	 * The connection to the worker.
-	 * This is used to communicate with the worker in realtime.
+	 * The connection to the actor.
+	 * This is used to communicate with the actor in realtime.
 	 */
-	connection: WorkerConn<AD> | null;
+	connection: ActorConn<AD> | null;
 	/**
-	 * Whether the worker is enabled.
+	 * Whether the actor is enabled.
 	 */
 	isConnected?: boolean;
 	/**
-	 * Whether the worker is currently connecting, indicating that a connection attempt is in progress.
+	 * Whether the actor is currently connecting, indicating that a connection attempt is in progress.
 	 */
 	isConnecting?: boolean;
 	/**
-	 * Whether there was an error connecting to the worker.
+	 * Whether there was an error connecting to the actor.
 	 */
 	isError?: boolean;
 	/**
-	 * The error that occurred while trying to connect to the worker, if any.
+	 * The error that occurred while trying to connect to the actor, if any.
 	 */
 	error: Error | null;
 	/**
-	 * Options for the worker, including its name, key, parameters, and whether it is enabled.
+	 * Options for the actor, including its name, key, parameters, and whether it is enabled.
 	 */
 	opts: {
 		name: keyof AD;
 		/**
-		 * Unique key for the worker instance.
+		 * Unique key for the actor instance.
 		 * This can be a string or an array of strings to create multiple instances.
 		 * @example "abc" or ["abc", "def"]
 		 */
 		key: string | string[];
 		/**
-		 * Parameters for the worker.
-		 * These are additional options that can be passed to the worker.
+		 * Parameters for the actor.
+		 * These are additional options that can be passed to the actor.
 		 */
 		params?: Record<string, string>;
 		/**
-		 * Whether the worker is enabled.
+		 * Whether the actor is enabled.
 		 * Defaults to true.
 		 */
 		enabled?: boolean;
@@ -69,59 +69,59 @@ interface WorkerStateReference<AD extends AnyWorkerDefinition> {
 }
 
 interface InternalRivetKitStore<
-	Registry extends AnyWorkerRegistry,
-	Workers extends ExtractWorkersFromRegistry<Registry>,
+	Registry extends AnyActorRegistry,
+	Actors extends ExtractActorsFromRegistry<Registry>,
 > {
-	workers: Record<string, WorkerStateReference<Workers>>;
+	actors: Record<string, ActorStateReference<Actors>>;
 }
 
 /**
- * Options for configuring a worker in RivetKit.
+ * Options for configuring a actor in RivetKit.
  */
-export interface WorkerOptions<
-	Registry extends AnyWorkerRegistry,
-	WorkerName extends keyof ExtractWorkersFromRegistry<Registry>,
+export interface ActorOptions<
+	Registry extends AnyActorRegistry,
+	ActorName extends keyof ExtractActorsFromRegistry<Registry>,
 > {
 	/**
-	 * Typesafe name of the worker.
-	 * This should match the worker's name in the app's worker definitions.
+	 * Typesafe name of the actor.
+	 * This should match the actor's name in the app's actor definitions.
 	 * @example "chatRoom"
 	 */
-	name: WorkerName;
+	name: ActorName;
 	/**
-	 * Unique key for the worker instance.
+	 * Unique key for the actor instance.
 	 * This can be a string or an array of strings to create multiple instances.
 	 * @example "abc" or ["abc", "def"]
 	 */
 	key: string | string[];
 	/**
-	 * Parameters for the worker.
+	 * Parameters for the actor.
 	 */
-	params?: Registry[ExtractWorkersFromRegistry<Registry>]["params"];
+	params?: Registry[ExtractActorsFromRegistry<Registry>]["params"];
 	/**
-	 * Whether the worker is enabled.
+	 * Whether the actor is enabled.
 	 * Defaults to true.
 	 */
 	enabled?: boolean;
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: worker name can be anything
-export type AnyWorkerOptions = WorkerOptions<AnyWorkerRegistry, any>;
+// biome-ignore lint/suspicious/noExplicitAny: actor name can be anything
+export type AnyActorOptions = ActorOptions<AnyActorRegistry, any>;
 
-export interface CreateRivetKitOptions<Registry extends AnyWorkerRegistry> {
-	// biome-ignore lint/suspicious/noExplicitAny: worker name can be anything
-	hashFunction?: (opts: WorkerOptions<Registry, any>) => string;
+export interface CreateRivetKitOptions<Registry extends AnyActorRegistry> {
+	// biome-ignore lint/suspicious/noExplicitAny: actor name can be anything
+	hashFunction?: (opts: ActorOptions<Registry, any>) => string;
 }
 
 export function createRivetKit<
-	Registry extends AnyWorkerRegistry,
-	Workers extends ExtractWorkersFromRegistry<Registry>,
-	WorkerNames extends keyof Workers,
+	Registry extends AnyActorRegistry,
+	Actors extends ExtractActorsFromRegistry<Registry>,
+	ActorNames extends keyof Actors,
 >(client: Client<Registry>, opts: CreateRivetKitOptions<Registry> = {}) {
-	type RivetKitStore = InternalRivetKitStore<Registry, Workers>;
+	type RivetKitStore = InternalRivetKitStore<Registry, Actors>;
 
 	const store = new Store<RivetKitStore>({
-		workers: {},
+		actors: {},
 	});
 
 	const hash = opts.hashFunction || defaultHashFunction;
@@ -129,10 +129,10 @@ export function createRivetKit<
 	const cache = new Map<
 		string,
 		{
-			state: Derived<RivetKitStore["workers"][string]>;
+			state: Derived<RivetKitStore["actors"][string]>;
 			key: string;
 			mount: () => void;
-			setState: (set: Updater<RivetKitStore["workers"][string]>) => void;
+			setState: (set: Updater<RivetKitStore["actors"][string]>) => void;
 			create: () => void;
 			addEventListener?: (
 				event: string,
@@ -142,8 +142,8 @@ export function createRivetKit<
 		}
 	>();
 
-	function getOrCreateWorker<WorkerName extends WorkerNames>(
-		opts: WorkerOptions<Registry, WorkerName>,
+	function getOrCreateActor<ActorName extends ActorNames>(
+		opts: ActorOptions<Registry, ActorName>,
 	) {
 		const key = hash(opts);
 		const cached = cache.get(key);
@@ -151,9 +151,9 @@ export function createRivetKit<
 			return {
 				...cached,
 				state: cached.state as Derived<
-					Omit<RivetKitStore["workers"][string], "handle" | "connection"> & {
-						handle: WorkerHandle<Workers[WorkerName]> | null;
-						connection: WorkerConn<Workers[WorkerName]> | null;
+					Omit<RivetKitStore["actors"][string], "handle" | "connection"> & {
+						handle: ActorHandle<Actors[ActorName]> | null;
+						connection: ActorConn<Actors[ActorName]> | null;
 					}
 				>,
 			};
@@ -161,19 +161,19 @@ export function createRivetKit<
 
 		const derived = new Derived({
 			fn: ({ currDepVals: [store] }) => {
-				return store.workers[key];
+				return store.actors[key];
 			},
 			deps: [store],
 		});
 
 		function create() {
-			async function createWorkerConnection() {
-				const worker = store.state.workers[key];
+			async function createActorConnection() {
+				const actor = store.state.actors[key];
 				try {
 					const handle = client.getOrCreate(
-						worker.opts.name as string,
-						worker.opts.key,
-						worker.opts.params,
+						actor.opts.name as string,
+						actor.opts.key,
+						actor.opts.params,
 					);
 
 					const connection = handle.connect();
@@ -182,14 +182,14 @@ export function createRivetKit<
 					store.setState((prev) => {
 						return {
 							...prev,
-							workers: {
-								...prev.workers,
+							actors: {
+								...prev.actors,
 								[key]: {
-									...prev.workers[key],
+									...prev.actors[key],
 									isConnected: true,
 									isConnecting: false,
-									handle: handle as WorkerHandle<Workers[WorkerName]>,
-									connection: connection as WorkerConn<Workers[WorkerName]>,
+									handle: handle as ActorHandle<Actors[ActorName]>,
+									connection: connection as ActorConn<Actors[ActorName]>,
 									isError: false,
 									error: null,
 								},
@@ -200,10 +200,10 @@ export function createRivetKit<
 					store.setState((prev) => {
 						return {
 							...prev,
-							workers: {
-								...prev.workers,
+							actors: {
+								...prev.actors,
 								[key]: {
-									...prev.workers[key],
+									...prev.actors[key],
 									isError: true,
 									isConnecting: false,
 									error: error as Error,
@@ -215,10 +215,10 @@ export function createRivetKit<
 			}
 
 			store.setState((prev) => {
-				prev.workers[key].isConnecting = true;
-				prev.workers[key].isError = false;
-				prev.workers[key].error = null;
-				createWorkerConnection();
+				prev.actors[key].isConnecting = true;
+				prev.actors[key].isError = false;
+				prev.actors[key].error = null;
+				createActorConnection();
 				return prev;
 			});
 		}
@@ -228,18 +228,18 @@ export function createRivetKit<
 			fn: () => {
 				// check if prev state is different from current state
 				// do a shallow comparison
-				const worker = store.state.workers[key];
+				const actor = store.state.actors[key];
 
 				const isSame =
-					JSON.stringify(store.prevState.workers[key].opts) ===
-					JSON.stringify(store.state.workers[key].opts);
+					JSON.stringify(store.prevState.actors[key].opts) ===
+					JSON.stringify(store.state.actors[key].opts);
 
 				if (
 					isSame &&
-					!worker.isConnected &&
-					!worker.isConnecting &&
-					!worker.isError &&
-					worker.opts.enabled
+					!actor.isConnected &&
+					!actor.isConnecting &&
+					!actor.isError &&
+					actor.opts.enabled
 				) {
 					create();
 				}
@@ -248,13 +248,13 @@ export function createRivetKit<
 		});
 
 		store.setState((prev) => {
-			if (prev.workers[key]) {
+			if (prev.actors[key]) {
 				return prev;
 			}
 			return {
 				...prev,
-				workers: {
-					...prev.workers,
+				actors: {
+					...prev.actors,
 					[key]: {
 						hash: key,
 						isConnected: false,
@@ -269,25 +269,25 @@ export function createRivetKit<
 			};
 		});
 
-		function setState(updater: Updater<RivetKitStore["workers"][string]>) {
+		function setState(updater: Updater<RivetKitStore["actors"][string]>) {
 			store.setState((prev) => {
-				const worker = prev.workers[key];
-				if (!worker) {
-					throw new Error(`Worker with key "${key}" does not exist.`);
+				const actor = prev.actors[key];
+				if (!actor) {
+					throw new Error(`Actor with key "${key}" does not exist.`);
 				}
 
-				let newState: RivetKitStore["workers"][string];
+				let newState: RivetKitStore["actors"][string];
 
 				if (typeof updater === "function") {
-					newState = updater(worker);
+					newState = updater(actor);
 				} else {
-					// If updater is a direct value, we assume it replaces the entire worker state
+					// If updater is a direct value, we assume it replaces the entire actor state
 					newState = updater;
 				}
 				return {
 					...prev,
-					workers: {
-						...prev.workers,
+					actors: {
+						...prev.actors,
 						[key]: newState,
 					},
 				};
@@ -317,9 +317,9 @@ export function createRivetKit<
 			mount,
 			setState,
 			state: derived as Derived<
-				Omit<RivetKitStore["workers"][string], "handle" | "connection"> & {
-					handle: WorkerHandle<Workers[WorkerName]> | null;
-					connection: WorkerConn<Workers[WorkerName]> | null;
+				Omit<RivetKitStore["actors"][string], "handle" | "connection"> & {
+					handle: ActorHandle<Actors[ActorName]> | null;
+					connection: ActorConn<Actors[ActorName]> | null;
 				}
 			>,
 			create,
@@ -328,11 +328,11 @@ export function createRivetKit<
 	}
 
 	return {
-		getOrCreateWorker,
+		getOrCreateActor,
 		store,
 	};
 }
 
-function defaultHashFunction({ name, key, params }: AnyWorkerOptions) {
+function defaultHashFunction({ name, key, params }: AnyActorOptions) {
 	return JSON.stringify({ name, key, params });
 }

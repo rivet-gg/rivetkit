@@ -4,14 +4,14 @@ import { createReactRivetKit } from "@rivetkit/react";
 import { useState, useEffect, useRef } from "react";
 import * as Y from 'yjs';
 import { applyUpdate, encodeStateAsUpdate } from 'yjs';
-import type { App } from "../workers/app";
+import type { App } from "../actors/app";
 
 const client = createClient<App>("http://localhost:6420");
-const { useWorker, useWorkerEvent } = createReactRivetKit(client);
+const { useActor, useActorEvent } = createReactRivetKit(client);
 
 export function YjsEditor({ documentId = "shared-doc" }) {
   // Connect to specific document using tags
-  const { worker } = useWorker("yjsDocument", { 
+  const { actor } = useActor("yjsDocument", { 
     tags: { documentId }
   });
   
@@ -38,7 +38,7 @@ export function YjsEditor({ documentId = "shared-doc" }) {
       // Clean up Yjs document
       yDoc.destroy();
     };
-  }, [worker]);
+  }, [actor]);
   
   // Set up text observation
   useEffect(() => {
@@ -55,14 +55,14 @@ export function YjsEditor({ documentId = "shared-doc" }) {
         // Update React state
         setText(yText.toString());
         
-        if (worker && !updatingFromLocal.current) {
+        if (actor && !updatingFromLocal.current) {
           // Set flag to prevent loops
           updatingFromLocal.current = true;
           
           // Convert update to base64 and send to server
           const update = encodeStateAsUpdate(yDoc);
           const base64 = bufferToBase64(update);
-          worker.applyUpdate(base64).finally(() => {
+          actor.applyUpdate(base64).finally(() => {
             updatingFromLocal.current = false;
           });
         }
@@ -70,10 +70,10 @@ export function YjsEditor({ documentId = "shared-doc" }) {
     });
     
     observationInitialized.current = true;
-  }, [worker]);
+  }, [actor]);
 
   // Handle initial state from server
-  useWorkerEvent({ worker, event: "initialState" }, ({ update }) => {
+  useActorEvent({ actor, event: "initialState" }, ({ update }) => {
     const yDoc = yDocRef.current;
     if (!yDoc) return;
     
@@ -102,7 +102,7 @@ export function YjsEditor({ documentId = "shared-doc" }) {
   });
 
   // Handle updates from other clients
-  useWorkerEvent({ worker, event: "update" }, ({ update }) => {
+  useActorEvent({ actor, event: "update" }, ({ update }) => {
     const yDoc = yDocRef.current;
     if (!yDoc) return;
     

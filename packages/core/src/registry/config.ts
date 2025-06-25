@@ -1,20 +1,20 @@
-//! These configs configs hold anything that's not platform-specific about running workers.
+//! These configs configs hold anything that's not platform-specific about running actors.
 
-import { AnyWorkerDefinition, WorkerDefinition } from "@/worker/definition";
+import { AnyActorDefinition, ActorDefinition } from  "@/actor/definition";
 import { z } from "zod";
 
-export const WorkersSchema = z.record(
+export const ActorsSchema = z.record(
 	z.string(),
-	z.custom<WorkerDefinition<any, any, any, any, any, any, any, any>>(),
+	z.custom<ActorDefinition<any, any, any, any, any, any, any, any>>(),
 );
-export type RegistryWorkers = z.infer<typeof WorkersSchema>;
+export type RegistryActors = z.infer<typeof ActorsSchema>;
 
 export const TestConfigSchema = z.object({ enabled: z.boolean() });
 export type TestConfig = z.infer<typeof TestConfigSchema>;
 
-/** Base config used for the worker config across all platforms. */
+/** Base config used for the actor config across all platforms. */
 export const RegistryConfigSchema = z.object({
-	workers: z.record(z.string(), z.custom<AnyWorkerDefinition>()),
+	actors: z.record(z.string(), z.custom<AnyActorDefinition>()),
 
 	// TODO: Find a better way of passing around the test config
 	/**
@@ -26,7 +26,7 @@ export const RegistryConfigSchema = z.object({
 	test: TestConfigSchema.optional().default({ enabled: false }),
 });
 export type RegistryConfig = z.infer<typeof RegistryConfigSchema>;
-export type RegistryConfigInput<A extends RegistryWorkers> = Omit<
+export type RegistryConfigInput<A extends RegistryActors> = Omit<
 	z.input<typeof RegistryConfigSchema>,
-	"workers"
-> & { workers: A };
+	"actors"
+> & { actors: A };

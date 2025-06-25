@@ -2,57 +2,57 @@
 // 	ManagerDriver,
 // 	GetForIdInput,
 // 	GetWithKeyInput,
-// 	WorkerOutput,
+// 	ActorOutput,
 // 	CreateInput,
 // 	GetOrCreateWithKeyInput,
 // } from "@rivetkit/core/driver-helpers";
-// import { WorkerAlreadyExists } from "@rivetkit/core/errors";
+// import { ActorAlreadyExists } from "@rivetkit/core/errors";
 // import { Bindings } from "./mod";
 // import { logger } from "./log";
 // import { serializeNameAndKey, serializeKey } from "./util";
 // import { getCloudflareAmbientEnv } from "./handler";
 //
-// // Worker metadata structure
-// interface WorkerData {
+// // Actor metadata structure
+// interface ActorData {
 // 	name: string;
 // 	key: string[];
 // }
 //
 // // Key constants similar to Redis implementation
 // const KEYS = {
-// 	WORKER: {
-// 		// Combined key for worker metadata (name and key)
-// 		metadata: (workerId: string) => `worker:${workerId}:metadata`,
+// 	ACTOR: {
+// 		// Combined key for actor metadata (name and key)
+// 		metadata: (actorId: string) => `actor:${actorId}:metadata`,
 //
-// 		// Key index function for worker lookup
+// 		// Key index function for actor lookup
 // 		keyIndex: (name: string, key: string[] = []) => {
 // 			// Use serializeKey for consistent handling of all keys
-// 			return `worker_key:${serializeKey(key)}`;
+// 			return `actor_key:${serializeKey(key)}`;
 // 		},
 // 	},
 // };
 //
-// export class CloudflareWorkersManagerDriver implements ManagerDriver {
+// export class CloudflareActorsManagerDriver implements ManagerDriver {
 // 	async getForId({
 // 		c,
-// 		workerId,
-// 	}: GetForIdInput<{ Bindings: Bindings }>): Promise<WorkerOutput | undefined> {
+// 		actorId,
+// 	}: GetForIdInput<{ Bindings: Bindings }>): Promise<ActorOutput | undefined> {
 // 		const env = getCloudflareAmbientEnv();
 //
-// 		// Get worker metadata from KV (combined name and key)
-// 		const workerData = (await env.WORKER_KV.get(KEYS.WORKER.metadata(workerId), {
+// 		// Get actor metadata from KV (combined name and key)
+// 		const actorData = (await env.ACTOR_KV.get(KEYS.ACTOR.metadata(actorId), {
 // 			type: "json",
-// 		})) as WorkerData | null;
+// 		})) as ActorData | null;
 //
-// 		// If the worker doesn't exist, return undefined
-// 		if (!workerData) {
+// 		// If the actor doesn't exist, return undefined
+// 		if (!actorData) {
 // 			return undefined;
 // 		}
 //
 // 		return {
-// 			workerId,
-// 			name: workerData.name,
-// 			key: workerData.key,
+// 			actorId,
+// 			name: actorData.name,
+// 			key: actorData.key,
 // 		};
 // 	}
 //
@@ -61,115 +61,115 @@
 // 		name,
 // 		key,
 // 	}: GetWithKeyInput<{ Bindings: Bindings }>): Promise<
-// 		WorkerOutput | undefined
+// 		ActorOutput | undefined
 // 	> {
 // 		const env = getCloudflareAmbientEnv();
 //
-// 		logger().debug("getWithKey: searching for worker", { name, key });
+// 		logger().debug("getWithKey: searching for actor", { name, key });
 //
 // 		// Generate deterministic ID from the name and key
-// 		// This is aligned with how createWorker generates IDs
+// 		// This is aligned with how createActor generates IDs
 // 		const nameKeyString = serializeNameAndKey(name, key);
-// 		const workerId = env.WORKER_DO.idFromName(nameKeyString).toString();
+// 		const actorId = env.ACTOR_DO.idFromName(nameKeyString).toString();
 //
-// 		// Check if the worker metadata exists
-// 		const workerData = await env.WORKER_KV.get(KEYS.WORKER.metadata(workerId), {
+// 		// Check if the actor metadata exists
+// 		const actorData = await env.ACTOR_KV.get(KEYS.ACTOR.metadata(actorId), {
 // 			type: "json",
 // 		});
 //
-// 		if (!workerData) {
-// 			logger().debug("getWithKey: no worker found with matching name and key", {
+// 		if (!actorData) {
+// 			logger().debug("getWithKey: no actor found with matching name and key", {
 // 				name,
 // 				key,
-// 				workerId,
+// 				actorId,
 // 			});
 // 			return undefined;
 // 		}
 //
-// 		logger().debug("getWithKey: found worker with matching name and key", {
-// 			workerId,
+// 		logger().debug("getWithKey: found actor with matching name and key", {
+// 			actorId,
 // 			name,
 // 			key,
 // 		});
-// 		return this.#buildWorkerOutput(c, workerId);
+// 		return this.#buildActorOutput(c, actorId);
 // 	}
 //
 // 	async getOrCreateWithKey(
 // 		input: GetOrCreateWithKeyInput,
-// 	): Promise<WorkerOutput> {
+// 	): Promise<ActorOutput> {
 // 		// TODO: Prevent race condition here
 // 		const getOutput = await this.getWithKey(input);
 // 		if (getOutput) {
 // 			return getOutput;
 // 		} else {
-// 			return await this.createWorker(input);
+// 			return await this.createActor(input);
 // 		}
 // 	}
 //
-// 	async createWorker({
+// 	async createActor({
 // 		c,
 // 		name,
 // 		key,
 // 		input,
-// 	}: CreateInput<{ Bindings: Bindings }>): Promise<WorkerOutput> {
+// 	}: CreateInput<{ Bindings: Bindings }>): Promise<ActorOutput> {
 // 		const env = getCloudflareAmbientEnv();
 //
-// 		// Check if worker with the same name and key already exists
-// 		const existingWorker = await this.getWithKey({ c, name, key });
-// 		if (existingWorker) {
-// 			throw new WorkerAlreadyExists(name, key);
+// 		// Check if actor with the same name and key already exists
+// 		const existingActor = await this.getWithKey({ c, name, key });
+// 		if (existingActor) {
+// 			throw new ActorAlreadyExists(name, key);
 // 		}
 //
-// 		// Create a deterministic ID from the worker name and key
-// 		// This ensures that workers with the same name and key will have the same ID
+// 		// Create a deterministic ID from the actor name and key
+// 		// This ensures that actors with the same name and key will have the same ID
 // 		const nameKeyString = serializeNameAndKey(name, key);
-// 		const doId = env.WORKER_DO.idFromName(nameKeyString);
-// 		const workerId = doId.toString();
+// 		const doId = env.ACTOR_DO.idFromName(nameKeyString);
+// 		const actorId = doId.toString();
 //
-// 		// Init worker
-// 		const worker = env.WORKER_DO.get(doId);
-// 		await worker.initialize({
+// 		// Init actor
+// 		const actor = env.ACTOR_DO.get(doId);
+// 		await actor.initialize({
 // 			name,
 // 			key,
 // 			input,
 // 		});
 //
-// 		// Store combined worker metadata (name and key)
-// 		const workerData: WorkerData = { name, key };
-// 		await env.WORKER_KV.put(
-// 			KEYS.WORKER.metadata(workerId),
-// 			JSON.stringify(workerData),
+// 		// Store combined actor metadata (name and key)
+// 		const actorData: ActorData = { name, key };
+// 		await env.ACTOR_KV.put(
+// 			KEYS.ACTOR.metadata(actorId),
+// 			JSON.stringify(actorData),
 // 		);
 //
 // 		// Add to key index for lookups by name and key
-// 		await env.WORKER_KV.put(KEYS.WORKER.keyIndex(name, key), workerId);
+// 		await env.ACTOR_KV.put(KEYS.ACTOR.keyIndex(name, key), actorId);
 //
 // 		return {
-// 			workerId,
+// 			actorId,
 // 			name,
 // 			key,
 // 		};
 // 	}
 //
-// 	// Helper method to build worker output from an ID
-// 	async #buildWorkerOutput(
+// 	// Helper method to build actor output from an ID
+// 	async #buildActorOutput(
 // 		c: any,
-// 		workerId: string,
-// 	): Promise<WorkerOutput | undefined> {
+// 		actorId: string,
+// 	): Promise<ActorOutput | undefined> {
 // 		const env = getCloudflareAmbientEnv();
 //
-// 		const workerData = (await env.WORKER_KV.get(KEYS.WORKER.metadata(workerId), {
+// 		const actorData = (await env.ACTOR_KV.get(KEYS.ACTOR.metadata(actorId), {
 // 			type: "json",
-// 		})) as WorkerData | null;
+// 		})) as ActorData | null;
 //
-// 		if (!workerData) {
+// 		if (!actorData) {
 // 			return undefined;
 // 		}
 //
 // 		return {
-// 			workerId,
-// 			name: workerData.name,
-// 			key: workerData.key,
+// 			actorId,
+// 			name: actorData.name,
+// 			key: actorData.key,
 // 		};
 // 	}
 // }

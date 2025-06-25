@@ -1,9 +1,9 @@
-// import { worker, setup } from "rivetkit";
+// import { actor, setup } from "rivetkit";
 // import { db } from "@rivetkit/db/drizzle";
 // import * as schema from "./db/schema";
 // import migrations from "../drizzle/migrations";
 
-// export const counter = worker({
+// export const counter = actor({
 // 	db: db({ schema, migrations }),
 // 	state: {
 // 		count: 0,
@@ -21,7 +21,7 @@
 // });
 
 // export const registry = setup({
-// 	workers: { counter },
+// 	actors: { counter },
 // });
 
 // export type Registry = typeof registry;

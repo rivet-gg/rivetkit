@@ -1,6 +1,6 @@
 import { Client, ClientDriver, createClientWithDriver } from "@/client/client";
 import {
-	type RegistryWorkers,
+	type RegistryActors,
 	type RegistryConfig,
 	type RegistryConfigInput,
 	RegistryConfigSchema,
@@ -15,7 +15,7 @@ import { StandaloneTopology } from "@/topologies/standalone/mod";
 import invariant from "invariant";
 import { Hono } from "hono";
 import { assertUnreachable } from "@/utils";
-import { PartitionTopologyManager, PartitionTopologyWorker } from "@/mod";
+import { PartitionTopologyManager, PartitionTopologyActor } from "@/mod";
 import { logger } from "./log";
 import { crossPlatformServe } from "./serve";
 
@@ -26,13 +26,13 @@ interface ServerOutput<A extends Registry<any>> {
 	serve: (hono?: Hono) => void;
 }
 
-interface WorkerNodeOutput {
+interface ActorNodeOutput {
 	hono: Hono;
 	handler: (req: Request) => Promise<Response>;
 	serve: (hono?: Hono) => void;
 }
 
-export class Registry<A extends RegistryWorkers> {
+export class Registry<A extends RegistryActors> {
 	#config: RegistryConfig;
 
 	public get config(): RegistryConfig {
@@ -88,20 +88,20 @@ export class Registry<A extends RegistryWorkers> {
 	}
 
 	/**
-	 * Runs the registry for a worker node.
+	 * Runs the registry for a actor node.
 	 */
-	public workerNode(inputConfig?: RunConfigInput): WorkerNodeOutput {
+	public actorNode(inputConfig?: RunConfigInput): ActorNodeOutput {
 		const config = RunConfigSchema.parse(inputConfig);
 
 		// Setup topology
 		let hono: Hono;
 		if (config.driver.topology === "standalone") {
-			invariant(false, "cannot run worker node for standalone topology");
+			invariant(false, "cannot run actor node for standalone topology");
 		} else if (config.driver.topology === "partition") {
-			const topology = new PartitionTopologyWorker(this.#config, config);
+			const topology = new PartitionTopologyActor(this.#config, config);
 			hono = topology.router;
 		} else if (config.driver.topology === "coordinate") {
-			invariant(false, "cannot run worker node for coordinate topology");
+			invariant(false, "cannot run actor node for coordinate topology");
 		} else {
 			assertUnreachable(config.driver.topology);
 		}
@@ -114,20 +114,20 @@ export class Registry<A extends RegistryWorkers> {
 	}
 
 	/**
-	 * Runs the standalone worker node.
+	 * Runs the standalone actor node.
 	 */
-	public async runWorkerNode(inputConfig?: RunConfigInput) {
-		const { serve } = this.workerNode(inputConfig);
+	public async runActorNode(inputConfig?: RunConfigInput) {
+		const { serve } = this.actorNode(inputConfig);
 		serve();
 	}
 }
 
-export function setup<A extends RegistryWorkers>(
+export function setup<A extends RegistryActors>(
 	input: RegistryConfigInput<A>,
 ): Registry<A> {
 	const config = RegistryConfigSchema.parse(input);
 	return new Registry(config);
 }
 
-export type { RegistryConfig, RegistryWorkers, RunConfig, DriverConfig };
+export type { RegistryConfig, RegistryActors, RunConfig, DriverConfig };
 export { RegistryConfigSchema };

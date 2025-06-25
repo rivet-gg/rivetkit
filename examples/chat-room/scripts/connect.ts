@@ -1,6 +1,6 @@
 /// <reference types="node" />
-import { createClient } from "@rivetkit/worker/client";
-import type { Registry } from "../workers/registry";
+import { createClient } from "@rivetkit/actor/client";
+import type { Registry } from "../actors/registry";
 
 async function main() {
 	// Create type-aware client

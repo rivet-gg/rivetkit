@@ -4,21 +4,21 @@ import type {
 	GetForIdInput,
 	GetWithKeyInput,
 	ManagerDriver,
-	WorkerOutput,
+	ActorOutput,
 	CreateInput,
 } from "@rivetkit/core/driver-helpers";
-import { WorkerAlreadyExists } from "@rivetkit/core/errors";
+import { ActorAlreadyExists } from "@rivetkit/core/errors";
 import { logger } from "./log";
 import type { FileSystemGlobalState } from "./global-state";
-import { WorkerState } from "./global-state";
+import { ActorState } from "./global-state";
 import type { Registry } from "@rivetkit/core";
 
 export class FileSystemManagerDriver implements ManagerDriver {
 	#state: FileSystemGlobalState;
 
 	// inspector: ManagerInspector = new ManagerInspector(this, {
-	// 	getAllWorkers: () => this.#state.getAllWorkers(),
-	// 	getAllTypesOfWorkers: () => Object.keys(this.registry.config.workers),
+	// 	getAllActors: () => this.#state.getAllActors(),
+	// 	getAllTypesOfActors: () => Object.keys(this.registry.config.actors),
 	// });
 
 	constructor(
@@ -28,23 +28,23 @@ export class FileSystemManagerDriver implements ManagerDriver {
 		this.#state = state;
 	}
 
-	async getForId({ workerId }: GetForIdInput): Promise<WorkerOutput | undefined> {
-		// Validate the worker exists
-		if (!this.#state.hasWorker(workerId)) {
+	async getForId({ actorId }: GetForIdInput): Promise<ActorOutput | undefined> {
+		// Validate the actor exists
+		if (!this.#state.hasActor(actorId)) {
 			return undefined;
 		}
 
 		try {
-			// Load worker state
-			const state = this.#state.loadWorkerState(workerId);
+			// Load actor state
+			const state = this.#state.loadActorState(actorId);
 
 			return {
-				workerId,
+				actorId,
 				name: state.name,
 				key: state.key,
 			};
 		} catch (error) {
-			logger().error("failed to read worker state", { workerId, error });
+			logger().error("failed to read actor state", { actorId, error });
 			return undefined;
 		}
 	}
@@ -52,15 +52,15 @@ export class FileSystemManagerDriver implements ManagerDriver {
 	async getWithKey({
 		name,
 		key,
-	}: GetWithKeyInput): Promise<WorkerOutput | undefined> {
-		// Search through all workers to find a match
-		const worker = this.#state.findWorkerByNameAndKey(name, key);
+	}: GetWithKeyInput): Promise<ActorOutput | undefined> {
+		// Search through all actors to find a match
+		const actor = this.#state.findActorByNameAndKey(name, key);
 
-		if (worker) {
+		if (actor) {
 			return {
-				workerId: worker.id,
+				actorId: actor.id,
 				name,
-				key: worker.key,
+				key: actor.key,
 			};
 		}
 
@@ -69,31 +69,31 @@ export class FileSystemManagerDriver implements ManagerDriver {
 
 	async getOrCreateWithKey(
 		input: GetOrCreateWithKeyInput,
-	): Promise<WorkerOutput> {
-		// First try to get the worker without locking
+	): Promise<ActorOutput> {
+		// First try to get the actor without locking
 		const getOutput = await this.getWithKey(input);
 		if (getOutput) {
 			return getOutput;
 		} else {
-			return await this.createWorker(input);
+			return await this.createActor(input);
 		}
 	}
 
-	async createWorker({ name, key, input }: CreateInput): Promise<WorkerOutput> {
-		// Check if worker with the same name and key already exists
-		const existingWorker = await this.getWithKey({ name, key });
-		if (existingWorker) {
-			throw new WorkerAlreadyExists(name, key);
+	async createActor({ name, key, input }: CreateInput): Promise<ActorOutput> {
+		// Check if actor with the same name and key already exists
+		const existingActor = await this.getWithKey({ name, key });
+		if (existingActor) {
+			throw new ActorAlreadyExists(name, key);
 		}
 
-		const workerId = crypto.randomUUID();
-		await this.#state.createWorker(workerId, name, key, input);
+		const actorId = crypto.randomUUID();
+		await this.#state.createActor(actorId, name, key, input);
 
-		// Notify inspector about worker changes
-		// this.inspector.onWorkersChange(this.#state.getAllWorkers());
+		// Notify inspector about actor changes
+		// this.inspector.onActorsChange(this.#state.getAllActors());
 
 		return {
-			workerId,
+			actorId,
 			name,
 			key,
 		};

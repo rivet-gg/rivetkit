@@ -16,10 +16,10 @@
 // 		}
 // 		const endpoint = await deployProjectOnce;
 //
-// 		// Cleanup workers from previous tests
-// 		await deleteAllWorkers(rivetClientConfig);
+// 		// Cleanup actors from previous tests
+// 		await deleteAllActors(rivetClientConfig);
 //
-// 		// Flush cache since we manually updated the workers
+// 		// Flush cache since we manually updated the actors
 // 		const res = await fetch(`${endpoint}/.test/rivet/flush-cache`, {
 // 			method: "POST",
 // 		});
@@ -28,26 +28,26 @@
 // 		return {
 // 			endpoint,
 // 			async cleanup() {
-// 				// This takes time and slows down tests -- it's fine if we leak workers that'll be cleaned up in the next run
-// 				// await deleteAllWorkers(rivetClientConfig);
+// 				// This takes time and slows down tests -- it's fine if we leak actors that'll be cleaned up in the next run
+// 				// await deleteAllActors(rivetClientConfig);
 // 			},
 // 		};
 // 	},
 // });
 //
-// async function deleteAllWorkers(clientConfig: RivetClientConfig) {
+// async function deleteAllActors(clientConfig: RivetClientConfig) {
 // 	// TODO: This is not paginated
 //
-// 	console.log("Listing workers to delete");
+// 	console.log("Listing actors to delete");
 // 	const { actors } = await rivetRequest<
 // 		void,
 // 		{ actors: { id: string; tags: Record<string, string> }[] }
 // 	>(clientConfig, "GET", "/actors");
 //
 // 	for (const actor of actors) {
-// 		if (actor.tags.role !== "worker") continue;
+// 		if (actor.tags.role !== "actor") continue;
 //
-// 		console.log(`Deleting worker ${actor.id} (${JSON.stringify(actor.tags)})`);
+// 		console.log(`Deleting actor ${actor.id} (${JSON.stringify(actor.tags)})`);
 // 		await rivetRequest<void, void>(
 // 			clientConfig,
 // 			"DELETE",

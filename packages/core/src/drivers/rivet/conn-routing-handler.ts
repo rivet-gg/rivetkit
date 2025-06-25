@@ -1,8 +1,8 @@
 import { logger } from "./log";
 import { type RivetClientConfig } from "./rivet-client";
-import { getWorkerMeta } from "./worker-meta";
+import { getActorMeta } from  "./actor-meta";
 import invariant from "invariant";
-import { ConnRoutingHandler } from "@/worker/conn-routing-handler";
+import { ConnRoutingHandler } from  "@/actor/conn-routing-handler";
 import {
 	HEADER_AUTH_DATA,
 	HEADER_CONN_PARAMS,
@@ -18,26 +18,26 @@ export function createRivetConnRoutingHandler(
 ): ConnRoutingHandler {
 	return {
 		custom: {
-			sendRequest: async (workerId, workerRequest) => {
-				const meta = await getWorkerMeta(clientConfig, workerId);
-				invariant(meta, "worker should exist");
+			sendRequest: async (actorId, actorRequest) => {
+				const meta = await getActorMeta(clientConfig, actorId);
+				invariant(meta, "actor should exist");
 
-				const parsedRequestUrl = new URL(workerRequest.url);
-				const workerUrl = `${meta.endpoint}${parsedRequestUrl.pathname}${parsedRequestUrl.search}`;
+				const parsedRequestUrl = new URL(actorRequest.url);
+				const actorUrl = `${meta.endpoint}${parsedRequestUrl.pathname}${parsedRequestUrl.search}`;
 
-				logger().debug("proxying request to rivet worker", {
-					method: workerRequest.method,
-					url: workerUrl,
+				logger().debug("proxying request to rivet actor", {
+					method: actorRequest.method,
+					url: actorUrl,
 				});
 
-				const proxyRequest = new Request(workerUrl, workerRequest);
+				const proxyRequest = new Request(actorUrl, actorRequest);
 				return await fetch(proxyRequest);
 			},
-			openWebSocket: async (workerId, encodingKind, params: unknown) => {
+			openWebSocket: async (actorId, encodingKind, params: unknown) => {
 				const WebSocket = await importWebSocket();
 
-				const meta = await getWorkerMeta(clientConfig, workerId);
-				invariant(meta, "worker should exist");
+				const meta = await getActorMeta(clientConfig, actorId);
+				invariant(meta, "actor should exist");
 
 				const wsEndpoint = meta.endpoint.replace(/^http/, "ws");
 				const url = `${wsEndpoint}/connect/websocket`;
@@ -52,44 +52,44 @@ export function createRivetConnRoutingHandler(
 					headers[HEADER_CONN_PARAMS] = JSON.stringify(params);
 				}
 
-				logger().debug("opening websocket to worker", {
-					workerId,
+				logger().debug("opening websocket to actor", {
+					actorId,
 					url,
 				});
 
 				return new WebSocket(url, { headers });
 			},
-			proxyRequest: async (c, workerRequest, workerId) => {
-				const meta = await getWorkerMeta(clientConfig, workerId);
-				invariant(meta, "worker should exist");
+			proxyRequest: async (c, actorRequest, actorId) => {
+				const meta = await getActorMeta(clientConfig, actorId);
+				invariant(meta, "actor should exist");
 
-				const parsedRequestUrl = new URL(workerRequest.url);
-				const workerUrl = `${meta.endpoint}${parsedRequestUrl.pathname}${parsedRequestUrl.search}`;
+				const parsedRequestUrl = new URL(actorRequest.url);
+				const actorUrl = `${meta.endpoint}${parsedRequestUrl.pathname}${parsedRequestUrl.search}`;
 
-				logger().debug("proxying request to rivet worker", {
-					method: workerRequest.method,
-					url: workerUrl,
+				logger().debug("proxying request to rivet actor", {
+					method: actorRequest.method,
+					url: actorUrl,
 				});
 
-				const proxyRequest = new Request(workerUrl, workerRequest);
+				const proxyRequest = new Request(actorUrl, actorRequest);
 				return await proxy(proxyRequest);
 			},
 			proxyWebSocket: async (
 				c,
 				path,
-				workerId,
+				actorId,
 				encoding,
 				connParmas,
 				authData,
 				upgradeWebSocket,
 			) => {
-				const meta = await getWorkerMeta(clientConfig, workerId);
-				invariant(meta, "worker should exist");
+				const meta = await getActorMeta(clientConfig, actorId);
+				invariant(meta, "actor should exist");
 
-				const workerUrl = `${meta.endpoint}${path}`;
+				const actorUrl = `${meta.endpoint}${path}`;
 
-				logger().debug("proxying websocket to rivet worker", {
-					url: workerUrl,
+				logger().debug("proxying websocket to rivet actor", {
+					url: actorUrl,
 				});
 
 				// Build headers
@@ -104,7 +104,7 @@ export function createRivetConnRoutingHandler(
 					headers[HEADER_AUTH_DATA] = JSON.stringify(authData);
 				}
 
-				const handlers = await createWebSocketProxy(workerUrl, headers);
+				const handlers = await createWebSocketProxy(actorUrl, headers);
 
 				// upgradeWebSocket is middleware, so we need to pass fake handlers
 				invariant(upgradeWebSocket, "missing upgradeWebSocket");

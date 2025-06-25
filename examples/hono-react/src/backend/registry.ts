@@ -1,6 +1,6 @@
-import { worker, setup } from "@rivetkit/worker";
+import { actor, setup } from "@rivetkit/actor";
 
-export const counter = worker({
+export const counter = actor({
 	onAuth: () => {
 		// Configure auth here
 	},
@@ -15,7 +15,7 @@ export const counter = worker({
 });
 
 export const registry = setup({
-	workers: { counter },
+	actors: { counter },
 });
 
 export type Registry = typeof registry;

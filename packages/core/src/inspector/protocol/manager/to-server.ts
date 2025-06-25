@@ -6,7 +6,7 @@
 // 	}),
 // 	z.object({
 // 		type: z.literal("destroy"),
-// 		workerId: z.string(),
+// 		actorId: z.string(),
 // 	}),
 // ]);
 //

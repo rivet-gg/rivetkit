@@ -5,32 +5,32 @@ icon: rotate
 
 ## Lifecycle Hooks
 
-Worker lifecycle hooks are defined as functions in the worker configuration.
+Actor lifecycle hooks are defined as functions in the actor configuration.
 
 ### `createState` and `state`
 
-{/* [Documentation](https://jsr.io/@rivet-gg/worker/doc/~/Worker.prototype._onInitialize) */}
+{/* [Documentation](https://jsr.io/@rivet-gg/actor/doc/~/Actor.prototype._onInitialize) */}
 
-The `createState` function or `state` constant defines the initial state of the worker (see [state documentation](/concepts/state)). The `createState` function is called only once when the worker is first created.
+The `createState` function or `state` constant defines the initial state of the actor (see [state documentation](/concepts/state)). The `createState` function is called only once when the actor is first created.
 
 ### `createVars` and `vars`
 
-The `createVars` function or `vars` constant defines ephemeral variables for the worker (see [state documentation](/concepts/state)). These variables are not persisted and are useful for storing runtime-only objects or temporary data.
+The `createVars` function or `vars` constant defines ephemeral variables for the actor (see [state documentation](/concepts/state)). These variables are not persisted and are useful for storing runtime-only objects or temporary data.
 
 The `createVars` function can also receive driver-specific context as its second parameter, allowing access to driver capabilities like Rivet KV or Cloudflare Durable Object storage.
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
 // Using vars constant
-const counter1 = worker({
+const counter1 = actor({
   state: { count: 0 },
   vars: { lastAccessTime: 0 },
   actions: { /* ... */ }
 });
 
 // Using createVars function
-const counter2 = worker({
+const counter2 = actor({
   state: { count: 0 },
   createVars: () => {
     // Initialize with non-serializable objects
@@ -43,7 +43,7 @@ const counter2 = worker({
 });
 
 // Access driver-specific context
-const exampleWorker = worker({
+const exampleActor = actor({
   state: { count: 0 },
   // Access driver context in createVars
   createVars: (c, rivet) => ({
@@ -63,16 +63,16 @@ const exampleWorker = worker({
 The `onCreate` hook is called at the same time as `createState`, but unlike `createState`, it doesn't return any value. Use this hook for initialization logic that doesn't affect the initial state.
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
 // Using state constant
-const counter1 = worker({
+const counter1 = actor({
   state: { count: 0 },
   actions: { /* ... */ }
 });
 
 // Using createState function
-const counter2 = worker({
+const counter2 = actor({
   createState: () => {
     // Initialize with a count of 0
     return { count: 0 };
@@ -81,12 +81,12 @@ const counter2 = worker({
 });
 
 // Using onCreate
-const counter3 = worker({
+const counter3 = actor({
   state: { count: 0 },
   
   // Run initialization logic (logging, external service setup, etc.)
   onCreate: (c) => {
-    console.log("Counter worker initialized");
+    console.log("Counter actor initialized");
     // Can perform async operations or setup
     // No need to return anything
   },
@@ -97,22 +97,22 @@ const counter3 = worker({
 
 ### `onStart`
 
-{/* [Documentation](https://jsr.io/@rivet-gg/worker/doc/~/Worker.prototype._onStart) */}
+{/* [Documentation](https://jsr.io/@rivet-gg/actor/doc/~/Actor.prototype._onStart) */}
 
-This hook is called any time the worker is started (e.g. after restarting, upgrading code, or crashing).
+This hook is called any time the actor is started (e.g. after restarting, upgrading code, or crashing).
 
-This is called after the worker has been initialized but before any connections are accepted.
+This is called after the actor has been initialized but before any connections are accepted.
 
 Use this hook to set up any resources or start any background tasks, such as `setInterval`.
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
-const counter = worker({
+const counter = actor({
   state: { count: 0 },
   
   onStart: (c) => {
-    console.log('Worker started with count:', c.state.count);
+    console.log('Actor started with count:', c.state.count);
     
     // Set up interval for automatic counting
     const intervalId = setInterval(() => {
@@ -130,14 +130,14 @@ const counter = worker({
 
 ### `onStateChange`
 
-{/* [Documentation](https://jsr.io/@rivet-gg/worker/doc/~/Worker.prototype._onStateChange) */}
+{/* [Documentation](https://jsr.io/@rivet-gg/actor/doc/~/Actor.prototype._onStateChange) */}
 
-Called whenever the worker's state changes. This is often used to broadcast state updates.
+Called whenever the actor's state changes. This is often used to broadcast state updates.
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
-const counter = worker({
+const counter = actor({
   state: { count: 0 },
   
   onStateChange: (c, newState) => {
@@ -158,7 +158,7 @@ const counter = worker({
 
 ### `createConnState` and `connState`
 
-{/* [Documentation](https://jsr.io/@rivet-gg/worker/doc/~/Worker.prototype._createConnState) */}
+{/* [Documentation](https://jsr.io/@rivet-gg/actor/doc/~/Actor.prototype._createConnState) */}
 
 There are two ways to define the initial state for connections:
 1. `connState`: Define a constant object that will be used as the initial state for all connections
@@ -166,16 +166,16 @@ There are two ways to define the initial state for connections:
 
 ### `onBeforeConnect`
 
-{/* [Documentation](https://jsr.io/@rivet-gg/worker/doc/~/Worker.prototype._onBeforeConnect) */}
+{/* [Documentation](https://jsr.io/@rivet-gg/actor/doc/~/Actor.prototype._onBeforeConnect) */}
 
-The `onBeforeConnect` hook is called whenever a new client connects to the worker. Clients can pass parameters when connecting, accessible via `params`. This hook is used for connection validation and can throw errors to reject connections.
+The `onBeforeConnect` hook is called whenever a new client connects to the actor. Clients can pass parameters when connecting, accessible via `params`. This hook is used for connection validation and can throw errors to reject connections.
 
 The `onBeforeConnect` hook does NOT return connection state - it's used solely for validation.
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
-const chatRoom = worker({
+const chatRoom = actor({
   state: { messages: [] },
   
   // Method 1: Use a static default connection state
@@ -209,18 +209,18 @@ const chatRoom = worker({
 });
 ```
 
-Connections cannot interact with the worker until this method completes successfully. Throwing an error will abort the connection. This can be used for authentication - see [Authentication](/concepts/authentication) for details.
+Connections cannot interact with the actor until this method completes successfully. Throwing an error will abort the connection. This can be used for authentication - see [Authentication](/concepts/authentication) for details.
 
 ### `onConnect`
 
-{/* [Documentation](https://jsr.io/@rivet-gg/worker/doc/~/Worker.prototype._onConnect) */}
+{/* [Documentation](https://jsr.io/@rivet-gg/actor/doc/~/Actor.prototype._onConnect) */}
 
 Executed after the client has successfully connected.
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
-const chatRoom = worker({
+const chatRoom = actor({
   state: { users: {}, messages: [] },
   
   onConnect: (c) => {
@@ -241,18 +241,18 @@ const chatRoom = worker({
 });
 ```
 
-Messages will not be processed for this worker until this hook succeeds. Errors thrown from this hook will cause the client to disconnect.
+Messages will not be processed for this actor until this hook succeeds. Errors thrown from this hook will cause the client to disconnect.
 
 ### `onDisconnect`
 
-{/* [Documentation](https://jsr.io/@rivet-gg/worker/doc/~/Worker.prototype._onDisconnect) */}
+{/* [Documentation](https://jsr.io/@rivet-gg/actor/doc/~/Actor.prototype._onDisconnect) */}
 
-Called when a client disconnects from the worker. Use this to clean up any connection-specific resources.
+Called when a client disconnects from the actor. Use this to clean up any connection-specific resources.
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
-const chatRoom = worker({
+const chatRoom = actor({
   state: { users: {}, messages: [] },
   
   onDisconnect: (c) => {
@@ -273,14 +273,14 @@ const chatRoom = worker({
 });
 ```
 
-## Destroying Workers
+## Destroying Actors
 
-Workers can be shut down gracefully with `c.shutdown()`. Clients will be gracefully disconnected.
+Actors can be shut down gracefully with `c.shutdown()`. Clients will be gracefully disconnected.
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
-const temporaryRoom = worker({
+const temporaryRoom = actor({
   state: { 
     createdAt: 0,
     expiresAfterMs: 3600000 // 1 hour
@@ -314,7 +314,7 @@ const temporaryRoom = worker({
       // Notify all clients
       c.broadcast("roomClosed", { reason: "Admin closed the room" });
       
-      // Shutdown the worker
+      // Shutdown the actor
       c.shutdown();
     }
   }
@@ -323,42 +323,42 @@ const temporaryRoom = worker({
 
 This action is permanent and cannot be reverted.
 
-## Using `WorkerContext` Type Externally
+## Using `ActorContext` Type Externally
 
 When extracting logic from lifecycle hooks or actions into external functions, you'll often need to define the type of the context parameter. RivetKit provides helper types that make it easy to extract and pass these context types to external functions.
 
 ```typescript
-import { worker, WorkerContextOf } from "rivetkit";
+import { actor, ActorContextOf } from "rivetkit";
 
-const myWorker = worker({
+const myActor = actor({
   state: { count: 0 },
   
   // Use external function in lifecycle hook
-  onStart: (c) => logWorkerStarted(c)
+  onStart: (c) => logActorStarted(c)
 });
 
 // Simple external function with typed context
-function logWorkerStarted(c: WorkerContextOf<typeof myWorker>) {
-  console.log(`Worker started with count: ${c.state.count}`);
+function logActorStarted(c: ActorContextOf<typeof myActor>) {
+  console.log(`Actor started with count: ${c.state.count}`);
 }
 ```
 
-See [Helper Types](/concepts/types) for more details on using `WorkerContextOf`.
+See [Helper Types](/concepts/types) for more details on using `ActorContextOf`.
 
 ## Full Example
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
-const counter = worker({
+const counter = actor({
   // Initialize state
   createState: () => ({
     count: 0
   }),
   
-  // Initialize worker (run setup that doesn't affect initial state)
+  // Initialize actor (run setup that doesn't affect initial state)
   onCreate: (c) => {
-    console.log('Counter worker initialized');
+    console.log('Counter actor initialized');
     // Set up external resources, etc.
   },
   

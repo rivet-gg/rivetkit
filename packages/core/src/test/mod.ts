@@ -8,7 +8,7 @@ import { StandaloneTopology, type Registry } from "@/mod";
 import {
 	TestGlobalState,
 	TestManagerDriver,
-	TestWorkerDriver,
+	TestActorDriver,
 } from "./driver/mod";
 import { type InputConfig, ConfigSchema } from "./config";
 import { type TestContext, vi } from "vitest";
@@ -31,7 +31,7 @@ function createRouter(
 		config.driver = {
 			topology: "standalone",
 			manager: new TestManagerDriver(memoryState),
-			worker: new TestWorkerDriver(memoryState),
+			actor: new TestActorDriver(memoryState),
 		};
 	}
 
@@ -87,7 +87,7 @@ function serve(registry: Registry<any>, inputConfig?: InputConfig): ServerType {
 export interface SetupTestResult<A extends Registry<any>> {
 	client: Client<A>;
 	mockDriver: {
-		workerDriver: {
+		actorDriver: {
 			setCreateVarsContext: (ctx: any) => void;
 		};
 	};
@@ -122,7 +122,7 @@ export async function setupTest<A extends Registry<any>>(
 	return {
 		client,
 		mockDriver: {
-			workerDriver: {
+			actorDriver: {
 				setCreateVarsContext: setDriverContextFn,
 			},
 		},

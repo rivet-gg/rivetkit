@@ -1,10 +1,10 @@
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 import { drizzle } from "@rivetkit/drizzle";
 import { limiters } from "./schema";
 
 // Simple rate limiter - allows 5 requests per minute
-const rateLimiter = worker({
+const rateLimiter = actor({
   sql: drizzle(),
 
   actions: {

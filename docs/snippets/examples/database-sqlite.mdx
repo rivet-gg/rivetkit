@@ -1,13 +1,13 @@
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 import { drizzle } from "@rivetkit/drizzle";
 import { notes } from "./schema";
 import { authenticate } from "./my-utils";
 
 export type Note = { id: string; content: string; updatedAt: number };
 
-// User notes worker
-const userNotes = worker({
+// User notes actor
+const userNotes = actor({
   sql: drizzle(),
   
   // Authenticate

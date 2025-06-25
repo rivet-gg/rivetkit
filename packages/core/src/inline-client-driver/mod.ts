@@ -1,9 +1,9 @@
-import * as errors from "@/worker/errors";
-import * as protoHttpAction from "@/worker/protocol/http/action";
+import * as errors from  "@/actor/errors";
+import * as protoHttpAction from  "@/actor/protocol/http/action";
 import { logger } from "./log";
 import type { EventSource } from "eventsource";
-import type * as wsToServer from "@/worker/protocol/message/to-server";
-import { type Encoding, serialize } from "@/worker/protocol/serde";
+import type * as wsToServer from  "@/actor/protocol/message/to-server";
+import { type Encoding, serialize } from  "@/actor/protocol/serde";
 import {
 	ConnectWebSocketOutput,
 	HEADER_CONN_PARAMS,
@@ -12,24 +12,24 @@ import {
 	HEADER_CONN_TOKEN,
 	type ConnectionHandlers,
 	HEADER_EXPOSE_INTERNAL_ERROR,
-} from "@/worker/router-endpoints";
+} from  "@/actor/router-endpoints";
 import type { SSEStreamingApi } from "hono/streaming";
 import { HonoRequest, type Context as HonoContext, type Next } from "hono";
 import invariant from "invariant";
 import { ClientDriver } from "@/client/client";
 import { ManagerDriver } from "@/manager/driver";
-import { WorkerQuery } from "@/manager/protocol/query";
-import { ConnRoutingHandler } from "@/worker/conn-routing-handler";
+import { ActorQuery } from "@/manager/protocol/query";
+import { ConnRoutingHandler } from  "@/actor/conn-routing-handler";
 import { sendHttpRequest, serializeWithEncoding } from "@/client/utils";
-import { ActionRequest, ActionResponse } from "@/worker/protocol/http/action";
-import { assertUnreachable } from "@/worker/utils";
+import { ActionRequest, ActionResponse } from  "@/actor/protocol/http/action";
+import { assertUnreachable } from  "@/actor/utils";
 import { FakeWebSocket } from "./fake-websocket";
 import { FakeEventSource } from "./fake-event-source";
 import { importWebSocket } from "@/common/websocket";
 import { importEventSource } from "@/common/eventsource";
 import onChange from "on-change";
 import { httpUserAgent } from "@/utils";
-import { WorkerError as ClientWorkerError } from "@/client/errors";
+import { ActorError as ClientActorError } from "@/client/errors";
 import { deconstructError } from "@/common/utils";
 import type { WebSocket } from "ws";
 
@@ -51,7 +51,7 @@ export function createInlineClientDriver(
 	const driver: ClientDriver = {
 		action: async <Args extends Array<unknown> = unknown[], Response = unknown>(
 			c: HonoContext | undefined,
-			workerQuery: WorkerQuery,
+			actorQuery: ActorQuery,
 			encoding: Encoding,
 			params: unknown,
 			actionName: string,
@@ -59,10 +59,10 @@ export function createInlineClientDriver(
 			opts: { signal?: AbortSignal },
 		): Promise<Response> => {
 			try {
-				// Get the worker ID
-				const { workerId } = await queryWorker(c, workerQuery, managerDriver);
-				logger().debug("found worker for action", { workerId });
-				invariant(workerId, "Missing worker ID");
+				// Get the actor ID
+				const { actorId } = await queryActor(c, actorQuery, managerDriver);
+				logger().debug("found actor for action", { actorId });
+				invariant(actorId, "Missing actor ID");
 
 				// Invoke the action
 				logger().debug("handling action", { actionName, encoding });
@@ -72,7 +72,7 @@ export function createInlineClientDriver(
 						params,
 						actionName,
 						actionArgs: args,
-						workerId,
+						actorId,
 						// No auth data since this is from internal
 						authData: undefined,
 					});
@@ -85,7 +85,7 @@ export function createInlineClientDriver(
 						// without mutating the main state
 						return structuredClone(output) as Response;
 					} catch (err) {
-						// HACK: If we return a value that references the worker state (i.e. an on-change value),
+						// HACK: If we return a value that references the actor state (i.e. an on-change value),
 						// this will throw an error. We fall back to `DataCloneError`.
 						if (err instanceof DOMException && err.name === "DataCloneError") {
 							logger().trace(
@@ -101,7 +101,7 @@ export function createInlineClientDriver(
 						ActionRequest,
 						ActionResponse
 					>({
-						url: `http://worker/action/${encodeURIComponent(actionName)}`,
+						url: `http://actor/action/${encodeURIComponent(actionName)}`,
 						method: "POST",
 						headers: {
 							[HEADER_ENCODING]: encoding,
@@ -114,7 +114,7 @@ export function createInlineClientDriver(
 						encoding: encoding,
 						customFetch: routingHandler.custom.sendRequest.bind(
 							undefined,
-							workerId,
+							actorId,
 						),
 						signal: opts?.signal,
 					});
@@ -124,44 +124,44 @@ export function createInlineClientDriver(
 					assertUnreachable(routingHandler);
 				}
 			} catch (err) {
-				// Standardize to ClientWorkerError instead of the native backend error
+				// Standardize to ClientActorError instead of the native backend error
 				const { code, message, metadata } = deconstructError(
 					err,
 					logger(),
 					{},
 					true,
 				);
-				const x = new ClientWorkerError(code, message, metadata);
-				throw new ClientWorkerError(code, message, metadata);
+				const x = new ClientActorError(code, message, metadata);
+				throw new ClientActorError(code, message, metadata);
 			}
 		},
 
-		resolveWorkerId: async (
+		resolveActorId: async (
 			c: HonoContext | undefined,
-			workerQuery: WorkerQuery,
+			actorQuery: ActorQuery,
 			_encodingKind: Encoding,
 		): Promise<string> => {
-			// Get the worker ID
-			const { workerId } = await queryWorker(c, workerQuery, managerDriver);
-			logger().debug("resolved worker", { workerId });
-			invariant(workerId, "missing worker ID");
+			// Get the actor ID
+			const { actorId } = await queryActor(c, actorQuery, managerDriver);
+			logger().debug("resolved actor", { actorId });
+			invariant(actorId, "missing actor ID");
 
-			return workerId;
+			return actorId;
 		},
 
 		connectWebSocket: async (
 			c: HonoContext | undefined,
-			workerQuery: WorkerQuery,
+			actorQuery: ActorQuery,
 			encodingKind: Encoding,
 			params?: unknown,
 		): Promise<WebSocket> => {
-			// Get the worker ID
-			const { workerId } = await queryWorker(c, workerQuery, managerDriver);
-			logger().debug("found worker for action", { workerId });
-			invariant(workerId, "Missing worker ID");
+			// Get the actor ID
+			const { actorId } = await queryActor(c, actorQuery, managerDriver);
+			logger().debug("found actor for action", { actorId });
+			invariant(actorId, "Missing actor ID");
 
 			// Invoke the action
-			logger().debug("opening websocket", { workerId, encoding: encodingKind });
+			logger().debug("opening websocket", { actorId, encoding: encodingKind });
 			if ("inline" in routingHandler) {
 				invariant(
 					routingHandler.inline.handlers.onConnectWebSocket,
@@ -169,7 +169,7 @@ export function createInlineClientDriver(
 				);
 
 				logger().debug("calling onConnectWebSocket handler", {
-					workerId,
+					actorId,
 					encoding: encodingKind,
 				});
 
@@ -177,7 +177,7 @@ export function createInlineClientDriver(
 				const output = await routingHandler.inline.handlers.onConnectWebSocket({
 					req: c?.req,
 					encoding: encodingKind,
-					workerId,
+					actorId,
 					params,
 					// No auth data since this is from internal
 					authData: undefined,
@@ -194,7 +194,7 @@ export function createInlineClientDriver(
 			} else if ("custom" in routingHandler) {
 				// Open WebSocket
 				const ws = await routingHandler.custom.openWebSocket(
-					workerId,
+					actorId,
 					encodingKind,
 					params,
 				);
@@ -208,17 +208,17 @@ export function createInlineClientDriver(
 
 		connectSse: async (
 			c: HonoContext | undefined,
-			workerQuery: WorkerQuery,
+			actorQuery: ActorQuery,
 			encodingKind: Encoding,
 			params: unknown,
 		): Promise<EventSource> => {
-			// Get the worker ID
-			const { workerId } = await queryWorker(c, workerQuery, managerDriver);
-			logger().debug("found worker for sse connection", { workerId });
-			invariant(workerId, "Missing worker ID");
+			// Get the actor ID
+			const { actorId } = await queryActor(c, actorQuery, managerDriver);
+			logger().debug("found actor for sse connection", { actorId });
+			invariant(actorId, "Missing actor ID");
 
 			logger().debug("opening sse connection", {
-				workerId,
+				actorId,
 				encoding: encodingKind,
 			});
 
@@ -229,7 +229,7 @@ export function createInlineClientDriver(
 				);
 
 				logger().debug("calling onConnectSse handler", {
-					workerId,
+					actorId,
 					encoding: encodingKind,
 				});
 
@@ -238,7 +238,7 @@ export function createInlineClientDriver(
 					req: c?.req,
 					encoding: encodingKind,
 					params,
-					workerId,
+					actorId,
 					// No auth data since this is from internal
 					authData: undefined,
 				});
@@ -261,7 +261,7 @@ export function createInlineClientDriver(
 			} else if ("custom" in routingHandler) {
 				const EventSourceClass = await importEventSource();
 
-				const eventSource = new EventSourceClass("http://worker/connect/sse", {
+				const eventSource = new EventSourceClass("http://actor/connect/sse", {
 					fetch: (input, init) => {
 						return fetch(input, {
 							...init,
@@ -286,13 +286,13 @@ export function createInlineClientDriver(
 
 		sendHttpMessage: async (
 			c: HonoContext | undefined,
-			workerId: string,
+			actorId: string,
 			encoding: Encoding,
 			connectionId: string,
 			connectionToken: string,
 			message: wsToServer.ToServer,
 		): Promise<Response> => {
-			logger().debug("sending http message", { workerId, connectionId });
+			logger().debug("sending http message", { actorId, connectionId });
 
 			if ("inline" in routingHandler) {
 				invariant(
@@ -306,7 +306,7 @@ export function createInlineClientDriver(
 					connId: connectionId,
 					connToken: connectionToken,
 					message,
-					workerId,
+					actorId,
 				});
 
 				// Return empty response
@@ -318,7 +318,7 @@ export function createInlineClientDriver(
 			} else if ("custom" in routingHandler) {
 				// Send an HTTP request to the connections endpoint
 				return sendHttpRequest({
-					url: "http://worker/connections/message",
+					url: "http://actor/connections/message",
 					method: "POST",
 					headers: {
 						[HEADER_ENCODING]: encoding,
@@ -331,7 +331,7 @@ export function createInlineClientDriver(
 					skipParseResponse: true,
 					customFetch: routingHandler.custom.sendRequest.bind(
 						undefined,
-						workerId,
+						actorId,
 					),
 				});
 			} else {
@@ -344,34 +344,34 @@ export function createInlineClientDriver(
 }
 
 /**
- * Query the manager driver to get or create a worker based on the provided query
+ * Query the manager driver to get or create a actor based on the provided query
  */
-export async function queryWorker(
+export async function queryActor(
 	c: HonoContext | undefined,
-	query: WorkerQuery,
+	query: ActorQuery,
 	driver: ManagerDriver,
-): Promise<{ workerId: string }> {
-	logger().debug("querying worker", { query });
-	let workerOutput: { workerId: string };
+): Promise<{ actorId: string }> {
+	logger().debug("querying actor", { query });
+	let actorOutput: { actorId: string };
 	if ("getForId" in query) {
 		const output = await driver.getForId({
 			c,
-			workerId: query.getForId.workerId,
+			actorId: query.getForId.actorId,
 		});
-		if (!output) throw new errors.WorkerNotFound(query.getForId.workerId);
-		workerOutput = output;
+		if (!output) throw new errors.ActorNotFound(query.getForId.actorId);
+		actorOutput = output;
 	} else if ("getForKey" in query) {
-		const existingWorker = await driver.getWithKey({
+		const existingActor = await driver.getWithKey({
 			c,
 			name: query.getForKey.name,
 			key: query.getForKey.key,
 		});
-		if (!existingWorker) {
-			throw new errors.WorkerNotFound(
+		if (!existingActor) {
+			throw new errors.ActorNotFound(
 				`${query.getForKey.name}:${JSON.stringify(query.getForKey.key)}`,
 			);
 		}
-		workerOutput = existingWorker;
+		actorOutput = existingActor;
 	} else if ("getOrCreateForKey" in query) {
 		const getOrCreateOutput = await driver.getOrCreateWithKey({
 			c,
@@ -380,28 +380,28 @@ export async function queryWorker(
 			input: query.getOrCreateForKey.input,
 			region: query.getOrCreateForKey.region,
 		});
-		workerOutput = {
-			workerId: getOrCreateOutput.workerId,
+		actorOutput = {
+			actorId: getOrCreateOutput.actorId,
 		};
 	} else if ("create" in query) {
-		const createOutput = await driver.createWorker({
+		const createOutput = await driver.createActor({
 			c,
 			name: query.create.name,
 			key: query.create.key,
 			input: query.create.input,
 			region: query.create.region,
 		});
-		workerOutput = {
-			workerId: createOutput.workerId,
+		actorOutput = {
+			actorId: createOutput.actorId,
 		};
 	} else {
 		throw new errors.InvalidRequest("Invalid query format");
 	}
 
-	logger().debug("worker query result", {
-		workerId: workerOutput.workerId,
+	logger().debug("actor query result", {
+		actorId: actorOutput.actorId,
 	});
-	return { workerId: workerOutput.workerId };
+	return { actorId: actorOutput.actorId };
 }
 
 /**

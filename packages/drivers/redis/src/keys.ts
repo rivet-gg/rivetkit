@@ -1,17 +1,17 @@
 export const KEYS = {
-	WORKER: {
+	ACTOR: {
 		// KEY
-		initialized: (workerId: string) => `worker:${workerId}:initialized`,
+		initialized: (actorId: string) => `actor:${actorId}:initialized`,
 		LEASE: {
 			// KEY (expire) = node ID
-			node: (workerId: string) => `worker:${workerId}:lease:node`,
+			node: (actorId: string) => `actor:${actorId}:lease:node`,
 		},
 		// KEY
-		metadata: (workerId: string) => `worker:${workerId}:metadata`,
+		metadata: (actorId: string) => `actor:${actorId}:metadata`,
 		// KEY
-		persistedData: (workerId: string) => `worker:${workerId}:persisted_data`,
+		persistedData: (actorId: string) => `actor:${actorId}:persisted_data`,
 		// KEY
-		input: (workerId: string) => `worker:${workerId}:input`,
+		input: (actorId: string) => `actor:${actorId}:input`,
 	},
 };
 

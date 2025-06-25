@@ -11,7 +11,7 @@ Example project demonstrating Cloudflare Workers deployment with [RivetKit](http
 ### Prerequisites
 
 - Node.js
-- Cloudflare account with Workers enabled
+- Cloudflare account with Actors enabled
 - Wrangler CLI installed globally (`npm install -g wrangler`)
 
 ### Installation
@@ -32,7 +32,7 @@ This will start the Cloudflare Workers development server locally at http://loca
 
 ### Testing the Client
 
-In a separate terminal, run the client script to interact with your workers:
+In a separate terminal, run the client script to interact with your actors:
 
 ```sh
 npm run client

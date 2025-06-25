@@ -14,7 +14,7 @@
 Always include a README.md for new packages. The `README.md` should always follow this structure:
 
     ```md
-    # RivetKit {subname, e.g. library: RivetKit Workers, driver and platform: RivetKit Redis Adapter, RivetKit Cloudflare Workers Adapter}
+    # RivetKit {subname, e.g. library: RivetKit Actors, driver and platform: RivetKit Redis Adapter, RivetKit Cloudflare Workers Adapter}
 
     _Lightweight Libraries for Backends_
 
@@ -30,16 +30,16 @@ Always include a README.md for new packages. The `README.md` should always follo
 
 ## Common Terminology
 
-- **Worker**: A stateful, long-lived entity that processes messages and maintains state
-- **Manager**: Component responsible for creating, routing, and managing worker instances
-- **Remote Procedure Call (RPC)**: Method for an worker to expose callable functions to clients
-- **Event**: Asynchronous message sent from an worker to connected clients
+- **Actor**: A stateful, long-lived entity that processes messages and maintains state
+- **Manager**: Component responsible for creating, routing, and managing actor instances
+- **Remote Procedure Call (RPC)**: Method for an actor to expose callable functions to clients
+- **Event**: Asynchronous message sent from an actor to connected clients
 - **Alarm**: Scheduled callback that triggers at a specific time
 
 ### Coordinated Topology Terminology
 
-- **Peer**: Individual worker instance in a coordinated network
-- **Node**: Physical or logical host running one or more worker peers
+- **Peer**: Individual actor instance in a coordinated network
+- **Node**: Physical or logical host running one or more actor peers
 
 ## Build Commands
 
@@ -56,19 +56,19 @@ Run these commands from the root of the project. They depend on Turborepo, so yo
 
 ### Topologies
 
-rivetkit supports three topologies that define how workers communicate and scale:
+rivetkit supports three topologies that define how actors communicate and scale:
 
-- **Singleton:** A single instance of an worker running in one location
-- **Partition:** Multiple instances of an worker type partitioned by ID, useful for horizontal scaling 
-- **Coordinate:** Workers connected in a peer-to-peer network, sharing state between instances
+- **Singleton:** A single instance of an actor running in one location
+- **Partition:** Multiple instances of an actor type partitioned by ID, useful for horizontal scaling 
+- **Coordinate:** Actors connected in a peer-to-peer network, sharing state between instances
 
 ### Driver Interfaces
 
 Driver interfaces define the contract between rivetkit and various backends:
 
-- **WorkerDriver:** Manages worker state, lifecycle, and persistence
-- **ManagerDriver:** Manages worker discovery, routing, and scaling
-- **CoordinateDriver:** Handles peer-to-peer communication between worker instances
+- **ActorDriver:** Manages actor state, lifecycle, and persistence
+- **ManagerDriver:** Manages actor discovery, routing, and scaling
+- **CoordinateDriver:** Handles peer-to-peer communication between actor instances
     - Only applicable in coordinate topologies
 
 ### Driver Implementations
@@ -110,7 +110,7 @@ This ensures imports resolve correctly across different build environments and p
   - UPPER_CASE for constants
   - Use `#` prefix for private class members (not `private` keyword)
 - **Error Handling:** 
-  - Extend from `WorkerError` base class (packages/core/src/worker/errors.ts)
+  - Extend from `ActorError` base class (packages/core/src/actor/errors.ts)
   - Use `UserError` for client-safe errors
   - Use `InternalError` for internal errors
 - Don't try to fix type issues by casting to unknown or any. If you need to do this, then stop and ask me to manually intervene.
@@ -119,7 +119,7 @@ This ensures imports resolve correctly across different build environments and p
     - Do not store `logger()` as a variable, always call it using `logger().info("...")`
     - Use structured logging where it makes sense, for example: `logger().info("foo", { bar: 5, baz: 10 })`
     - Supported logging methods are: trace, debug, info, warn, error, critical
-- Instead of returning errors as raw HTTP responses with c.json, use or write an error in packages/rivetkit/src/worker/errors.ts and throw that instead. The middleware will automatically serialize the response for you.
+- Instead of returning errors as raw HTTP responses with c.json, use or write an error in packages/rivetkit/src/actor/errors.ts and throw that instead. The middleware will automatically serialize the response for you.
 
 ## Project Structure
 
@@ -140,7 +140,7 @@ This ensures imports resolve correctly across different build environments and p
 
 ## Test Guidelines
 
-- Do not check if errors are an instanceOf WorkerError in tests. Many error types do not have the same prototype chain when sent over the network, but still have the same properties so you can safely cast with `as`.
+- Do not check if errors are an instanceOf ActorError in tests. Many error types do not have the same prototype chain when sent over the network, but still have the same properties so you can safely cast with `as`.
 
 ## Examples
 

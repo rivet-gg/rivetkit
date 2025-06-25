@@ -1,6 +1,6 @@
-import { worker, setup } from "@rivetkit/worker";
+import { actor, setup } from "@rivetkit/actor";
 
-const counter = worker({
+const counter = actor({
 	state: { count: 0 },
 	actions: {
 		increment: (c, x: number) => {
@@ -15,7 +15,7 @@ const counter = worker({
 });
 
 export const registry = setup({
-	workers: { counter },
+	actors: { counter },
 });
 
 export type Registry = typeof registry;

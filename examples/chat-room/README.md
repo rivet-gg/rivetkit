@@ -1,6 +1,6 @@
 # Chat Room for RivetKit
 
-Example project demonstrating real-time messaging and worker state management with [RivetKit](https://rivetkit.org).
+Example project demonstrating real-time messaging and actor state management with [RivetKit](https://rivetkit.org).
 
 [Learn More →](https://github.com/rivet-gg/rivetkit)
 

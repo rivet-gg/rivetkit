@@ -1,5 +1,5 @@
 import { serve as honoServe } from "@hono/node-server";
-import { runWorkerDriverTests } from "./tests/worker-driver";
+import { runActorDriverTests } from  "./tests/actor-driver";
 import { runManagerDriverTests } from "./tests/manager-driver";
 import { describe } from "vitest";
 import {
@@ -14,14 +14,14 @@ import invariant from "invariant";
 import { bundleRequire } from "bundle-require";
 import { getPort } from "@/test/mod";
 import { Transport } from "@/client/mod";
-import { runWorkerConnTests } from "./tests/worker-conn";
-import { runWorkerHandleTests } from "./tests/worker-handle";
+import { runActorConnTests } from  "./tests/actor-conn";
+import { runActorHandleTests } from  "./tests/actor-handle";
 import { runActionFeaturesTests } from "./tests/action-features";
-import { runWorkerVarsTests } from "./tests/worker-vars";
-import { runWorkerConnStateTests } from "./tests/worker-conn-state";
-import { runWorkerMetadataTests } from "./tests/worker-metadata";
-import { runWorkerErrorHandlingTests } from "./tests/worker-error-handling";
-import { runWorkerAuthTests } from "./tests/worker-auth";
+import { runActorVarsTests } from  "./tests/actor-vars";
+import { runActorConnStateTests } from  "./tests/actor-conn-state";
+import { runActorMetadataTests } from  "./tests/actor-metadata";
+import { runActorErrorHandlingTests } from  "./tests/actor-error-handling";
+import { runActorAuthTests } from  "./tests/actor-auth";
 import { RunConfigSchema } from "@/registry/run-config";
 
 export interface DriverTestConfig {
@@ -67,33 +67,33 @@ export function runDriverTests(
 		};
 
 		describe(`client type (${clientType})`, () => {
-			runWorkerDriverTests(driverTestConfig);
+			runActorDriverTests(driverTestConfig);
 			runManagerDriverTests(driverTestConfig);
 
 			// TODO: Add back SSE once fixed in Rivet driver & CF lifecycle
 			// for (const transport of ["websocket", "sse"] as Transport[]) {
 			for (const transport of ["websocket"] as Transport[]) {
 				describe(`transport (${transport})`, () => {
-					runWorkerConnTests({
+					runActorConnTests({
 						...driverTestConfig,
 						transport,
 					});
 
-					runWorkerConnStateTests({ ...driverTestConfig, transport });
+					runActorConnStateTests({ ...driverTestConfig, transport });
 				});
 			}
 
-			runWorkerHandleTests(driverTestConfig);
+			runActorHandleTests(driverTestConfig);
 
 			runActionFeaturesTests(driverTestConfig);
 
-			runWorkerVarsTests(driverTestConfig);
+			runActorVarsTests(driverTestConfig);
 
-			runWorkerMetadataTests(driverTestConfig);
+			runActorMetadataTests(driverTestConfig);
 
-			runWorkerErrorHandlingTests(driverTestConfig);
+			runActorErrorHandlingTests(driverTestConfig);
 
-			runWorkerAuthTests(driverTestConfig);
+			runActorAuthTests(driverTestConfig);
 		});
 	}
 }

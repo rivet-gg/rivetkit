@@ -1,10 +1,10 @@
-// import type { ConnId } from "@/worker/connection";
+// import type { ConnId } from  "@/actor/connection";
 // import { deconstructError, safeStringify } from "@/common/utils";
 // import { Hono, type HonoRequest } from "hono";
 // import type { UpgradeWebSocket, WSContext } from "hono/ws";
 // import type { InspectorConfig } from "./config";
 // import type { Logger } from "@/common/log";
-// import * as errors from "@/worker/errors";
+// import * as errors from  "@/actor/errors";
 // import type { ZodSchema } from "zod";
 //
 // interface ConnectInspectorOpts {
@@ -22,7 +22,7 @@
 // ) => Promise<ConnectInspectorOutput<MsgSchema>>;
 //
 // /**
-//  * Represents a connection to a worker.
+//  * Represents a connection to a actor.
 //  * @internal
 //  */
 // export class InspectorConnection<MsgSchema> {
@@ -47,7 +47,7 @@
 // }
 //
 // /**
-//  * Provides a unified interface for inspecting worker and managers.
+//  * Provides a unified interface for inspecting actor and managers.
 //  */
 // export class Inspector<ToClientSchema, ToServerSchema> {
 // 	/**

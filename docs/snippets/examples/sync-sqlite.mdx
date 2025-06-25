@@ -1,11 +1,11 @@
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 import { drizzle } from "@rivetkit/drizzle";
 import { contacts } from "./schema";
 
 export type Contact = { id: string; name: string; email: string; phone: string; updatedAt: number; }
 
-const contactSync = worker({
+const contactSync = actor({
   sql: drizzle(),
   
   actions: {

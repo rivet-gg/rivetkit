@@ -1,9 +1,9 @@
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
 export type Contact = { id: string; name: string; email: string; phone: string; updatedAt: number; }
 
-const contacts = worker({
+const contacts = actor({
   // State is automatically persisted
   state: {
     contacts: {}

@@ -45,21 +45,21 @@ The Cloudflare Workers platform with Durable Objects provides a robust environme
 
     ```typescript src/index.ts
     import { createHandler } from "@rivetkit/cloudflare-workers";
-    import { app } from "../workers/app";
+    import { app } from "../actors/app";
 
     // Create handlers for Cloudflare Workers
-    const { handler, WorkerHandler } = createHandler(app);
+    const { handler, ActorHandler } = createHandler(app);
 
     // Export the handlers for Cloudflare
-    export { handler as default, WorkerHandler };
+    export { handler as default, ActorHandler };
     ```
   </Step>
 
   <Step title="Create KV namespace">
-    Create a KV namespace for your workers:
+    Create a KV namespace for your actors:
 
     ```sh
-    npx wrangler kv:namespace create WORKER_KV
+    npx wrangler kv:namespace create ACTOR_KV
     ```
 
     Take note of the KV namespace ID from the output, as you'll need it in the next step.
@@ -80,20 +80,20 @@ The Cloudflare Workers platform with Durable Objects provides a robust environme
       "migrations": [
         {
           "tag": "v1",
-          "new_classes": ["WorkerHandler"]
+          "new_classes": ["ActorHandler"]
         }
       ],
       "durable_objects": {
         "bindings": [
           {
-            "name": "WORKER_DO",
-            "class_name": "WorkerHandler"
+            "name": "ACTOR_DO",
+            "class_name": "ActorHandler"
           }
         ]
       },
       "kv_namespaces": [
         {
-          "binding": "WORKER_KV",
+          "binding": "ACTOR_KV",
           "id": "your-namespace-id-here"  // Replace with your actual ID
         }
       ]
@@ -118,12 +118,12 @@ The Cloudflare Workers platform with Durable Objects provides a robust environme
 
 ## Accessing Cloudflare Context And Bindings
 
-You can access Cloudflare-specific features like the [DurableObjectState](https://developers.cloudflare.com/durable-objects/api/state/) and environment bindings from your worker:
+You can access Cloudflare-specific features like the [DurableObjectState](https://developers.cloudflare.com/durable-objects/api/state/) and environment bindings from your actor:
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
-const myWorker = worker({
+const myActor = actor({
   // Load Cloudflare-specific variables
   createVars: (c, cloudflare) => ({
     ctx: cloudflare.ctx,

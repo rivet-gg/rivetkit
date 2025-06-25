@@ -1,77 +1,77 @@
-import type { Transport } from "@/worker/protocol/message/mod";
-import type { Encoding } from "@/worker/protocol/serde";
-import type { WorkerQuery } from "@/manager/protocol/query";
-import { WorkerConn, WorkerConnRaw, CONNECT_SYMBOL } from "./worker-conn";
-import { WorkerHandle, WorkerHandleRaw } from "./worker-handle";
-import { WorkerActionFunction } from "./worker-common";
+import type { Transport } from  "@/actor/protocol/message/mod";
+import type { Encoding } from  "@/actor/protocol/serde";
+import type { ActorQuery } from "@/manager/protocol/query";
+import { ActorConn, ActorConnRaw, CONNECT_SYMBOL } from  "./actor-conn";
+import { ActorHandle, ActorHandleRaw } from  "./actor-handle";
+import { ActorActionFunction } from  "./actor-common";
 import { logger } from "./log";
 import type { Registry } from "@/mod";
-import type { AnyWorkerDefinition } from "@/worker/definition";
-import type * as wsToServer from "@/worker/protocol/message/to-server";
+import type { AnyActorDefinition } from  "@/actor/definition";
+import type * as wsToServer from  "@/actor/protocol/message/to-server";
 import type { EventSource } from "eventsource";
 import type { Context as HonoContext } from "hono";
 import type { WebSocket } from "ws";
 
-/** Extract the worker registry from the registry definition. */
-export type ExtractWorkersFromRegistry<A extends Registry<any>> =
-	A extends Registry<infer Workers> ? Workers : never;
+/** Extract the actor registry from the registry definition. */
+export type ExtractActorsFromRegistry<A extends Registry<any>> =
+	A extends Registry<infer Actors> ? Actors : never;
 
 /** Extract the registry definition from the client. */
 export type ExtractRegistryFromClient<C extends Client<Registry<{}>>> =
 	C extends Client<infer A> ? A : never;
 
 /**
- * Represents a worker accessor that provides methods to interact with a specific worker.
+ * Represents a actor accessor that provides methods to interact with a specific actor.
  */
-export interface WorkerAccessor<AD extends AnyWorkerDefinition> {
+export interface ActorAccessor<AD extends AnyActorDefinition> {
 	/**
-	 * Gets a stateless handle to a worker by its key, but does not create the worker if it doesn't exist.
-	 * The worker name is automatically injected from the property accessor.
+	 * Gets a stateless handle to a actor by its key, but does not create the actor if it doesn't exist.
+	 * The actor name is automatically injected from the property accessor.
 	 *
-	 * @template AD The worker class that this handle is for.
-	 * @param {string | string[]} [key=[]] - The key to identify the worker. Can be a single string or an array of strings.
-	 * @param {GetWithIdOptions} [opts] - Options for getting the worker.
-	 * @returns {WorkerHandle<AD>} - A handle to the worker.
+	 * @template AD The actor class that this handle is for.
+	 * @param {string | string[]} [key=[]] - The key to identify the actor. Can be a single string or an array of strings.
+	 * @param {GetWithIdOptions} [opts] - Options for getting the actor.
+	 * @returns {ActorHandle<AD>} - A handle to the actor.
 	 */
-	get(key?: string | string[], opts?: GetWithIdOptions): WorkerHandle<AD>;
+	get(key?: string | string[], opts?: GetWithIdOptions): ActorHandle<AD>;
 
 	/**
-	 * Gets a stateless handle to a worker by its key, creating it if necessary.
-	 * The worker name is automatically injected from the property accessor.
+	 * Gets a stateless handle to a actor by its key, creating it if necessary.
+	 * The actor name is automatically injected from the property accessor.
 	 *
-	 * @template AD The worker class that this handle is for.
-	 * @param {string | string[]} [key=[]] - The key to identify the worker. Can be a single string or an array of strings.
-	 * @param {GetOptions} [opts] - Options for getting the worker.
-	 * @returns {WorkerHandle<AD>} - A handle to the worker.
+	 * @template AD The actor class that this handle is for.
+	 * @param {string | string[]} [key=[]] - The key to identify the actor. Can be a single string or an array of strings.
+	 * @param {GetOptions} [opts] - Options for getting the actor.
+	 * @returns {ActorHandle<AD>} - A handle to the actor.
 	 */
 	getOrCreate(
 		key?: string | string[],
 		opts?: GetOrCreateOptions,
-	): WorkerHandle<AD>;
+	): ActorHandle<AD>;
 
 	/**
-	 * Gets a stateless handle to a worker by its ID.
+	 * Gets a stateless handle to a actor by its ID.
 	 *
-	 * @template AD The worker class that this handle is for.
-	 * @param {string} workerId - The ID of the worker.
-	 * @param {GetWithIdOptions} [opts] - Options for getting the worker.
-	 * @returns {WorkerHandle<AD>} - A handle to the worker.
+	 * @template AD The actor class that this handle is for.
+	 * @param {string} actorId - The ID of the actor.
+	 * @param {GetWithIdOptions} [opts] - Options for getting the actor.
+	 * @returns {ActorHandle<AD>} - A handle to the actor.
 	 */
-	getForId(workerId: string, opts?: GetWithIdOptions): WorkerHandle<AD>;
+	getForId(actorId: string, opts?: GetWithIdOptions): ActorHandle<AD>;
 
 	/**
-	 * Creates a new worker with the name automatically injected from the property accessor,
-	 * and returns a stateless handle to it with the worker ID resolved.
+	 * Creates a new actor with the name automatically injected from the property accessor,
+	 * and returns a stateless handle to it with the actor ID resolved.
 	 *
-	 * @template AD The worker class that this handle is for.
-	 * @param {string | string[]} key - The key to identify the worker. Can be a single string or an array of strings.
-	 * @param {CreateOptions} [opts] - Options for creating the worker (excluding name and key).
-	 * @returns {Promise<WorkerHandle<AD>>} - A promise that resolves to a handle to the worker.
+	 * @template AD The actor class that this handle is for.
+	 * @param {string | string[]} key - The key to identify the actor. Can be a single string or an array of strings.
+	 * @param {CreateOptions} [opts] - Options for creating the actor (excluding name and key).
+	 * @returns {Promise<ActorHandle<AD>>} - A promise that resolves to a handle to the actor.
 	 */
 	create(
 		key?: string | string[],
 		opts?: CreateOptions,
-	): Promise<WorkerHandle<AD>>;
+	): Promise<ActorHandle<AD>>;
 }
 
 /**
@@ -84,7 +84,7 @@ export interface ClientOptions {
 }
 
 /**
- * Options for querying workers.
+ * Options for querying actors.
  * @typedef {Object} QueryOptions
  * @property {unknown} [parameters] - Parameters to pass to the connection.
  */
@@ -96,38 +96,38 @@ export interface QueryOptions {
 }
 
 /**
- * Options for getting a worker by ID.
+ * Options for getting a actor by ID.
  * @typedef {QueryOptions} GetWithIdOptions
  */
 export interface GetWithIdOptions extends QueryOptions {}
 
 /**
- * Options for getting a worker.
+ * Options for getting a actor.
  * @typedef {QueryOptions} GetOptions
  */
 export interface GetOptions extends QueryOptions {}
 
 /**
- * Options for getting or creating a worker.
+ * Options for getting or creating a actor.
  * @typedef {QueryOptions} GetOrCreateOptions
- * @property {string} [createInRegion] - Region to create the worker in if it doesn't exist.
+ * @property {string} [createInRegion] - Region to create the actor in if it doesn't exist.
  */
 export interface GetOrCreateOptions extends QueryOptions {
-	/** Region to create the worker in if it doesn't exist. */
+	/** Region to create the actor in if it doesn't exist. */
 	createInRegion?: string;
-	/** Input data to pass to the worker. */
+	/** Input data to pass to the actor. */
 	createWithInput?: unknown;
 }
 
 /**
- * Options for creating a worker.
+ * Options for creating a actor.
  * @typedef {QueryOptions} CreateOptions
- * @property {string} [region] - The region to create the worker in.
+ * @property {string} [region] - The region to create the actor in.
  */
 export interface CreateOptions extends QueryOptions {
-	/** The region to create the worker in. */
+	/** The region to create the actor in. */
 	region?: string;
-	/** Input data to pass to the worker. */
+	/** Input data to pass to the actor. */
 	input?: unknown;
 }
 
@@ -151,44 +151,44 @@ export interface Region {
 	name: string;
 }
 
-export const WORKER_CONNS_SYMBOL = Symbol("workerConns");
-export const CREATE_WORKER_CONN_PROXY = Symbol("createWorkerConnProxy");
+export const ACTOR_CONNS_SYMBOL = Symbol("actorConns");
+export const CREATE_ACTOR_CONN_PROXY = Symbol("createActorConnProxy");
 export const TRANSPORT_SYMBOL = Symbol("transport");
 
 export interface ClientDriver {
 	action<Args extends Array<unknown> = unknown[], Response = unknown>(
 		c: HonoContext | undefined,
-		workerQuery: WorkerQuery,
+		actorQuery: ActorQuery,
 		encoding: Encoding,
 		params: unknown,
 		name: string,
 		args: Args,
 		opts: { signal?: AbortSignal } | undefined,
 	): Promise<Response>;
-	resolveWorkerId(
+	resolveActorId(
 		c: HonoContext | undefined,
-		workerQuery: WorkerQuery,
+		actorQuery: ActorQuery,
 		encodingKind: Encoding,
 		params: unknown,
 		opts: { signal?: AbortSignal } | undefined,
 	): Promise<string>;
 	connectWebSocket(
 		c: HonoContext | undefined,
-		workerQuery: WorkerQuery,
+		actorQuery: ActorQuery,
 		encodingKind: Encoding,
 		params: unknown,
 		opts: { signal?: AbortSignal } | undefined,
 	): Promise<WebSocket>;
 	connectSse(
 		c: HonoContext | undefined,
-		workerQuery: WorkerQuery,
+		actorQuery: ActorQuery,
 		encodingKind: Encoding,
 		params: unknown,
 		opts: { signal?: AbortSignal } | undefined,
 	): Promise<EventSource>;
 	sendHttpMessage(
 		c: HonoContext | undefined,
-		workerId: string,
+		actorId: string,
 		encoding: Encoding,
 		connectionId: string,
 		connectionToken: string,
@@ -198,15 +198,15 @@ export interface ClientDriver {
 }
 
 /**
- * Client for managing & connecting to workers.
+ * Client for managing & connecting to actors.
  *
- * @template A The workers map type that defines the available workers.
- * @see {@link https://rivet.gg/docs/manage|Create & Manage Workers}
+ * @template A The actors map type that defines the available actors.
+ * @see {@link https://rivet.gg/docs/manage|Create & Manage Actors}
  */
 export class ClientRaw {
 	#disposed = false;
 
-	[WORKER_CONNS_SYMBOL] = new Set<WorkerConnRaw>();
+	[ACTOR_CONNS_SYMBOL] = new Set<ActorConnRaw>();
 
 	#driver: ClientDriver;
 	#encodingKind: Encoding;
@@ -227,94 +227,94 @@ export class ClientRaw {
 	}
 
 	/**
-	 * Gets a stateless handle to a worker by its ID.
+	 * Gets a stateless handle to a actor by its ID.
 	 *
-	 * @template AD The worker class that this handle is for.
-	 * @param {string} name - The name of the worker.
-	 * @param {string} workerId - The ID of the worker.
-	 * @param {GetWithIdOptions} [opts] - Options for getting the worker.
-	 * @returns {WorkerHandle<AD>} - A handle to the worker.
+	 * @template AD The actor class that this handle is for.
+	 * @param {string} name - The name of the actor.
+	 * @param {string} actorId - The ID of the actor.
+	 * @param {GetWithIdOptions} [opts] - Options for getting the actor.
+	 * @returns {ActorHandle<AD>} - A handle to the actor.
 	 */
-	getForId<AD extends AnyWorkerDefinition>(
+	getForId<AD extends AnyActorDefinition>(
 		name: string,
-		workerId: string,
+		actorId: string,
 		opts?: GetWithIdOptions,
-	): WorkerHandle<AD> {
-		logger().debug("get handle to worker with id", {
+	): ActorHandle<AD> {
+		logger().debug("get handle to actor with id", {
 			name,
-			workerId,
+			actorId,
 			params: opts?.params,
 		});
 
-		const workerQuery = {
+		const actorQuery = {
 			getForId: {
-				workerId,
+				actorId,
 			},
 		};
 
-		const handle = this.#createHandle(opts?.params, workerQuery);
-		return createWorkerProxy(handle) as WorkerHandle<AD>;
+		const handle = this.#createHandle(opts?.params, actorQuery);
+		return createActorProxy(handle) as ActorHandle<AD>;
 	}
 
 	/**
-	 * Gets a stateless handle to a worker by its key, but does not create the worker if it doesn't exist.
+	 * Gets a stateless handle to a actor by its key, but does not create the actor if it doesn't exist.
 	 *
-	 * @template AD The worker class that this handle is for.
-	 * @param {string} name - The name of the worker.
-	 * @param {string | string[]} [key=[]] - The key to identify the worker. Can be a single string or an array of strings.
-	 * @param {GetWithIdOptions} [opts] - Options for getting the worker.
-	 * @returns {WorkerHandle<AD>} - A handle to the worker.
+	 * @template AD The actor class that this handle is for.
+	 * @param {string} name - The name of the actor.
+	 * @param {string | string[]} [key=[]] - The key to identify the actor. Can be a single string or an array of strings.
+	 * @param {GetWithIdOptions} [opts] - Options for getting the actor.
+	 * @returns {ActorHandle<AD>} - A handle to the actor.
 	 */
-	get<AD extends AnyWorkerDefinition>(
+	get<AD extends AnyActorDefinition>(
 		name: string,
 		key?: string | string[],
 		opts?: GetWithIdOptions,
-	): WorkerHandle<AD> {
+	): ActorHandle<AD> {
 		// Convert string to array of strings
 		const keyArray: string[] = typeof key === "string" ? [key] : key || [];
 
-		logger().debug("get handle to worker", {
+		logger().debug("get handle to actor", {
 			name,
 			key: keyArray,
 			parameters: opts?.params,
 		});
 
-		const workerQuery: WorkerQuery = {
+		const actorQuery: ActorQuery = {
 			getForKey: {
 				name,
 				key: keyArray,
 			},
 		};
 
-		const handle = this.#createHandle(opts?.params, workerQuery);
-		return createWorkerProxy(handle) as WorkerHandle<AD>;
+		const handle = this.#createHandle(opts?.params, actorQuery);
+		return createActorProxy(handle) as ActorHandle<AD>;
 	}
 
 	/**
-	 * Gets a stateless handle to a worker by its key, creating it if necessary.
+	 * Gets a stateless handle to a actor by its key, creating it if necessary.
 	 *
-	 * @template AD The worker class that this handle is for.
-	 * @param {string} name - The name of the worker.
-	 * @param {string | string[]} [key=[]] - The key to identify the worker. Can be a single string or an array of strings.
-	 * @param {GetOptions} [opts] - Options for getting the worker.
-	 * @returns {WorkerHandle<AD>} - A handle to the worker.
+	 * @template AD The actor class that this handle is for.
+	 * @param {string} name - The name of the actor.
+	 * @param {string | string[]} [key=[]] - The key to identify the actor. Can be a single string or an array of strings.
+	 * @param {GetOptions} [opts] - Options for getting the actor.
+	 * @returns {ActorHandle<AD>} - A handle to the actor.
 	 */
-	getOrCreate<AD extends AnyWorkerDefinition>(
+	getOrCreate<AD extends AnyActorDefinition>(
 		name: string,
 		key?: string | string[],
 		opts?: GetOrCreateOptions,
-	): WorkerHandle<AD> {
+	): ActorHandle<AD> {
 		// Convert string to array of strings
 		const keyArray: string[] = typeof key === "string" ? [key] : key || [];
 
-		logger().debug("get or create handle to worker", {
+		logger().debug("get or create handle to actor", {
 			name,
 			key: keyArray,
 			parameters: opts?.params,
 			createInRegion: opts?.createInRegion,
 		});
 
-		const workerQuery: WorkerQuery = {
+		const actorQuery: ActorQuery = {
 			getOrCreateForKey: {
 				name,
 				key: keyArray,
@@ -323,25 +323,25 @@ export class ClientRaw {
 			},
 		};
 
-		const handle = this.#createHandle(opts?.params, workerQuery);
-		return createWorkerProxy(handle) as WorkerHandle<AD>;
+		const handle = this.#createHandle(opts?.params, actorQuery);
+		return createActorProxy(handle) as ActorHandle<AD>;
 	}
 
 	/**
-	 * Creates a new worker with the provided key and returns a stateless handle to it.
-	 * Resolves the worker ID and returns a handle with getForId query.
+	 * Creates a new actor with the provided key and returns a stateless handle to it.
+	 * Resolves the actor ID and returns a handle with getForId query.
 	 *
-	 * @template AD The worker class that this handle is for.
-	 * @param {string} name - The name of the worker.
-	 * @param {string | string[]} key - The key to identify the worker. Can be a single string or an array of strings.
-	 * @param {CreateOptions} [opts] - Options for creating the worker (excluding name and key).
-	 * @returns {Promise<WorkerHandle<AD>>} - A promise that resolves to a handle to the worker.
+	 * @template AD The actor class that this handle is for.
+	 * @param {string} name - The name of the actor.
+	 * @param {string | string[]} key - The key to identify the actor. Can be a single string or an array of strings.
+	 * @param {CreateOptions} [opts] - Options for creating the actor (excluding name and key).
+	 * @returns {Promise<ActorHandle<AD>>} - A promise that resolves to a handle to the actor.
 	 */
-	async create<AD extends AnyWorkerDefinition>(
+	async create<AD extends AnyActorDefinition>(
 		name: string,
 		key?: string | string[],
 		opts?: CreateOptions,
-	): Promise<WorkerHandle<AD>> {
+	): Promise<ActorHandle<AD>> {
 		// Convert string to array of strings
 		const keyArray: string[] = typeof key === "string" ? [key] : key || [];
 
@@ -352,66 +352,66 @@ export class ClientRaw {
 				name,
 				key: keyArray,
 			},
-		} satisfies WorkerQuery;
+		} satisfies ActorQuery;
 
-		logger().debug("create worker handle", {
+		logger().debug("create actor handle", {
 			name,
 			key: keyArray,
 			parameters: opts?.params,
 			create: createQuery.create,
 		});
 
-		// Create the worker
-		const workerId = await this.#driver.resolveWorkerId(
+		// Create the actor
+		const actorId = await this.#driver.resolveActorId(
 			undefined,
 			createQuery,
 			this.#encodingKind,
 			opts?.params,
 			opts?.signal ? { signal: opts.signal } : undefined,
 		);
-		logger().debug("created worker with ID", {
+		logger().debug("created actor with ID", {
 			name,
 			key: keyArray,
-			workerId,
+			actorId,
 		});
 
-		// Create handle with worker ID
+		// Create handle with actor ID
 		const getForIdQuery = {
 			getForId: {
-				workerId,
+				actorId,
 			},
-		} satisfies WorkerQuery;
+		} satisfies ActorQuery;
 		const handle = this.#createHandle(opts?.params, getForIdQuery);
 
-		const proxy = createWorkerProxy(handle) as WorkerHandle<AD>;
+		const proxy = createActorProxy(handle) as ActorHandle<AD>;
 
 		return proxy;
 	}
 
-	#createHandle(params: unknown, workerQuery: WorkerQuery): WorkerHandleRaw {
-		return new WorkerHandleRaw(
+	#createHandle(params: unknown, actorQuery: ActorQuery): ActorHandleRaw {
+		return new ActorHandleRaw(
 			this,
 			this.#driver,
 			params,
 			this.#encodingKind,
-			workerQuery,
+			actorQuery,
 		);
 	}
 
-	[CREATE_WORKER_CONN_PROXY]<AD extends AnyWorkerDefinition>(
-		conn: WorkerConnRaw,
-	): WorkerConn<AD> {
+	[CREATE_ACTOR_CONN_PROXY]<AD extends AnyActorDefinition>(
+		conn: ActorConnRaw,
+	): ActorConn<AD> {
 		// Save to connection list
-		this[WORKER_CONNS_SYMBOL].add(conn);
+		this[ACTOR_CONNS_SYMBOL].add(conn);
 
 		// Start connection
 		conn[CONNECT_SYMBOL]();
 
-		return createWorkerProxy(conn) as WorkerConn<AD>;
+		return createActorProxy(conn) as ActorConn<AD>;
 	}
 
 	/**
-	 * Disconnects from all workers.
+	 * Disconnects from all actors.
 	 *
 	 * @returns {Promise<void>} A promise that resolves when all connections are closed.
 	 */
@@ -427,7 +427,7 @@ export class ClientRaw {
 		const disposePromises = [];
 
 		// Dispose all connections
-		for (const conn of this[WORKER_CONNS_SYMBOL].values()) {
+		for (const conn of this[ACTOR_CONNS_SYMBOL].values()) {
 			disposePromises.push(conn.dispose());
 		}
 
@@ -436,14 +436,14 @@ export class ClientRaw {
 }
 
 /**
- * Client type with worker accessors.
- * This adds property accessors for worker names to the ClientRaw base class.
+ * Client type with actor accessors.
+ * This adds property accessors for actor names to the ClientRaw base class.
  *
- * @template A The worker registry type.
+ * @template A The actor registry type.
  */
 export type Client<A extends Registry<any>> = ClientRaw & {
-	[K in keyof ExtractWorkersFromRegistry<A>]: WorkerAccessor<
-		ExtractWorkersFromRegistry<A>[K]
+	[K in keyof ExtractActorsFromRegistry<A>]: ActorAccessor<
+		ExtractActorsFromRegistry<A>[K]
 	>;
 };
 
@@ -453,7 +453,7 @@ export function createClientWithDriver<A extends Registry<any>>(
 ): Client<A> {
 	const client = new ClientRaw(driver, opts);
 
-	// Create proxy for accessing workers by name
+	// Create proxy for accessing actors by name
 	return new Proxy(client, {
 		get: (target: ClientRaw, prop: string | symbol, receiver: unknown) => {
 			// Get the real property if it exists
@@ -466,16 +466,16 @@ export function createClientWithDriver<A extends Registry<any>>(
 				return value;
 			}
 
-			// Handle worker accessor for string properties (worker names)
+			// Handle actor accessor for string properties (actor names)
 			if (typeof prop === "string") {
-				// Return worker accessor object with methods
+				// Return actor accessor object with methods
 				return {
 					// Handle methods (stateless action)
 					get: (
 						key?: string | string[],
 						opts?: GetWithIdOptions,
-					): WorkerHandle<ExtractWorkersFromRegistry<A>[typeof prop]> => {
-						return target.get<ExtractWorkersFromRegistry<A>[typeof prop]>(
+					): ActorHandle<ExtractActorsFromRegistry<A>[typeof prop]> => {
+						return target.get<ExtractActorsFromRegistry<A>[typeof prop]>(
 							prop,
 							key,
 							opts,
@@ -484,18 +484,18 @@ export function createClientWithDriver<A extends Registry<any>>(
 					getOrCreate: (
 						key?: string | string[],
 						opts?: GetOptions,
-					): WorkerHandle<ExtractWorkersFromRegistry<A>[typeof prop]> => {
+					): ActorHandle<ExtractActorsFromRegistry<A>[typeof prop]> => {
 						return target.getOrCreate<
-							ExtractWorkersFromRegistry<A>[typeof prop]
+							ExtractActorsFromRegistry<A>[typeof prop]
 						>(prop, key, opts);
 					},
 					getForId: (
-						workerId: string,
+						actorId: string,
 						opts?: GetWithIdOptions,
-					): WorkerHandle<ExtractWorkersFromRegistry<A>[typeof prop]> => {
-						return target.getForId<ExtractWorkersFromRegistry<A>[typeof prop]>(
+					): ActorHandle<ExtractActorsFromRegistry<A>[typeof prop]> => {
+						return target.getForId<ExtractActorsFromRegistry<A>[typeof prop]>(
 							prop,
-							workerId,
+							actorId,
 							opts,
 						);
 					},
@@ -503,13 +503,13 @@ export function createClientWithDriver<A extends Registry<any>>(
 						key: string | string[],
 						opts: CreateOptions = {},
 					): Promise<
-						WorkerHandle<ExtractWorkersFromRegistry<A>[typeof prop]>
+						ActorHandle<ExtractActorsFromRegistry<A>[typeof prop]>
 					> => {
 						return await target.create<
-							ExtractWorkersFromRegistry<A>[typeof prop]
+							ExtractActorsFromRegistry<A>[typeof prop]
 						>(prop, key, opts);
 					},
-				} as WorkerAccessor<ExtractWorkersFromRegistry<A>[typeof prop]>;
+				} as ActorAccessor<ExtractActorsFromRegistry<A>[typeof prop]>;
 			}
 
 			return undefined;
@@ -518,15 +518,15 @@ export function createClientWithDriver<A extends Registry<any>>(
 }
 
 /**
- * Creates a proxy for a worker that enables calling actions without explicitly using `.action`.
+ * Creates a proxy for a actor that enables calling actions without explicitly using `.action`.
  **/
-function createWorkerProxy<AD extends AnyWorkerDefinition>(
-	handle: WorkerHandleRaw | WorkerConnRaw,
-): WorkerHandle<AD> | WorkerConn<AD> {
+function createActorProxy<AD extends AnyActorDefinition>(
+	handle: ActorHandleRaw | ActorConnRaw,
+): ActorHandle<AD> | ActorConn<AD> {
 	// Stores returned action functions for faster calls
-	const methodCache = new Map<string, WorkerActionFunction>();
+	const methodCache = new Map<string, ActorActionFunction>();
 	return new Proxy(handle, {
-		get(target: WorkerHandleRaw, prop: string | symbol, receiver: unknown) {
+		get(target: ActorHandleRaw, prop: string | symbol, receiver: unknown) {
 			// Handle built-in Symbol properties
 			if (typeof prop === "symbol") {
 				return Reflect.get(target, prop, receiver);
@@ -557,7 +557,7 @@ function createWorkerProxy<AD extends AnyWorkerDefinition>(
 		},
 
 		// Support for 'in' operator
-		has(target: WorkerHandleRaw, prop: string | symbol) {
+		has(target: ActorHandleRaw, prop: string | symbol) {
 			// All string properties are potentially action functions
 			if (typeof prop === "string") {
 				return true;
@@ -567,17 +567,17 @@ function createWorkerProxy<AD extends AnyWorkerDefinition>(
 		},
 
 		// Support instanceof checks
-		getPrototypeOf(target: WorkerHandleRaw) {
+		getPrototypeOf(target: ActorHandleRaw) {
 			return Reflect.getPrototypeOf(target);
 		},
 
 		// Prevent property enumeration of non-existent action methods
-		ownKeys(target: WorkerHandleRaw) {
+		ownKeys(target: ActorHandleRaw) {
 			return Reflect.ownKeys(target);
 		},
 
 		// Support proper property descriptors
-		getOwnPropertyDescriptor(target: WorkerHandleRaw, prop: string | symbol) {
+		getOwnPropertyDescriptor(target: ActorHandleRaw, prop: string | symbol) {
 			const targetDescriptor = Reflect.getOwnPropertyDescriptor(target, prop);
 			if (targetDescriptor) {
 				return targetDescriptor;
@@ -593,5 +593,5 @@ function createWorkerProxy<AD extends AnyWorkerDefinition>(
 			}
 			return undefined;
 		},
-	}) as WorkerHandle<AD> | WorkerConn<AD>;
+	}) as ActorHandle<AD> | ActorConn<AD>;
 }

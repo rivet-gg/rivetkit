@@ -6,7 +6,7 @@
     "rivetkit",
     "stateful",
     "serverless",
-    "workers",
+    "actors",
     "agents",
     "realtime",
     "websocket",
@@ -48,12 +48,12 @@
     },
     "./errors": {
       "import": {
-        "types": "./dist/worker/errors.d.ts",
-        "default": "./dist/worker/errors.js"
+        "types": "./dist/actor/errors.d.ts",
+        "default": "./dist/actor/errors.js"
       },
       "require": {
-        "types": "./dist/worker/errors.d.cts",
-        "default": "./dist/worker/errors.cjs"
+        "types": "./dist/actor/errors.d.cts",
+        "default": "./dist/actor/errors.cjs"
       }
     },
     "./utils": {
@@ -143,7 +143,7 @@
   "sideEffects": false,
   "scripts": {
     "dev": "pnpm build --watch",
-    "build": "tsup src/mod.ts src/client/mod.ts src/common/log.ts src/common/websocket.ts src/worker/errors.ts src/topologies/coordinate/mod.ts src/topologies/partition/mod.ts src/utils.ts src/drivers/rivet/mod.ts src/driver-helpers/mod.ts src/driver-test-suite/mod.ts src/test/mod.ts",
+    "build": "tsup src/mod.ts src/client/mod.ts src/common/log.ts src/common/websocket.ts src/actor/errors.ts src/topologies/coordinate/mod.ts src/topologies/partition/mod.ts src/utils.ts src/drivers/rivet/mod.ts src/driver-helpers/mod.ts src/driver-test-suite/mod.ts src/test/mod.ts",
     "check-types": "tsc --noEmit",
     "boop": "tsc --outDir dist/test -d",
     "test": "vitest run",

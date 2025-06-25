@@ -1,9 +1,9 @@
 import { WSContext } from "hono/ws";
 import { logger } from "@/registry/log";
-import type { ConnectWebSocketOutput } from "@/worker/router-endpoints";
-import type * as messageToServer from "@/worker/protocol/message/to-server";
-import { parseMessage } from "@/worker/protocol/message/mod";
-import type { InputData } from "@/worker/protocol/serde";
+import type { ConnectWebSocketOutput } from  "@/actor/router-endpoints";
+import type * as messageToServer from  "@/actor/protocol/message/to-server";
+import { parseMessage } from  "@/actor/protocol/message/mod";
+import type { InputData } from  "@/actor/protocol/serde";
 import type {
 	Event,
 	CloseEvent,

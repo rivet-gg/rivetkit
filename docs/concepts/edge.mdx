@@ -1,6 +1,6 @@
 ---
 title: Edge Networking
-description: Workers run near your users on your provider's global network (if supported).
+description: Actors run near your users on your provider's global network (if supported).
 icon: globe
 ---
 
@@ -8,7 +8,7 @@ icon: globe
 
 ### Automatic region selection
 
-By default, workers will choose the optimal region based on the client's location.
+By default, actors will choose the optimal region based on the client's location.
 
 <Note>
 	Under the hood, Rivet uses [Anycast routing](https://en.wikipedia.org/wiki/Anycast) to automatically find
@@ -17,7 +17,7 @@ By default, workers will choose the optimal region based on the client's locatio
 
 ### Manual region selection
 
-The region a worker is created in can be overridden using region options:
+The region a actor is created in can be overridden using region options:
 
 ```typescript client.ts
 import { createClient } from "rivetkit/client";
@@ -25,8 +25,8 @@ import type { App } from "./src/index";
 
 const client = createClient<App>("http://localhost:6420");
 
-// Create worker in a specific region
-const worker = await client.example.get({
+// Create actor in a specific region
+const actor = await client.example.get({
   options: {
     create: {
       region: "atl"
@@ -35,7 +35,7 @@ const worker = await client.example.get({
 });
 ```
 
-See [Create & Manage Workers](/docs/manage) for more information.
+See [Create & Manage Actors](/docs/manage) for more information.
 
 ## Available regions
 
@@ -45,6 +45,6 @@ See available regions [here](/docs/regions).
 
 It's common to need to display a list of available regions in your application.
 
-To fetch a full list of regions, you can use the `GET https://api.rivet.gg/regions` HTTP endpoint. See API documentation [here](/docs/api/worker/regions/list).
+To fetch a full list of regions, you can use the `GET https://api.rivet.gg/regions` HTTP endpoint. See API documentation [here](/docs/api/actor/regions/list).
 
 We don't recommend hard-coding the region list. This allows you to develop your application with a local development cluster.

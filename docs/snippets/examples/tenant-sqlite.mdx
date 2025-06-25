@@ -1,11 +1,11 @@
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 import { drizzle } from "@rivetkit/drizzle";
 import { members, invoices } from "./schema";
 import { authenticate } from "./my-utils";
 
-// Simple tenant organization worker
-const tenant = worker({
+// Simple tenant organization actor
+const tenant = actor({
   sql: drizzle(),
 
   // Authentication

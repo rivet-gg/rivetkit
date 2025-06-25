@@ -3,23 +3,23 @@ title: Actions
 icon: bolt
 ---
 
-Actions are how clients & other workers communicate with workers. Actions are defined as functions in the worker configuration and can be called from clients.
+Actions are how clients & other actors communicate with actors. Actions are defined as functions in the actor configuration and can be called from clients.
 
 <Tip>
 **Performance**
 
 Actions are very lightweight. They can be called hundreds of times per second to send realtime data to the
-worker.
+actor.
 </Tip>
 
 ## Writing Actions
 
-Actions are defined in the `actions` object when creating a worker:
+Actions are defined in the `actions` object when creating a actor:
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
-const mathUtils = worker({
+const mathUtils = actor({
   state: {},
   actions: {
     // This is an action
@@ -37,14 +37,14 @@ Each action receives a context object (commonly named `c`) as its first paramete
 You can define helper functions outside the actions object to keep your code organized. These functions cannot be called directly by clients:
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
 // Private helper function - not callable by clients
 const calculateFee = (amount) => {
   return amount * 0.05;
 };
 
-const paymentProcessor = worker({
+const paymentProcessor = actor({
   state: { 
     transactions: [] 
   },
@@ -84,7 +84,7 @@ Calling actions from the client are async and require an `await`, even if the ac
 
 ### Type Safety
 
-The worker client includes type safety out of the box. When you use `createClient<App>()`, TypeScript automatically infers action parameter and return types:
+The actor client includes type safety out of the box. When you use `createClient<App>()`, TypeScript automatically infers action parameter and return types:
 
 <CodeGroup>
 
@@ -92,7 +92,7 @@ The worker client includes type safety out of the box. When you use `createClien
 import { setup } from "rivetkit";
 
 // Create simple counter
-const counter = worker({
+const counter = actor({
   state: { count: 0 },
   actions: {
     increment: (c, count: number) => {
@@ -104,7 +104,7 @@ const counter = worker({
 
 // Create and export the app
 const registry = setup({
-  workers: { counter }
+  actors: { counter }
 });
 
 export type Registry = typeof registry;
@@ -127,7 +127,7 @@ await counter.nonexistentMethod(123); // TypeScript error
 
 ## Error Handling
 
-Workers provide robust error handling out of the box for actions.
+Actors provide robust error handling out of the box for actions.
 
 ### User Errors
 
@@ -141,10 +141,10 @@ For example:
 
 <CodeGroup>
 
-```typescript worker.ts
-import { worker, UserError } from "rivetkit";
+```typescript actor.ts
+import { actor, UserError } from "rivetkit";
 
-const user = worker({
+const user = actor({
   state: { users: [] },
   actions: {
     registerUser: (c, username) => {
@@ -167,7 +167,7 @@ const user = worker({
 
 ```typescript client.ts
 try {
-  await userWorker.registerUser("extremely_long_username_that_exceeds_limit");
+  await userActor.registerUser("extremely_long_username_that_exceeds_limit");
 } catch (error) {
   console.log("Message", error.message); // "Invalid username"
   console.log("Code", error.code); // "invalid_username"
@@ -177,7 +177,7 @@ try {
 
 </CodeGroup>
 
-{/* Read the documentation for `UserError` [here](https://jsr.io/@rivet-gg/worker/doc/~/UserError). */}
+{/* Read the documentation for `UserError` [here](https://jsr.io/@rivet-gg/actor/doc/~/UserError). */}
 
 ### Internal Errors
 
@@ -190,7 +190,7 @@ Data schemas are not validated by default. For production applications, use a li
 For example, to validate action parameters:
 
 ```typescript
-import { worker, UserError } from "rivetkit";
+import { actor, UserError } from "rivetkit";
 import { z } from "zod";
 
 // Define schema for action parameters
@@ -198,7 +198,7 @@ const IncrementSchema = z.object({
   count: z.number().int().positive()
 });
 
-const counter = worker({
+const counter = actor({
   state: { count: 0 },
   actions: {
     increment: (c, params) => {
@@ -224,7 +224,7 @@ const counter = worker({
 
 ## Authentication
 
-By default, clients can call all actions on a worker without restriction. Make sure to implement authentication if needed. Documentation on authentication is available [here](/concepts/authentication).
+By default, clients can call all actions on a actor without restriction. Make sure to implement authentication if needed. Documentation on authentication is available [here](/concepts/authentication).
 
 ## Using `ActionContext` Type Externally
 
@@ -233,9 +233,9 @@ When writing complex logic for actions, you may want to extract parts of your im
 RivetKit provides the `ActionContextOf` utility type for exactly this purpose:
 
 ```typescript
-import { worker, ActionContextOf } from "rivetkit";
+import { actor, ActionContextOf } from "rivetkit";
 
-const counter = worker({
+const counter = actor({
   state: { count: 0 },
   
   actions: {

@@ -132,7 +132,7 @@
 // 						RIVET_PROJECT: project,
 // 						RIVET_ENVIRONMENT: environment,
 // 						_LOG_LEVEL: "DEBUG",
-// 						_WORKER_LOG_LEVEL: "DEBUG",
+// 						_ACTOR_LOG_LEVEL: "DEBUG",
 // 					},
 // 				},
 // 				resources: {
@@ -142,9 +142,9 @@
 // 			},
 // 		},
 // 		actors: {
-// 			worker: {
-// 				tags: { role: "worker", framework: "rivetkit" },
-// 				script: "src/worker.ts",
+// 			actor: {
+// 				tags: { role: "actor", framework: "rivetkit" },
+// 				script: "src/actor.ts",
 // 			},
 // 		},
 // 	};
@@ -165,8 +165,8 @@
 //     pnpm install --frozen-lockfile
 //
 // COPY . .
-// # HACK: Remove worker.ts bc file is invalid in Node
-// RUN rm src/worker.ts && pnpm build
+// # HACK: Remove actor.ts bc file is invalid in Node
+// RUN rm src/actor.ts && pnpm build
 //
 // RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
 //     pnpm install --prod --frozen-lockfile
@@ -227,12 +227,12 @@
 // 	}
 //
 // 	// Copy project to test directory
-// 	console.log(`Copying project from ${projectPath} to ${tmpDir}/src/workers`);
-// 	const projectDestDir = path.join(tmpDir, "src", "workers");
+// 	console.log(`Copying project from ${projectPath} to ${tmpDir}/src/actors`);
+// 	const projectDestDir = path.join(tmpDir, "src", "actors");
 // 	await fs.cp(projectPath, projectDestDir, { recursive: true });
 //
 // 	const serverTsContent = `import { startManager } from "@rivetkit/rivet/manager";
-// import { registry } from "./workers/registry";
+// import { registry } from "./actors/registry";
 //
 // // TODO: Find a cleaner way of flagging an registry as test mode (ideally not in the config itself)
 // // Force enable test
@@ -242,15 +242,15 @@
 // `;
 // 	await writeFile(tmpDir, "src/server.ts", serverTsContent);
 //
-// 	const workerTsContent = `import { createWorkerHandler } from "@rivetkit/worker/drivers/rivet";
-// import { registry } from "./workers/registry";
+// 	const actorTsContent = `import { createActorHandler } from "@rivetkit/actor/drivers/rivet";
+// import { registry } from "./actors/registry";
 //
 // // TODO: Find a cleaner way of flagging an registry as test mode (ideally not in the config itself)
 // // Force enable test
 // registry.config.test.enabled = true;
 //
-// export default createWorkerHandler(registry);`;
-// 	await writeFile(tmpDir, "src/worker.ts", workerTsContent);
+// export default createActorHandler(registry);`;
+// 	await writeFile(tmpDir, "src/actor.ts", actorTsContent);
 //
 // 	// Build and deploy to Rivet
 // 	console.log("Building and deploying to Rivet...");

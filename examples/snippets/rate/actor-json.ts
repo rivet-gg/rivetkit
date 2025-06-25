@@ -1,4 +1,4 @@
-import { actor } from "@rivetkit/worker";
+import { actor } from "@rivetkit/actor";
 
 // Simple rate limiter - allows 5 requests per minute
 const rateLimiter = actor({

@@ -1,7 +1,7 @@
 import { describe, test, expect } from "vitest";
 import type { DriverTestConfig } from "../mod";
 import { setupDriverTest } from "../utils";
-import { WorkerError } from "@/client/errors";
+import { ActorError } from "@/client/errors";
 
 export function runActionFeaturesTests(driverTestConfig: DriverTestConfig) {
 	describe("Action Features", () => {
@@ -17,14 +17,14 @@ export function runActionFeaturesTests(driverTestConfig: DriverTestConfig) {
 				);
 
 				// The quick action should complete successfully
-				const quickResult = await client.shortTimeoutWorker
+				const quickResult = await client.shortTimeoutActor
 					.getOrCreate()
 					.quickAction();
 				expect(quickResult).toBe("quick response");
 
 				// The slow action should throw a timeout error
 				await expect(
-					client.shortTimeoutWorker.getOrCreate().slowAction(),
+					client.shortTimeoutActor.getOrCreate().slowAction(),
 				).rejects.toThrow("Action timed out");
 			});
 
@@ -36,7 +36,7 @@ export function runActionFeaturesTests(driverTestConfig: DriverTestConfig) {
 				);
 
 				// This action should complete within the default timeout
-				const result = await client.defaultTimeoutWorker
+				const result = await client.defaultTimeoutActor
 					.getOrCreate()
 					.normalAction();
 				expect(result).toBe("normal response");
@@ -50,24 +50,24 @@ export function runActionFeaturesTests(driverTestConfig: DriverTestConfig) {
 				);
 
 				// Synchronous action should not be affected by timeout
-				const result = await client.syncTimeoutWorker.getOrCreate().syncAction();
+				const result = await client.syncTimeoutActor.getOrCreate().syncAction();
 				expect(result).toBe("sync response");
 			});
 
-			test("should allow configuring different timeouts for different workers", async (c) => {
+			test("should allow configuring different timeouts for different actors", async (c) => {
 				const { client } = await setupDriverTest(
 					c,
 					driverTestConfig,
 					
 				);
 
-				// The short timeout worker should fail
+				// The short timeout actor should fail
 				await expect(
-					client.shortTimeoutWorker.getOrCreate().slowAction(),
+					client.shortTimeoutActor.getOrCreate().slowAction(),
 				).rejects.toThrow("Action timed out");
 
-				// The longer timeout worker should succeed
-				const result = await client.longTimeoutWorker
+				// The longer timeout actor should succeed
+				const result = await client.longTimeoutActor
 					.getOrCreate()
 					.delayedAction();
 				expect(result).toBe("delayed response");
@@ -82,7 +82,7 @@ export function runActionFeaturesTests(driverTestConfig: DriverTestConfig) {
 					
 				);
 
-				const instance = client.syncActionWorker.getOrCreate();
+				const instance = client.syncActionActor.getOrCreate();
 
 				// Test increment action
 				let result = await instance.increment(5);
@@ -109,7 +109,7 @@ export function runActionFeaturesTests(driverTestConfig: DriverTestConfig) {
 					
 				);
 
-				const instance = client.asyncActionWorker.getOrCreate();
+				const instance = client.asyncActionActor.getOrCreate();
 
 				// Test delayed increment
 				const result = await instance.delayedIncrement(5);
@@ -129,7 +129,7 @@ export function runActionFeaturesTests(driverTestConfig: DriverTestConfig) {
 					await instance.asyncWithError(true);
 					expect.fail("did not error");
 				} catch (error) {
-					expect((error as WorkerError).message).toBe("Intentional error");
+					expect((error as ActorError).message).toBe("Intentional error");
 				}
 			});
 
@@ -140,7 +140,7 @@ export function runActionFeaturesTests(driverTestConfig: DriverTestConfig) {
 					
 				);
 
-				const instance = client.promiseWorker.getOrCreate();
+				const instance = client.promiseActor.getOrCreate();
 
 				// Test resolved promise
 				const resolvedValue = await instance.resolvedPromise();

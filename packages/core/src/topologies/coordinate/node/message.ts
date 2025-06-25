@@ -16,7 +16,7 @@ export async function publishMessageToLeader(
 	runConfig: RunConfig,
 	CoordinateDriver: CoordinateDriver,
 	globalState: GlobalState,
-	workerId: string,
+	actorId: string,
 	message: NodeMessage,
 	signal?: AbortSignal,
 ) {
@@ -35,7 +35,7 @@ export async function publishMessageToLeader(
 				runConfig,
 				CoordinateDriver,
 				globalState,
-				workerId,
+				actorId,
 				messageId,
 				message,
 				signal,
@@ -59,23 +59,23 @@ async function publishMessageToLeaderInner(
 	runConfig: RunConfig,
 	CoordinateDriver: CoordinateDriver,
 	globalState: GlobalState,
-	workerId: string,
+	actorId: string,
 	messageId: string,
 	message: NodeMessage,
 	signal?: AbortSignal,
 ) {
 	// Find the leader node
-	const { worker } = await CoordinateDriver.getWorkerLeader(workerId);
+	const { actor } = await CoordinateDriver.getActorLeader(actorId);
 
 	// Validate initialized
-	if (!worker) throw new AbortError("Worker not initialized");
+	if (!actor) throw new AbortError("Actor not initialized");
 
 	// Validate node
-	if (!worker.leaderNodeId) {
-		throw new Error("worker not leased, may be transferring leadership");
+	if (!actor.leaderNodeId) {
+		throw new Error("actor not leased, may be transferring leadership");
 	}
 
-	logger().debug("found worker leader node", { nodeId: worker.leaderNodeId });
+	logger().debug("found actor leader node", { nodeId: actor.leaderNodeId });
 
 	// Create ack resolver
 	const {
@@ -92,13 +92,13 @@ async function publishMessageToLeaderInner(
 	// Throw error on timeout
 	const timeoutId = setTimeout(
 		() => ackReject(new Error("Ack timed out")),
-		runConfig.workerPeer.messageAckTimeout,
+		runConfig.actorPeer.messageAckTimeout,
 	);
 
 	try {
 		// Forward outgoing message
 		await CoordinateDriver.publishToNode(
-			worker.leaderNodeId,
+			actor.leaderNodeId,
 			JSON.stringify(message),
 		);
 

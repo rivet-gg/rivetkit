@@ -36,10 +36,10 @@ This guide contains essential information for working with the RivetKit project.
 
 ### Core Concepts
 
-- **Worker**: A stateful, long-lived entity that processes messages and maintains state
-- **Manager**: Component responsible for creating, routing, and managing worker instances
-- **Action**: Method for a worker to expose callable functions to clients
-- **Event**: Asynchronous message sent from a worker to connected clients
+- **Actor**: A stateful, long-lived entity that processes messages and maintains state
+- **Manager**: Component responsible for creating, routing, and managing actor instances
+- **Action**: Method for a actor to expose callable functions to clients
+- **Event**: Asynchronous message sent from a actor to connected clients
 - **Alarm**: Scheduled callback that triggers at a specific time
 
 ## Build Commands
@@ -56,7 +56,7 @@ Available driver implementations:
 
 - **Memory**: In-memory implementation for development and testing
 - **Redis**: Production-ready implementation using Redis for persistence and pub/sub
-- **Cloudflare Workers**: Uses Durable Objects for worker state persistence
+- **Cloudflare Workers**: Uses Durable Objects for actor state persistence
 - **Rivet**: Fully-managed cloud platform with built-in scaling and monitoring
 
 ## Platform Support
@@ -98,7 +98,7 @@ When importing from workspace packages, always check the package's `package.json
 
 ## State Management
 
-- Each worker owns and manages its own isolated state via `c.state`
+- Each actor owns and manages its own isolated state via `c.state`
 - State is automatically persisted between action calls
 - State is initialized via `createState` function or `state` constant
 - Only JSON-serializable types can be stored in state
@@ -115,43 +115,43 @@ When importing from workspace packages, always check the package's `package.json
 
 ## Actions and Events
 
-- **Actions**: Used for clients to call worker functions
-- **Events**: For workers to publish updates to clients
-- Actions are defined in the `actions` object of the worker configuration
+- **Actions**: Used for clients to call actor functions
+- **Events**: For actors to publish updates to clients
+- Actions are defined in the `actions` object of the actor configuration
 - Helper functions outside the `actions` object are not callable by clients
 - Broadcasting is done via `c.broadcast(name, data)`
 - Specific client messaging uses `conn.send(name, data)`
-- Clients subscribe to events with `worker.on(eventName, callback)`
+- Clients subscribe to events with `actor.on(eventName, callback)`
 
 ## Lifecycle Hooks
 
-- `createState()`: Function that returns initial worker state
-- `onStart(c)`: Called any time worker is started (after restart/upgrade)
-- `onStateChange(c, newState)`: Called when worker state changes
+- `createState()`: Function that returns initial actor state
+- `onStart(c)`: Called any time actor is started (after restart/upgrade)
+- `onStateChange(c, newState)`: Called when actor state changes
 - `onBeforeConnect(c)`: Called when new client connects
 - `onConnect(c)`: Executed after client connection succeeds
 - `onDisconnect(c)`: Called when client disconnects
 
-## Worker Management
+## Actor Management
 
-- App is configured with workers using `setup({ workers: { workerName }})` followed by `serve(registry)`
-- Workers are accessed by client using `client.workerName.get()`
-- Workers can pass an ID parameter or object with `client.workerName.get(id)` or `client.workerName.get({key: value})`
-- Workers can be shut down with `c.shutdown()` from within the worker
+- App is configured with actors using `setup({ actors: { actorName }})` followed by `serve(registry)`
+- Actors are accessed by client using `client.actorName.get()`
+- Actors can pass an ID parameter or object with `client.actorName.get(id)` or `client.actorName.get({key: value})`
+- Actors can be shut down with `c.shutdown()` from within the actor
 
 ## Scaling and Architecture Guidelines
 
-- Each worker should have a single responsibility
-- Keep state minimal and relevant to the worker's core function
-- Use separate workers for different entity types (users, rooms, documents)
-- Avoid too many cross-worker communications
+- Each actor should have a single responsibility
+- Keep state minimal and relevant to the actor's core function
+- Use separate actors for different entity types (users, rooms, documents)
+- Avoid too many cross-actor communications
 - Use appropriate topology based on your scaling needs
 
 ## Scheduling
 
 - Schedule future events with `c.after(duration, fn, ...args)`
 - Schedule events for specific time with `c.at(timestamp, fn, ...args)`
-- Scheduled events persist across worker restarts
+- Scheduled events persist across actor restarts
 
 ## CORS Configuration
 
@@ -161,7 +161,7 @@ When importing from workspace packages, always check the package's `package.json
 
 ## Development Best Practices
 
-- Prefer functional worker pattern with `worker({ ... })` syntax
+- Prefer functional actor pattern with `actor({ ... })` syntax
 - Use zod for runtime type validation
 - Use `assertUnreachable(x: never)` for exhaustive type checking
 - Add proper JSDoc comments for public APIs

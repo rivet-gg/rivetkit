@@ -6,20 +6,20 @@
 	"migrations": [
 		{
 			"tag": "v1",
-			"new_classes": ["WorkerHandler"]
+			"new_classes": ["ActorHandler"]
 		}
 	],
 	"durable_objects": {
 		"bindings": [
 			{
-				"name": "WORKER_DO",
-				"class_name": "WorkerHandler"
+				"name": "ACTOR_DO",
+				"class_name": "ActorHandler"
 			}
 		]
 	},
 	"kv_namespaces": [
 		{
-			"binding": "WORKER_KV",
+			"binding": "ACTOR_KV",
 			"id": "example_namespace",
 			"preview_id": "example_namespace_preview"
 		}

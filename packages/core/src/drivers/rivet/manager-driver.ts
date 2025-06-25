@@ -1,10 +1,10 @@
 import { assertUnreachable } from "@/common/utils";
-import { WorkerAlreadyExists, InternalError } from "@/worker/errors";
+import { ActorAlreadyExists, InternalError } from  "@/actor/errors";
 import type {
 	ManagerDriver,
 	GetForIdInput,
 	GetWithKeyInput,
-	WorkerOutput,
+	ActorOutput,
 	GetOrCreateWithKeyInput,
 	CreateInput,
 } from "@/driver-helpers/mod";
@@ -17,23 +17,23 @@ import {
 import { convertKeyToRivetTags } from "./util";
 import {
 	flushCache,
-	getWorkerMeta,
-	getWorkerMetaWithKey,
+	getActorMeta,
+	getActorMetaWithKey,
 	populateCache,
-} from "./worker-meta";
+} from  "./actor-meta";
 import invariant from "invariant";
 import { getEnvUniversal } from "@/utils";
-import { ConnRoutingHandler } from "@/worker/conn-routing-handler";
+import { ConnRoutingHandler } from  "@/actor/conn-routing-handler";
 import { createRivetConnRoutingHandler } from "./conn-routing-handler";
 import { Hono } from "hono";
 import { Registry, RegistryConfig } from "@/registry/mod";
 
-export interface WorkerState {
+export interface ActorState {
 	key: string[];
 	destroyedAt?: number;
 }
 
-export interface GetWorkerMeta {
+export interface GetActorMeta {
 	endpoint: string;
 }
 
@@ -49,14 +49,14 @@ export class RivetManagerDriver implements ManagerDriver {
 	}
 
 	async getForId({
-		workerId,
-	}: GetForIdInput): Promise<WorkerOutput | undefined> {
+		actorId,
+	}: GetForIdInput): Promise<ActorOutput | undefined> {
 		try {
-			const meta = await getWorkerMeta(this.#clientConfig, workerId);
+			const meta = await getActorMeta(this.#clientConfig, actorId);
 			if (!meta) return undefined;
 
 			return {
-				workerId,
+				actorId,
 				name: meta.name,
 				key: meta.key,
 			};
@@ -69,12 +69,12 @@ export class RivetManagerDriver implements ManagerDriver {
 	async getWithKey({
 		name,
 		key,
-	}: GetWithKeyInput): Promise<WorkerOutput | undefined> {
-		const meta = await getWorkerMetaWithKey(this.#clientConfig, name, key);
+	}: GetWithKeyInput): Promise<ActorOutput | undefined> {
+		const meta = await getActorMetaWithKey(this.#clientConfig, name, key);
 		if (!meta) return undefined;
 
 		return {
-			workerId: meta.workerId,
+			actorId: meta.actorId,
 			name: meta.name,
 			key: meta.key,
 		};
@@ -82,35 +82,35 @@ export class RivetManagerDriver implements ManagerDriver {
 
 	async getOrCreateWithKey(
 		input: GetOrCreateWithKeyInput,
-	): Promise<WorkerOutput> {
+	): Promise<ActorOutput> {
 		const getOutput = await this.getWithKey(input);
 		if (getOutput) {
 			return getOutput;
 		} else {
-			return await this.createWorker(input);
+			return await this.createActor(input);
 		}
 	}
 
-	async createWorker({
+	async createActor({
 		name,
 		key,
 		region,
 		input,
-	}: CreateInput): Promise<WorkerOutput> {
-		// Check if worker with the same name and key already exists
-		const existingWorker = await this.getWithKey({ name, key });
-		if (existingWorker) {
-			throw new WorkerAlreadyExists(name, key);
+	}: CreateInput): Promise<ActorOutput> {
+		// Check if actor with the same name and key already exists
+		const existingActor = await this.getWithKey({ name, key });
+		if (existingActor) {
+			throw new ActorAlreadyExists(name, key);
 		}
 
-		// Create the worker request
-		let workerLogLevel: string | undefined =
-			getEnvUniversal("_WORKER_LOG_LEVEL");
+		// Create the actor request
+		let actorLogLevel: string | undefined =
+			getEnvUniversal("_ACTOR_LOG_LEVEL");
 
 		const createRequest = {
 			tags: convertKeyToRivetTags(name, key),
 			build_tags: {
-				role: "worker",
+				role: "actor",
 				framework: "rivetkit",
 				current: "true",
 			},
@@ -130,7 +130,7 @@ export class RivetManagerDriver implements ManagerDriver {
 					RIVET_SERVICE_TOKEN: this.#clientConfig.token,
 					RIVET_PROJECT: this.#clientConfig.project,
 					RIVET_ENVIRONMENT: this.#clientConfig.environment,
-					...(workerLogLevel ? { _LOG_LEVEL: workerLogLevel } : {}),
+					...(actorLogLevel ? { _LOG_LEVEL: actorLogLevel } : {}),
 				},
 			},
 			lifecycle: {
@@ -140,7 +140,7 @@ export class RivetManagerDriver implements ManagerDriver {
 
 		logger().info("creating actor", { ...createRequest });
 
-		// Create the worker
+		// Create the actor
 		const { actor } = await rivetRequest<
 			typeof createRequest,
 			{ actor: RivetActor }
@@ -149,10 +149,10 @@ export class RivetManagerDriver implements ManagerDriver {
 		const meta = populateCache(actor);
 		invariant(meta, "actor just created, should not be destroyed");
 
-		// Initialize the worker
+		// Initialize the actor
 		try {
 			const url = `${meta.endpoint}/initialize`;
-			logger().debug("initializing worker", {
+			logger().debug("initializing actor", {
 				url,
 				input: JSON.stringify(input),
 			});
@@ -166,17 +166,17 @@ export class RivetManagerDriver implements ManagerDriver {
 			});
 			if (!res.ok) {
 				throw new InternalError(
-					`Worker initialize request failed (${res.status}):\n${await res.text()}`,
+					`Actor initialize request failed (${res.status}):\n${await res.text()}`,
 				);
 			}
 		} catch (error) {
-			logger().error("failed to initialize worker, destroying worker", {
-				workerId: actor.id,
+			logger().error("failed to initialize actor, destroying actor", {
+				actorId: actor.id,
 				error,
 			});
 
-			// Destroy the worker since it failed to initialize
-			await rivetRequest<typeof createRequest, { worker: RivetActor }>(
+			// Destroy the actor since it failed to initialize
+			await rivetRequest<typeof createRequest, { actor: RivetActor }>(
 				this.#clientConfig,
 				"DELETE",
 				`/actors/${actor.id}`,
@@ -186,7 +186,7 @@ export class RivetManagerDriver implements ManagerDriver {
 		}
 
 		return {
-			workerId: actor.id,
+			actorId: actor.id,
 			name: meta.name,
 			key: meta.key,
 		};

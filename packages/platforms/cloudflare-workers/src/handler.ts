@@ -1,8 +1,8 @@
 // import {
 // 	type DurableObjectConstructor,
-// 	type WorkerHandlerInterface,
-// 	createWorkerDurableObject,
-// } from "./worker-handler-do";
+// 	type ActorHandlerInterface,
+// 	createActorDurableObject,
+// } from  "./actor-handler-do";
 // import { ConfigSchema, type InputConfig } from "./config";
 // import { assertUnreachable } from "@rivetkit/core/utils";
 // import {
@@ -14,7 +14,7 @@
 // import type { Hono } from "hono";
 // import { PartitionTopologyManager } from "@rivetkit/core/topologies/partition";
 // import { logger } from "./log";
-// import { CloudflareWorkersManagerDriver } from "./manager-driver";
+// import { CloudflareActorsManagerDriver } from "./manager-driver";
 // import { Encoding, Registry, RunConfig } from "@rivetkit/core";
 // import { upgradeWebSocket } from "./websocket";
 // import invariant from "invariant";
@@ -23,8 +23,8 @@
 //
 // /** Cloudflare Workers env */
 // export interface Bindings {
-// 	WORKER_KV: KVNamespace;
-// 	WORKER_DO: DurableObjectNamespace<WorkerHandlerInterface>;
+// 	ACTOR_KV: KVNamespace;
+// 	ACTOR_DO: DurableObjectNamespace<ActorHandlerInterface>;
 // }
 //
 // /**
@@ -54,10 +54,10 @@
 // 	inputConfig?: InputConfig,
 // ): {
 // 	handler: ExportedHandler<Bindings>;
-// 	WorkerHandler: DurableObjectConstructor;
+// 	ActorHandler: DurableObjectConstructor;
 // } {
 // 	// Create router
-// 	const { router, WorkerHandler } = createRouter(registry, inputConfig);
+// 	const { router, ActorHandler } = createRouter(registry, inputConfig);
 //
 // 	// Create Cloudflare handler
 // 	const handler = {
@@ -66,7 +66,7 @@
 // 		},
 // 	} satisfies ExportedHandler<Bindings>;
 //
-// 	return { handler, WorkerHandler };
+// 	return { handler, ActorHandler };
 // }
 //
 // export function createRouter(
@@ -74,54 +74,54 @@
 // 	inputConfig?: InputConfig,
 // ): {
 // 	router: Hono<{ Bindings: Bindings }>;
-// 	WorkerHandler: DurableObjectConstructor;
+// 	ActorHandler: DurableObjectConstructor;
 // } {
 // 	const config = ConfigSchema.parse(inputConfig);
 // 	const runConfig = {
 // 		driver: {
 // 			topology: "partition",
-// 			manager: new CloudflareWorkersManagerDriver(),
-// 			// HACK: We can't build the worker driver until we're inside the Druable Object
-// 			worker: undefined as any,
+// 			manager: new CloudflareActorsManagerDriver(),
+// 			// HACK: We can't build the actor driver until we're inside the Druable Object
+// 			actor: undefined as any,
 // 		},
 // 		getUpgradeWebSocket: () => upgradeWebSocket,
 // 		...config,
 // 	} satisfies RunConfig;
 //
 // 	// Create Durable Object
-// 	const WorkerHandler = createWorkerDurableObject(registry, runConfig);
+// 	const ActorHandler = createActorDurableObject(registry, runConfig);
 //
 // 	const managerTopology = new PartitionTopologyManager(
 // 		registry.config,
 // 		runConfig,
 // 		{
-// 			sendRequest: async (workerId, workerRequest): Promise<Response> => {
+// 			sendRequest: async (actorId, actorRequest): Promise<Response> => {
 // 				const env = getCloudflareAmbientEnv();
 //
 // 				logger().debug("sending request to durable object", {
-// 					workerId,
-// 					method: workerRequest.method,
-// 					url: workerRequest.url,
+// 					actorId,
+// 					method: actorRequest.method,
+// 					url: actorRequest.url,
 // 				});
 //
-// 				const id = env.WORKER_DO.idFromString(workerId);
-// 				const stub = env.WORKER_DO.get(id);
+// 				const id = env.ACTOR_DO.idFromString(actorId);
+// 				const stub = env.ACTOR_DO.get(id);
 //
-// 				return await stub.fetch(workerRequest);
+// 				return await stub.fetch(actorRequest);
 // 			},
 //
 // 			openWebSocket: async (
-// 				workerId,
+// 				actorId,
 // 				encodingKind: Encoding,
 // 				params: unknown,
 // 			): Promise<WebSocket> => {
 // 				const env = getCloudflareAmbientEnv();
 //
-// 				logger().debug("opening websocket to durable object", { workerId });
+// 				logger().debug("opening websocket to durable object", { actorId });
 //
 // 				// Make a fetch request to the Durable Object with WebSocket upgrade
-// 				const id = env.WORKER_DO.idFromString(workerId);
-// 				const stub = env.WORKER_DO.get(id);
+// 				const id = env.ACTOR_DO.idFromString(actorId);
+// 				const stub = env.ACTOR_DO.get(id);
 //
 // 				const headers: Record<string, string> = {
 // 					Upgrade: "websocket",
@@ -135,7 +135,7 @@
 // 				// HACK: See packages/platforms/cloudflare-workers/src/websocket.ts
 // 				headers["sec-websocket-protocol"] = "rivetkit";
 //
-// 				const response = await stub.fetch("http://worker/connect/websocket", {
+// 				const response = await stub.fetch("http://actor/connect/websocket", {
 // 					headers,
 // 				});
 // 				const webSocket = response.webSocket;
@@ -147,7 +147,7 @@
 // 				}
 //
 // 				logger().debug("durable object websocket connection open", {
-// 					workerId,
+// 					actorId,
 // 				});
 //
 // 				webSocket.accept();
@@ -162,21 +162,21 @@
 // 				return webSocket as unknown as WebSocket;
 // 			},
 //
-// 			proxyRequest: async (c, workerRequest, workerId): Promise<Response> => {
+// 			proxyRequest: async (c, actorRequest, actorId): Promise<Response> => {
 // 				logger().debug("forwarding request to durable object", {
-// 					workerId,
-// 					method: workerRequest.method,
-// 					url: workerRequest.url,
+// 					actorId,
+// 					method: actorRequest.method,
+// 					url: actorRequest.url,
 // 				});
 //
-// 				const id = c.env.WORKER_DO.idFromString(workerId);
-// 				const stub = c.env.WORKER_DO.get(id);
+// 				const id = c.env.ACTOR_DO.idFromString(actorId);
+// 				const stub = c.env.ACTOR_DO.get(id);
 //
-// 				return await stub.fetch(workerRequest);
+// 				return await stub.fetch(actorRequest);
 // 			},
-// 			proxyWebSocket: async (c, path, workerId, encoding, params, authData) => {
+// 			proxyWebSocket: async (c, path, actorId, encoding, params, authData) => {
 // 				logger().debug("forwarding websocket to durable object", {
-// 					workerId,
+// 					actorId,
 // 					path,
 // 				});
 //
@@ -189,34 +189,34 @@
 // 				}
 //
 // 				// TODO: strip headers
-// 				const newUrl = new URL(`http://worker${path}`);
-// 				const workerRequest = new Request(newUrl, c.req.raw);
+// 				const newUrl = new URL(`http://actor${path}`);
+// 				const actorRequest = new Request(newUrl, c.req.raw);
 //
 // 				// Always build fresh request to prevent forwarding unwanted headers
 // 				// HACK: Since we can't build a new request, we need to remove
 // 				// non-standard headers manually
 // 				const headerKeys: string[] = [];
-// 				workerRequest.headers.forEach((v, k) => headerKeys.push(k));
+// 				actorRequest.headers.forEach((v, k) => headerKeys.push(k));
 // 				for (const k of headerKeys) {
 // 					if (!STANDARD_WEBSOCKET_HEADERS.includes(k)) {
-// 						workerRequest.headers.delete(k);
+// 						actorRequest.headers.delete(k);
 // 					}
 // 				}
 //
 // 				// Add RivetKit headers
-// 				workerRequest.headers.set(HEADER_EXPOSE_INTERNAL_ERROR, "true");
-// 				workerRequest.headers.set(HEADER_ENCODING, encoding);
+// 				actorRequest.headers.set(HEADER_EXPOSE_INTERNAL_ERROR, "true");
+// 				actorRequest.headers.set(HEADER_ENCODING, encoding);
 // 				if (params) {
-// 					workerRequest.headers.set(HEADER_CONN_PARAMS, JSON.stringify(params));
+// 					actorRequest.headers.set(HEADER_CONN_PARAMS, JSON.stringify(params));
 // 				}
 // 				if (authData) {
-// 					workerRequest.headers.set(HEADER_AUTH_DATA, JSON.stringify(authData));
+// 					actorRequest.headers.set(HEADER_AUTH_DATA, JSON.stringify(authData));
 // 				}
 //
-// 				const id = c.env.WORKER_DO.idFromString(workerId);
-// 				const stub = c.env.WORKER_DO.get(id);
+// 				const id = c.env.ACTOR_DO.idFromString(actorId);
+// 				const stub = c.env.ACTOR_DO.get(id);
 //
-// 				return await stub.fetch(workerRequest);
+// 				return await stub.fetch(actorRequest);
 // 			},
 // 		},
 // 	);
@@ -226,5 +226,5 @@
 // 		Bindings: Bindings;
 // 	}>;
 //
-// 	return { router, WorkerHandler };
+// 	return { router, ActorHandler };
 // }

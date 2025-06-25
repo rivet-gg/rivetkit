@@ -10,7 +10,7 @@ import {
 	type ToLeaderConnectionOpen,
 	type ToLeaderMessage,
 } from "./protocol";
-import { WorkerPeer } from "../worker-peer";
+import { ActorPeer } from  "../actor-peer";
 import type { CoordinateDriver } from "../driver";
 import { CONN_DRIVER_COORDINATE_RELAY, type CoordinateRelayState } from "../conn/driver";
 import { assertUnreachable } from "@/common/utils";
@@ -31,9 +31,9 @@ export class Node {
 		//
 		// We intentionally design this so there's only one topic for the subscriber to listen on in order to reduce chattiness to the pubsub server.
 		//
-		// If we had a dedicated topic for each worker, we'd have to create a SUB for each leader & follower for each worker which is much more expensive than one for each node.
+		// If we had a dedicated topic for each actor, we'd have to create a SUB for each leader & follower for each actor which is much more expensive than one for each node.
 		//
-		// Additionally, in most serverless environments, 1 node usually owns 1 worker, so this would double the RTT to create the required subscribers.
+		// Additionally, in most serverless environments, 1 node usually owns 1 actor, so this would double the RTT to create the required subscribers.
 		await this.#CoordinateDriver.createNodeSubscriber(
 			this.#globalState.nodeId,
 			this.#onMessage.bind(this),
@@ -44,7 +44,7 @@ export class Node {
 
 	async #onMessage(message: string) {
 		// TODO: try catch this
-		// TODO: Support multiple protocols for the worker
+		// TODO: Support multiple protocols for the actor
 
 		// Parse message
 		const { data, success, error } = NodeMessageSchema.safeParse(
@@ -101,7 +101,7 @@ export class Node {
 	async #onLeaderConnectionOpen(
 		nodeId: string | undefined,
 		{
-			ai: workerId,
+			ai: actorId,
 			ci: connId,
 			ct: connToken,
 			p: connParams,
@@ -113,21 +113,21 @@ export class Node {
 			return;
 		}
 
-		logger().debug("received connection open", { workerId, connId });
+		logger().debug("received connection open", { actorId, connId });
 
 		// Connection open
 
 		try {
-			const worker = WorkerPeer.getLeaderWorker(this.#globalState, workerId);
-			if (!worker) {
-				logger().warn("received message for nonexistent worker leader", {
-					workerId,
+			const actor = ActorPeer.getLeaderActor(this.#globalState, actorId);
+			if (!actor) {
+				logger().warn("received message for nonexistent actor leader", {
+					actorId,
 				});
 				return;
 			}
 
-			const connState = await worker.prepareConn(connParams);
-			await worker.createConn(
+			const connState = await actor.prepareConn(connParams);
+			await actor.createConn(
 				connId,
 				connToken,
 				connParams,
@@ -137,7 +137,7 @@ export class Node {
 				authData,
 			);
 
-			// Connection init will be sent by `Worker`
+			// Connection init will be sent by `Actor`
 		} catch (error) {
 			logger().warn("failed to open connection", { error: `${error}` });
 
@@ -152,29 +152,29 @@ export class Node {
 			//	},
 			//};
 			//redis.publish(
-			//	PUBSUB.WORKER.follower(workerId, followerId),
+			//	PUBSUB.ACTOR.follower(actorId, followerId),
 			//	JSON.stringify(message),
 			//);
 		}
 	}
 
 	async #onLeaderConnectionClose({
-		ai: workerId,
+		ai: actorId,
 		ci: connId,
 	}: ToLeaderConnectionClose) {
-		logger().debug("received connection close", { workerId });
+		logger().debug("received connection close", { actorId });
 
-		const worker = WorkerPeer.getLeaderWorker(this.#globalState, workerId);
-		if (!worker) {
-			logger().warn("received message for nonexistent worker leader", {
-				workerId,
+		const actor = ActorPeer.getLeaderActor(this.#globalState, actorId);
+		if (!actor) {
+			logger().warn("received message for nonexistent actor leader", {
+				actorId,
 			});
 			return;
 		}
 
-		const conn = worker.__getConnForId(connId);
+		const conn = actor.__getConnForId(connId);
 		if (conn) {
-			worker.__removeConn(conn);
+			actor.__removeConn(conn);
 		} else {
 			logger().warn("received connection close for nonexisting connection", {
 				connId,
@@ -183,24 +183,24 @@ export class Node {
 	}
 
 	async #onLeaderMessage({
-		ai: workerId,
+		ai: actorId,
 		ci: connId,
 		ct: connToken,
 		m: message,
 	}: ToLeaderMessage) {
-		logger().debug("received connection message", { workerId, connId });
+		logger().debug("received connection message", { actorId, connId });
 
 		// Get leader
-		const worker = WorkerPeer.getLeaderWorker(this.#globalState, workerId);
-		if (!worker) {
-			logger().warn("received message for nonexistent worker leader", {
-				workerId,
+		const actor = ActorPeer.getLeaderActor(this.#globalState, actorId);
+		if (!actor) {
+			logger().warn("received message for nonexistent actor leader", {
+				actorId,
 			});
 			return;
 		}
 
 		// Get connection
-		const conn = worker.__getConnForId(connId);
+		const conn = actor.__getConnForId(connId);
 		if (conn) {
 			// Validate token
 			if (conn._token !== connToken) {
@@ -208,7 +208,7 @@ export class Node {
 			}
 
 			// Process message
-			await worker.processMessage(message, conn);
+			await actor.processMessage(message, conn);
 		} else {
 			logger().warn("received message for nonexisting connection", {
 				connId,

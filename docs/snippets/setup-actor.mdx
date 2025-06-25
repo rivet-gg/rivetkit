@@ -1,8 +1,8 @@
 ```typescript src/app.ts
-import { worker, setup } from "rivetkit";
+import { actor, setup } from "rivetkit";
 
-// Create worker
-const counter = worker({
+// Create actor
+const counter = actor({
   state: { count: 0 },
   actions: {
     increment: (c, x: number) => {
@@ -15,7 +15,7 @@ const counter = worker({
 
 // Create the application
 export const registry = setup({
-  workers: { counter },
+  actors: { counter },
   cors: { origin: "http://localhost:8080" }
 });
 

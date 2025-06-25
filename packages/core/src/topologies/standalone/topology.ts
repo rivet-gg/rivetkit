@@ -1,12 +1,12 @@
-import type { AnyWorkerInstance } from "@/worker/instance";
+import type { AnyActorInstance } from  "@/actor/instance";
 import { Hono } from "hono";
 import {
 	type AnyConn,
 	generateConnId,
 	generateConnToken,
-} from "@/worker/connection";
+} from  "@/actor/connection";
 import { logger } from "./log";
-import * as errors from "@/worker/errors";
+import * as errors from  "@/actor/errors";
 import {
 	CONN_DRIVER_GENERIC_HTTP,
 	CONN_DRIVER_GENERIC_SSE,
@@ -17,7 +17,7 @@ import {
 	type GenericSseDriverState,
 	type GenericWebSocketDriverState,
 } from "../common/generic-conn-driver";
-import { ActionContext } from "@/worker/action";
+import { ActionContext } from  "@/actor/action";
 import type { RegistryConfig } from "@/registry/config";
 import { createManagerRouter } from "@/manager/router";
 import type {
@@ -29,26 +29,26 @@ import type {
 	ActionOpts,
 	ActionOutput,
 	ConnectionHandlers,
-} from "@/worker/router-endpoints";
+} from  "@/actor/router-endpoints";
 import { createInlineClientDriver } from "@/inline-client-driver/mod";
 import invariant from "invariant";
 import { ClientDriver } from "@/client/client";
-import { ConnRoutingHandler } from "@/worker/conn-routing-handler";
+import { ConnRoutingHandler } from  "@/actor/conn-routing-handler";
 import { DriverConfig, RunConfig } from "@/mod";
 
-class WorkerHandler {
+class ActorHandler {
 	/** Will be undefined if not yet loaded. */
-	worker?: AnyWorkerInstance;
+	actor?: AnyActorInstance;
 
-	/** Promise that will resolve when the worker is loaded. This should always be awaited before accessing the worker. */
-	workerPromise?: PromiseWithResolvers<void> = Promise.withResolvers();
+	/** Promise that will resolve when the actor is loaded. This should always be awaited before accessing the actor. */
+	actorPromise?: PromiseWithResolvers<void> = Promise.withResolvers();
 
 	genericConnGlobalState = new GenericConnGlobalState();
 }
 
 /**
  * Standalone topology implementation.
- * Manages workers in a single instance without distributed coordination.
+ * Manages actors in a single instance without distributed coordination.
  */
 export class StandaloneTopology {
 	clientDriver: ClientDriver;
@@ -56,7 +56,7 @@ export class StandaloneTopology {
 
 	#registryConfig: RegistryConfig;
 	#runConfig: RunConfig;
-	#workers = new Map<string, WorkerHandler>();
+	#actors = new Map<string, ActorHandler>();
 
 	constructor(registryConfig: RegistryConfig, runConfig: RunConfig) {
 		this.#registryConfig = registryConfig;
@@ -111,59 +111,59 @@ export class StandaloneTopology {
 		this.router = router;
 	}
 
-	async #getWorker(
-		workerId: string,
-	): Promise<{ handler: WorkerHandler; worker: AnyWorkerInstance }> {
-		// Load existing worker
-		let handler = this.#workers.get(workerId);
+	async #getActor(
+		actorId: string,
+	): Promise<{ handler: ActorHandler; actor: AnyActorInstance }> {
+		// Load existing actor
+		let handler = this.#actors.get(actorId);
 		if (handler) {
-			if (handler.workerPromise) await handler.workerPromise.promise;
-			if (!handler.worker) throw new Error("Worker should be loaded");
-			return { handler, worker: handler.worker };
+			if (handler.actorPromise) await handler.actorPromise.promise;
+			if (!handler.actor) throw new Error("Actor should be loaded");
+			return { handler, actor: handler.actor };
 		}
 
-		// Create new worker
-		logger().debug("creating new worker", { workerId });
+		// Create new actor
+		logger().debug("creating new actor", { actorId });
 
-		// Insert unloaded placeholder in order to prevent race conditions with multiple insertions of the worker
-		handler = new WorkerHandler();
-		this.#workers.set(workerId, handler);
+		// Insert unloaded placeholder in order to prevent race conditions with multiple insertions of the actor
+		handler = new ActorHandler();
+		this.#actors.set(actorId, handler);
 
-		// Load worker meta
-		const workerMetadata = await this.#runConfig.driver.manager.getForId({
-			workerId,
+		// Load actor meta
+		const actorMetadata = await this.#runConfig.driver.manager.getForId({
+			actorId,
 		});
-		if (!workerMetadata) throw new Error(`No worker found for ID ${workerId}`);
+		if (!actorMetadata) throw new Error(`No actor found for ID ${actorId}`);
 
-		// Build worker
-		const definition = this.#registryConfig.workers[workerMetadata.name];
+		// Build actor
+		const definition = this.#registryConfig.actors[actorMetadata.name];
 		if (!definition)
-			throw new Error(`no worker in registry for name ${definition}`);
+			throw new Error(`no actor in registry for name ${definition}`);
 
-		// Create leader worker
-		const worker = definition.instantiate();
-		handler.worker = worker;
+		// Create leader actor
+		const actor = definition.instantiate();
+		handler.actor = actor;
 
 		// Create connection drivers
 		const connDrivers = createGenericConnDrivers(
 			handler.genericConnGlobalState,
 		);
 
-		// Start worker
-		await handler.worker.start(
+		// Start actor
+		await handler.actor.start(
 			connDrivers,
-			this.#runConfig.driver.worker,
-			workerId,
-			workerMetadata.name,
-			workerMetadata.key,
+			this.#runConfig.driver.actor,
+			actorId,
+			actorMetadata.name,
+			actorMetadata.key,
 			"unknown",
 		);
 
 		// Finish
-		handler.workerPromise?.resolve();
-		handler.workerPromise = undefined;
+		handler.actorPromise?.resolve();
+		handler.actorPromise = undefined;
 
-		return { handler, worker };
+		return { handler, actor };
 	}
 
 	#createRoutingHandlers(): ConnRoutingHandler {
@@ -171,11 +171,11 @@ export class StandaloneTopology {
 			onConnectWebSocket: async (
 				opts: ConnectWebSocketOpts,
 			): Promise<ConnectWebSocketOutput> => {
-				const { handler, worker } = await this.#getWorker(opts.workerId);
+				const { handler, actor } = await this.#getActor(opts.actorId);
 
 				const connId = generateConnId();
 				const connToken = generateConnToken();
-				const connState = await worker.prepareConn(opts.params, opts.req?.raw);
+				const connState = await actor.prepareConn(opts.params, opts.req?.raw);
 
 				let conn: AnyConn | undefined;
 				return {
@@ -184,7 +184,7 @@ export class StandaloneTopology {
 						handler.genericConnGlobalState.websockets.set(connId, ws);
 
 						// Create connection
-						conn = await worker.createConn(
+						conn = await actor.createConn(
 							connId,
 							connToken,
 							opts.params,
@@ -202,23 +202,23 @@ export class StandaloneTopology {
 							return;
 						}
 
-						await worker.processMessage(message, conn);
+						await actor.processMessage(message, conn);
 					},
 					onClose: async () => {
 						handler.genericConnGlobalState.websockets.delete(connId);
 
 						if (conn) {
-							worker.__removeConn(conn);
+							actor.__removeConn(conn);
 						}
 					},
 				};
 			},
 			onConnectSse: async (opts: ConnectSseOpts): Promise<ConnectSseOutput> => {
-				const { handler, worker } = await this.#getWorker(opts.workerId);
+				const { handler, actor } = await this.#getActor(opts.actorId);
 
 				const connId = generateConnId();
 				const connToken = generateConnToken();
-				const connState = await worker.prepareConn(opts.params, opts.req?.raw);
+				const connState = await actor.prepareConn(opts.params, opts.req?.raw);
 
 				let conn: AnyConn | undefined;
 				return {
@@ -227,7 +227,7 @@ export class StandaloneTopology {
 						handler.genericConnGlobalState.sseStreams.set(connId, stream);
 
 						// Create connection
-						conn = await worker.createConn(
+						conn = await actor.createConn(
 							connId,
 							connToken,
 							opts.params,
@@ -241,7 +241,7 @@ export class StandaloneTopology {
 						handler.genericConnGlobalState.sseStreams.delete(connId);
 
 						if (conn) {
-							worker.__removeConn(conn);
+							actor.__removeConn(conn);
 						}
 					},
 				};
@@ -249,14 +249,14 @@ export class StandaloneTopology {
 			onAction: async (opts: ActionOpts): Promise<ActionOutput> => {
 				let conn: AnyConn | undefined;
 				try {
-					const { worker } = await this.#getWorker(opts.workerId);
+					const { actor } = await this.#getActor(opts.actorId);
 
 					// Create conn
-					const connState = await worker.prepareConn(
+					const connState = await actor.prepareConn(
 						opts.params,
 						opts.req?.raw,
 					);
-					conn = await worker.createConn(
+					conn = await actor.createConn(
 						generateConnId(),
 						generateConnToken(),
 						opts.params,
@@ -267,8 +267,8 @@ export class StandaloneTopology {
 					);
 
 					// Call action
-					const ctx = new ActionContext(worker.workerContext!, conn);
-					const output = await worker.executeAction(
+					const ctx = new ActionContext(actor.actorContext!, conn);
+					const output = await actor.executeAction(
 						ctx,
 						opts.actionName,
 						opts.actionArgs,
@@ -277,16 +277,16 @@ export class StandaloneTopology {
 					return { output };
 				} finally {
 					if (conn) {
-						const { worker } = await this.#getWorker(opts.workerId);
-						worker.__removeConn(conn);
+						const { actor } = await this.#getActor(opts.actorId);
+						actor.__removeConn(conn);
 					}
 				}
 			},
 			onConnMessage: async (opts: ConnsMessageOpts): Promise<void> => {
-				const { worker } = await this.#getWorker(opts.workerId);
+				const { actor } = await this.#getActor(opts.actorId);
 
 				// Find connection
-				const conn = worker.conns.get(opts.connId);
+				const conn = actor.conns.get(opts.connId);
 				if (!conn) {
 					throw new errors.ConnNotFound(opts.connId);
 				}
@@ -297,7 +297,7 @@ export class StandaloneTopology {
 				}
 
 				// Process message
-				await worker.processMessage(opts.message, conn);
+				await actor.processMessage(opts.message, conn);
 			},
 		};
 

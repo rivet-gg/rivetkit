@@ -2,11 +2,11 @@
 import { createClient } from "rivetkit/client";
 import { createReactRivetKit } from "@rivetkit/react";
 import { useState, useEffect } from "react";
-import type { App } from "../workers/app";
+import type { App } from "../actors/app";
 
 // Create client and hooks
 const client = createClient<App>("http://localhost:6420");
-const { useWorker } = createReactRivetKit(client);
+const { useActor } = createReactRivetKit(client);
 
 export function OrgDashboard({ orgId }: { orgId: string }) {
   // State for data
@@ -26,25 +26,25 @@ export function OrgDashboard({ orgId }: { orgId: string }) {
   // Authentication token
   const [token, setToken] = useState("");
   
-  // Connect to tenant worker with authentication token
-  const [{ worker }] = useWorker("tenant", { 
+  // Connect to tenant actor with authentication token
+  const [{ actor }] = useActor("tenant", { 
     params: { token },
     tags: { orgId }
   });
 
-  // Load data when worker is available
+  // Load data when actor is available
   useEffect(() => {
-    if (!worker || !token) return;
+    if (!actor || !token) return;
     
     const loadData = async () => {
       try {
         // Get members (available to all users)
-        const membersList = await worker.getMembers();
+        const membersList = await actor.getMembers();
         setMembers(membersList);
         
         // Try to get invoices (only available to admins)
         try {
-          const invoicesList = await worker.getInvoices();
+          const invoicesList = await actor.getInvoices();
           setInvoices(invoicesList);
           setError("");
         } catch (err: any) {
@@ -56,7 +56,7 @@ export function OrgDashboard({ orgId }: { orgId: string }) {
     };
     
     loadData();
-  }, [worker, token]);
+  }, [actor, token]);
 
   // Login screen when not authenticated
   if (!token) {

@@ -1,22 +1,22 @@
 // import { z } from "zod";
 //
-// const WorkerSchema = z.object({
+// const ActorSchema = z.object({
 // 	id: z.string(),
 // 	name: z.string(),
 // 	key: z.array(z.string()),
 // });
 //
-// export type Worker = z.infer<typeof WorkerSchema>;
+// export type Actor = z.infer<typeof ActorSchema>;
 //
 // export const ToClientSchema = z.discriminatedUnion("type", [
 // 	z.object({
 // 		type: z.literal("info"),
-// 		workers: z.array(WorkerSchema),
+// 		actors: z.array(ActorSchema),
 // 		types: z.array(z.string()),
 // 	}),
 // 	z.object({
-// 		type: z.literal("workers"),
-// 		workers: z.array(WorkerSchema),
+// 		type: z.literal("actors"),
+// 		actors: z.array(ActorSchema),
 // 	}),
 // 	z.object({
 // 		type: z.literal("error"),

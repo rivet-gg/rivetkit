@@ -1,4 +1,4 @@
-import { actor } from "@rivetkit/worker";
+import { actor } from "@rivetkit/actor";
 
 export type Contact = { id: string; name: string; email: string; phone: string; updatedAt: number; }
 

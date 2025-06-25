@@ -1,7 +1,7 @@
-import { createClient } from "@rivetkit/worker/client";
+import { createClient } from "@rivetkit/actor/client";
 import { createReactRivetKit } from "@rivetkit/react";
 import { useState, useEffect } from "react";
-import type { Registry } from "../workers/registry";
+import type { Registry } from "../actors/registry";
 
 // Create client and hooks
 const client = createClient<Registry>("http://localhost:6420");

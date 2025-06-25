@@ -4,9 +4,9 @@ import { deconstructError, stringifyError } from "./utils";
 import {
 	getRequestEncoding,
 	getRequestExposeInternalError,
-} from "@/worker/router-endpoints";
-import { Encoding, serialize } from "@/worker/protocol/serde";
-import { ResponseError } from "@/worker/protocol/http/error";
+} from  "@/actor/router-endpoints";
+import { Encoding, serialize } from  "@/actor/protocol/serde";
+import { ResponseError } from  "@/actor/protocol/http/error";
 
 export function logger() {
 	return getLogger("router");

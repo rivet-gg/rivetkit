@@ -1,9 +1,9 @@
-import { createClient } from "@rivetkit/worker/client";
+import { createClient } from "@rivetkit/actor/client";
 import { createReactRivetKit } from "@rivetkit/react";
 import { useState, useEffect, useRef } from "react";
 import * as Y from 'yjs';
 import { applyUpdate, encodeStateAsUpdate } from 'yjs';
-import type { Registry } from "../workers/registry";
+import type { Registry } from "../actors/registry";
 
 const client = createClient<Registry>("http://localhost:6420");
 const { useActor, useActorEvent } = createReactRivetKit(client);

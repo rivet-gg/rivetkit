@@ -1,6 +1,6 @@
 # Counter for RivetKit
 
-Example project demonstrating basic worker state management and RPC calls with [RivetKit](https://rivetkit.org).
+Example project demonstrating basic actor state management and RPC calls with [RivetKit](https://rivetkit.org).
 
 [Learn More →](https://github.com/rivet-gg/rivetkit)
 

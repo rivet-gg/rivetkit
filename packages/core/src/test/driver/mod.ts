@@ -1,10 +1,10 @@
 import { DriverConfig } from "@/mod";
 import { TestGlobalState } from "./global-state";
 import { TestManagerDriver } from "./manager";
-import { TestWorkerDriver } from "./worker";
+import { TestActorDriver } from  "./actor";
 
 export { TestGlobalState } from "./global-state";
-export { TestWorkerDriver } from "./worker";
+export { TestActorDriver } from  "./actor";
 export { TestManagerDriver } from "./manager";
 
 export function createTestDriver(): DriverConfig {
@@ -12,6 +12,6 @@ export function createTestDriver(): DriverConfig {
 	return {
 		topology: "standalone",
 		manager: new TestManagerDriver(state),
-		worker: new TestWorkerDriver(state),
+		actor: new TestActorDriver(state),
 	};
 }

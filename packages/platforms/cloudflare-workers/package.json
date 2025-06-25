@@ -1,7 +1,7 @@
 {
   "name": "@rivetkit/cloudflare-workers",
   "version": "0.9.0-rc.1",
-  "keywords": ["rivetkit", "cloudflare", "workers", "edge", "platform", "serverless"],
+  "keywords": ["rivetkit", "cloudflare", "actors", "edge", "platform", "serverless"],
   "files": [
     "src",
     "dist",

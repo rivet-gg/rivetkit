@@ -3,24 +3,24 @@ title: Events
 icon: tower-broadcast
 ---
 
-Events are used for clients to receive realtime data from workers.
+Events are used for clients to receive realtime data from actors.
 
-<Info>Events are used for workers to publish updates to clients. Clients call actions to communicate with the worker.</Info>
+<Info>Events are used for actors to publish updates to clients. Clients call actions to communicate with the actor.</Info>
 
-## Publishing from workers
+## Publishing from actors
 
-Workers can publish events to clients using `c.broadcast` and `conn.send`.
+Actors can publish events to clients using `c.broadcast` and `conn.send`.
 
 ### Broadcasting events
 
-Workers can publish events to all connected clients with `c.broadcast(name, data)`. For example:
+Actors can publish events to all connected clients with `c.broadcast(name, data)`. For example:
 
 <CodeGroup>
 
 ```typescript chat_room.ts
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
-const chatRoom = worker({
+const chatRoom = actor({
   state: {},
   actions: {
     sendMessage: (c, message) => {
@@ -43,14 +43,14 @@ await chatRoom.sendMessage('Hello, world!');
 
 ### Sending events to specific connections
 
-Workers can send messages to specific client connections. All connections are available through the context object. For example:
+Actors can send messages to specific client connections. All connections are available through the context object. For example:
 
 <CodeGroup>
 
 ```typescript chat_room.ts
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
-const chatRoom = worker({
+const chatRoom = actor({
   state: {},
   actions: {
     sendPrivateMessage: (c, connId, message) => {
@@ -76,13 +76,13 @@ await chatRoom.sendPrivateMessage(123, 'Hello, world!');
 
 ## Subscribing from clients
 
-Clients can subscribe to events from workers using `on` and `once`.
+Clients can subscribe to events from actors using `on` and `once`.
 
 ### `on(eventName, callback)`
 
-{/* [Documentation](https://jsr.io/@rivet-gg/worker-client/doc/~/WorkerHandleRaw.prototype.on.html) */}
+{/* [Documentation](https://jsr.io/@rivet-gg/actor-client/doc/~/ActorHandleRaw.prototype.on.html) */}
 
-Clients can subscribe to events that will happen repeatedly using `worker.on(name, callback)`. For example:
+Clients can subscribe to events that will happen repeatedly using `actor.on(name, callback)`. For example:
 
 <CodeGroup>
 
@@ -99,9 +99,9 @@ chatRoom.on('newMessage', ({ message }) => {
 ```
 
 ```typescript chat_room.ts
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
-const chatRoom = worker({
+const chatRoom = actor({
   state: {},
   actions: {
     sendMessage: (c, message) => {
@@ -115,9 +115,9 @@ const chatRoom = worker({
 
 ### `once(eventName, callback)`
 
-{/* [Documentation](https://jsr.io/@rivet-gg/worker-client/doc/~/WorkerHandleRaw.prototype.once.html) */}
+{/* [Documentation](https://jsr.io/@rivet-gg/actor-client/doc/~/ActorHandleRaw.prototype.once.html) */}
 
-Clients can listen for an event only one time with `worker.once(name, callback)`. For example:
+Clients can listen for an event only one time with `actor.once(name, callback)`. For example:
 
 <CodeGroup>
 
@@ -137,9 +137,9 @@ await chatRoom.requestJoin();
 ```
 
 ```typescript chat_room.ts
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
-const chatRoom = worker({
+const chatRoom = actor({
   state: {
     pendingJoinRequests: []
   },
@@ -161,6 +161,6 @@ const chatRoom = worker({
 
 ## Connections
 
-Connections are used to communicate with clients from the worker.
+Connections are used to communicate with clients from the actor.
 
 Read more about connections [here](/concepts/connections).

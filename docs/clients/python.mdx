@@ -4,12 +4,12 @@ icon: python
 ---
 
 import MvpWarning from "/snippets/mvp-warning.mdx";
-import StepDefineWorker from "/snippets/step-define-worker.mdx";
+import StepDefineActor from "/snippets/step-define-actor.mdx";
 import StepRunStudio from "/snippets/step-run-studio.mdx";
 import StepDeploy from "/snippets/step-deploy.mdx";
 import SetupNextSteps from "/snippets/setup-next-steps.mdx";
 
-The RivetKit Python client provides a way to connect to and interact with workers from Python applications.
+The RivetKit Python client provides a way to connect to and interact with actors from Python applications.
 
 <MvpWarning />
 
@@ -39,7 +39,7 @@ The RivetKit Python client provides a way to connect to and interact with worker
     ```
   </Step>
 
-  <StepDefineWorker />
+  <StepDefineActor />
 
   <Step title="Create your client">
     Create a new file `main.py`:
@@ -53,7 +53,7 @@ The RivetKit Python client provides a way to connect to and interact with worker
             # Replace with your endpoint URL after deployment
             client = AsyncClient("http://localhost:6420")
             
-            # Get or create a worker instance
+            # Get or create a actor instance
             counter = await client.get("counter")
             
             # Subscribe to events using callback
@@ -82,7 +82,7 @@ The RivetKit Python client provides a way to connect to and interact with worker
         # Replace with your endpoint URL after deployment
         client = Client("http://localhost:6420")
         
-        # Get or create a worker instance
+        # Get or create a actor instance
         counter = client.get("counter")
         
         # Subscribe to events using callback

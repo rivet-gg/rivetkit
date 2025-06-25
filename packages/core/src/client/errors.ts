@@ -1,16 +1,16 @@
 import { MAX_CONN_PARAMS_SIZE } from "@/common//network";
 
-export class WorkerClientError extends Error {}
+export class ActorClientError extends Error {}
 
-export class InternalError extends WorkerClientError {}
+export class InternalError extends ActorClientError {}
 
-export class ManagerError extends WorkerClientError {
+export class ManagerError extends ActorClientError {
 	constructor(error: string, opts?: ErrorOptions) {
 		super(`Manager error: ${error}`, opts);
 	}
 }
 
-export class ConnParamsTooLong extends WorkerClientError {
+export class ConnParamsTooLong extends ActorClientError {
 	constructor() {
 		super(
 			`Connection parameters must be less than ${MAX_CONN_PARAMS_SIZE} bytes`,
@@ -18,14 +18,14 @@ export class ConnParamsTooLong extends WorkerClientError {
 	}
 }
 
-export class MalformedResponseMessage extends WorkerClientError {
+export class MalformedResponseMessage extends ActorClientError {
 	constructor(cause?: unknown) {
 		super(`Malformed response message: ${cause}`, { cause });
 	}
 }
 
-export class WorkerError extends WorkerClientError {
-	__type = "WorkerError";
+export class ActorError extends ActorClientError {
+	__type = "ActorError";
 
 	constructor(
 		public readonly code: string,
@@ -36,14 +36,14 @@ export class WorkerError extends WorkerClientError {
 	}
 }
 
-export class HttpRequestError extends WorkerClientError {
+export class HttpRequestError extends ActorClientError {
 	constructor(message: string, opts?: { cause?: unknown }) {
 		super(`HTTP request error: ${message}`, { cause: opts?.cause });
 	}
 }
 
-export class WorkerConnDisposed extends WorkerClientError {
+export class ActorConnDisposed extends ActorClientError {
 	constructor() {
-		super("Attempting to interact with a disposed worker connection.");
+		super("Attempting to interact with a disposed actor connection.");
 	}
 }

@@ -1,10 +1,10 @@
-import { ConnRoutingHandler } from "@/worker/conn-routing-handler";
+import { ConnRoutingHandler } from  "@/actor/conn-routing-handler";
 import {
 	type AnyConn,
 	generateConnId,
 	generateConnToken,
-} from "@/worker/connection";
-import * as errors from "@/worker/errors";
+} from  "@/actor/connection";
+import * as errors from  "@/actor/errors";
 import {
 	CONN_DRIVER_GENERIC_HTTP,
 	CONN_DRIVER_GENERIC_SSE,
@@ -13,7 +13,7 @@ import {
 	type GenericSseDriverState,
 	type GenericWebSocketDriverState,
 } from "../common/generic-conn-driver";
-import { ActionContext } from "@/worker/action";
+import { ActionContext } from  "@/actor/action";
 import type {
 	ConnectWebSocketOpts,
 	ConnectWebSocketOutput,
@@ -23,7 +23,7 @@ import type {
 	ActionOpts,
 	ActionOutput,
 	ConnectionHandlers,
-} from "@/worker/router-endpoints";
+} from  "@/actor/router-endpoints";
 import { StandaloneTopology } from "@/mod";
 import { logger } from "./log";
 

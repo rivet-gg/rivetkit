@@ -1,7 +1,7 @@
 import { type TestContext, vi } from "vitest";
 import { createClient, type Client } from "@/client/mod";
 import type { DriverTestConfig } from "./mod";
-import { assertUnreachable } from "@/worker/utils";
+import { assertUnreachable } from  "@/actor/utils";
 import { createClientWithDriver } from "@/client/client";
 import { createTestInlineClientDriver } from "./test-inline-client-driver";
 import { resolve } from "node:path";

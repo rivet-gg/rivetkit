@@ -1,9 +1,9 @@
-import type { ConnDriver } from "@/worker/driver";
+import type { ConnDriver } from  "@/actor/driver";
 import type { GlobalState } from "../topology";
-import type { AnyWorkerInstance } from "@/worker/instance";
-import type { AnyConn, Conn } from "@/worker/connection";
-import type { CachedSerializer } from "@/worker/protocol/serde";
-import type * as messageToClient from "@/worker/protocol/message/to-client";
+import type { AnyActorInstance } from  "@/actor/instance";
+import type { AnyConn, Conn } from  "@/actor/connection";
+import type { CachedSerializer } from  "@/actor/protocol/serde";
+import type * as messageToClient from  "@/actor/protocol/message/to-client";
 import { logger } from "../log";
 import type { NodeMessage } from "../node/protocol";
 import type { CoordinateDriver } from "../driver";
@@ -20,14 +20,14 @@ export function createCoordinateRelayDriver(
 ): ConnDriver<CoordinateRelayState> {
 	return {
 		sendMessage: (
-			worker: AnyWorkerInstance,
+			actor: AnyActorInstance,
 			conn: AnyConn,
 			state: CoordinateRelayState,
 			message: CachedSerializer<messageToClient.ToClient>,
 		) => {
-			const workerPeer = globalState.workerPeers.get(worker.id);
-			if (!workerPeer) {
-				logger().warn("missing worker for message", { workerId: worker.id });
+			const actorPeer = globalState.actorPeers.get(actor.id);
+			if (!actorPeer) {
+				logger().warn("missing actor for message", { actorId: actor.id });
 				return;
 			}
 
@@ -43,16 +43,16 @@ export function createCoordinateRelayDriver(
 			CoordinateDriver.publishToNode(state.nodeId, JSON.stringify(messageRaw));
 		},
 		disconnect: async (
-			worker: AnyWorkerInstance,
+			actor: AnyActorInstance,
 			conn: AnyConn,
 			state: CoordinateRelayState,
 			reason?: string,
 		) => {
-			if (worker.isStopping) return;
+			if (actor.isStopping) return;
 
-			const workerPeer = globalState.workerPeers.get(worker.id);
-			if (!workerPeer) {
-				logger().warn("missing worker for disconnect", { workerId: worker.id });
+			const actorPeer = globalState.actorPeers.get(actor.id);
+			if (!actorPeer) {
+				logger().warn("missing actor for disconnect", { actorId: actor.id });
 				return;
 			}
 

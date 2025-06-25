@@ -3,20 +3,20 @@ title: Connections
 icon: network-wired
 ---
 
-Connections represent client connections to your worker. They provide a way to handle client authentication, manage connection-specific data, and control the connection lifecycle.
+Connections represent client connections to your actor. They provide a way to handle client authentication, manage connection-specific data, and control the connection lifecycle.
 
 ## Parameters
 
-When clients connect to a worker, they can pass connection parameters that are handled during the connection process.
+When clients connect to a actor, they can pass connection parameters that are handled during the connection process.
 
 For example:
 
 <CodeGroup>
 
-```typescript worker.ts
-import { worker } from "rivetkit";
+```typescript actor.ts
+import { actor } from "rivetkit";
 
-const gameRoom = worker({
+const gameRoom = actor({
   state: {},
   
   // Handle connection setup
@@ -52,14 +52,14 @@ const gameRoom = await client.gameRoom.get({
 
 ## Connection State
 
-There are two ways to define a worker's connection state:
+There are two ways to define a actor's connection state:
 
 ### Method 1: `ConnState` constant
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
-const chatRoom = worker({
+const chatRoom = actor({
   state: { messages: [] },
   
   // Define default connection state as a constant
@@ -84,9 +84,9 @@ const chatRoom = worker({
 The data returned from `createConnState` is used as the initial state of the connection. The connection state can be accessed through `conn.state`.
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
-const chatRoom = worker({
+const chatRoom = actor({
   state: { messages: [] },
   
   // Create connection state dynamically
@@ -120,7 +120,7 @@ The connection lifecycle has several hooks:
 - `onConnect`: Called when a client successfully connects
 - `onDisconnect`: Called when a client disconnects
 
-See the documentation on [Worker Lifecycle](/concepts/lifecycle) for more details.
+See the documentation on [Actor Lifecycle](/concepts/lifecycle) for more details.
 
 ## Connection List
 
@@ -131,9 +131,9 @@ This is frequently used with `conn.send(name, event)` to send messages directly 
 For example:
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
-const chatRoom = worker({
+const chatRoom = actor({
   state: { users: {} },
   
   actions: {
@@ -158,9 +158,9 @@ const chatRoom = worker({
 Connections can be disconnected from within an action:
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
-const secureRoom = worker({
+const secureRoom = actor({
   state: {},
   
   actions: {
@@ -189,4 +189,4 @@ This ensures the underlying network connections close cleanly before continuing.
 
 ## Offline & Auto-Reconnection
 
-See [Interacting with Workers](/concepts/interacting-with-workers#offline-and-auto-reconnection) for details on reconnection behavior.
+See [Interacting with Actors](/concepts/interacting-with-actors#offline-and-auto-reconnection) for details on reconnection behavior.

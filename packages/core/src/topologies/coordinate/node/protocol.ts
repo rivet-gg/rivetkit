@@ -1,6 +1,6 @@
 import { z } from "zod";
-import * as messageToServer from "@/worker/protocol/message/to-server"
-import * as messageToClient from "@/worker/protocol/message/to-client"
+import * as messageToServer from  "@/actor/protocol/message/to-server"
+import * as messageToClient from  "@/actor/protocol/message/to-client"
 
 export const AckSchema = z.object({
 	// Message ID
@@ -10,7 +10,7 @@ export const AckSchema = z.object({
 export type Ack = z.infer<typeof AckSchema>;
 
 export const ToLeaderConnectionOpenSchema = z.object({
-	// Worker ID
+	// Actor ID
 	ai: z.string(),
 	// Connection ID
 	ci: z.string(),
@@ -25,7 +25,7 @@ export const ToLeaderConnectionOpenSchema = z.object({
 export type ToLeaderConnectionOpen = z.infer<typeof ToLeaderConnectionOpenSchema>;
 
 export const ToLeaderConnectionCloseSchema = z.object({
-	// Worker ID
+	// Actor ID
 	ai: z.string(),
 	// Connection ID
 	ci: z.string(),
@@ -34,7 +34,7 @@ export const ToLeaderConnectionCloseSchema = z.object({
 export type ToLeaderConnectionClose = z.infer<typeof ToLeaderConnectionCloseSchema>;
 
 export const ToLeaderMessageSchema = z.object({
-	// Worker ID
+	// Actor ID
 	ai: z.string(),
 	// Connection ID
 	ci: z.string(),

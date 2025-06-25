@@ -66,10 +66,10 @@ _If you want to run without export fetch (i.e. standalone Node.js), see below._
 
 <CodeGroup>
 
-```ts Worker
-import { worker, setup } from "@rivetkit/worker";
+```ts Actor
+import { actor, setup } from "@rivetkit/actor";
 
-export const counter = worker({
+export const counter = actor({
     onAuth: () => { ... },
 	state: { count: 0 },
 	actions: {
@@ -81,7 +81,7 @@ export const counter = worker({
 });
 
 export const registry = setup({
-	workers: { counter },
+	actors: { counter },
 });
 ```
 
@@ -199,7 +199,7 @@ const { client, hono } = registry.run({
 
 ## Configuration Options
 
-### Connect your frontend to the Rivet Worker
+### Connect your frontend to the Rivet Actor
 
 TODO: Quick summary of why you would want to connect your frontend
 
@@ -208,27 +208,27 @@ Connect your frontend:
 <CodeGroup>
 
 ```ts JavaScript
-import { createClient } from "@rivetkit/worker/client";
+import { createClient } from "@rivetkit/actor/client";
 import type { registry } from "./registry.js";
 
 const client = createClient<typeof registry>("http://localhost:8080/registry");
 
-const result = await client.myWorker.getOrCreate().myAction("Hello, world!");
+const result = await client.myActor.getOrCreate().myAction("Hello, world!");
 ```
 
 ```ts React
 import { useState } from "react";
-import { createClient, createRivetKit } from "@@rivetkit/worker/react";
+import { createClient, createRivetKit } from "@@rivetkit/actor/react";
 import type { registry } from "./registry";
 
 const client = createClient<typeof registry>(`http://localhost:8080/registry`);
-const { useWorker } = createRivetKit(client);
+const { useActor } = createRivetKit(client);
 
 function App() {
 	const [count, setCount] = useState(0);
 	const [counterName, setCounterName] = useState("test-counter");
 
-	const counter = useWorker({
+	const counter = useActor({
 		name: "counter",
 		key: [counterName],
 	});
@@ -296,7 +296,7 @@ TODO
 
 <CardGroup>
 	<Card title="Overview" href="/concepts/overview" icon="square-plus" horizontal={true} />
-	<Card title="Interacting with Workers" href="/concepts/interacting-with-workers" icon="square-plus" horizontal={true} />
+	<Card title="Interacting with Actors" href="/concepts/interacting-with-actors" icon="square-plus" horizontal={true} />
 	<Card title="Actions" href="/concepts/actions" icon="bolt" horizontal={true} />
 	<Card title="State" href="/concepts/state" icon="floppy-disk" horizontal={true} />
 </CardGroup>

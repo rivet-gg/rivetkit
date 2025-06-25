@@ -1,11 +1,11 @@
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 import { drizzle } from "@rivetkit/drizzle";
 import * as Y from 'yjs';
 import { encodeStateAsUpdate, applyUpdate } from 'yjs';
 import { documents } from "./schema";
 
-const yjsDocument = worker({
+const yjsDocument = actor({
   sql: drizzle(),
   
   // In-memory Yjs objects (not serialized)
@@ -13,7 +13,7 @@ const yjsDocument = worker({
     doc: new Y.Doc()
   }),
   
-  // Initialize document from state when worker starts
+  // Initialize document from state when actor starts
   onStart: async (c) => {
     // Get document data from database
     const documentData = await c.db

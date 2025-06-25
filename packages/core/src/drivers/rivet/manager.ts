@@ -2,12 +2,12 @@ import { setupLogging } from "@/common/log";
 import { serve as honoServe } from "@hono/node-server";
 import { createNodeWebSocket, NodeWebSocket } from "@hono/node-ws";
 import { logger } from "./log";
-import { GetWorkerMeta, RivetManagerDriver } from "./manager-driver";
+import { GetActorMeta, RivetManagerDriver } from "./manager-driver";
 import type { RivetClientConfig } from "./rivet-client";
 import { PartitionTopologyManager } from "@/topologies/partition/mod";
 import { ConfigSchema, InputConfig } from "./config";
 import type { Registry, RunConfig } from "@/registry/mod";
-import { flushCache, getWorkerMeta } from "./worker-meta";
+import { flushCache, getActorMeta } from  "./actor-meta";
 
 export async function startManager(
 	registry: Registry<any>,
@@ -46,8 +46,8 @@ export async function startManager(
 		driver: {
 			topology: "partition",
 			manager: new RivetManagerDriver(clientConfig),
-			// HACK: We can't build the worker driver until we're inside the worker
-			worker: undefined as any,
+			// HACK: We can't build the actor driver until we're inside the actor
+			actor: undefined as any,
 		},
 		// Setup WebSocket routing for Node
 		//

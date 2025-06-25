@@ -8,11 +8,11 @@
 //
 // const __dirname = path.dirname(fileURLToPath(import.meta.url));
 //
-// // Simple counter worker definition to deploy
-// const COUNTER_WORKER = `
-// import { worker, setup } from "@rivetkit/core";
+// // Simple counter actor definition to deploy
+// const COUNTER_ACTOR = `
+// import { actor, setup } from "@rivetkit/core";
 //
-// const counter = worker({
+// const counter = actor({
 //   state: { count: 0 },
 //   actions: {
 //     increment: (c, amount) => {
@@ -27,7 +27,7 @@
 // });
 //
 // export const registry = setup({
-//   workers: { counter },
+//   actors: { counter },
 // });
 //
 // export type Registry = typeof registry;
@@ -35,6 +35,6 @@
 //
 // test("Rivet deployment tests", async () => {
 // 	const tempFilePath = path.join(os.tmpdir(), `registry-${randomUUID()}`);
-// 	await fs.writeFile(tempFilePath, COUNTER_WORKER);
+// 	await fs.writeFile(tempFilePath, COUNTER_ACTOR);
 // 	await deployToRivet("test-registry", tempFilePath, true);
 // });

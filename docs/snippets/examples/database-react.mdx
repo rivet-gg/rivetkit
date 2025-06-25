@@ -4,51 +4,51 @@ import { createReactRivetKit } from "@rivetkit/react";
 import { useState, useEffect } from "react";
 
 const client = createClient("http://localhost:6420");
-const { useWorker, useWorkerEvent } = createReactRivetKit(client);
+const { useActor, useActorEvent } = createReactRivetKit(client);
 
 export function NotesApp({ userId }: { userId: string }) {
   const [notes, setNotes] = useState<Array<{ id: string, content: string }>>([]);
   const [newNote, setNewNote] = useState("");
   
-  // Connect to worker with auth token
-  const [{ worker }] = useWorker("notes", { 
+  // Connect to actor with auth token
+  const [{ actor }] = useActor("notes", { 
     params: { userId, token: "demo-token" }
   });
   
   // Load initial notes
   useEffect(() => {
-    if (worker) {
-      worker.getNotes().then(setNotes);
+    if (actor) {
+      actor.getNotes().then(setNotes);
     }
-  }, [worker]);
+  }, [actor]);
   
   // Add a new note
   const addNote = async () => {
-    if (worker && newNote.trim()) {
-      await worker.updateNote({ id: `note-${Date.now()}`, content: newNote });
+    if (actor && newNote.trim()) {
+      await actor.updateNote({ id: `note-${Date.now()}`, content: newNote });
       setNewNote("");
     }
   };
   
   // Delete a note
   const deleteNote = (id: string) => {
-    if (worker) {
-      worker.deleteNote({ id });
+    if (actor) {
+      actor.deleteNote({ id });
     }
   };
   
   // Listen for realtime updates
-  useWorkerEvent({ worker, event: "noteAdded" }, (note) => {
+  useActorEvent({ actor, event: "noteAdded" }, (note) => {
     setNotes(notes => [...notes, note]);
   });
   
-  useWorkerEvent({ worker, event: "noteUpdated" }, (updatedNote) => {
+  useActorEvent({ actor, event: "noteUpdated" }, (updatedNote) => {
     setNotes(notes => notes.map(note => 
       note.id === updatedNote.id ? updatedNote : note
     ));
   });
   
-  useWorkerEvent({ worker, event: "noteDeleted" }, ({ id }) => {
+  useActorEvent({ actor, event: "noteDeleted" }, ({ id }) => {
     setNotes(notes => notes.filter(note => note.id !== id));
   });
   

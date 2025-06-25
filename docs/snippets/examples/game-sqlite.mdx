@@ -1,5 +1,5 @@
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 import { drizzle } from "@rivetkit/drizzle";
 import { players, gameSettings } from "./schema";
 
@@ -7,7 +7,7 @@ export type Position = { x: number; y: number };
 export type Input = { x: number; y: number };
 export type Player = { id: string; position: Position; input: Input };
 
-const gameRoom = worker({
+const gameRoom = actor({
   sql: drizzle(),
   
   // Store game settings and player inputs in memory for performance

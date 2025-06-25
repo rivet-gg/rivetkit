@@ -1,12 +1,12 @@
-import * as errors from "@/worker/errors";
+import * as errors from  "@/actor/errors";
 import * as cbor from "cbor-x";
-import type * as protoHttpResolve from "@/worker/protocol/http/resolve";
-import type { ToClient } from "@/worker/protocol/message/to-client";
+import type * as protoHttpResolve from  "@/actor/protocol/http/resolve";
+import type { ToClient } from  "@/actor/protocol/message/to-client";
 import {
 	type Encoding,
 	EncodingSchema,
 	serialize,
-} from "@/worker/protocol/serde";
+} from  "@/actor/protocol/serde";
 import {
 	type ConnectionHandlers,
 	getRequestEncoding,
@@ -14,17 +14,17 @@ import {
 	handleAction,
 	handleSseConnect,
 	handleWebSocketConnect,
-	HEADER_WORKER_ID,
+	HEADER_ACTOR_ID,
 	HEADER_CONN_ID,
 	HEADER_CONN_PARAMS,
 	HEADER_CONN_TOKEN,
 	HEADER_ENCODING,
-	HEADER_WORKER_QUERY,
+	HEADER_ACTOR_QUERY,
 	ALL_PUBLIC_HEADERS,
 	getRequestQuery,
 	HEADER_AUTH_DATA,
-} from "@/worker/router-endpoints";
-import { assertUnreachable } from "@/worker/utils";
+} from  "@/actor/router-endpoints";
+import { assertUnreachable } from  "@/actor/utils";
 import type { RegistryConfig } from "@/registry/config";
 import {
 	handleRouteError,
@@ -52,11 +52,11 @@ import {
 	ConnMessageRequestSchema,
 	ResolveRequestSchema,
 } from "./protocol/query";
-import type { WorkerQuery } from "./protocol/query";
+import type { ActorQuery } from "./protocol/query";
 import { VERSION } from "@/utils";
-import { ConnRoutingHandler } from "@/worker/conn-routing-handler";
+import { ConnRoutingHandler } from  "@/actor/conn-routing-handler";
 import { ClientDriver } from "@/client/client";
-import { Transport } from "@/worker/protocol/message/mod";
+import { Transport } from  "@/actor/protocol/message/mod";
 import { authenticateEndpoint } from "./auth";
 import type { WebSocket, MessageEvent, CloseEvent } from "ws";
 import { RunConfig } from "@/registry/run-config";
@@ -71,17 +71,17 @@ const OPENAPI_ENCODING = z.string().openapi({
 	example: "json",
 });
 
-const OPENAPI_WORKER_QUERY = z.string().openapi({
-	description: "Worker query information",
+const OPENAPI_ACTOR_QUERY = z.string().openapi({
+	description: "Actor query information",
 });
 
 const OPENAPI_CONN_PARAMS = z.string().openapi({
 	description: "Connection parameters",
 });
 
-const OPENAPI_WORKER_ID = z.string().openapi({
-	description: "Worker ID (used in some endpoints)",
-	example: "worker-123456",
+const OPENAPI_ACTOR_ID = z.string().openapi({
+	description: "Actor ID (used in some endpoints)",
+	example: "actor-123456",
 });
 
 const OPENAPI_CONN_ID = z.string().openapi({
@@ -135,7 +135,7 @@ export function createManagerRouter(
 			// HACK: This could be insecure if we had a varargs path. We have to check the path suffix for WS since we don't know the path that this router was mounted.
 			const path = c.req.path;
 			if (
-				path.endsWith("/workers/connect/websocket") ||
+				path.endsWith("/actors/connect/websocket") ||
 				path.endsWith("/inspect")
 			) {
 				return next();
@@ -160,12 +160,12 @@ export function createManagerRouter(
 		);
 	});
 
-	// POST /workers/resolve
+	// POST /actors/resolve
 	{
 		const ResolveQuerySchema = z
 			.object({
 				query: z.any().openapi({
-					example: { getForId: { workerId: "worker-123" } },
+					example: { getForId: { actorId: "actor-123" } },
 				}),
 			})
 			.openapi("ResolveQuery");
@@ -173,14 +173,14 @@ export function createManagerRouter(
 		const ResolveResponseSchema = z
 			.object({
 				i: z.string().openapi({
-					example: "worker-123",
+					example: "actor-123",
 				}),
 			})
 			.openapi("ResolveResponse");
 
 		const resolveRoute = createRoute({
 			method: "post",
-			path: "/workers/resolve",
+			path: "/actors/resolve",
 			request: {
 				body: {
 					content: {
@@ -190,7 +190,7 @@ export function createManagerRouter(
 					},
 				},
 				headers: z.object({
-					[HEADER_WORKER_QUERY]: OPENAPI_WORKER_QUERY,
+					[HEADER_ACTOR_QUERY]: OPENAPI_ACTOR_QUERY,
 				}),
 			},
 			responses: buildOpenApiResponses(ResolveResponseSchema),
@@ -201,11 +201,11 @@ export function createManagerRouter(
 		);
 	}
 
-	// GET /workers/connect/websocket
+	// GET /actors/connect/websocket
 	{
 		// HACK: WebSockets don't work with mounts, so we need to dynamically match the trailing path
 		router.use("*", (c, next) => {
-			if (c.req.path.endsWith("/workers/connect/websocket")) {
+			if (c.req.path.endsWith("/actors/connect/websocket")) {
 				return handleWebSocketConnectRequest(
 					c,
 					upgradeWebSocket,
@@ -222,7 +222,7 @@ export function createManagerRouter(
 		// This route is a noop, just used to generate docs
 		const wsRoute = createRoute({
 			method: "get",
-			path: "/workers/connect/websocket",
+			path: "/actors/connect/websocket",
 			responses: {
 				101: {
 					description: "WebSocket upgrade",
@@ -235,15 +235,15 @@ export function createManagerRouter(
 		});
 	}
 
-	// GET /workers/connect/sse
+	// GET /actors/connect/sse
 	{
 		const sseRoute = createRoute({
 			method: "get",
-			path: "/workers/connect/sse",
+			path: "/actors/connect/sse",
 			request: {
 				headers: z.object({
 					[HEADER_ENCODING]: OPENAPI_ENCODING,
-					[HEADER_WORKER_QUERY]: OPENAPI_WORKER_QUERY,
+					[HEADER_ACTOR_QUERY]: OPENAPI_ACTOR_QUERY,
 					[HEADER_CONN_PARAMS]: OPENAPI_CONN_PARAMS.optional(),
 				}),
 			},
@@ -264,7 +264,7 @@ export function createManagerRouter(
 		);
 	}
 
-	// POST /workers/action/:action
+	// POST /actors/action/:action
 	{
 		const ActionParamsSchema = z
 			.object({
@@ -281,7 +281,7 @@ export function createManagerRouter(
 		const ActionRequestSchema = z
 			.object({
 				query: z.any().openapi({
-					example: { getForId: { workerId: "worker-123" } },
+					example: { getForId: { actorId: "actor-123" } },
 				}),
 				body: z
 					.any()
@@ -296,7 +296,7 @@ export function createManagerRouter(
 
 		const actionRoute = createRoute({
 			method: "post",
-			path: "/workers/actions/{action}",
+			path: "/actors/actions/{action}",
 			request: {
 				params: ActionParamsSchema,
 				body: {
@@ -319,12 +319,12 @@ export function createManagerRouter(
 		);
 	}
 
-	// POST /workers/message
+	// POST /actors/message
 	{
 		const ConnectionMessageRequestSchema = z
 			.object({
 				message: z.any().openapi({
-					example: { type: "message", content: "Hello, worker!" },
+					example: { type: "message", content: "Hello, actor!" },
 				}),
 			})
 			.openapi("ConnectionMessageRequest");
@@ -335,7 +335,7 @@ export function createManagerRouter(
 
 		const messageRoute = createRoute({
 			method: "post",
-			path: "/workers/message",
+			path: "/actors/message",
 			request: {
 				body: {
 					content: {
@@ -345,7 +345,7 @@ export function createManagerRouter(
 					},
 				},
 				headers: z.object({
-					[HEADER_WORKER_ID]: OPENAPI_WORKER_ID,
+					[HEADER_ACTOR_ID]: OPENAPI_ACTOR_ID,
 					[HEADER_CONN_ID]: OPENAPI_CONN_ID,
 					[HEADER_ENCODING]: OPENAPI_ENCODING,
 					[HEADER_CONN_TOKEN]: OPENAPI_CONN_TOKEN,
@@ -407,28 +407,28 @@ export function createManagerRouter(
 				".test/inline-driver/connect-websocket",
 				upgradeWebSocket(async (c: any) => {
 					const {
-						workerQuery: workerQueryRaw,
+						actorQuery: actorQueryRaw,
 						params: paramsRaw,
 						encodingKind,
 					} = c.req.query() as {
-						workerQuery: string;
+						actorQuery: string;
 						params?: string;
 						encodingKind: Encoding;
 					};
-					const workerQuery = JSON.parse(workerQueryRaw);
+					const actorQuery = JSON.parse(actorQueryRaw);
 					const params =
 						paramsRaw !== undefined ? JSON.parse(paramsRaw) : undefined;
 
 					logger().debug("received test inline driver websocket", {
-						workerQuery,
+						actorQuery,
 						params,
 						encodingKind,
 					});
 
-					// Connect to the worker using the inline client driver - this returns a Promise<WebSocket>
+					// Connect to the actor using the inline client driver - this returns a Promise<WebSocket>
 					const clientWsPromise = inlineClientDriver.connectWebSocket(
 						undefined,
-						workerQuery,
+						actorQuery,
 						encodingKind,
 						params,
 						undefined,
@@ -597,34 +597,34 @@ export type TestInlineDriverCallResponse<T> =
 	  };
 
 /**
- * Query the manager driver to get or create a worker based on the provided query
+ * Query the manager driver to get or create a actor based on the provided query
  */
-export async function queryWorker(
+export async function queryActor(
 	c: HonoContext,
-	query: WorkerQuery,
+	query: ActorQuery,
 	driver: ManagerDriver,
-): Promise<{ workerId: string }> {
-	logger().debug("querying worker", { query });
-	let workerOutput: { workerId: string };
+): Promise<{ actorId: string }> {
+	logger().debug("querying actor", { query });
+	let actorOutput: { actorId: string };
 	if ("getForId" in query) {
 		const output = await driver.getForId({
 			c,
-			workerId: query.getForId.workerId,
+			actorId: query.getForId.actorId,
 		});
-		if (!output) throw new errors.WorkerNotFound(query.getForId.workerId);
-		workerOutput = output;
+		if (!output) throw new errors.ActorNotFound(query.getForId.actorId);
+		actorOutput = output;
 	} else if ("getForKey" in query) {
-		const existingWorker = await driver.getWithKey({
+		const existingActor = await driver.getWithKey({
 			c,
 			name: query.getForKey.name,
 			key: query.getForKey.key,
 		});
-		if (!existingWorker) {
-			throw new errors.WorkerNotFound(
+		if (!existingActor) {
+			throw new errors.ActorNotFound(
 				`${query.getForKey.name}:${JSON.stringify(query.getForKey.key)}`,
 			);
 		}
-		workerOutput = existingWorker;
+		actorOutput = existingActor;
 	} else if ("getOrCreateForKey" in query) {
 		const getOrCreateOutput = await driver.getOrCreateWithKey({
 			c,
@@ -633,28 +633,28 @@ export async function queryWorker(
 			input: query.getOrCreateForKey.input,
 			region: query.getOrCreateForKey.region,
 		});
-		workerOutput = {
-			workerId: getOrCreateOutput.workerId,
+		actorOutput = {
+			actorId: getOrCreateOutput.actorId,
 		};
 	} else if ("create" in query) {
-		const createOutput = await driver.createWorker({
+		const createOutput = await driver.createActor({
 			c,
 			name: query.create.name,
 			key: query.create.key,
 			input: query.create.input,
 			region: query.create.region,
 		});
-		workerOutput = {
-			workerId: createOutput.workerId,
+		actorOutput = {
+			actorId: createOutput.actorId,
 		};
 	} else {
 		throw new errors.InvalidRequest("Invalid query format");
 	}
 
-	logger().debug("worker query result", {
-		workerId: workerOutput.workerId,
+	logger().debug("actor query result", {
+		actorId: actorOutput.actorId,
 	});
-	return { workerId: workerOutput.workerId };
+	return { actorId: actorOutput.actorId };
 }
 
 /**
@@ -702,10 +702,10 @@ async function handleSseConnectRequest(
 			connParams,
 		);
 
-		// Get the worker ID
-		const { workerId } = await queryWorker(c, query, driver);
-		invariant(workerId, "Missing worker ID");
-		logger().debug("sse connection to worker", { workerId });
+		// Get the actor ID
+		const { actorId } = await queryActor(c, query, driver);
+		invariant(actorId, "Missing actor ID");
+		logger().debug("sse connection to actor", { actorId });
 
 		// Handle based on mode
 		if ("inline" in handler.routingHandler) {
@@ -716,12 +716,12 @@ async function handleSseConnectRequest(
 				registryConfig,
 				runConfig,
 				handler.routingHandler.inline.handlers.onConnectSse,
-				workerId,
+				actorId,
 				authData,
 			);
 		} else if ("custom" in handler.routingHandler) {
 			logger().debug("using custom proxy mode for sse connection");
-			const url = new URL("http://worker/connect/sse");
+			const url = new URL("http://actor/connect/sse");
 
 			// Always build fresh request to prevent forwarding unwanted headers
 			const proxyRequest = new Request(url);
@@ -735,7 +735,7 @@ async function handleSseConnectRequest(
 			return await handler.routingHandler.custom.proxyRequest(
 				c,
 				proxyRequest,
-				workerId,
+				actorId,
 			);
 		} else {
 			assertUnreachable(handler.routingHandler);
@@ -890,12 +890,12 @@ async function handleWebSocketConnectRequest(
 			connParamsRaw,
 		);
 
-		// Get the worker ID
-		const { workerId } = await queryWorker(c, params.data.query, driver);
-		logger().debug("found worker for websocket connection", {
-			workerId,
+		// Get the actor ID
+		const { actorId } = await queryActor(c, params.data.query, driver);
+		logger().debug("found actor for websocket connection", {
+			actorId,
 		});
-		invariant(workerId, "missing worker id");
+		invariant(actorId, "missing actor id");
 
 		if ("inline" in handler.routingHandler) {
 			logger().debug("using inline proxy mode for websocket connection");
@@ -912,7 +912,7 @@ async function handleWebSocketConnectRequest(
 					registryConfig,
 					runConfig,
 					onConnectWebSocket,
-					workerId,
+					actorId,
 					params.data.encoding,
 					params.data.connParams,
 					authData,
@@ -921,16 +921,16 @@ async function handleWebSocketConnectRequest(
 		} else if ("custom" in handler.routingHandler) {
 			logger().debug("using custom proxy mode for websocket connection");
 
-			// Proxy the WebSocket connection to the worker
+			// Proxy the WebSocket connection to the actor
 			//
 			// The proxyWebSocket handler will:
 			// 1. Validate the WebSocket upgrade request
-			// 2. Forward the request to the worker with the appropriate path
-			// 3. Handle the WebSocket pair and proxy messages between client and worker
+			// 2. Forward the request to the actor with the appropriate path
+			// 3. Handle the WebSocket pair and proxy messages between client and actor
 			return await handler.routingHandler.custom.proxyWebSocket(
 				c,
 				"/connect/websocket",
-				workerId,
+				actorId,
 				params.data.encoding,
 				params.data.connParams,
 				authData,
@@ -985,7 +985,7 @@ async function handleWebSocketConnectRequest(
 }
 
 /**
- * Handle a connection message request to a worker
+ * Handle a connection message request to a actor
  *
  * There is no authentication handler on this request since the connection
  * token is used to authenticate the message.
@@ -999,7 +999,7 @@ async function handleMessageRequest(
 	logger().debug("connection message request received");
 	try {
 		const params = ConnMessageRequestSchema.safeParse({
-			workerId: c.req.header(HEADER_WORKER_ID),
+			actorId: c.req.header(HEADER_ACTOR_ID),
 			connId: c.req.header(HEADER_CONN_ID),
 			encoding: c.req.header(HEADER_ENCODING),
 			connToken: c.req.header(HEADER_CONN_TOKEN),
@@ -1010,23 +1010,23 @@ async function handleMessageRequest(
 			});
 			throw new errors.InvalidRequest(params.error);
 		}
-		const { workerId, connId, encoding, connToken } = params.data;
+		const { actorId, connId, encoding, connToken } = params.data;
 
-		// TODO: This endpoint can be used to exhause resources (DoS attack) on an worker if you know the worker ID:
-		// 1. Get the worker ID (usually this is reasonably secure, but we don't assume worker ID is sensitive)
-		// 2. Spam messages to the worker (the conn token can be invalid)
-		// 3. The worker will be exhausted processing messages — even if the token is invalid
+		// TODO: This endpoint can be used to exhause resources (DoS attack) on an actor if you know the actor ID:
+		// 1. Get the actor ID (usually this is reasonably secure, but we don't assume actor ID is sensitive)
+		// 2. Spam messages to the actor (the conn token can be invalid)
+		// 3. The actor will be exhausted processing messages — even if the token is invalid
 		//
 		// The solution is we need to move the authorization of the connection token to this request handler
-		// AND include the worker ID in the connection token so we can verify that it has permission to send
-		// a message to that worker. This would require changing the token to a JWT so we can include a secure
+		// AND include the actor ID in the connection token so we can verify that it has permission to send
+		// a message to that actor. This would require changing the token to a JWT so we can include a secure
 		// payload, but this requires managing a private key & managing key rotations.
 		//
-		// All other solutions (e.g. include the worker name as a header or include the worker name in the worker ID)
-		// have exploits that allow the caller to send messages to arbitrary workers.
+		// All other solutions (e.g. include the actor name as a header or include the actor name in the actor ID)
+		// have exploits that allow the caller to send messages to arbitrary actors.
 		//
 		// Currently, we assume this is not a critical problem because requests will likely get rate
-		// limited before enough messages are passed to the worker to exhaust resources.
+		// limited before enough messages are passed to the actor to exhaust resources.
 
 		// Handle based on mode
 		if ("inline" in handler.routingHandler) {
@@ -1039,11 +1039,11 @@ async function handleMessageRequest(
 				handler.routingHandler.inline.handlers.onConnMessage,
 				connId,
 				connToken as string,
-				workerId,
+				actorId,
 			);
 		} else if ("custom" in handler.routingHandler) {
 			logger().debug("using custom proxy mode for connection message");
-			const url = new URL("http://worker/connections/message");
+			const url = new URL("http://actor/connections/message");
 
 			// Always build fresh request to prevent forwarding unwanted headers
 			const proxyRequest = new Request(url, {
@@ -1057,7 +1057,7 @@ async function handleMessageRequest(
 			return await handler.routingHandler.custom.proxyRequest(
 				c,
 				proxyRequest,
-				workerId,
+				actorId,
 			);
 		} else {
 			assertUnreachable(handler.routingHandler);
@@ -1065,8 +1065,8 @@ async function handleMessageRequest(
 	} catch (error) {
 		logger().error("error proxying connection message", { error });
 
-		// Use ProxyError if it's not already an WorkerError
-		if (!errors.WorkerError.isWorkerError(error)) {
+		// Use ProxyError if it's not already an ActorError
+		if (!errors.ActorError.isActorError(error)) {
 			throw new errors.ProxyError("connection message", error);
 		} else {
 			throw error;
@@ -1075,7 +1075,7 @@ async function handleMessageRequest(
 }
 
 /**
- * Handle an action request to a worker
+ * Handle an action request to a actor
  */
 async function handleActionRequest(
 	c: HonoContext,
@@ -1116,10 +1116,10 @@ async function handleActionRequest(
 			connParams,
 		);
 
-		// Get the worker ID
-		const { workerId } = await queryWorker(c, params.data.query, driver);
-		logger().debug("found worker for action", { workerId });
-		invariant(workerId, "Missing worker ID");
+		// Get the actor ID
+		const { actorId } = await queryActor(c, params.data.query, driver);
+		logger().debug("found actor for action", { actorId });
+		invariant(actorId, "Missing actor ID");
 
 		// Handle based on mode
 		if ("inline" in handler.routingHandler) {
@@ -1131,14 +1131,14 @@ async function handleActionRequest(
 				runConfig,
 				handler.routingHandler.inline.handlers.onAction,
 				actionName,
-				workerId,
+				actorId,
 				authData,
 			);
 		} else if ("custom" in handler.routingHandler) {
 			logger().debug("using custom proxy mode for action call");
 
 			const url = new URL(
-				`http://worker/action/${encodeURIComponent(actionName)}`,
+				`http://actor/action/${encodeURIComponent(actionName)}`,
 			);
 
 			// Always build fresh request to prevent forwarding unwanted headers
@@ -1157,7 +1157,7 @@ async function handleActionRequest(
 			return await handler.routingHandler.custom.proxyRequest(
 				c,
 				proxyRequest,
-				workerId,
+				actorId,
 			);
 		} else {
 			assertUnreachable(handler.routingHandler);
@@ -1165,8 +1165,8 @@ async function handleActionRequest(
 	} catch (error) {
 		logger().error("error in action handler", { error });
 
-		// Use ProxyError if it's not already an WorkerError
-		if (!errors.WorkerError.isWorkerError(error)) {
+		// Use ProxyError if it's not already an ActorError
+		if (!errors.ActorError.isActorError(error)) {
 			throw new errors.ProxyError("Action call", error);
 		} else {
 			throw error;
@@ -1175,7 +1175,7 @@ async function handleActionRequest(
 }
 
 /**
- * Handle the resolve request to get a worker ID from a query
+ * Handle the resolve request to get a actor ID from a query
  */
 async function handleResolveRequest(
 	c: HonoContext,
@@ -1206,14 +1206,14 @@ async function handleResolveRequest(
 	// Authenticate the request
 	await authenticateEndpoint(c, driver, registryConfig, query, [], connParams);
 
-	// Get the worker ID
-	const { workerId } = await queryWorker(c, query, driver);
-	logger().debug("resolved worker", { workerId });
-	invariant(workerId, "Missing worker ID");
+	// Get the actor ID
+	const { actorId } = await queryActor(c, query, driver);
+	logger().debug("resolved actor", { actorId });
+	invariant(actorId, "Missing actor ID");
 
 	// Format response according to protocol
 	const response: protoHttpResolve.ResolveResponse = {
-		i: workerId,
+		i: actorId,
 	};
 	const serialized = serialize(response, encoding);
 	return c.body(serialized);

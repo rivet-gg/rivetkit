@@ -7,7 +7,7 @@ const client = createClient<Registry>("http://localhost:6420/registry", {
 	transport: "sse",
 });
 
-const { useWorker } = createRivetKit(client);
+const { useActor } = createRivetKit(client);
 
 interface ChatRoomProps {
 	user: { id: string; email: string };
@@ -25,7 +25,7 @@ export function ChatRoom({ user, onSignOut }: ChatRoomProps) {
 	}>>([]);
 	const [roomId] = useState("general");
 
-	const chatRoom = useWorker({
+	const chatRoom = useActor({
 		name: "chatRoom",
 		key: [roomId],
 	});

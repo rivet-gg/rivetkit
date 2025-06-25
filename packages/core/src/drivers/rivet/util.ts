@@ -89,7 +89,7 @@ export function convertKeyToRivetTags(
 	return {
 		name,
 		key: serializeKeyForTag(key),
-		role: "worker",
+		role: "actor",
 		framework: "rivetkit",
 	};
 }

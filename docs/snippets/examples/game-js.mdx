@@ -1,11 +1,11 @@
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
 export type Position = { x: number; y: number };
 export type Input = { x: number; y: number };
 export type Player = { id: string; position: Position; input: Input };
 
-const gameRoom = worker({
+const gameRoom = actor({
   state: {
     players: {} as Record<string, Player>,
     mapSize: 800

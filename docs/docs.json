@@ -46,33 +46,33 @@
         ]
       },
       {
-        "group": "Workers",
+        "group": "Actors",
         "pages": [
-"workers/overview",
+"actors/overview",
 {
 "group": "Quickstart",
 "icon": "forward",
 "pages": [
-"workers/quickstart",
-"workers/quickstart-frontend"
+"actors/quickstart",
+"actors/quickstart-frontend"
 ]
 },
-"workers/state",
-"workers/actions",
-"workers/events",
+"actors/state",
+"actors/actions",
+"actors/events",
           {
             "group": "More",
             "pages": [
-"workers/schedule",
+"actors/schedule",
 
-"workers/lifecycle",
-"workers/connections",
-"workers/authentication",
+"actors/lifecycle",
+"actors/connections",
+"actors/authentication",
               {
                 "group": "Advanced",
                 "pages": [
-"workers/metadata",
-"workers/types"
+"actors/metadata",
+"actors/types"
 
                 ]
               }
@@ -137,7 +137,7 @@
                 "pages": [
                   "concepts/cors",
                   "concepts/external-sql",
-                  "concepts/interacting-with-workers",
+                  "concepts/interacting-with-actors",
                   "concepts/logging",
                   "concepts/overview",
                   "concepts/scaling",

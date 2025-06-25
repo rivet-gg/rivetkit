@@ -1,6 +1,6 @@
 import { Node } from "./node/mod";
-import type { WorkerPeer } from "./worker-peer";
-import * as errors from "@/worker/errors";
+import type { ActorPeer } from  "./actor-peer";
+import * as errors from  "@/actor/errors";
 import * as events from "node:events";
 import { publishMessageToLeader } from "./node/message";
 import type { RelayConn } from "./conn/mod";
@@ -17,19 +17,19 @@ import type {
 	ConnectSseOutput,
 	ActionOutput,
 	ConnectionHandlers,
-} from "@/worker/router-endpoints";
+} from  "@/actor/router-endpoints";
 import invariant from "invariant";
 import { createInlineClientDriver } from "@/inline-client-driver/mod";
 import { serveWebSocket } from "./router/websocket";
 import { serveSse } from "./router/sse";
 import { ClientDriver } from "@/client/client";
-import { ConnRoutingHandler } from "@/worker/conn-routing-handler";
+import { ConnRoutingHandler } from  "@/actor/conn-routing-handler";
 import { DriverConfig, RunConfig } from "@/registry/run-config";
 
 export interface GlobalState {
 	nodeId: string;
-	/** Workers currently running on this instance. */
-	workerPeers: Map<string, WorkerPeer>;
+	/** Actors currently running on this instance. */
+	actorPeers: Map<string, ActorPeer>;
 	/** Connections that are connected to this node. */
 	relayConns: Map<string, RelayConn>;
 	/** Resolvers for when a message is acknowledged by the peer. */
@@ -41,7 +41,7 @@ export class CoordinateTopology {
 	public readonly router: Hono;
 
 	constructor(registryConfig: RegistryConfig, runConfig: RunConfig) {
-		const { worker: workerDriver, coordinate: CoordinateDriver } =
+		const { actor: actorDriver, coordinate: CoordinateDriver } =
 			runConfig.driver;
 		if (!CoordinateDriver)
 			throw new Error("config.driver.coordinate not defined.");
@@ -52,7 +52,7 @@ export class CoordinateTopology {
 
 		const globalState: GlobalState = {
 			nodeId: crypto.randomUUID(),
-			workerPeers: new Map(),
+			actorPeers: new Map(),
 			relayConns: new Map(),
 			messageAckResolvers: new Map(),
 		};
@@ -73,10 +73,10 @@ export class CoordinateTopology {
 				return await serveWebSocket(
 					registryConfig,
 					runConfig,
-					workerDriver,
+					actorDriver,
 					CoordinateDriver,
 					globalState,
-					opts.workerId,
+					opts.actorId,
 					opts,
 				);
 			},
@@ -84,10 +84,10 @@ export class CoordinateTopology {
 				return await serveSse(
 					registryConfig,
 					runConfig,
-					workerDriver,
+					actorDriver,
 					CoordinateDriver,
 					globalState,
-					opts.workerId,
+					opts.actorId,
 					opts,
 				);
 			},
@@ -101,11 +101,11 @@ export class CoordinateTopology {
 					runConfig,
 					CoordinateDriver,
 					globalState,
-					opts.workerId,
+					opts.actorId,
 					{
 						b: {
 							lm: {
-								ai: opts.workerId,
+								ai: opts.actorId,
 								ci: opts.connId,
 								ct: opts.connToken,
 								m: opts.message,

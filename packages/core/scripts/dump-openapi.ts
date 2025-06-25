@@ -1,9 +1,9 @@
 import { createManagerRouter } from "@/manager/router";
 import { RegistryConfig, RegistryConfigSchema, Encoding, setup } from "@/mod";
-import { ConnectionHandlers } from "@/worker/router-endpoints";
+import { ConnectionHandlers } from  "@/actor/router-endpoints";
 import {
 	TestGlobalState,
-	TestWorkerDriver,
+	TestActorDriver,
 	TestManagerDriver,
 } from "@/test/driver/mod";
 import { OpenAPIHono } from "@hono/zod-openapi";
@@ -11,8 +11,8 @@ import { VERSION } from "@/utils";
 import * as fs from "node:fs/promises";
 import { resolve } from "node:path";
 import { ClientDriver } from "@/client/client";
-import { WorkerQuery } from "@/manager/protocol/query";
-import { ToServer } from "@/worker/protocol/message/to-server";
+import { ActorQuery } from "@/manager/protocol/query";
+import { ToServer } from  "@/actor/protocol/message/to-server";
 import { EventSource } from "eventsource";
 import { Context } from "hono";
 import {
@@ -23,7 +23,7 @@ import {
 
 function main() {
 	const registryConfig: RegistryConfig = RegistryConfigSchema.parse({
-		workers: {},
+		actors: {},
 	});
 	const registry = setup(registryConfig);
 
@@ -31,7 +31,7 @@ function main() {
 	const driverConfig: RunConfig = RunConfigSchema.parse({
 		driver: {
 			topology: "standalone",
-			worker: new TestWorkerDriver(memoryState),
+			actor: new TestActorDriver(memoryState),
 			manager: new TestManagerDriver(memoryState),
 		},
 		getUpgradeWebSocket: () => () => unimplemented(),
@@ -54,7 +54,7 @@ function main() {
 
 	const inlineClientDriver: ClientDriver = {
 		action: unimplemented,
-		resolveWorkerId: unimplemented,
+		resolveActorId: unimplemented,
 		connectWebSocket: unimplemented,
 		connectSse: unimplemented,
 		sendHttpMessage: unimplemented,

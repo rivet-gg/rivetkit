@@ -1,6 +1,6 @@
 /// <reference types="node" />
-import { createClient } from "@rivetkit/worker/client";
-import type { Registry } from "../src/workers/registry";
+import { createClient } from "@rivetkit/actor/client";
+import type { Registry } from "../src/actors/registry";
 
 async function main() {
 	const client = createClient<Registry>(

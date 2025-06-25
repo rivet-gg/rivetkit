@@ -1,13 +1,13 @@
 ---
-title: Rivet Workers
+title: Rivet Actors
 icon: square-info
 sidebarTitle: "Overview"
 description: A library for building stateful, scalable, realtime backend applications.
 ---
 
-import CreateWorkerCli from "/snippets/create-worker-cli.mdx";
+import CreateActorCli from "/snippets/create-actor-cli.mdx";
 
-Workers combine compute and storage into unified entities for simplified architecture. Workers seamlessly integrate with your existing infrastructure or can serve as a complete standalone solution.
+Actors combine compute and storage into unified entities for simplified architecture. Actors seamlessly integrate with your existing infrastructure or can serve as a complete standalone solution.
 
 ## Quickstart
 
@@ -18,31 +18,31 @@ Workers combine compute and storage into unified entities for simplified archite
 
 ## Concepts
 
-The core concepts that power Rivet Worker applications:
+The core concepts that power Rivet Actor applications:
 
 - **State Is Automatically Persisted**: State automatically persists between restarts, upgrades, & crashes
 - **State Is Stored In-Memory**: State is stored in memory for high-performance reads/writes while also automatically persisted
-- **Isolated State Ownership**: Workers only manage their own state, which can only be modified by the worker itself
-- **Communicates via Actions**: How clients and other workers interact with a worker
+- **Isolated State Ownership**: Actors only manage their own state, which can only be modified by the actor itself
+- **Communicates via Actions**: How clients and other actors interact with a actor
 - **Actions Are Low-Latency**: Actions provide WebSocket-like performance for time-sensitive operations
-- **Broadcast Updates With Events**: Workers can publish real-time updates to connected clients
+- **Broadcast Updates With Events**: Actors can publish real-time updates to connected clients
 
 ## Quickstart
 
 Run this to get started:
 
-<CreateWorkerCli />
+<CreateActorCli />
 
 ## Code Example
 
-Here's a complete chat room worker that maintains state and handles messages. We'll explore each component in depth throughout this document:
+Here's a complete chat room actor that maintains state and handles messages. We'll explore each component in depth throughout this document:
 
 ```typescript chat_room.ts
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
-// Define a chat room worker
-const chatRoom = worker({
-  // Initialize state when the worker is first created
+// Define a chat room actor
+const chatRoom = actor({
+  // Initialize state when the actor is first created
   createState: () => ({
     messages: []
   }),
@@ -70,7 +70,7 @@ export default chatRoom;
 
 ## Using the App
 
-To start using your worker, create an app and serve it:
+To start using your actor, create an app and serve it:
 
 ```typescript app.ts
 import { setup, serve } from "rivetkit";
@@ -78,7 +78,7 @@ import chatRoom from "./chat_room";
 
 // Create the application
 const registry = setup({
-  workers: { chatRoom }
+  actors: { chatRoom }
 });
 
 // Start serving on default port
@@ -88,17 +88,17 @@ serve(registry);
 export type Registry = typeof registry;
 ```
 
-## Key Worker Components
+## Key Actor Components
 
 ### State
 
-Workers maintain state that's stored in memory and automatically persisted. State is defined either as a constant or via a `createState` function:
+Actors maintain state that's stored in memory and automatically persisted. State is defined either as a constant or via a `createState` function:
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
 // Method 1: State constant
-const counter1 = worker({
+const counter1 = actor({
   state: { count: 0 },
   actions: {
     // ...
@@ -106,7 +106,7 @@ const counter1 = worker({
 });
 
 // Method 2: CreateState function
-const counter2 = worker({
+const counter2 = actor({
   createState: () => ({ count: 0 }),
   actions: {
     // ...
@@ -117,9 +117,9 @@ const counter2 = worker({
 Update state by modifying `c.state` in your actions:
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
-const counter = worker({
+const counter = actor({
   state: { count: 0 },
   actions: {
     // Example of state update in an action
@@ -133,16 +133,16 @@ const counter = worker({
 
 These changes are durable and are automatically persisted across updates, restarts, and crashes.
 
-Learn more about [state management](/worker/state).
+Learn more about [state management](/actor/state).
 
 ### Actions
 
-Actions are functions defined in your worker configuration that clients & other workers can call:
+Actions are functions defined in your actor configuration that clients & other actors can call:
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
-const mathUtils = worker({
+const mathUtils = actor({
   state: {},
   actions: {
     multiplyByTwo: (c, x) => {
@@ -154,16 +154,16 @@ const mathUtils = worker({
 
 Each action receives a context object (commonly named `c`) as its first parameter, which provides access to state, connections, and other utilities.
 
-Learn more about [actions](/worker/actions).
+Learn more about [actions](/actor/actions).
 
 ### Events
 
-Workers can broadcast events to connected clients:
+Actors can broadcast events to connected clients:
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
-const inventory = worker({
+const inventory = actor({
   createState: () => ({ 
     items: [] 
   }),
@@ -183,9 +183,9 @@ const inventory = worker({
 You can also send events to specific clients:
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
-const messageService = worker({
+const messageService = actor({
   state: {},
   actions: {
     sendPrivateMessage: (c, userId, text) => {
@@ -199,14 +199,14 @@ const messageService = worker({
 });
 ```
 
-Learn more about [events](/worker/events).
+Learn more about [events](/actor/events).
 
-## Worker Tags
+## Actor Tags
 
-Tags are key-value pairs attached to workers that serve two purposes:
+Tags are key-value pairs attached to actors that serve two purposes:
 
-1. **Worker Discovery**: Find specific workers using `client.get(tags)`
-2. **Organization**: Group related workers for management purposes
+1. **Actor Discovery**: Find specific actors using `client.get(tags)`
+2. **Organization**: Group related actors for management purposes
 
 For example, you can query chat rooms by tag like:
 
@@ -235,16 +235,16 @@ const document = await client.document.get({
 });
 ```
 
-## Worker Lifecycle
+## Actor Lifecycle
 
-Workers are created automatically when needed and persist until explicitly shutdown.
+Actors are created automatically when needed and persist until explicitly shutdown.
 
-To shut down a worker, use `c.shutdown()` from within an action:
+To shut down a actor, use `c.shutdown()` from within an action:
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
-const chatRoom = worker({
+const chatRoom = actor({
   createState: () => ({
     messages: []
   }),
@@ -253,36 +253,36 @@ const chatRoom = worker({
       // Do any cleanup needed
       c.broadcast("roomClosed");
       
-      // Shutdown the worker
+      // Shutdown the actor
       c.shutdown();
     }
   }
 });
 ```
 
-Learn more about the [worker lifecycle](/worker/lifecycle).
+Learn more about the [actor lifecycle](/actor/lifecycle).
 
 ## Documentation
 
-Learn more about Rivet Workers:
+Learn more about Rivet Actors:
 
 <CardGroup cols={2}>
-  <Card title="Quickstart" icon="forward" href="/worker/quickstart">
-    Get started with Rivet Workers in minutes
+  <Card title="Quickstart" icon="forward" href="/actor/quickstart">
+    Get started with Rivet Actors in minutes
   </Card>
-  <Card title="State" icon="floppy-disk" href="/worker/state">
-    Understand how worker state is managed, persisted, and accessed.
+  <Card title="State" icon="floppy-disk" href="/actor/state">
+    Understand how actor state is managed, persisted, and accessed.
   </Card>
-  <Card title="Actions" icon="bolt" href="/worker/actions">
-    Define and implement worker actions (RPCs) for client interaction.
+  <Card title="Actions" icon="bolt" href="/actor/actions">
+    Define and implement actor actions (RPCs) for client interaction.
   </Card>
-  <Card title="Events" icon="tower-broadcast" href="/worker/events">
+  <Card title="Events" icon="tower-broadcast" href="/actor/events">
     Real-time communication with events and broadcasts.
   </Card>
-  <Card title="Lifecycle" icon="rotate" href="/worker/lifecycle">
-    Managing the creation, execution, and termination of workers.
+  <Card title="Lifecycle" icon="rotate" href="/actor/lifecycle">
+    Managing the creation, execution, and termination of actors.
   </Card>
-  <Card title="Schedule" icon="clock" href="/worker/schedule">
-    Schedule tasks and alarms with workers for time-based operations.
+  <Card title="Schedule" icon="clock" href="/actor/schedule">
+    Schedule tasks and alarms with actors for time-based operations.
   </Card>
 </CardGroup>

@@ -44,19 +44,19 @@ Rivet provides a fully managed cloud service for running RivetKit, with automati
 
 	<CodeGroup>
 	```sh npm
-	npx rivetkit/cli@latest deploy rivet workers/app.ts
+	npx rivetkit/cli@latest deploy rivet actors/app.ts
 	```
 
 	```sh pnpm
-	pnpm exec rivetkit/cli@latest deploy rivet workers/app.ts
+	pnpm exec rivetkit/cli@latest deploy rivet actors/app.ts
 	```
 
 	```sh yarn
-	yarn rivetkit/cli@latest deploy rivet workers/app.ts
+	yarn rivetkit/cli@latest deploy rivet actors/app.ts
 	```
 
 	```sh bun
-	bunx rivetkit/cli@latest deploy rivet workers/app.ts
+	bunx rivetkit/cli@latest deploy rivet actors/app.ts
 	```
 	</CodeGroup>
 
@@ -76,19 +76,19 @@ Rivet provides a fully managed cloud service for running RivetKit, with automati
 
 ## Accessing Rivet Context
 
-[Rivet's `WorkerContext`](https://rivet.gg/docs/javascript-runtime#the-worker-context-object) can be accessed from `createVars`.
+[Rivet's `ActorContext`](https://rivet.gg/docs/javascript-runtime#the-actor-context-object) can be accessed from `createVars`.
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
-const myWorker = worker({
+const myActor = actor({
   // Load Rivet-specific variables
   createVars: (c, rivet) => ({
     rivet: rivet.ctx,
   }),
   actions: {
     foo: async (c) => {
-      // Access WorkerContext
+      // Access ActorContext
       c.log.info(`Region: ${c.vars.rivet.metadata.region.name}`);
       await c.vars.rivet.kv.get("foo");
     },
@@ -98,7 +98,7 @@ const myWorker = worker({
 
 ## Available Regions
 
-Rivet supports deploying your workers to multiple regions automatically. You can specify region preferences in your Rivet project settings in the Rivet Hub.
+Rivet supports deploying your actors to multiple regions automatically. You can specify region preferences in your Rivet project settings in the Rivet Hub.
 
 See available regions [here](https://rivet.gg/docs/regions).
 

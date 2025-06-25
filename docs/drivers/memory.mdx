@@ -4,7 +4,7 @@ title: Memory
 
 import DriverNote from '/snippets/driver-note.mdx';
 
-The Memory Driver is a simple in-memory implementation designed for development and testing environments. It stores all worker state in memory, which means data is not persisted between application restarts.
+The Memory Driver is a simple in-memory implementation designed for development and testing environments. It stores all actor state in memory, which means data is not persisted between application restarts.
 
 <DriverNote />
 
@@ -56,14 +56,14 @@ The Memory Driver is a simple in-memory implementation designed for development 
 
     ```typescript src/index.ts
     import { serve } from "@rivetkit/nodejs"
-    import { MemoryManagerDriver, MemoryWorkerDriver, MemoryGlobalState } from "@rivetkit/memory";
+    import { MemoryManagerDriver, MemoryActorDriver, MemoryGlobalState } from "@rivetkit/memory";
 
     const memoryState = new MemoryGlobalState();
     serve(app, {
       topology: "standalone",
       drivers: {
         manager: new MemoryManagerDriver(app, memoryState),
-        worker: new MemoryWorkerDriver(memoryState),
+        actor: new MemoryActorDriver(memoryState),
       },
     });
     ```
@@ -104,7 +104,7 @@ The Memory driver has several limitations to be aware of:
 - **No Persistence**: All data is stored in memory and lost when the application restarts
 - **Single Process**: Only works within a single process - not suitable for distributed environments 
 - **Scalability**: Cannot scale beyond a single instance
-- **Coordination**: Limited support for coordinated topology, as workers can only communicate within the same process
+- **Coordination**: Limited support for coordinated topology, as actors can only communicate within the same process
 
 <Tip>
   For production environments or applications requiring persistence and distributed capabilities, consider using the [Rivet](/platforms/rivet) or [Cloudflare Workers](/platforms/cloudflare-workers) instead.

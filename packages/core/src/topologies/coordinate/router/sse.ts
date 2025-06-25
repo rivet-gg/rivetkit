@@ -1,20 +1,20 @@
 import type { GlobalState } from "@/topologies/coordinate/topology";
 import { logger } from "../log";
-import { encodeDataToString, serialize } from "@/worker/protocol/serde";
+import { encodeDataToString, serialize } from  "@/actor/protocol/serde";
 import type { CoordinateDriver } from "../driver";
 import { RelayConn } from "../conn/mod";
-import type { WorkerDriver } from "@/worker/driver";
+import type { ActorDriver } from  "@/actor/driver";
 import { RegistryConfig } from "@/registry/config";
-import { ConnectSseOpts, ConnectSseOutput } from "@/worker/router-endpoints";
+import { ConnectSseOpts, ConnectSseOutput } from  "@/actor/router-endpoints";
 import {  RunConfig } from "@/registry/run-config";
 
 export async function serveSse(
 	registryConfig: RegistryConfig,
 	runConfig: RunConfig,
-	workerDriver: WorkerDriver,
+	actorDriver: ActorDriver,
 	CoordinateDriver: CoordinateDriver,
 	globalState: GlobalState,
-	workerId: string,
+	actorId: string,
 	{ encoding, params, authData }: ConnectSseOpts,
 ): Promise<ConnectSseOutput> {
 	let conn: RelayConn | undefined;
@@ -23,7 +23,7 @@ export async function serveSse(
 			conn = new RelayConn(
 				registryConfig,
 				runConfig,
-				workerDriver,
+				actorDriver,
 				CoordinateDriver,
 				globalState,
 				{
@@ -37,7 +37,7 @@ export async function serveSse(
 						stream.close();
 					},
 				},
-				workerId,
+				actorId,
 				params,
 				authData,
 			);

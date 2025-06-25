@@ -1,6 +1,6 @@
-import { createHandler } from "@rivetkit/cloudflare-workers";
-import { registry } from "./registry";
-
-const { handler, WorkerHandler } = createHandler(registry);
-
-export { handler as default, WorkerHandler };
+// import { createHandler } from "@rivetkit/cloudflare-workers";
+// import { registry } from "./registry";
+//
+// const { handler, ActorHandler } = createHandler(registry);
+//
+// export { handler as default, ActorHandler };

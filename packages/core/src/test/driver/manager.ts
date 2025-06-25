@@ -5,17 +5,17 @@ import type {
 	ManagerDriver,
 	CreateInput,
 } from "@/driver-helpers/mod";
-import { WorkerAlreadyExists } from "@/worker/errors";
+import { ActorAlreadyExists } from  "@/actor/errors";
 import type { TestGlobalState } from "./global-state";
 import * as crypto from "node:crypto";
-import { WorkerOutput } from "@/manager/driver";
+import { ActorOutput } from "@/manager/driver";
 
 export class TestManagerDriver implements ManagerDriver {
 	#state: TestGlobalState;
 
 	// inspector: ManagerInspector = new ManagerInspector(this, {
-	// 	getAllWorkers: () => this.#state.getAllWorkers(),
-	// 	getAllTypesOfWorkers: () => Object.keys(this.registry.config.workers),
+	// 	getAllActors: () => this.#state.getAllActors(),
+	// 	getAllTypesOfActors: () => Object.keys(this.registry.config.actors),
 	// });
 
 	constructor(
@@ -24,48 +24,48 @@ export class TestManagerDriver implements ManagerDriver {
 		this.#state = state;
 	}
 
-	async getForId({ workerId }: GetForIdInput): Promise<WorkerOutput | undefined> {
-		// Validate the worker exists
-		const worker = this.#state.getWorker(workerId);
-		if (!worker) {
+	async getForId({ actorId }: GetForIdInput): Promise<ActorOutput | undefined> {
+		// Validate the actor exists
+		const actor = this.#state.getActor(actorId);
+		if (!actor) {
 			return undefined;
 		}
 
 		return {
-			workerId,
-			name: worker.name,
-			key: worker.key,
+			actorId,
+			name: actor.name,
+			key: actor.key,
 		};
 	}
 
 	async getWithKey({
 		name,
 		key,
-	}: GetWithKeyInput): Promise<WorkerOutput | undefined> {
-		// NOTE: This is a slow implementation that checks each worker individually.
+	}: GetWithKeyInput): Promise<ActorOutput | undefined> {
+		// NOTE: This is a slow implementation that checks each actor individually.
 		// This can be optimized with an index in the future.
 
-		const worker = this.#state.findWorker((worker) => {
-			if (worker.name !== name) {
+		const actor = this.#state.findActor((actor) => {
+			if (actor.name !== name) {
 				return false;
 			}
 
 			// handle empty key
 			if (key === null || key === undefined) {
-				return worker.key === null || worker.key === undefined;
+				return actor.key === null || actor.key === undefined;
 			}
 
 			// handle array
 			if (Array.isArray(key)) {
-				if (!Array.isArray(worker.key)) {
+				if (!Array.isArray(actor.key)) {
 					return false;
 				}
-				if (key.length !== worker.key.length) {
+				if (key.length !== actor.key.length) {
 					return false;
 				}
-				// Check if all elements in key are in worker.key
+				// Check if all elements in key are in actor.key
 				for (let i = 0; i < key.length; i++) {
-					if (key[i] !== worker.key[i]) {
+					if (key[i] !== actor.key[i]) {
 						return false;
 					}
 				}
@@ -74,18 +74,18 @@ export class TestManagerDriver implements ManagerDriver {
 
 			// Handle object
 			if (typeof key === "object" && !Array.isArray(key)) {
-				if (typeof worker.key !== "object" || Array.isArray(worker.key)) {
+				if (typeof actor.key !== "object" || Array.isArray(actor.key)) {
 					return false;
 				}
-				if (worker.key === null) {
+				if (actor.key === null) {
 					return false;
 				}
 
-				// Check if all keys in key are in worker.key
+				// Check if all keys in key are in actor.key
 				const keyObj = key as Record<string, unknown>;
-				const workerKeyObj = worker.key as unknown as Record<string, unknown>;
+				const actorKeyObj = actor.key as unknown as Record<string, unknown>;
 				for (const k in keyObj) {
-					if (!(k in workerKeyObj) || keyObj[k] !== workerKeyObj[k]) {
+					if (!(k in actorKeyObj) || keyObj[k] !== actorKeyObj[k]) {
 						return false;
 					}
 				}
@@ -93,14 +93,14 @@ export class TestManagerDriver implements ManagerDriver {
 			}
 
 			// handle scalar
-			return key === worker.key;
+			return key === actor.key;
 		});
 
-		if (worker) {
+		if (actor) {
 			return {
-				workerId: worker.id,
+				actorId: actor.id,
 				name,
-				key: worker.key,
+				key: actor.key,
 			};
 		}
 
@@ -109,29 +109,29 @@ export class TestManagerDriver implements ManagerDriver {
 
 	async getOrCreateWithKey(
 		input: GetOrCreateWithKeyInput,
-	): Promise<WorkerOutput> {
+	): Promise<ActorOutput> {
 		const getOutput = await this.getWithKey(input);
 		if (getOutput) {
 			return getOutput;
 		} else {
-			return await this.createWorker(input);
+			return await this.createActor(input);
 		}
 	}
 
-	async createWorker({ name, key, input }: CreateInput): Promise<WorkerOutput> {
-		// Check if worker with the same name and key already exists
-		const existingWorker = await this.getWithKey({ name, key });
-		if (existingWorker) {
-			throw new WorkerAlreadyExists(name, key);
+	async createActor({ name, key, input }: CreateInput): Promise<ActorOutput> {
+		// Check if actor with the same name and key already exists
+		const existingActor = await this.getWithKey({ name, key });
+		if (existingActor) {
+			throw new ActorAlreadyExists(name, key);
 		}
 
-		const workerId = crypto.randomUUID();
-		this.#state.createWorker(workerId, name, key, input);
+		const actorId = crypto.randomUUID();
+		this.#state.createActor(actorId, name, key, input);
 
-		// this.inspector.onWorkersChange(this.#state.getAllWorkers());
+		// this.inspector.onActorsChange(this.#state.getAllActors());
 
 		return {
-			workerId,
+			actorId,
 			name,
 			key,
 		};

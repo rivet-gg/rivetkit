@@ -3,7 +3,7 @@ title: Testing
 icon: vial-circle-check
 ---
 
-RivetKit provides a straightforward testing framework to build reliable and maintainable applications. This guide covers how to write effective tests for your worker-based services.
+RivetKit provides a straightforward testing framework to build reliable and maintainable applications. This guide covers how to write effective tests for your actor-based services.
 
 ## Setup
 
@@ -19,33 +19,33 @@ npm test
 
 ## Basic Testing Setup
 
-RivetKit includes a test helper called `setupTest` that configures a test environment with in-memory drivers for your workers. This allows for fast, isolated tests without external dependencies.
+RivetKit includes a test helper called `setupTest` that configures a test environment with in-memory drivers for your actors. This allows for fast, isolated tests without external dependencies.
 
 <CodeGroup>
-```ts tests/my-worker.test.ts
+```ts tests/my-actor.test.ts
 import { test, expect } from "vitest";
 import { setupTest } from "rivetkit/test";
 import { app } from "../src/index";
 
-test("my worker test", async (test) => {
+test("my actor test", async (test) => {
   const { client } = await setupTest(test, app);
   
-  // Now you can interact with your worker through the client
-  const myWorker = await client.myWorker.get();
+  // Now you can interact with your actor through the client
+  const myActor = await client.myActor.get();
   
-  // Test your worker's functionality
-  await myWorker.someAction();
+  // Test your actor's functionality
+  await myActor.someAction();
   
   // Make assertions
-  const result = await myWorker.getState();
+  const result = await myActor.getState();
   expect(result).toEqual("updated");
 });
 ```
 
 ```ts src/index.ts
-import { worker, setup } from "rivetkit";
+import { actor, setup } from "rivetkit";
 
-const myWorker = worker({
+const myActor = actor({
   state: { value: "initial" },
   actions: {
     someAction: (c) => {
@@ -59,16 +59,16 @@ const myWorker = worker({
 });
 
 export const registry = setup({
-  workers: { myWorker }
+  actors: { myActor }
 });
 
 export type Registry = typeof registry;
 ```
 </CodeGroup>
 
-## Testing Worker State
+## Testing Actor State
 
-The test framework uses in-memory drivers that persist state within each test, allowing you to verify that your worker correctly maintains state between operations.
+The test framework uses in-memory drivers that persist state within each test, allowing you to verify that your actor correctly maintains state between operations.
 
 <CodeGroup>
 ```ts tests/counter.test.ts
@@ -76,7 +76,7 @@ import { test, expect } from "vitest";
 import { setupTest } from "rivetkit/test";
 import { app } from "../src/index";
 
-test("worker should persist state", async (test) => {
+test("actor should persist state", async (test) => {
   const { client } = await setupTest(test, app);
   const counter = await client.counter.get();
   
@@ -94,7 +94,7 @@ test("worker should persist state", async (test) => {
 ```ts src/index.ts
 import { setup } from "rivetkit";
 
-const counter = worker({
+const counter = actor({
   state: { count: 0 },
   actions: {
     increment: (c) => {
@@ -109,7 +109,7 @@ const counter = worker({
 });
 
 export const registry = setup({
-  workers: { counter }
+  actors: { counter }
 });
 
 export type Registry = typeof registry;
@@ -118,7 +118,7 @@ export type Registry = typeof registry;
 
 ## Testing Events
 
-For workers that emit events, you can verify events are correctly triggered by subscribing to them:
+For actors that emit events, you can verify events are correctly triggered by subscribing to them:
 
 <CodeGroup>
 ```ts tests/chat-room.test.ts
@@ -126,7 +126,7 @@ import { test, expect, vi } from "vitest";
 import { setupTest } from "rivetkit/test";
 import { app } from "../src/index";
 
-test("worker should emit events", async (test) => {
+test("actor should emit events", async (test) => {
   const { client } = await setupTest(test, app);
   const chatRoom = await client.chatRoom.get();
   
@@ -145,9 +145,9 @@ test("worker should emit events", async (test) => {
 ```
 
 ```ts src/index.ts
-import { worker, setup } from "rivetkit";
+import { actor, setup } from "rivetkit";
 
-export const chatRoom = worker({
+export const chatRoom = actor({
   state: { 
     messages: []
   },
@@ -164,7 +164,7 @@ export const chatRoom = worker({
 
 // Create and export the app
 export const registry = setup({
-  workers: { chatRoom }
+  actors: { chatRoom }
 });
 
 // Export type for client type checking
@@ -199,9 +199,9 @@ test("scheduled tasks should execute", async (test) => {
 ```
 
 ```ts src/index.ts
-import { worker, setup } from "rivetkit";
+import { actor, setup } from "rivetkit";
 
-const scheduler = worker({
+const scheduler = actor({
   state: { 
     tasks: [],
     completedTasks: []
@@ -225,7 +225,7 @@ const scheduler = worker({
 });
 
 export const registry = setup({
-  workers: { scheduler }
+  actors: { scheduler }
 });
 
 export type Registry = typeof registry;
@@ -237,7 +237,7 @@ The `setupTest` function automatically calls `vi.useFakeTimers()`, allowing you 
 ## Best Practices
 
 1. **Isolate tests**: Each test should run independently, avoiding shared state.
-2. **Test edge cases**: Verify how your worker handles invalid inputs, concurrent operations, and error conditions.
+2. **Test edge cases**: Verify how your actor handles invalid inputs, concurrent operations, and error conditions.
 3. **Mock time**: Use Vitest's timer mocks for testing scheduled operations.
 4. **Use realistic data**: Test with data that resembles production scenarios.
 

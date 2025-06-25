@@ -1,4 +1,4 @@
-import { actor } from "@rivetkit/worker";
+import { actor } from "@rivetkit/actor";
 import { drizzle } from "@rivetkit/drizzle";
 import { members, invoices } from "./schema";
 import { authenticate } from "./my-utils";

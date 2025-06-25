@@ -1,27 +1,27 @@
 import type { GlobalState } from "@/topologies/coordinate/topology";
 import type { WSContext } from "hono/ws";
 import { logger } from "../log";
-import { serialize } from "@/worker/protocol/serde";
-import type * as messageToServer from "@/worker/protocol/message/to-server";
-import * as errors from "@/worker/errors";
+import { serialize } from  "@/actor/protocol/serde";
+import type * as messageToServer from  "@/actor/protocol/message/to-server";
+import * as errors from  "@/actor/errors";
 import type { CoordinateDriver } from "../driver";
 import { RelayConn } from "../conn/mod";
 import { publishMessageToLeader } from "../node/message";
-import type { WorkerDriver } from "@/worker/driver";
+import type { ActorDriver } from  "@/actor/driver";
 import type { RegistryConfig } from "@/registry/config";
 import {
 	ConnectWebSocketOpts,
 	ConnectWebSocketOutput,
-} from "@/worker/router-endpoints";
+} from  "@/actor/router-endpoints";
 import { DriverConfig, RunConfig } from "@/registry/run-config";
 
 export async function serveWebSocket(
 	registryConfig: RegistryConfig,
 	runConfig: RunConfig,
-	workerDriver: WorkerDriver,
+	actorDriver: ActorDriver,
 	CoordinateDriver: CoordinateDriver,
 	globalState: GlobalState,
-	workerId: string,
+	actorId: string,
 	{ req, encoding, params, authData }: ConnectWebSocketOpts,
 ): Promise<ConnectWebSocketOutput> {
 	let conn: RelayConn | undefined;
@@ -30,7 +30,7 @@ export async function serveWebSocket(
 			conn = new RelayConn(
 				registryConfig,
 				runConfig,
-				workerDriver,
+				actorDriver,
 				CoordinateDriver,
 				globalState,
 				{
@@ -42,7 +42,7 @@ export async function serveWebSocket(
 						ws.close();
 					},
 				},
-				workerId,
+				actorId,
 				params,
 				authData,
 			);
@@ -58,11 +58,11 @@ export async function serveWebSocket(
 				runConfig,
 				CoordinateDriver,
 				globalState,
-				workerId,
+				actorId,
 				{
 					b: {
 						lm: {
-							ai: workerId,
+							ai: actorId,
 							ci: conn.connId,
 							ct: conn.connToken,
 							m: message,

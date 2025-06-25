@@ -1,19 +1,19 @@
 import * as cbor from "cbor-x";
-import type { Encoding } from "@/worker/protocol/serde";
-import type { WorkerQuery } from "@/manager/protocol/query";
+import type { Encoding } from  "@/actor/protocol/serde";
+import type { ActorQuery } from "@/manager/protocol/query";
 import * as errors from "./errors";
 import { logger } from "./log";
-import type * as wsToServer from "@/worker/protocol/message/to-server";
-import type * as protoHttpResolve from "@/worker/protocol/http/resolve";
+import type * as wsToServer from  "@/actor/protocol/message/to-server";
+import type * as protoHttpResolve from  "@/actor/protocol/http/resolve";
 import { assertUnreachable, httpUserAgent } from "@/utils";
 import {
-	HEADER_WORKER_ID,
-	HEADER_WORKER_QUERY,
+	HEADER_ACTOR_ID,
+	HEADER_ACTOR_QUERY,
 	HEADER_CONN_ID,
 	HEADER_CONN_PARAMS,
 	HEADER_CONN_TOKEN,
 	HEADER_ENCODING,
-} from "@/worker/router-endpoints";
+} from  "@/actor/router-endpoints";
 import type { EventSource } from "eventsource";
 import { importWebSocket } from "@/common/websocket";
 import { importEventSource } from "@/common/eventsource";
@@ -22,8 +22,8 @@ import {
 	serializeWithEncoding,
 	type WebSocketMessage,
 } from "./utils";
-import type { ActionRequest } from "@/worker/protocol/http/action";
-import type { ActionResponse } from "@/worker/protocol/message/to-client";
+import type { ActionRequest } from  "@/actor/protocol/http/action";
+import type { ActionResponse } from  "@/actor/protocol/message/to-client";
 import { ClientDriver } from "./client";
 import { HonoRequest, Context as HonoContext } from "hono";
 import type { WebSocket } from "ws";
@@ -48,26 +48,26 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 	const driver: ClientDriver = {
 		action: async <Args extends Array<unknown> = unknown[], Response = unknown>(
 			_c: HonoContext | undefined,
-			workerQuery: WorkerQuery,
+			actorQuery: ActorQuery,
 			encoding: Encoding,
 			params: unknown,
 			name: string,
 			args: Args,
 			opts: { signal?: AbortSignal } | undefined,
 		): Promise<Response> => {
-			logger().debug("worker handle action", {
+			logger().debug("actor handle action", {
 				name,
 				args,
-				query: workerQuery,
+				query: actorQuery,
 			});
 
 			const responseData = await sendHttpRequest<ActionRequest, ActionResponse>(
 				{
-					url: `${managerEndpoint}/registry/workers/actions/${encodeURIComponent(name)}`,
+					url: `${managerEndpoint}/registry/actors/actions/${encodeURIComponent(name)}`,
 					method: "POST",
 					headers: {
 						[HEADER_ENCODING]: encoding,
-						[HEADER_WORKER_QUERY]: JSON.stringify(workerQuery),
+						[HEADER_ACTOR_QUERY]: JSON.stringify(actorQuery),
 						...(params !== undefined
 							? { [HEADER_CONN_PARAMS]: JSON.stringify(params) }
 							: {}),
@@ -81,24 +81,24 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 			return responseData.o as Response;
 		},
 
-		resolveWorkerId: async (
+		resolveActorId: async (
 			_c: HonoContext | undefined,
-			workerQuery: WorkerQuery,
+			actorQuery: ActorQuery,
 			encodingKind: Encoding,
 			params: unknown,
 		): Promise<string> => {
-			logger().debug("resolving worker ID", { query: workerQuery });
+			logger().debug("resolving actor ID", { query: actorQuery });
 
 			try {
 				const result = await sendHttpRequest<
 					Record<never, never>,
 					protoHttpResolve.ResolveResponse
 				>({
-					url: `${managerEndpoint}/registry/workers/resolve`,
+					url: `${managerEndpoint}/registry/actors/resolve`,
 					method: "POST",
 					headers: {
 						[HEADER_ENCODING]: encodingKind,
-						[HEADER_WORKER_QUERY]: JSON.stringify(workerQuery),
+						[HEADER_ACTOR_QUERY]: JSON.stringify(actorQuery),
 						...(params !== undefined
 							? { [HEADER_CONN_PARAMS]: JSON.stringify(params) }
 							: {}),
@@ -107,15 +107,15 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 					encoding: encodingKind,
 				});
 
-				logger().debug("resolved worker ID", { workerId: result.i });
+				logger().debug("resolved actor ID", { actorId: result.i });
 				return result.i;
 			} catch (error) {
-				logger().error("failed to resolve worker ID", { error });
-				if (error instanceof errors.WorkerError) {
+				logger().error("failed to resolve actor ID", { error });
+				if (error instanceof errors.ActorError) {
 					throw error;
 				} else {
 					throw new errors.InternalError(
-						`Failed to resolve worker ID: ${String(error)}`,
+						`Failed to resolve actor ID: ${String(error)}`,
 					);
 				}
 			}
@@ -123,7 +123,7 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 
 		connectWebSocket: async (
 			_c: HonoContext | undefined,
-			workerQuery: WorkerQuery,
+			actorQuery: ActorQuery,
 			encodingKind: Encoding,
 			params: unknown,
 		): Promise<WebSocket> => {
@@ -132,11 +132,11 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 			const endpoint = managerEndpoint
 				.replace(/^http:/, "ws:")
 				.replace(/^https:/, "wss:");
-			const url = `${endpoint}/registry/workers/connect/websocket`;
+			const url = `${endpoint}/registry/actors/connect/websocket`;
 
 			// Pass sensitive data via protocol
 			const protocol = [
-				`query.${encodeURIComponent(JSON.stringify(workerQuery))}`,
+				`query.${encodeURIComponent(JSON.stringify(actorQuery))}`,
 				`encoding.${encodingKind}`,
 			];
 			if (params)
@@ -166,13 +166,13 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 
 		connectSse: async (
 			_c: HonoContext | undefined,
-			workerQuery: WorkerQuery,
+			actorQuery: ActorQuery,
 			encodingKind: Encoding,
 			params: unknown,
 		): Promise<EventSource> => {
 			const { EventSource } = await dynamicImports;
 
-			const url = `${managerEndpoint}/registry/workers/connect/sse`;
+			const url = `${managerEndpoint}/registry/actors/connect/sse`;
 
 			logger().debug("connecting to sse", { url });
 			const eventSource = new EventSource(url, {
@@ -183,7 +183,7 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 							...init?.headers,
 							"User-Agent": httpUserAgent(),
 							[HEADER_ENCODING]: encodingKind,
-							[HEADER_WORKER_QUERY]: JSON.stringify(workerQuery),
+							[HEADER_ACTOR_QUERY]: JSON.stringify(actorQuery),
 							...(params !== undefined
 								? { [HEADER_CONN_PARAMS]: JSON.stringify(params) }
 								: {}),
@@ -197,7 +197,7 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 
 		sendHttpMessage: async (
 			_c: HonoContext | undefined,
-			workerId: string,
+			actorId: string,
 			encoding: Encoding,
 			connectionId: string,
 			connectionToken: string,
@@ -206,12 +206,12 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 			// TODO: Implement ordered messages, this is not guaranteed order. Needs to use an index in order to ensure we can pipeline requests efficiently.
 			// TODO: Validate that we're using HTTP/3 whenever possible for pipelining requests
 			const messageSerialized = serializeWithEncoding(encoding, message);
-			const res = await fetch(`${managerEndpoint}/registry/workers/message`, {
+			const res = await fetch(`${managerEndpoint}/registry/actors/message`, {
 				method: "POST",
 				headers: {
 					"User-Agent": httpUserAgent(),
 					[HEADER_ENCODING]: encoding,
-					[HEADER_WORKER_ID]: workerId,
+					[HEADER_ACTOR_ID]: actorId,
 					[HEADER_CONN_ID]: connectionId,
 					[HEADER_CONN_TOKEN]: connectionToken,
 				},

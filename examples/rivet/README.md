@@ -43,7 +43,7 @@ This will start the RivetKit server locally at http://localhost:6420.
 
 ### Testing the Client
 
-In a separate terminal, run the client script to interact with your workers:
+In a separate terminal, run the client script to interact with your actors:
 
 ```sh
 npm run client
@@ -57,7 +57,7 @@ Deploy to Rivet Cloud:
 rivet deploy
 ```
 
-Your RivetKit workers will be deployed as Rivet actors with automatic scaling and management.
+Your RivetKit actors will be deployed as Rivet actors with automatic scaling and management.
 
 ## License
 

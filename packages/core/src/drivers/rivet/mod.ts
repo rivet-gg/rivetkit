@@ -8,8 +8,8 @@ export function createRivetManagerDriver(): DriverConfig {
 		topology: "partition",
 		manager: new RivetManagerDriver(clientConfig),
 		// We don't have access to `ActorContext`, so we can't construct this
-		worker: undefined as any,
+		actor: undefined as any,
 	};
 }
 
-export { createWorkerHandler } from "./worker";
+export { createActorHandler } from  "./actor";

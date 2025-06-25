@@ -1,6 +1,6 @@
 import { test, expect } from "vitest";
-import { setupTest } from "@rivetkit/worker/test";
-import { registry } from "../src/workers/registry";
+import { setupTest } from "@rivetkit/actor/test";
+import { registry } from "../src/actors/registry";
 
 test("chat room should handle messages", async (test) => {
 	const { client } = await setupTest(test, registry);

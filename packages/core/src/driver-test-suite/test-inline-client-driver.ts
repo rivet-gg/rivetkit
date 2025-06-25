@@ -1,7 +1,7 @@
 import { ClientDriver } from "@/client/client";
-import { type Encoding } from "@/worker/protocol/serde";
-import type * as wsToServer from "@/worker/protocol/message/to-server";
-import type { WorkerQuery } from "@/manager/protocol/query";
+import { type Encoding } from  "@/actor/protocol/serde";
+import type * as wsToServer from  "@/actor/protocol/message/to-server";
+import type { ActorQuery } from "@/manager/protocol/query";
 import { Context as HonoContext } from "hono";
 import type { EventSource } from "eventsource";
 import { Transport } from "@/client/mod";
@@ -10,9 +10,9 @@ import {
 	TestInlineDriverCallRequest,
 	TestInlineDriverCallResponse,
 } from "@/manager/router";
-import { assertUnreachable } from "@/worker/utils";
+import { assertUnreachable } from  "@/actor/utils";
 import * as cbor from "cbor-x";
-import { WorkerError as ClientWorkerError } from "@/client/errors";
+import { ActorError as ClientActorError } from "@/client/errors";
 import type { WebSocket } from "ws";
 import { importWebSocket } from "@/common/websocket";
 
@@ -26,7 +26,7 @@ export function createTestInlineClientDriver(
 	return {
 		action: async <Args extends Array<unknown> = unknown[], Response = unknown>(
 			c: HonoContext | undefined,
-			workerQuery: WorkerQuery,
+			actorQuery: ActorQuery,
 			encoding: Encoding,
 			params: unknown,
 			name: string,
@@ -37,13 +37,13 @@ export function createTestInlineClientDriver(
 				encoding,
 				transport,
 				"action",
-				[undefined, workerQuery, encoding, params, name, args],
+				[undefined, actorQuery, encoding, params, name, args],
 			);
 		},
 
-		resolveWorkerId: async (
+		resolveActorId: async (
 			c: HonoContext | undefined,
-			workerQuery: WorkerQuery,
+			actorQuery: ActorQuery,
 			encodingKind: Encoding,
 			params: unknown,
 		): Promise<string> => {
@@ -51,21 +51,21 @@ export function createTestInlineClientDriver(
 				endpoint,
 				encodingKind,
 				transport,
-				"resolveWorkerId",
-				[undefined, workerQuery, encodingKind, params],
+				"resolveActorId",
+				[undefined, actorQuery, encodingKind, params],
 			);
 		},
 
 		connectWebSocket: async (
 			c: HonoContext | undefined,
-			workerQuery: WorkerQuery,
+			actorQuery: ActorQuery,
 			encodingKind: Encoding,
 			params: unknown,
 		): Promise<WebSocket> => {
 			const WebSocket = await importWebSocket();
 
 			logger().info("creating websocket connection via test inline driver", {
-				workerQuery,
+				actorQuery,
 				encodingKind,
 			});
 
@@ -73,7 +73,7 @@ export function createTestInlineClientDriver(
 			const wsUrl = new URL(
 				`${endpoint}/.test/inline-driver/connect-websocket`,
 			);
-			wsUrl.searchParams.set("workerQuery", JSON.stringify(workerQuery));
+			wsUrl.searchParams.set("actorQuery", JSON.stringify(actorQuery));
 			if (params !== undefined)
 				wsUrl.searchParams.set("params", JSON.stringify(params));
 			wsUrl.searchParams.set("encodingKind", encodingKind);
@@ -94,12 +94,12 @@ export function createTestInlineClientDriver(
 
 		connectSse: async (
 			c: HonoContext | undefined,
-			workerQuery: WorkerQuery,
+			actorQuery: ActorQuery,
 			encodingKind: Encoding,
 			params: unknown,
 		): Promise<EventSource> => {
 			logger().info("creating sse connection via test inline driver", {
-				workerQuery,
+				actorQuery,
 				encodingKind,
 				params,
 			});
@@ -111,7 +111,7 @@ export function createTestInlineClientDriver(
 				(EventSourceImport as any).default || EventSourceImport;
 
 			// Encode parameters for the URL
-			const workerQueryParam = encodeURIComponent(JSON.stringify(workerQuery));
+			const actorQueryParam = encodeURIComponent(JSON.stringify(actorQuery));
 			const encodingParam = encodeURIComponent(encodingKind);
 			const paramsParam = params
 				? encodeURIComponent(JSON.stringify(params))
@@ -119,7 +119,7 @@ export function createTestInlineClientDriver(
 
 			// Create SSE connection URL
 			const sseUrl = new URL(`${endpoint}/.test/inline-driver/connect-sse`);
-			sseUrl.searchParams.set("workerQueryRaw", workerQueryParam);
+			sseUrl.searchParams.set("actorQueryRaw", actorQueryParam);
 			sseUrl.searchParams.set("encodingKind", encodingParam);
 			if (paramsParam) {
 				sseUrl.searchParams.set("params", paramsParam);
@@ -155,14 +155,14 @@ export function createTestInlineClientDriver(
 
 		sendHttpMessage: async (
 			c: HonoContext | undefined,
-			workerId: string,
+			actorId: string,
 			encoding: Encoding,
 			connectionId: string,
 			connectionToken: string,
 			message: wsToServer.ToServer,
 		): Promise<Response> => {
 			logger().info("sending http message via test inline driver", {
-				workerId,
+				actorId,
 				encoding,
 				connectionId,
 				transport,
@@ -179,7 +179,7 @@ export function createTestInlineClientDriver(
 					method: "sendHttpMessage",
 					args: [
 						undefined,
-						workerId,
+						actorId,
 						encoding,
 						connectionId,
 						connectionToken,
@@ -244,7 +244,7 @@ async function makeInlineRequest<T>(
 	if ("ok" in callResponse) {
 		return callResponse.ok;
 	} else if ("err" in callResponse) {
-		throw new ClientWorkerError(
+		throw new ClientActorError(
 			callResponse.err.code,
 			callResponse.err.message,
 			callResponse.err.metadata,

@@ -1,19 +1,19 @@
-import type { AnyWorkerInstance } from "@/worker/instance";
-import { AnyConn, Conn } from "@/worker/connection";
+import type { AnyActorInstance } from  "@/actor/instance";
+import { AnyConn, Conn } from  "@/actor/connection";
 import { logger } from "./log";
-import { CachedSerializer, Encoding } from "@/worker/protocol/serde";
-import { ConnDriver } from "@/worker/driver";
-import * as messageToClient from "@/worker/protocol/message/to-client";
-import { encodeDataToString } from "@/worker/protocol/serde";
+import { CachedSerializer, Encoding } from  "@/actor/protocol/serde";
+import { ConnDriver } from  "@/actor/driver";
+import * as messageToClient from  "@/actor/protocol/message/to-client";
+import { encodeDataToString } from  "@/actor/protocol/serde";
 import { WSContext } from "hono/ws";
 import { SSEStreamingApi } from "hono/streaming";
 import type { WebSocket } from "ws";
 
-// This state is different than `PersistedConn` state since the connection-specific state is persisted & must be serializable. This is also part of the connection driver, not part of the core worker.
+// This state is different than `PersistedConn` state since the connection-specific state is persisted & must be serializable. This is also part of the connection driver, not part of the core actor.
 //
 // This holds the actual connections, which are not serializable.
 //
-// This is scoped to each worker. Do not share between multiple workers.
+// This is scoped to each actor. Do not share between multiple actors.
 export class GenericConnGlobalState {
 	websockets = new Map<string, WSContext>();
 	sseStreams = new Map<string, SSEStreamingApi>();
@@ -44,7 +44,7 @@ export function createGenericWebSocketDriver(
 ): ConnDriver<GenericWebSocketDriverState> {
 	return {
 		sendMessage: (
-			_worker: AnyWorkerInstance,
+			_actor: AnyActorInstance,
 			conn: AnyConn,
 			state: GenericWebSocketDriverState,
 			message: CachedSerializer<messageToClient.ToClient>,
@@ -58,7 +58,7 @@ export function createGenericWebSocketDriver(
 		},
 
 		disconnect: async (
-			_worker: AnyWorkerInstance,
+			_actor: AnyActorInstance,
 			conn: AnyConn,
 			_state: GenericWebSocketDriverState,
 			reason?: string,
@@ -97,7 +97,7 @@ export interface GenericSseDriverState {
 export function createGenericSseDriver(globalState: GenericConnGlobalState) {
 	return {
 		sendMessage: (
-			_worker: AnyWorkerInstance,
+			_actor: AnyActorInstance,
 			conn: AnyConn,
 			state: GenericSseDriverState,
 			message: CachedSerializer<messageToClient.ToClient>,
@@ -115,7 +115,7 @@ export function createGenericSseDriver(globalState: GenericConnGlobalState) {
 		},
 
 		disconnect: async (
-			_worker: AnyWorkerInstance,
+			_actor: AnyActorInstance,
 			conn: AnyConn,
 			_state: GenericSseDriverState,
 			_reason?: string,

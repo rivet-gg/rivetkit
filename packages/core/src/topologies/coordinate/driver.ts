@@ -1,19 +1,19 @@
-import type { WorkerKey } from "@/common/utils";
+import type { ActorKey } from "@/common/utils";
 
 export type NodeMessageCallback = (message: string) => void;
 
-export interface GetWorkerLeaderOutput {
+export interface GetActorLeaderOutput {
 	/** Undefined if not initialized. */
-	worker?: {
+	actor?: {
 		leaderNodeId?: string;
 	};
 }
 
-export interface StartWorkerAndAcquireLeaseOutput {
+export interface StartActorAndAcquireLeaseOutput {
 	/** Undefined if not initialized. */
-	worker?: {
+	actor?: {
 		name?: string;
-		key?: WorkerKey;
+		key?: ActorKey;
 		leaderNodeId?: string;
 	};
 }
@@ -34,22 +34,22 @@ export interface CoordinateDriver {
 	): Promise<void>;
 	publishToNode(targetNodeId: string, message: string): Promise<void>;
 
-	// MARK: Worker lifecycle
-	getWorkerLeader(workerId: string): Promise<GetWorkerLeaderOutput>;
-	startWorkerAndAcquireLease(
-		workerId: string,
+	// MARK: Actor lifecycle
+	getActorLeader(actorId: string): Promise<GetActorLeaderOutput>;
+	startActorAndAcquireLease(
+		actorId: string,
 		selfNodeId: string,
 		leaseDuration: number,
-	): Promise<StartWorkerAndAcquireLeaseOutput>;
+	): Promise<StartActorAndAcquireLeaseOutput>;
 	extendLease(
-		workerId: string,
+		actorId: string,
 		selfNodeId: string,
 		leaseDuration: number,
 	): Promise<ExtendLeaseOutput>;
 	attemptAcquireLease(
-		workerId: string,
+		actorId: string,
 		selfNodeId: string,
 		leaseDuration: number,
 	): Promise<AttemptAcquireLease>;
-	releaseLease(workerId: string, nodeId: string): Promise<void>;
+	releaseLease(actorId: string, nodeId: string): Promise<void>;
 }

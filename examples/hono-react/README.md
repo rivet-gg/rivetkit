@@ -26,7 +26,7 @@ npm install
 npm run dev
 ```
 
-This will start both the Hono backend server and Vite React frontend. Open your browser to http://localhost:5173 to see the React app connected to RivetKit workers.
+This will start both the Hono backend server and Vite React frontend. Open your browser to http://localhost:5173 to see the React app connected to RivetKit actors.
 
 ## License
 

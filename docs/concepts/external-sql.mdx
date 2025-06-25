@@ -3,9 +3,9 @@ title: External SQL Database
 icon: database
 ---
 
-While workers can serve as a complete database solution, they can also complement your existing databases. For example, you might use workers to handle frequently-changing data that needs real-time access, while keeping less frequently accessed data in your traditional database.
+While actors can serve as a complete database solution, they can also complement your existing databases. For example, you might use actors to handle frequently-changing data that needs real-time access, while keeping less frequently accessed data in your traditional database.
 
-Workers can be used with common SQL databases, such as PostgreSQL and MySQL.
+Actors can be used with common SQL databases, such as PostgreSQL and MySQL.
 
 ## Libraries
 
@@ -35,8 +35,8 @@ There are several options for places to host your SQL database:
 
 Here's a basic example of how you might set up a connection to a PostgreSQL database using the `pg` library:
 
-```typescript worker.ts
-import { worker } from "rivetkit";
+```typescript actor.ts
+import { actor } from "rivetkit";
 import { Pool } from "pg";
 
 // Create a database connection pool
@@ -48,8 +48,8 @@ const pool = new Pool({
   port: 5432,
 });
 
-// Create the worker
-const databaseWorker = worker({
+// Create the actor
+const databaseActor = actor({
   state: {
     // Local state if needed
     lastQueryTime: 0
@@ -57,7 +57,7 @@ const databaseWorker = worker({
   
   // Initialize any resources
   onStart: (c) => {
-    console.log("Database worker started");
+    console.log("Database actor started");
   },
   
   // Clean up resources if needed
@@ -98,15 +98,15 @@ const databaseWorker = worker({
   }
 });
 
-export default databaseWorker;
+export default databaseActor;
 ```
 
 ## With Drizzle ORM
 
 Here's an example using Drizzle ORM for more type-safe database operations:
 
-```typescript worker.ts
-import { worker } from "rivetkit";
+```typescript actor.ts
+import { actor } from "rivetkit";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { Pool } from "pg";
@@ -127,10 +127,10 @@ const pool = new Pool({
 // Initialize Drizzle with the pool
 const db = drizzle(pool);
 
-// Create the worker
-const userWorker = worker({
+// Create the actor
+const userActor = actor({
   state: {
-    // Worker state (frequently accessed data can be cached here)
+    // Actor state (frequently accessed data can be cached here)
     userCache: {}
   },
   
@@ -169,5 +169,5 @@ const userWorker = worker({
   }
 });
 
-export default userWorker;
+export default userActor;
 ```

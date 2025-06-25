@@ -1,7 +1,7 @@
 1. Create a new KV namespace with:
 
 	```sh
-	npx wrangler kv namespace create WORKER_KV
+	npx wrangler kv namespace create ACTOR_KV
 	```
 
 2. After creating the KV namespace, you will receive an ID. Update your `wrangler.json` file by replacing the placeholder in the `kv_namespaces` section with this ID. It should look like this:
@@ -10,7 +10,7 @@
 	{
 		"kv_namespaces": [
 			{
-				"binding": "WORKER_KV",
+				"binding": "ACTOR_KV",
 				"id": "your-namespace-id-here"  // Replace with your actual ID
 			}
 		]
@@ -30,7 +30,7 @@
 	import { createClient } from "rivetkit/client";
 	import type { App } from "../src/index";
 
-	const client = createClient<App>("https://your-worker-subdomain.workers.dev");
+	const client = createClient<App>("https://your-actor-subdomain.actors.dev");
 	```
 
-	Ensure you replace `your-worker-subdomain` with the actual subdomain assigned to your worker.
+	Ensure you replace `your-actor-subdomain` with the actual subdomain assigned to your actor.

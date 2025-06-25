@@ -3,7 +3,7 @@ title: Schedule
 icon: clock
 ---
 
-Scheduling is used to trigger events in the future. The worker scheduler is like `setTimeout`, except the timeout will persist even if the worker restarts, upgrades, or crashes.
+Scheduling is used to trigger events in the future. The actor scheduler is like `setTimeout`, except the timeout will persist even if the actor restarts, upgrades, or crashes.
 
 ## Use Cases
 
@@ -13,7 +13,7 @@ Scheduling is helpful for long-running timeouts like month-long billing periods 
 
 ### `c.schedule.after(duration, fn, ...args)`
 
-Schedules a function to be executed after a specified duration. This function persists across worker restarts, upgrades, or crashes.
+Schedules a function to be executed after a specified duration. This function persists across actor restarts, upgrades, or crashes.
 
 Parameters:
 
@@ -23,7 +23,7 @@ Parameters:
 
 ### `c.schedule.at(timestamp, fn, ...args)`
 
-Schedules a function to be executed at a specific timestamp. This function persists across worker restarts, upgrades, or crashes.
+Schedules a function to be executed at a specific timestamp. This function persists across actor restarts, upgrades, or crashes.
 
 Parameters:
 
@@ -38,9 +38,9 @@ Currently, scheduling can only trigger public actions. If the scheduled action i
 ## Full Example
 
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
-const reminderService = worker({
+const reminderService = actor({
   state: {
     reminders: {}
   },

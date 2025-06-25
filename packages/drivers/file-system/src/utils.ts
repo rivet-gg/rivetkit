@@ -37,10 +37,10 @@ export function getStoragePath(customPath?: string): string {
 }
 
 /**
- * Get worker's storage directory
+ * Get actor's storage directory
  */
-export function getWorkerStoragePath(baseDir: string, workerId: string): string {
-	return path.join(baseDir, "workers", workerId);
+export function getActorStoragePath(baseDir: string, actorId: string): string {
+	return path.join(baseDir, "actors", actorId);
 }
 
 /**

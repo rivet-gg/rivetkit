@@ -1,9 +1,9 @@
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 import * as Y from 'yjs';
 import { encodeStateAsUpdate, applyUpdate } from 'yjs';
 
-const yjsDocument = worker({
+const yjsDocument = actor({
   // State: just the serialized Yjs document data
   state: {
     docData: "", // Base64 encoded Yjs document
@@ -15,7 +15,7 @@ const yjsDocument = worker({
     doc: new Y.Doc()
   }),
   
-  // Initialize document from state when worker starts
+  // Initialize document from state when actor starts
   onStart: (c) => {
     if (c.state.docData) {
       const binary = atob(c.state.docData);

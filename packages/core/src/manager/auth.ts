@@ -1,17 +1,17 @@
-import * as errors from "@/worker/errors";
+import * as errors from  "@/actor/errors";
 import type { Context as HonoContext } from "hono";
-import type { WorkerQuery } from "./protocol/query";
-import type { AuthIntent } from "@/worker/config";
-import type { AnyWorkerDefinition } from "@/worker/definition";
+import type { ActorQuery } from "./protocol/query";
+import type { AuthIntent } from  "@/actor/config";
+import type { AnyActorDefinition } from  "@/actor/definition";
 import type { RegistryConfig } from "@/registry/config";
 import { ManagerDriver } from "./driver";
 import { stringifyError } from "@/utils";
 import { logger } from "./log";
 
 /**
- * Get authentication intents from a worker query
+ * Get authentication intents from a actor query
  */
-export function getIntentsFromQuery(query: WorkerQuery): Set<AuthIntent> {
+export function getIntentsFromQuery(query: ActorQuery): Set<AuthIntent> {
 	const intents = new Set<AuthIntent>();
 
 	if ("getForId" in query) {
@@ -29,20 +29,20 @@ export function getIntentsFromQuery(query: WorkerQuery): Set<AuthIntent> {
 }
 
 /**
- * Get worker name from a worker query
+ * Get actor name from a actor query
  */
-export async function getWorkerNameFromQuery(
+export async function getActorNameFromQuery(
 	c: HonoContext,
 	driver: ManagerDriver,
-	query: WorkerQuery,
+	query: ActorQuery,
 ): Promise<string> {
 	if ("getForId" in query) {
-		// TODO: This will have a duplicate call to getForId between this and queryWorker
+		// TODO: This will have a duplicate call to getForId between this and queryActor
 		const output = await driver.getForId({
 			c,
-			workerId: query.getForId.workerId,
+			actorId: query.getForId.actorId,
 		});
-		if (!output) throw new errors.WorkerNotFound(query.getForId.workerId);
+		if (!output) throw new errors.ActorNotFound(query.getForId.actorId);
 		return output.name;
 	} else if ("getForKey" in query) {
 		return query.getForKey.name;
@@ -56,22 +56,22 @@ export async function getWorkerNameFromQuery(
 }
 
 /**
- * Authenticate a request using the worker's onAuth function
+ * Authenticate a request using the actor's onAuth function
  */
 export async function authenticateRequest(
 	c: HonoContext,
-	workerDefinition: AnyWorkerDefinition,
+	actorDefinition: AnyActorDefinition,
 	intents: Set<AuthIntent>,
 	params: unknown,
 ): Promise<unknown> {
-	if (!workerDefinition.config.onAuth) {
+	if (!actorDefinition.config.onAuth) {
 		throw new errors.Forbidden(
-			"Worker requires authentication but no onAuth handler is defined",
+			"Actor requires authentication but no onAuth handler is defined",
 		);
 	}
 
 	try {
-		const dataOrPromise = workerDefinition.config.onAuth({
+		const dataOrPromise = actorDefinition.config.onAuth({
 			req: c.req.raw,
 			intents,
 			params,
@@ -83,7 +83,7 @@ export async function authenticateRequest(
 		}
 	} catch (error) {
 		logger().info("authentication error", { error: stringifyError(error) });
-		if (errors.WorkerError.isWorkerError(error)) {
+		if (errors.ActorError.isActorError(error)) {
 			throw error;
 		}
 		throw new errors.Forbidden("Authentication failed");
@@ -97,7 +97,7 @@ export async function authenticateEndpoint(
 	c: HonoContext,
 	driver: ManagerDriver,
 	registryConfig: RegistryConfig,
-	query: WorkerQuery,
+	query: ActorQuery,
 	additionalIntents: AuthIntent[],
 	params: unknown,
 ): Promise<unknown> {
@@ -109,13 +109,13 @@ export async function authenticateEndpoint(
 		intents.add(intent);
 	}
 
-	// Get worker definition
-	const workerName = await getWorkerNameFromQuery(c, driver, query);
-	const workerDefinition = registryConfig.workers[workerName];
-	if (!workerDefinition) {
-		throw new errors.WorkerNotFound(workerName);
+	// Get actor definition
+	const actorName = await getActorNameFromQuery(c, driver, query);
+	const actorDefinition = registryConfig.actors[actorName];
+	if (!actorDefinition) {
+		throw new errors.ActorNotFound(actorName);
 	}
 
 	// Authenticate
-	return await authenticateRequest(c, workerDefinition, intents, params);
+	return await authenticateRequest(c, actorDefinition, intents, params);
 }

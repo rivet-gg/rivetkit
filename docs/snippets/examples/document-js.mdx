@@ -1,9 +1,9 @@
 ```typescript
-import { worker } from "rivetkit";
+import { actor } from "rivetkit";
 
 export type Cursor = { x: number, y: number, userId: string };
 
-const document = worker({
+const document = actor({
   state: {
     text: "",
     cursors: {} as Record<string, Cursor>,

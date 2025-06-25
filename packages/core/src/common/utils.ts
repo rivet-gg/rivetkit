@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
-import * as errors from "@/worker/errors";
+import * as errors from  "@/actor/errors";
 import type { Logger } from "./log";
 import { getEnvUniversal } from "@/utils";
 
@@ -9,9 +9,9 @@ import { getEnvUniversal } from "@/utils";
 // Cloudflare's maximum key size is 512 bytes, so we need to be significantly smaller
 export const MAX_KEY_SIZE = 128;
 
-export const WorkerKeySchema = z.array(z.string().max(MAX_KEY_SIZE));
+export const ActorKeySchema = z.array(z.string().max(MAX_KEY_SIZE));
 
-export type WorkerKey = z.infer<typeof WorkerKeySchema>;
+export type ActorKey = z.infer<typeof ActorKeySchema>;
 
 export interface RivetEnvironment {
 	project?: string;
@@ -117,7 +117,7 @@ export function isJsonSerializable(
 }
 
 export interface DeconstructedError {
-	__type: "WorkerError";
+	__type: "ActorError";
 	statusCode: ContentfulStatusCode;
 	public: boolean;
 	code: string;
@@ -140,7 +140,7 @@ export function deconstructError(
 	let code: string;
 	let message: string;
 	let metadata: unknown = undefined;
-	if (errors.WorkerError.isWorkerError(error) && error.public) {
+	if (errors.ActorError.isActorError(error) && error.public) {
 		statusCode = 400;
 		public_ = true;
 		code = error.code;
@@ -153,7 +153,7 @@ export function deconstructError(
 			...extraLog,
 		});
 	} else if (exposeInternalError) {
-		if (errors.WorkerError.isWorkerError(error)) {
+		if (errors.ActorError.isActorError(error)) {
 			statusCode = 500;
 			public_ = false;
 			code = error.code;
@@ -183,7 +183,7 @@ export function deconstructError(
 		code = errors.INTERNAL_ERROR_CODE;
 		message = errors.INTERNAL_ERROR_DESCRIPTION;
 		metadata = {
-			//url: `https://hub.rivet.gg/projects/${workerMetadata.project.slug}/environments/${workerMetadata.environment.slug}/workers?workerId=${workerMetadata.worker.id}`,
+			//url: `https://hub.rivet.gg/projects/${actorMetadata.project.slug}/environments/${actorMetadata.environment.slug}/actors?actorId=${actorMetadata.actor.id}`,
 		} satisfies errors.InternalErrorMetadata;
 
 		logger.warn("internal error", {
@@ -194,7 +194,7 @@ export function deconstructError(
 	}
 
 	return {
-		__type: "WorkerError",
+		__type: "ActorError",
 		statusCode,
 		public: public_,
 		code,

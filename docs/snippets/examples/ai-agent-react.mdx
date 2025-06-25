@@ -2,41 +2,41 @@
 import { createClient } from "rivetkit/client";
 import { createReactRivetKit } from "@rivetkit/react";
 import { useState, useEffect } from "react";
-import type { App } from "../workers/app";
-import type { Message } from "./worker";
+import type { App } from "../actors/app";
+import type { Message } from "./actor";
 
 const client = createClient<App>("http://localhost:6420");
-const { useWorker, useWorkerEvent } = createReactRivetKit(client);
+const { useActor, useActorEvent } = createReactRivetKit(client);
 
 export function AIAssistant() {
-  const [{ worker }] = useWorker("aiAgent", { tags: { conversationId: "default" } });
+  const [{ actor }] = useActor("aiAgent", { tags: { conversationId: "default" } });
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   // Load initial messages
   useEffect(() => {
-    if (worker) {
-      worker.getMessages().then(setMessages);
+    if (actor) {
+      actor.getMessages().then(setMessages);
     }
-  }, [worker]);
+  }, [actor]);
 
   // Listen for real-time messages
-  useWorkerEvent({ worker, event: "messageReceived" }, (message) => {
+  useActorEvent({ actor, event: "messageReceived" }, (message) => {
     setMessages(prev => [...prev, message as Message]);
     setIsLoading(false);
   });
 
   const handleSendMessage = async () => {
-    if (worker && input.trim()) {
+    if (actor && input.trim()) {
       setIsLoading(true);
       
       // Add user message to UI immediately
       const userMessage = { role: "user", content: input } as Message;
       setMessages(prev => [...prev, userMessage]);
       
-      // Send to worker (AI response will come through the event)
-      await worker.sendMessage(input);
+      // Send to actor (AI response will come through the event)
+      await actor.sendMessage(input);
       setInput("");
     }
   };
