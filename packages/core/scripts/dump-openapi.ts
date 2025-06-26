@@ -6,10 +6,8 @@ import { createManagerRouter } from "@/manager/router";
 import { type RegistryConfig, RegistryConfigSchema, setup } from "@/mod";
 import { type RunConfig, RunConfigSchema } from "@/registry/run-config";
 import {
-	TestActorDriver,
-	TestGlobalState,
-	TestManagerDriver,
-} from "@/test/driver/mod";
+    createMemoryDriver,
+} from "@/drivers/memory/mod";
 import { VERSION } from "@/utils";
 
 function main() {
@@ -18,13 +16,8 @@ function main() {
 	});
 	const registry = setup(registryConfig);
 
-	const memoryState = new TestGlobalState();
 	const driverConfig: RunConfig = RunConfigSchema.parse({
-		driver: {
-			topology: "standalone",
-			actor: new TestActorDriver(memoryState),
-			manager: new TestManagerDriver(memoryState),
-		},
+		driver: createMemoryDriver(),
 		getUpgradeWebSocket: () => () => unimplemented(),
 	});
 

@@ -9,12 +9,8 @@ import { type NodeWebSocket, createNodeWebSocket } from "@hono/node-ws";
 import type { Hono } from "hono";
 import { type TestContext, vi } from "vitest";
 import { ConfigSchema, type InputConfig } from "./config";
-import {
-	TestActorDriver,
-	TestGlobalState,
-	TestManagerDriver,
-} from "./driver/mod";
 import { logger } from "./log";
+import { createMemoryDriver } from "@/drivers/memory/mod";
 
 function createRouter(
 	registry: Registry<any>,
@@ -27,12 +23,7 @@ function createRouter(
 
 	// Configure default configuration
 	if (!config.driver) {
-		const memoryState = new TestGlobalState();
-		config.driver = {
-			topology: "standalone",
-			manager: new TestManagerDriver(memoryState),
-			actor: new TestActorDriver(memoryState),
-		};
+		config.driver = createMemoryDriver();
 	}
 
 	// Setup WebSocket routing for Node
