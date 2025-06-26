@@ -1,8 +1,8 @@
-import { registry } from "./registry";
+import { createServer } from "@rivetkit/cloudflare-workers";
 import { Hono } from "hono";
+import { registry } from "./registry";
 
-// Start RivetKit
-const { client, serve } = registry.createServer();
+const { client, createHandler } = createServer(registry);
 
 // Setup router
 const app = new Hono();
@@ -17,4 +17,6 @@ app.post("/increment/:name", async (c) => {
 	return c.text(`New Count: ${newCount}`);
 });
 
-serve(app);
+const { handler, ActorHandler } = createHandler(app);
+
+export { handler as default, ActorHandler };

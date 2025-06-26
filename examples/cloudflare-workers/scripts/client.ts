@@ -1,8 +1,10 @@
 import { createClient } from "@rivetkit/actor/client";
-import type { Registry } from "../src/registry.js";
+import type { registry } from "../src/registry";
 
 // Create RivetKit client
-const client = createClient<Registry>("http://localhost:8787");
+const client = createClient<typeof registry>(
+	process.env.RIVETKIT_ENDPOINT ?? "http://localhost:8787",
+);
 
 async function main() {
 	console.log("🚀 Cloudflare Workers Client Demo");

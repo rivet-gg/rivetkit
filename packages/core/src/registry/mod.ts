@@ -49,7 +49,7 @@ export class Registry<A extends RegistryActors> {
 	/**
 	 * Runs the registry for a server.
 	 */
-	public server(inputConfig?: RunConfigInput): ServerOutput<this> {
+	public createServer(inputConfig?: RunConfigInput): ServerOutput<this> {
 		const config = RunConfigSchema.parse(inputConfig);
 
 		// Setup topology
@@ -86,14 +86,14 @@ export class Registry<A extends RegistryActors> {
 	 * Runs the registry as a standalone server.
 	 */
 	public async runServer(inputConfig?: RunConfigInput) {
-		const { serve } = this.server(inputConfig);
+		const { serve } = this.createServer(inputConfig);
 		serve();
 	}
 
 	/**
-	 * Runs the registry for a actor node.
+	 * Creates a worker for the registry.
 	 */
-	public actorNode(inputConfig?: RunConfigInput): ActorNodeOutput {
+	public createWorker(inputConfig?: RunConfigInput): ActorNodeOutput {
 		const config = RunConfigSchema.parse(inputConfig);
 
 		// Setup topology
@@ -117,10 +117,10 @@ export class Registry<A extends RegistryActors> {
 	}
 
 	/**
-	 * Runs the standalone actor node.
+	 * Runs the standalone worker.
 	 */
-	public async runActorNode(inputConfig?: RunConfigInput) {
-		const { serve } = this.actorNode(inputConfig);
+	public async runWorker(inputConfig?: RunConfigInput) {
+		const { serve } = this.createWorker(inputConfig);
 		serve();
 	}
 }

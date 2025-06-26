@@ -1,5 +1,3 @@
-import { PersistedActor } from "@/actor/persisted";
-
 export type { ActorInstance, AnyActorInstance } from "@/actor/instance";
 export type {
 	AttemptAcquireLease,
@@ -29,17 +27,5 @@ export {
 	HEADER_CONN_TOKEN,
 } from "@/actor/router-endpoints";
 export { RunConfigSchema, DriverConfigSchema } from "@/registry/run-config";
-import * as cbor from "cbor-x";
-
-export function serializeEmptyPersistData(
-	input: unknown | undefined,
-): Uint8Array {
-	const persistData: PersistedActor<any, any, any, any> = {
-		i: input,
-		hi: false,
-		s: undefined,
-		c: [],
-		e: [],
-	};
-	return cbor.encode(persistData);
-}
+export { serializeEmptyPersistData } from "./utils";
+export type { ConnRoutingHandler } from "@/actor/conn-routing-handler";

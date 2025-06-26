@@ -22,11 +22,6 @@ export async function crossPlatformServe(
 		process.exit(1);
 	}
 
-	app.use("*", async (c, next) => {
-		logger().info("request", { path: c.req.path });
-		await next();
-	});
-
 	// Mount registry
 	app.route("/registry", rivetKitRouter);
 
