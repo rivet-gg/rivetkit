@@ -1,7 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as fsSync from "node:fs";
 import * as path from "node:path";
-import type { ActorKey } from "@rivetkit/core";
+import type { ActorKey } from "@/actor/mod";
 import { logger } from "./log";
 import {
 	getStoragePath,
@@ -10,6 +10,7 @@ import {
 	ensureDirectoryExistsSync,
 } from "./utils";
 import invariant from "invariant";
+import { serializeEmptyPersistData } from "@/driver-helpers/mod";
 
 /**
  * Interface representing a actor's state

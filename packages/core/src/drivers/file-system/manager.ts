@@ -6,12 +6,12 @@ import type {
 	ManagerDriver,
 	ActorOutput,
 	CreateInput,
-} from "@rivetkit/core/driver-helpers";
-import { ActorAlreadyExists } from "@rivetkit/core/errors";
+} from "@/driver-helpers/mod";
+import { ActorAlreadyExists } from "@/actor/errors";
 import { logger } from "./log";
 import type { FileSystemGlobalState } from "./global-state";
 import { ActorState } from "./global-state";
-import type { Registry } from "@rivetkit/core";
+import type { Registry } from "@/registry/mod";
 
 export class FileSystemManagerDriver implements ManagerDriver {
 	#state: FileSystemGlobalState;
@@ -22,7 +22,6 @@ export class FileSystemManagerDriver implements ManagerDriver {
 	// });
 
 	constructor(
-		private readonly registry: Registry<any>,
 		state: FileSystemGlobalState,
 	) {
 		this.#state = state;

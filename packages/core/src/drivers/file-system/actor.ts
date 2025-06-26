@@ -1,7 +1,7 @@
 import type {
 	ActorDriver,
 	AnyActorInstance,
-} from "@rivetkit/core/driver-helpers";
+} from "@/driver-helpers/mod";
 import type { FileSystemGlobalState } from "./global-state";
 
 export type ActorDriverContext = Record<never, never>;

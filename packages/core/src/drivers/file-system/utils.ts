@@ -2,10 +2,10 @@ import * as fs from "fs/promises";
 import * as fsSync from "fs";
 import * as path from "path";
 import * as crypto from "crypto";
-import envPaths from "env-paths";
+import * as os from "os";
 
 // Get platform-specific data directory
-const paths = envPaths("rivetkit", { suffix: "" });
+const paths = { data: getDataPath("rivetkit") };
 
 /**
  * Create a hash for a path, normalizing it first
@@ -13,17 +13,17 @@ const paths = envPaths("rivetkit", { suffix: "" });
 function createHashForPath(dirPath: string): string {
 	// Normalize the path first
 	const normalizedPath = path.normalize(dirPath);
-	
+
 	// Extract the last path component for readability
 	const lastComponent = path.basename(normalizedPath);
-	
+
 	// Create SHA-256 hash
 	const hash = crypto
 		.createHash("sha256")
 		.update(normalizedPath)
 		.digest("hex")
 		.substring(0, 8); // Take first 8 characters for brevity
-	
+
 	return `${lastComponent}-${hash}`;
 }
 
@@ -58,8 +58,10 @@ export async function pathExists(path: string): Promise<boolean> {
 /**
  * Ensure a directory exists, creating it if necessary
  */
-export async function ensureDirectoryExists(directoryPath: string): Promise<void> {
-	if (!await pathExists(directoryPath)) {
+export async function ensureDirectoryExists(
+	directoryPath: string,
+): Promise<void> {
+	if (!(await pathExists(directoryPath))) {
 		await fs.mkdir(directoryPath, { recursive: true });
 	}
 }
@@ -74,3 +76,25 @@ export function ensureDirectoryExistsSync(directoryPath: string): void {
 	}
 }
 
+/**
+ * Returns platform-specific data directory
+ */
+function getDataPath(appName: string): string {
+	const platform = process.platform;
+	const homeDir = os.homedir();
+
+	switch (platform) {
+		case "win32":
+			return path.join(
+				process.env.APPDATA || path.join(homeDir, "AppData", "Roaming"),
+				appName,
+			);
+		case "darwin":
+			return path.join(homeDir, "Library", "Application Support", appName);
+		default: // linux and others
+			return path.join(
+				process.env.XDG_DATA_HOME || path.join(homeDir, ".local", "share"),
+				appName,
+			);
+	}
+}

@@ -7,6 +7,7 @@ import { logger } from "./actor/log";
 import { createMemoryDriver } from "./drivers/memory/mod";
 import { createRivetManagerDriver } from "./drivers/rivet/mod";
 import { type DriverConfig, UserError } from "./mod";
+import { createFileSystemDriver } from "./drivers/file-system/mod";
 
 export const VERSION = pkgJson.version;
 
@@ -39,8 +40,10 @@ export type UpgradeWebSocket = (
  */
 export function createDefaultDriver(): DriverConfig {
 	const driver = getEnvUniversal("RIVETKIT_DRIVER");
-	console.log("driver", driver);
-	if (!driver || driver === "memory") {
+	if (!driver || driver === "file-system") {
+		logger().info("using default file system driver");
+		return createFileSystemDriver();
+	} else if (driver === "memory") {
 		logger().info("using default memory driver");
 		return createMemoryDriver();
 	} else if (driver === "rivet") {

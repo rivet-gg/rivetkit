@@ -518,37 +518,6 @@ importers:
         specifier: ^3.1.1
         version: 3.2.4(@types/node@24.0.4)(tsx@4.20.3)(yaml@2.8.0)
 
-  packages/drivers/file-system:
-    dependencies:
-      env-paths:
-        specifier: ^3.0.0
-        version: 3.0.0
-      hono:
-        specifier: ^4.7.0
-        version: 4.8.0
-      invariant:
-        specifier: ^2.2.4
-        version: 2.2.4
-    devDependencies:
-      '@rivetkit/core':
-        specifier: workspace:*
-        version: link:../../core
-      '@types/invariant':
-        specifier: ^2
-        version: 2.2.37
-      '@types/node':
-        specifier: ^22.14.0
-        version: 22.15.32
-      tsup:
-        specifier: ^8.4.0
-        version: 8.5.0(@microsoft/api-extractor@7.52.8(@types/node@22.15.32))(postcss@8.5.6)(tsx@4.20.3)(typescript@5.8.3)(yaml@2.8.0)
-      typescript:
-        specifier: ^5.5.2
-        version: 5.8.3
-      vitest:
-        specifier: ^3.1.1
-        version: 3.2.4(@types/node@22.15.32)(@vitest/ui@3.1.1)(tsx@4.20.3)(yaml@2.8.0)
-
   packages/drivers/redis:
     dependencies:
       '@types/node':
@@ -2628,10 +2597,6 @@ packages:
   entities@4.5.0:
     resolution: {integrity: sha512-V0hjH4dGPh9Ao5p0MoRY6BVqtwCjhz6vI5LT8AJ55H+4g9/4vbHx1I54fS0XuclLhDHArPQCiMjDxjaL8fPxhw==}
     engines: {node: '>=0.12'}
-
-  env-paths@3.0.0:
-    resolution: {integrity: sha512-dtJUTepzMW3Lm/NPxRf3wP4642UWhjL2sQxc+ym2YMj1m/H2zDNQOlezafzkHwn6sMstjHTwG6iQQsctDW/b1A==}
-    engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
   es-define-property@1.0.1:
     resolution: {integrity: sha512-e3nRfgfUZ4rNGL232gUgX06QNyyez04KdjFrF+LTRoOXmrOgFKDg4BCdsjW8EnT69eqdYGmRpJwiPVYNrCaW3g==}
@@ -5899,8 +5864,6 @@ snapshots:
       once: 1.4.0
 
   entities@4.5.0: {}
-
-  env-paths@3.0.0: {}
 
   es-define-property@1.0.1: {}
 

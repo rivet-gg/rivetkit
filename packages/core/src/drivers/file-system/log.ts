@@ -1,4 +1,4 @@
-import { getLogger } from "@rivetkit/core/log";
+import { getLogger } from "@/common/log";
 
 export const LOGGER_NAME = "driver-fs";
 
