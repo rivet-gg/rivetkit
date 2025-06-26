@@ -1,3 +1,4 @@
+import type { AnyDatabaseProvider, DatabaseClientOf } from "@/db/mod";
 import type { ActionContext } from "./action";
 import type { Actions, ActorConfig } from "./config";
 import type { ActorContext } from "./context";
@@ -28,7 +29,7 @@ export type ActorContextOf<AD extends AnyActorDefinition> =
 		infer DB,
 		any
 	>
-		? ActorContext<S, CP, CS, V, I, AD, DB>
+		? ActorContext<S, CP, CS, V, I, AD, DatabaseClientOf<DB>>
 		: never;
 
 /**
@@ -45,7 +46,7 @@ export type ActionContextOf<AD extends AnyActorDefinition> =
 		infer DB,
 		any
 	>
-		? ActionContext<S, CP, CS, V, I, AD, DB>
+		? ActionContext<S, CP, CS, V, I, AD, DatabaseClientOf<DB>>
 		: never;
 
 export class ActorDefinition<
@@ -55,8 +56,8 @@ export class ActorDefinition<
 	V,
 	I,
 	AD,
-	DB,
-	R extends Actions<S, CP, CS, V, I, AD, DB>,
+	DB extends AnyDatabaseProvider,
+	R extends Actions<S, CP, CS, V, I, AD, DatabaseClientOf<DB>>,
 > {
 	#config: ActorConfig<S, CP, CS, V, I, AD, DB>;
 

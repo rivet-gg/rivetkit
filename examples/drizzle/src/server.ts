@@ -1,7 +1,3 @@
-// import { registry } from "./registry";
-// import { createMemoryDriver } from "@rivetkit/memory";
-// import { serve } from "@rivetkit/nodejs";
+import { registry } from "./registry";
 
-// serve(registry, {
-// 	driver: createMemoryDriver(),
-// });
+await registry.runServer();

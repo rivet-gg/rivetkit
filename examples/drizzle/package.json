@@ -4,17 +4,19 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx --watch src/server.ts",
+    "dev": "tsx --loader @rivetkit/sql-loader --watch src/server.ts",
     "check-types": "tsc --noEmit"
   },
   "devDependencies": {
+    "@rivetkit/actor": "workspace:*",
+    "@rivetkit/sql-loader": "workspace:*",
     "@types/node": "^22.13.9",
-    "rivetkit": "workspace:*",
     "tsx": "^3.12.7",
     "typescript": "^5.5.2"
   },
   "dependencies": {
     "@rivetkit/db": "workspace:0.9.0-rc.1",
+    "better-sqlite3": "^12.1.1",
     "drizzle-kit": "^0.31.2",
     "drizzle-orm": "^0.44.2"
   },

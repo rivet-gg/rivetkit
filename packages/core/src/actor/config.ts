@@ -2,6 +2,12 @@ import { z } from "zod";
 import type { ActionContext } from "./action";
 import type { Conn } from "./connection";
 import type { ActorContext } from "./context";
+import type {
+	AnyDatabaseClient,
+	AnyDatabaseProvider,
+	DatabaseClientOf,
+	DatabaseProviderOf,
+} from "@/db/mod";
 
 // This schema is used to validate the input at runtime. The generic types are defined below in `ActorConfig`.
 //
@@ -32,6 +38,7 @@ export const ActorConfigSchema = z
 					.object({
 						createVarsTimeout: z.number().positive().default(5000),
 						createConnStateTimeout: z.number().positive().default(5000),
+						migrationTimeout: z.number().positive().default(10000),
 						onConnectTimeout: z.number().positive().default(5000),
 					})
 					.strict()
@@ -110,7 +117,7 @@ type CreateState<S, CP, CS, V, I, AD, DB> =
 					undefined,
 					undefined,
 					undefined,
-					undefined
+					AnyDatabaseClient
 				>,
 				opts: CreateStateOptions<I>,
 			) => S | Promise<S>;
@@ -133,7 +140,7 @@ type CreateConnState<S, CP, CS, V, I, AD, DB> =
 					undefined,
 					undefined,
 					undefined,
-					undefined
+					AnyDatabaseClient
 				>,
 				opts: OnConnectOptions<CP>,
 			) => CS | Promise<CS>;
@@ -165,14 +172,14 @@ type CreateVars<S, CP, CS, V, I, AD, DB> =
 					undefined,
 					undefined,
 					undefined,
-					undefined
+					AnyDatabaseClient
 				>,
 				driverCtx: unknown,
 			) => V | Promise<V>;
 	  }
 	| Record<never, never>;
 
-export interface Actions<S, CP, CS, V, I, AD, DB> {
+export interface Actions<S, CP, CS, V, I, AD, DB extends AnyDatabaseClient> {
 	[Action: string]: (
 		c: ActionContext<S, CP, CS, V, I, AD, DB>,
 		...args: any[]
@@ -205,8 +212,8 @@ interface BaseActorConfig<
 	V,
 	I,
 	AD,
-	DB,
-	R extends Actions<S, CP, CS, V, I, AD, DB>,
+	DB extends AnyDatabaseProvider,
+	R extends Actions<S, CP, CS, V, I, AD, DatabaseClientOf<DB>>,
 > {
 	/**
 	 * Called on the HTTP server before clients can interact with the actor.
@@ -242,7 +249,7 @@ interface BaseActorConfig<
 	 * This is called before any other lifecycle hooks.
 	 */
 	onCreate?: (
-		c: ActorContext<S, CP, CS, V, I, AD, DB>,
+		c: ActorContext<S, CP, CS, V, I, AD, DatabaseClientOf<DB>>,
 		opts: OnCreateOptions<I>,
 	) => void | Promise<void>;
 
@@ -254,7 +261,9 @@ interface BaseActorConfig<
 	 *
 	 * @returns Void or a Promise that resolves when startup is complete
 	 */
-	onStart?: (c: ActorContext<S, CP, CS, V, I, AD, DB>) => void | Promise<void>;
+	onStart?: (
+		c: ActorContext<S, CP, CS, V, I, AD, DatabaseClientOf<DB>>,
+	) => void | Promise<void>;
 
 	/**
 	 * Called when the actor's state changes.
@@ -265,7 +274,7 @@ interface BaseActorConfig<
 	 * @param newState The updated state
 	 */
 	onStateChange?: (
-		c: ActorContext<S, CP, CS, V, I, AD, DB>,
+		c: ActorContext<S, CP, CS, V, I, AD, DatabaseClientOf<DB>>,
 		newState: S,
 	) => void;
 
@@ -290,7 +299,7 @@ interface BaseActorConfig<
 	 * @throws Throw an error to reject the connection
 	 */
 	onBeforeConnect?: (
-		c: ActorContext<S, CP, CS, V, I, AD, DB>,
+		c: ActorContext<S, CP, CS, V, I, AD, DatabaseClientOf<DB>>,
 		opts: OnConnectOptions<CP>,
 	) => void | Promise<void>;
 
@@ -304,7 +313,7 @@ interface BaseActorConfig<
 	 * @returns Void or a Promise that resolves when connection handling is complete
 	 */
 	onConnect?: (
-		c: ActorContext<S, CP, CS, V, I, AD, DB>,
+		c: ActorContext<S, CP, CS, V, I, AD, DatabaseClientOf<DB>>,
 		conn: Conn<S, CP, CS, V, I, AD, DB>,
 	) => void | Promise<void>;
 
@@ -318,7 +327,7 @@ interface BaseActorConfig<
 	 * @returns Void or a Promise that resolves when disconnect handling is complete
 	 */
 	onDisconnect?: (
-		c: ActorContext<S, CP, CS, V, I, AD, DB>,
+		c: ActorContext<S, CP, CS, V, I, AD, DatabaseClientOf<DB>>,
 		conn: Conn<S, CP, CS, V, I, AD, DB>,
 	) => void | Promise<void>;
 
@@ -335,7 +344,7 @@ interface BaseActorConfig<
 	 * @returns The modified output to send to the client
 	 */
 	onBeforeActionResponse?: <Out>(
-		c: ActorContext<S, CP, CS, V, I, AD, DB>,
+		c: ActorContext<S, CP, CS, V, I, AD, DatabaseClientOf<DB>>,
 		name: string,
 		args: unknown[],
 		output: Out,
@@ -344,32 +353,27 @@ interface BaseActorConfig<
 	actions: R;
 }
 
-export type DatabaseFactory<DB> = (ctx: {
-	createDatabase: () => Promise<unknown>;
-}) => Promise<{
-	/**
-	 * @experimental
-	 */
-	db?: DB;
-	/**
-	 * @experimental
-	 */
-	onMigrate?: () => void | Promise<void>;
-}>;
-
-type ActorDatabaseConfig<DB> =
+type ActorDatabase<S, CP, CS, V, I, AD, DB extends AnyDatabaseProvider> =
 	| {
 			/**
 			 * @experimental
 			 */
-			db: DatabaseFactory<DB>;
+			db: DB;
 	  }
 	| Record<never, never>;
 
 // 1. Infer schema
 // 2. Omit keys that we'll manually define (because of generics)
 // 3. Define our own types that have generic constraints
-export type ActorConfig<S, CP, CS, V, I, AD, DB> = Omit<
+export type ActorConfig<
+	S,
+	CP,
+	CS,
+	V,
+	I,
+	AD,
+	DB extends AnyDatabaseProvider,
+> = Omit<
 	z.infer<typeof ActorConfigSchema>,
 	| "actions"
 	| "onAuth"
@@ -388,11 +392,20 @@ export type ActorConfig<S, CP, CS, V, I, AD, DB> = Omit<
 	| "createVars"
 	| "db"
 > &
-	BaseActorConfig<S, CP, CS, V, I, AD, DB, Actions<S, CP, CS, V, I, AD, DB>> &
-	CreateState<S, CP, CS, V, I, AD, DB> &
-	CreateConnState<S, CP, CS, V, I, AD, DB> &
-	CreateVars<S, CP, CS, V, I, AD, DB> &
-	ActorDatabaseConfig<DB>;
+	BaseActorConfig<
+		S,
+		CP,
+		CS,
+		V,
+		I,
+		AD,
+		DB,
+		Actions<S, CP, CS, V, I, AD, DatabaseClientOf<DB>>
+	> &
+	CreateState<S, CP, CS, V, I, AD, DatabaseClientOf<DB>> &
+	CreateConnState<S, CP, CS, V, I, AD, DatabaseClientOf<DB>> &
+	CreateVars<S, CP, CS, V, I, AD, DatabaseClientOf<DB>> &
+	ActorDatabase<S, CP, CS, V, I, AD, DatabaseProviderOf<DB>>;
 
 // See description on `ActorConfig`
 export type ActorConfigInput<
@@ -402,8 +415,8 @@ export type ActorConfigInput<
 	V,
 	I,
 	AD,
-	DB,
-	R extends Actions<S, CP, CS, V, I, AD, DB>,
+	DB extends AnyDatabaseProvider,
+	R extends Actions<S, CP, CS, V, I, AD, DatabaseClientOf<DB>>,
 > = Omit<
 	z.input<typeof ActorConfigSchema>,
 	| "actions"
@@ -427,7 +440,7 @@ export type ActorConfigInput<
 	CreateState<S, CP, CS, V, I, AD, DB> &
 	CreateConnState<S, CP, CS, V, I, AD, DB> &
 	CreateVars<S, CP, CS, V, I, AD, DB> &
-	ActorDatabaseConfig<DB>;
+	ActorDatabase<S, CP, CS, V, I, AD, DB>;
 
 // For testing type definitions:
 export function test<
@@ -437,8 +450,8 @@ export function test<
 	V,
 	I,
 	AD,
-	DB,
-	R extends Actions<S, CP, CS, V, I, AD, DB>,
+	DB extends AnyDatabaseProvider,
+	R extends Actions<S, CP, CS, V, I, AD, DatabaseClientOf<DB>>,
 >(
 	input: ActorConfigInput<S, CP, CS, V, I, AD, DB, R>,
 ): ActorConfig<S, CP, CS, V, I, AD, DB> {

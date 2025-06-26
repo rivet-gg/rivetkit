@@ -3,16 +3,19 @@ import type { Logger } from "@/common/log";
 import type { Conn, ConnId } from "./connection";
 import type { ActorInstance, SaveStateOptions } from "./instance";
 import type { Schedule } from "./schedule";
-import { Client } from "@/client/client";
-import { Registry } from "@/registry/mod";
+import type { Client } from "@/client/client";
+import type { Registry } from "@/registry/mod";
+import type { AnyDatabaseClient, DatabaseProviderOf } from "@/db/mod";
 
 /**
  * ActorContext class that provides access to actor methods and state
  */
-export class ActorContext<S, CP, CS, V, I, AD, DB> {
-	#actor: ActorInstance<S, CP, CS, V, I, AD, DB>;
+export class ActorContext<S, CP, CS, V, I, AD, DB extends AnyDatabaseClient> {
+	#actor: ActorInstance<S, CP, CS, V, I, AD, DatabaseProviderOf<DB>>;
 
-	constructor(actor: ActorInstance<S, CP, CS, V, I, AD, DB>) {
+	constructor(
+		actor: ActorInstance<S, CP, CS, V, I, AD, DatabaseProviderOf<DB>>,
+	) {
 		this.#actor = actor;
 	}
 
@@ -85,7 +88,7 @@ export class ActorContext<S, CP, CS, V, I, AD, DB> {
 	/**
 	 * Gets the map of connections.
 	 */
-	get conns(): Map<ConnId, Conn<S, CP, CS, V, I, AD, DB>> {
+	get conns(): Map<ConnId, Conn<S, CP, CS, V, I, AD, DatabaseProviderOf<DB>>> {
 		return this.#actor.conns;
 	}
 

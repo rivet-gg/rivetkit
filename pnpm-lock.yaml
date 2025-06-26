@@ -173,19 +173,25 @@ importers:
       '@rivetkit/db':
         specifier: workspace:0.9.0-rc.1
         version: link:../../packages/db
+      better-sqlite3:
+        specifier: ^12.1.1
+        version: 12.1.1
       drizzle-kit:
         specifier: ^0.31.2
         version: 0.31.2
       drizzle-orm:
         specifier: ^0.44.2
-        version: 0.44.2(@cloudflare/workers-types@4.20250619.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@11.10.0)(kysely@0.28.2)
+        version: 0.44.2(@cloudflare/workers-types@4.20250619.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.1.1)(kysely@0.28.2)
     devDependencies:
+      '@rivetkit/actor':
+        specifier: workspace:*
+        version: link:../../packages/actor
+      '@rivetkit/sql-loader':
+        specifier: workspace:*
+        version: link:../../packages/misc/sql-loader
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
-      rivetkit:
-        specifier: workspace:*
-        version: link:../../packages/rivetkit
       tsx:
         specifier: ^3.12.7
         version: 3.14.0
@@ -496,6 +502,9 @@ importers:
         specifier: ^0.31.2
         version: 0.31.2
     devDependencies:
+      '@rivetkit/core':
+        specifier: workspace:*
+        version: link:../core
       '@types/better-sqlite3':
         specifier: ^7.6.13
         version: 7.6.13
@@ -505,9 +514,6 @@ importers:
       drizzle-orm:
         specifier: ^0.44.2
         version: 0.44.2(@cloudflare/workers-types@4.20250619.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@11.10.0)(kysely@0.28.2)
-      rivetkit:
-        specifier: workspace:*
-        version: link:../rivetkit
       tsup:
         specifier: ^8.3.6
         version: 8.5.0(@microsoft/api-extractor@7.52.8(@types/node@24.0.4))(postcss@8.5.6)(tsx@4.20.3)(typescript@5.8.3)(yaml@2.8.0)
@@ -657,6 +663,15 @@ importers:
       wrangler:
         specifier: ^3.101.0
         version: 3.114.9(@cloudflare/workers-types@4.20250619.0)
+
+  packages/misc/sql-loader:
+    devDependencies:
+      '@types/node':
+        specifier: ^20.4.3
+        version: 20.19.1
+      typescript:
+        specifier: ^5.8.3
+        version: 5.8.3
 
   packages/platforms/cloudflare-workers:
     dependencies:
@@ -2023,6 +2038,9 @@ packages:
   '@types/node@18.19.112':
     resolution: {integrity: sha512-i+Vukt9POdS/MBI7YrrkkI5fMfwFtOjphSmt4WXYLfwqsfr6z/HdCx7LqT9M7JktGob8WNgj8nFB4TbGNE4Cog==}
 
+  '@types/node@20.19.1':
+    resolution: {integrity: sha512-jJD50LtlD2dodAEO653i3YF04NWak6jN3ky+Ri3Em3mGR39/glWiboM/IePaRbgwSfqM1TpGXfAg8ohn/4dTgA==}
+
   '@types/node@22.15.32':
     resolution: {integrity: sha512-3jigKqgSjsH6gYZv2nEsqdXfZqIFGAV36XYYjf9KGZ3PSG+IhLecqPnI310RvjutyMwifE2hhhNEklOUrvx/wA==}
 
@@ -2127,8 +2145,14 @@ packages:
   '@volar/language-core@2.4.14':
     resolution: {integrity: sha512-X6beusV0DvuVseaOEy7GoagS4rYHgDHnTrdOj5jeUb49fW5ceQyP9Ej5rBhqgz2wJggl+2fDbbojq1XKaxDi6w==}
 
+  '@volar/language-core@2.4.15':
+    resolution: {integrity: sha512-3VHw+QZU0ZG9IuQmzT68IyN4hZNd9GchGPhbD9+pa8CVv7rnoOZwo7T8weIbrRmihqy3ATpdfXFnqRrfPVK6CA==}
+
   '@volar/source-map@2.4.14':
     resolution: {integrity: sha512-5TeKKMh7Sfxo8021cJfmBzcjfY1SsXsPMMjMvjY7ivesdnybqqS+GxGAoXHAOUawQTwtdUxgP65Im+dEmvWtYQ==}
+
+  '@volar/source-map@2.4.15':
+    resolution: {integrity: sha512-CPbMWlUN6hVZJYGcU/GSoHu4EnCHiLaXI9n8c9la6RaI9W5JHX+NqG+GSQcB0JdC2FIBLdZJwGsfKyBB71VlTg==}
 
   '@volar/typescript@2.4.14':
     resolution: {integrity: sha512-p8Z6f/bZM3/HyCdRNFZOEEzts51uV8WHeN8Tnfnm2EBv6FDB2TQLzfVx7aJvnl8ofKAOnS64B2O8bImBFaauRw==}
@@ -2243,6 +2267,10 @@ packages:
 
   better-sqlite3@11.10.0:
     resolution: {integrity: sha512-EwhOpyXiOEL/lKzHz9AW1msWFNzGc/z+LzeB3/jnFJpxu+th2yqvzsSWas1v9jgs9+xiXJcD5A8CJxAG2TaghQ==}
+
+  better-sqlite3@12.1.1:
+    resolution: {integrity: sha512-xjl/TjWLy/6yLa5wkbQSjTgIgSiaEJy3XzjF5TAdiWaAsu/v0OCkYOc6tos+PkM/k4qURN2pFKTsbcG3gk29Uw==}
+    engines: {node: 20.x || 22.x || 23.x || 24.x}
 
   bindings@1.5.0:
     resolution: {integrity: sha512-p2q/t/mhvuOj/UeLlV6566GD/guowlr0hHxClI0W9m7MWYkL1F0hLo+0Aexs9HSPCtR1SXQ0TD3MMKrXZajbiQ==}
@@ -5331,6 +5359,10 @@ snapshots:
     dependencies:
       undici-types: 5.26.5
 
+  '@types/node@20.19.1':
+    dependencies:
+      undici-types: 6.21.0
+
   '@types/node@22.15.32':
     dependencies:
       undici-types: 6.21.0
@@ -5412,14 +5444,6 @@ snapshots:
       chai: 5.2.0
       tinyrainbow: 2.0.0
 
-  '@vitest/mocker@3.2.4(vite@6.3.5(@types/node@22.15.32)(tsx@3.14.0)(yaml@2.8.0))':
-    dependencies:
-      '@vitest/spy': 3.2.4
-      estree-walker: 3.0.3
-      magic-string: 0.30.17
-    optionalDependencies:
-      vite: 6.3.5(@types/node@22.15.32)(tsx@3.14.0)(yaml@2.8.0)
-
   '@vitest/mocker@3.2.4(vite@6.3.5(@types/node@24.0.4)(tsx@4.20.3)(yaml@2.8.0))':
     dependencies:
       '@vitest/spy': 3.2.4
@@ -5479,7 +5503,13 @@ snapshots:
     dependencies:
       '@volar/source-map': 2.4.14
 
+  '@volar/language-core@2.4.15':
+    dependencies:
+      '@volar/source-map': 2.4.15
+
   '@volar/source-map@2.4.14': {}
+
+  '@volar/source-map@2.4.15': {}
 
   '@volar/typescript@2.4.14':
     dependencies:
@@ -5507,7 +5537,7 @@ snapshots:
 
   '@vue/language-core@2.2.0(typescript@5.8.3)':
     dependencies:
-      '@volar/language-core': 2.4.14
+      '@volar/language-core': 2.4.15
       '@vue/compiler-dom': 3.5.17
       '@vue/compiler-vue2': 2.7.16
       '@vue/shared': 3.5.17
@@ -5610,6 +5640,11 @@ snapshots:
       uncrypto: 0.1.3
 
   better-sqlite3@11.10.0:
+    dependencies:
+      bindings: 1.5.0
+      prebuild-install: 7.1.3
+
+  better-sqlite3@12.1.1:
     dependencies:
       bindings: 1.5.0
       prebuild-install: 7.1.3
@@ -5861,6 +5896,13 @@ snapshots:
       '@cloudflare/workers-types': 4.20250619.0
       '@types/better-sqlite3': 7.6.13
       better-sqlite3: 11.10.0
+      kysely: 0.28.2
+
+  drizzle-orm@0.44.2(@cloudflare/workers-types@4.20250619.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.1.1)(kysely@0.28.2):
+    optionalDependencies:
+      '@cloudflare/workers-types': 4.20250619.0
+      '@types/better-sqlite3': 7.6.13
+      better-sqlite3: 12.1.1
       kysely: 0.28.2
 
   dunder-proto@1.0.1:
@@ -7559,7 +7601,7 @@ snapshots:
     dependencies:
       '@types/chai': 5.2.2
       '@vitest/expect': 3.2.4
-      '@vitest/mocker': 3.2.4(vite@6.3.5(@types/node@22.15.32)(tsx@3.14.0)(yaml@2.8.0))
+      '@vitest/mocker': 3.2.4(vite@6.3.5(@types/node@24.0.4)(tsx@4.20.3)(yaml@2.8.0))
       '@vitest/pretty-format': 3.2.4
       '@vitest/runner': 3.2.4
       '@vitest/snapshot': 3.2.4

@@ -5,15 +5,16 @@ import type { ConnId } from "./connection";
 import type { ActorContext } from "./context";
 import type { SaveStateOptions } from "./instance";
 import type { Schedule } from "./schedule";
-import { Registry } from "@/registry/mod";
-import { Client } from "@/client/client";
+import type { Registry } from "@/registry/mod";
+import type { Client } from "@/client/client";
+import type { AnyDatabaseClient, DatabaseProviderOf } from "@/db/mod";
 
 /**
  * Context for a remote procedure call.
  *
  * @typeParam A Actor this action belongs to
  */
-export class ActionContext<S, CP, CS, V, I, AD, DB> {
+export class ActionContext<S, CP, CS, V, I, AD, DB extends AnyDatabaseClient> {
 	#actorContext: ActorContext<S, CP, CS, V, I, AD, DB>;
 
 	/**
@@ -24,7 +25,7 @@ export class ActionContext<S, CP, CS, V, I, AD, DB> {
 	 */
 	constructor(
 		actorContext: ActorContext<S, CP, CS, V, I, AD, DB>,
-		public readonly conn: Conn<S, CP, CS, V, I, AD, DB>,
+		public readonly conn: Conn<S, CP, CS, V, I, AD, DatabaseProviderOf<DB>>,
 	) {
 		this.#actorContext = actorContext;
 	}
@@ -95,7 +96,7 @@ export class ActionContext<S, CP, CS, V, I, AD, DB> {
 	/**
 	 * Gets the map of connections.
 	 */
-	get conns(): Map<ConnId, Conn<S, CP, CS, V, I, AD, DB>> {
+	get conns(): Map<ConnId, Conn<S, CP, CS, V, I, AD, DatabaseProviderOf<DB>>> {
 		return this.#actorContext.conns;
 	}
 

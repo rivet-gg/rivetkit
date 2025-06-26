@@ -6,6 +6,7 @@ import type { ActorInstance } from "./instance";
 import type { PersistedConn } from "./persisted";
 import { CachedSerializer } from "./protocol/serde";
 import { generateSecureToken } from "./utils";
+import type { AnyDatabaseProvider } from "@/db/mod";
 
 export function generateConnId(): string {
 	return crypto.randomUUID();
@@ -26,7 +27,7 @@ export type AnyConn = Conn<any, any, any, any, any, any, any>;
  *
  * @see {@link https://rivet.gg/docs/connections|Connection Documentation}
  */
-export class Conn<S, CP, CS, V, I, AD, DB> {
+export class Conn<S, CP, CS, V, I, AD, DB extends AnyDatabaseProvider> {
 	subscriptions: Set<string> = new Set<string>();
 
 	#stateEnabled: boolean;
@@ -52,8 +53,8 @@ export class Conn<S, CP, CS, V, I, AD, DB> {
 		return this.__persist.p;
 	}
 
-	public get auth(): unknown {
-		return this.__persist.a;
+	public get auth(): AD {
+		return this.__persist.a as AD;
 	}
 
 	public get _stateEnabled() {

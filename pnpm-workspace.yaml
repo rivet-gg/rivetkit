@@ -1,9 +1,8 @@
 packages:
-  - 'packages/*'
-  - 'packages/platforms/*'
-  - 'packages/drivers/*'
-  - 'packages/components/*'
-  - 'packages/misc/*'
-  - 'packages/frameworks/*'
-  - 'examples/*'
-
+  - packages/*
+  - packages/platforms/*
+  - packages/drivers/*
+  - packages/components/*
+  - packages/misc/*
+  - packages/frameworks/*
+  - examples/*

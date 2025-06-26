@@ -1,0 +1,19 @@
+{
+    "name": "@rivetkit/sql-loader",
+    "version": "0.0.1",
+    "license": "MIT",
+    "main": "./dist/register.js",
+    "type": "commonjs",
+    "files": [
+        "dist/**/*.js"
+    ],
+    "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "dev": "tsc -p tsconfig.json --watch",
+        "test": "echo \"No tests specified\" && exit 0"
+    },
+    "devDependencies": {
+        "@types/node": "^20.4.3",
+        "typescript": "^5.8.3"
+    }
+}

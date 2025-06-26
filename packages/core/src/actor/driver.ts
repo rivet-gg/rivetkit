@@ -2,6 +2,7 @@ import type * as messageToClient from "@/actor/protocol/message/to-client";
 import type { CachedSerializer } from "@/actor/protocol/serde";
 import type { AnyConn } from "./connection";
 import type { AnyActorInstance } from "./instance";
+import type { ActorDatabaseConnectionDetails } from "@/db/mod";
 
 export type ConnDrivers = Record<string, ConnDriver>;
 
@@ -22,7 +23,7 @@ export interface ActorDriver {
 	 * @experimental
 	 * This is an experimental API that may change in the future.
 	 */
-	getDatabase(actorId: string): Promise<unknown | undefined>;
+	getDatabase?(actorId: string): Promise<ActorDatabaseConnectionDetails>;
 
 	// TODO:
 	//destroy(): Promise<void>;

@@ -1,5 +1,6 @@
 import type { ActorContext } from "@/actor/context";
 import type { ActorContextOf, ActorDefinition } from "@/actor/definition";
+import { DatabaseSetupFunction } from "@/db/mod";
 import { describe, expectTypeOf, it } from "vitest";
 
 describe("ActorDefinition", () => {
@@ -30,10 +31,10 @@ describe("ActorDefinition", () => {
 				baz: string;
 			}
 
-			interface TestDatabase {
-				onMigrate: () => void;
-				client: object;
-			}
+			type TestDatabase = DatabaseSetupFunction<{
+				client: any; // Replace with actual database client type if needed
+				onMigrate: () => Promise<void> | void;
+			}>;
 
 			// For testing type utilities, we don't need a real actor instance
 			// We just need a properly typed ActorDefinition to check against

@@ -1,5 +1,8 @@
+import type {
+	DatabaseProviderOf,
+	DatabaseSetupFunction,
+} from "@rivetkit/core/db";
 import * as SQLite from "better-sqlite3";
-import type { DatabaseFactory } from "./config";
 
 /**
  * On serverless environments, we use a shim, as not all methods are available.
@@ -12,35 +15,49 @@ interface DatabaseFactoryConfig {
 	onMigrate?: (db: SQLiteShim) => void;
 }
 
-export function db({
-	onMigrate,
-}: DatabaseFactoryConfig = {}): DatabaseFactory<SQLiteShim> {
-	return async (ctx) => {
-		const conn = await ctx.createDatabase();
+export function db({ onMigrate }: DatabaseFactoryConfig = {}): {
+	setup: DatabaseSetupFunction<SQLiteShim>;
+} {
+	// @ts-ignore
+	return {
+		setup: async (ctx) => {
+			const conn = await ctx.setupDatabase();
 
-		if (!conn) {
-			throw new Error(
-				"Cannot create database connection, or database feature is not enabled.",
-			);
-		}
+			if (!conn) {
+				throw new Error(
+					"Cannot create database connection, or database feature is not enabled.",
+				);
+			}
 
-		if (typeof conn === "object" && conn && "exec" in conn) {
-			// if the connection is already an object with exec method, return it
-			// i.e. in serverless environments (cloudflare)
+			if (
+				typeof conn === "object" &&
+				conn &&
+				"url" in conn &&
+				typeof conn.url === "string"
+			) {
+				// if the connection is already an object with exec method, return it
+				// i.e. in serverless environments (cloudflare)
+				const client = new SQLite(conn.url);
+				return {
+					client,
+					onMigrate: () => {
+						return onMigrate?.(client) || Promise.resolve();
+					},
+				};
+			}
+
+			if (typeof conn !== "object" || !("exec" in conn)) {
+				throw new Error(
+					"Invalid database connection. Expected an object with an 'exec' method.",
+				);
+			}
+
 			return {
 				client: conn as SQLiteShim,
 				onMigrate: () => {
-					onMigrate?.(client);
+					return onMigrate?.(conn as SQLiteShim) || Promise.resolve();
 				},
 			};
-		}
-
-		const client = new SQLite(conn as string);
-		return {
-			client,
-			onMigrate: () => {
-				onMigrate?.(client);
-			},
-		};
-	};
+		},
+	} satisfies DatabaseProviderOf<SQLiteShim>;
 }

@@ -1,5 +1,6 @@
 import type { ActorDriver, AnyActorInstance } from "@/driver-helpers/mod";
 import type { MemoryGlobalState } from "./global-state";
+import type { ActorDatabaseConnectionDetails } from "@/db/mod";
 
 export type ActorDriverContext = Record<never, never>;
 
@@ -33,7 +34,7 @@ export class MemoryActorDriver implements ActorDriver {
 		}, delay);
 	}
 
-	getDatabase(actorId: string): Promise<unknown | undefined> {
-		return Promise.resolve(undefined);
+	async getDatabase(actorId: string): Promise<ActorDatabaseConnectionDetails> {
+		return { url: ":memory:" };
 	}
 }

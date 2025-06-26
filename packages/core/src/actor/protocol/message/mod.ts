@@ -14,6 +14,11 @@ import * as errors from "../../errors";
 import type { ActorInstance } from "../../instance";
 import { logger } from "../../log";
 import { assertUnreachable } from "../../utils";
+import type {
+	AnyDatabaseClient,
+	AnyDatabaseProvider,
+	DatabaseClientOf,
+} from "@/db/mod";
 
 export const TransportSchema = z.enum(["websocket", "sse"]);
 
@@ -67,9 +72,17 @@ export async function parseMessage(
 	return message;
 }
 
-export interface ProcessMessageHandler<S, CP, CS, V, I, AD, DB> {
+export interface ProcessMessageHandler<
+	S,
+	CP,
+	CS,
+	V,
+	I,
+	AD,
+	DB extends AnyDatabaseProvider,
+> {
 	onExecuteAction?: (
-		ctx: ActionContext<S, CP, CS, V, I, AD, DB>,
+		ctx: ActionContext<S, CP, CS, V, I, AD, DatabaseClientOf<DB>>,
 		name: string,
 		args: unknown[],
 	) => Promise<unknown>;
@@ -83,7 +96,15 @@ export interface ProcessMessageHandler<S, CP, CS, V, I, AD, DB> {
 	) => Promise<void>;
 }
 
-export async function processMessage<S, CP, CS, V, I, AD, DB>(
+export async function processMessage<
+	S,
+	CP,
+	CS,
+	V,
+	I,
+	AD,
+	DB extends AnyDatabaseProvider,
+>(
 	message: wsToServer.ToServer,
 	actor: ActorInstance<S, CP, CS, V, I, AD, DB>,
 	conn: Conn<S, CP, CS, V, I, AD, DB>,
@@ -111,7 +132,7 @@ export async function processMessage<S, CP, CS, V, I, AD, DB>(
 				argsCount: args.length,
 			});
 
-			const ctx = new ActionContext<S, CP, CS, V, I, AD, DB>(
+			const ctx = new ActionContext<S, CP, CS, V, I, AD, DatabaseClientOf<DB>>(
 				actor.actorContext,
 				conn,
 			);

@@ -1,3 +1,4 @@
+import type { AnyDatabaseProvider, DatabaseClientOf } from "@/db/mod";
 import {
 	type Actions,
 	type ActorConfig,
@@ -26,8 +27,8 @@ export function actor<
 	V,
 	I,
 	AD,
-	DB,
-	R extends Actions<S, CP, CS, V, I, AD, DB>,
+	DB extends AnyDatabaseProvider,
+	R extends Actions<S, CP, CS, V, I, AD, DatabaseClientOf<DB>>,
 >(
 	input: ActorConfigInput<S, CP, CS, V, I, AD, DB, R>,
 ): ActorDefinition<S, CP, CS, V, I, AD, DB, R> {

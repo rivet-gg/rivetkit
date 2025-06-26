@@ -24,6 +24,11 @@ import { processMessage } from "./protocol/message/mod";
 import { CachedSerializer } from "./protocol/serde";
 import { Schedule } from "./schedule";
 import { DeadlineError, Lock, deadline } from "./utils";
+import type {
+	AnyDatabaseClient,
+	AnyDatabaseProvider,
+	DatabaseClientOf,
+} from "@/db/mod";
 
 /**
  * Options for the `_saveState` method.
@@ -110,9 +115,17 @@ export type ExtractActorConnState<A extends AnyActorInstance> =
 		? ConnState
 		: never;
 
-export class ActorInstance<S, CP, CS, V, I, AD, DB> {
+export class ActorInstance<
+	S,
+	CP,
+	CS,
+	V,
+	I,
+	AD,
+	DB extends AnyDatabaseProvider,
+> {
 	// Shared actor context for this instance
-	actorContext: ActorContext<S, CP, CS, V, I, AD, DB>;
+	actorContext: ActorContext<S, CP, CS, V, I, AD, DatabaseClientOf<DB>>;
 	isStopping = false;
 
 	#persistChanged = false;
@@ -151,7 +164,7 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 	#schedule!: Schedule;
 
 	// inspector!: ActorInspector;
-	#db!: DB;
+	#db!: DatabaseClientOf<DB>;
 
 	get id() {
 		return this.#actorId;
@@ -209,7 +222,7 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 						undefined,
 						undefined,
 						undefined,
-						undefined
+						AnyDatabaseClient
 					>,
 					this.#actorDriver.getContext(this.#actorId),
 				);
@@ -240,13 +253,16 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 
 		// Setup Database
 		if ("db" in this.#config) {
-			const db = await this.#config.db({
-				createDatabase: () => actorDriver.getDatabase(this.#actorId),
-			});
+			const getDatabase = this.#actorDriver.getDatabase;
+			invariant(getDatabase, "Chosen actor driver does not support databases");
 
+			const actorDatabase = await this.#config.db.setup({
+				setupDatabase: () => getDatabase(this.#actorId),
+			});
 			logger().info("database migration starting");
-			await db.onMigrate?.();
+			await actorDatabase.onMigrate();
 			logger().info("database migration complete");
+			this.#db = actorDatabase.client as DatabaseClientOf<DB>;
 		}
 
 		// Set alarm for next scheduled event if any exist after finishing initiation sequence
@@ -565,7 +581,7 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 							undefined,
 							undefined,
 							undefined,
-							undefined
+							AnyDatabaseClient
 						>,
 						{ input },
 					);
@@ -679,7 +695,7 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 						undefined,
 						undefined,
 						undefined,
-						undefined
+						AnyDatabaseClient
 					>,
 					onBeforeConnectOpts,
 				);
@@ -901,11 +917,11 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 	 * @internal
 	 */
 	async executeAction(
-		ctx: ActionContext<S, CP, CS, V, I, AD, DB>,
+		ctx: ActionContext<S, CP, CS, V, I, AD, DatabaseClientOf<DB>>,
 		actionName: string,
 		args: unknown[],
 	): Promise<unknown> {
-		invariant(this.#ready, "exucuting action before ready");
+		invariant(this.#ready, "executing action before ready");
 
 		// Prevent calling private or reserved methods
 		if (!(actionName in this.#config.actions)) {
@@ -1063,7 +1079,7 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 	 * @experimental
 	 * @throws {DatabaseNotEnabled} If the database is not enabled.
 	 */
-	get db(): DB {
+	get db(): DatabaseClientOf<DB> {
 		if (!this.#db) {
 			throw new errors.DatabaseNotEnabled();
 		}
