@@ -83,13 +83,14 @@
     "check-types": "tsc --noEmit",
     "test": "vitest run"
   },
+  "peerDependencies": {
+    "@rivetkit/core": "*"
+  },
   "devDependencies": {
+    "@rivetkit/core": "workspace:*",
     "@types/node": "^22.14.0",
     "tsup": "^8.4.0",
     "typescript": "^5.5.2"
-  },
-  "dependencies": {
-    "@rivetkit/core": "workspace:*"
   },
   "stableVersion": "0.8.0"
 }

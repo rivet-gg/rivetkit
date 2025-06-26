@@ -28,7 +28,8 @@
     "test": "vitest run tests"
   },
   "peerDependencies": {
-    "@rivetkit/core": "*"
+    "@rivetkit/core": "*",
+    "hono": "^4.7.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250129.0",
@@ -41,7 +42,6 @@
     "wrangler": "^3.101.0"
   },
   "dependencies": {
-    "hono": "^4.7.2",
     "invariant": "^2.2.4",
     "zod": "^3.25.67"
   },

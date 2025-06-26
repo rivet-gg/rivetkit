@@ -57,9 +57,6 @@ const { router: actorRouter, ActorHandler } = createRouter(app);
 // Mount the RivetKit router at /my-path
 honoApp.route("/my-path", actorRouter);
 
-// Export the app type for client usage
-export type Registry = typeof registry;
-
 // IMPORTANT: Must export `ActorHandler` as this exact name
 export { honoApp as default, ActorHandler };
 ```
@@ -133,9 +130,6 @@ const { router: actorRouter, injectWebSocket } = createRouter(app);
 // Mount the RivetKit router at /my-path
 honoApp.route("/my-path", actorRouter);
 
-// Export the app type for client usage
-export type Registry = typeof registry;
-
 // Create server with the combined app
 const server = serve({
   fetch: honoApp.fetch,
@@ -184,9 +178,6 @@ const { router: actorRouter, webSocketHandler } = createRouter(app);
 
 // Mount the RivetKit router at /my-path
 honoApp.route("/my-path", actorRouter);
-
-// Export the app type for client usage
-export type Registry = typeof registry;
 
 // Create and start the server
 export default {

@@ -57,7 +57,8 @@
     "test": "vitest run"
   },
   "peerDependencies": {
-    "@rivetkit/core": "workspace:*"
+    "@rivetkit/core": "*",
+    "hono": "^4.7.0"
   },
   "devDependencies": {
     "@types/node": "^22.13.1",
@@ -69,7 +70,6 @@
   "dependencies": {
     "@types/node": "^22.13.1",
     "dedent": "^1.5.3",
-    "hono": "^4.7.0",
     "ioredis": "^5.4.2",
     "p-retry": "^6.2.1",
     "zx": "^7.2.3"

@@ -45,4 +45,3 @@
 // 	use: { chatRoom },
 // });
 //
-// export type Registry = typeof registry;

@@ -1,4 +1,2 @@
-// import { serve } from "@rivetkit/nodejs";
-// import { registry } from "./actors/registry";
-//
-// serve(registry);
+import { registry } from "./registry";
+registry.runServer();

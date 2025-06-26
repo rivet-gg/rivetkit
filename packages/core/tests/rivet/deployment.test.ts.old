@@ -30,9 +30,6 @@
 //   use: { counter },
 // });
 //
-// export type Registry = typeof registry;
-// `;
-//
 // test("Rivet deployment tests", async () => {
 // 	const tempFilePath = path.join(os.tmpdir(), `registry-${randomUUID()}`);
 // 	await fs.writeFile(tempFilePath, COUNTER_ACTOR);

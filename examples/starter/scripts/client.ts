@@ -1,9 +1,8 @@
 import { createClient } from "@rivetkit/actor/client";
-import { execSync } from "node:child_process";
 import type { registry } from "../src/registry.js";
 
-// Get endpoint from rivet kit
-const endpoint = execSync("rivet kit endpoint", { encoding: "utf8" }).trim();
+// Get endpoint from environment variable or default to localhost
+const endpoint = process.env.RIVETKIT_ENDPOINT ?? "http://localhost:8080";
 console.log("🔗 Using endpoint:", endpoint);
 
 // Create RivetKit client

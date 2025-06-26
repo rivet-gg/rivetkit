@@ -30,6 +30,3 @@ export const chatRoom = actor({
 export const registry = setup({
 	use: { chatRoom },
 });
-
-// Export type for client type checking
-export type Registry = typeof registry;

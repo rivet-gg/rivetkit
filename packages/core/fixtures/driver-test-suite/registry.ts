@@ -81,5 +81,3 @@ export const registry = setup({
 		asyncAuthActor,
 	},
 });
-
-export type Registry = typeof registry;
