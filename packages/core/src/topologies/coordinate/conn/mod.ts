@@ -9,6 +9,8 @@ import { ActorPeer } from "../actor-peer";
 import type { CoordinateDriver } from "../driver";
 import { logger } from "../log";
 import { publishMessageToLeader } from "../node/message";
+import { Client } from "@/client/client";
+import { Registry } from "@/mod";
 
 export interface RelayConnDriver {
 	sendMessage(message: messageToClient.ToClient): void;
@@ -23,6 +25,7 @@ export class RelayConn {
 	#runConfig: RunConfig;
 	#coordinateDriver: CoordinateDriver;
 	#actorDriver: ActorDriver;
+	#inlineClient: Client<Registry<any>>;
 	#globalState: GlobalState;
 	#driver: RelayConnDriver;
 	#actorId: string;
@@ -52,6 +55,7 @@ export class RelayConn {
 		registryConfig: RegistryConfig,
 		runConfig: RunConfig,
 		actorDriver: ActorDriver,
+		inlineClient: Client<Registry<any>>,
 		CoordinateDriver: CoordinateDriver,
 		globalState: GlobalState,
 		driver: RelayConnDriver,
@@ -63,6 +67,7 @@ export class RelayConn {
 		this.#runConfig = runConfig;
 		this.#coordinateDriver = CoordinateDriver;
 		this.#actorDriver = actorDriver;
+		this.#inlineClient = inlineClient;
 		this.#driver = driver;
 		this.#globalState = globalState;
 		this.#actorId = actorId;
@@ -89,6 +94,7 @@ export class RelayConn {
 			this.#registryConfig,
 			this.#runConfig,
 			this.#actorDriver,
+			this.#inlineClient,
 			this.#coordinateDriver,
 			this.#globalState,
 			this.#actorId,

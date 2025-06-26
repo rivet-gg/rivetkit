@@ -1,6 +1,8 @@
 import type { ActorDriver } from "@/actor/driver";
 import type { AnyActorInstance } from "@/actor/instance";
 import type { ActorKey } from "@/actor/mod";
+import type { Client } from "@/client/client";
+import type { Registry } from "@/mod";
 import type { RegistryConfig } from "@/registry/config";
 import type { RunConfig } from "@/registry/run-config";
 import type { GlobalState } from "@/topologies/coordinate/topology";
@@ -16,6 +18,7 @@ export class ActorPeer {
 	#runConfig: RunConfig;
 	#coordinateDriver: CoordinateDriver;
 	#actorDriver: ActorDriver;
+	#inlineClient: Client<Registry<any>>;
 	#globalState: GlobalState;
 	#actorId: string;
 	#actorName?: string;
@@ -47,6 +50,7 @@ export class ActorPeer {
 		runConfig: RunConfig,
 		CoordinateDriver: CoordinateDriver,
 		actorDriver: ActorDriver,
+		inlineClient: Client<Registry<any>>,
 		globalState: GlobalState,
 		actorId: string,
 	) {
@@ -54,6 +58,7 @@ export class ActorPeer {
 		this.#runConfig = runConfig;
 		this.#coordinateDriver = CoordinateDriver;
 		this.#actorDriver = actorDriver;
+		this.#inlineClient = inlineClient;
 		this.#globalState = globalState;
 		this.#actorId = actorId;
 	}
@@ -63,6 +68,7 @@ export class ActorPeer {
 		registryConfig: RegistryConfig,
 		runConfig: RunConfig,
 		actorDriver: ActorDriver,
+		inlineClient: Client<Registry<any>>,
 		CoordinateDriver: CoordinateDriver,
 		globalState: GlobalState,
 		actorId: string,
@@ -77,6 +83,7 @@ export class ActorPeer {
 				runConfig,
 				CoordinateDriver,
 				actorDriver,
+				inlineClient,
 				globalState,
 				actorId,
 			);
@@ -226,6 +233,7 @@ export class ActorPeer {
 				),
 			},
 			this.#actorDriver,
+			this.#inlineClient,
 			this.#actorId,
 			this.#actorName,
 			this.#actorKey,

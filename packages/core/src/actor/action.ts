@@ -1,10 +1,12 @@
-import type { Logger } from "@/common/log";
 import type { ActorKey } from "@/actor/mod";
+import type { Logger } from "@/common/log";
 import type { Conn } from "./connection";
 import type { ConnId } from "./connection";
 import type { ActorContext } from "./context";
 import type { SaveStateOptions } from "./instance";
 import type { Schedule } from "./schedule";
+import { Registry } from "@/registry/mod";
+import { Client } from "@/client/client";
 
 /**
  * Context for a remote procedure call.
@@ -95,6 +97,13 @@ export class ActionContext<S, CP, CS, V, I, AD, DB> {
 	 */
 	get conns(): Map<ConnId, Conn<S, CP, CS, V, I, AD, DB>> {
 		return this.#actorContext.conns;
+	}
+
+	/**
+	 * Returns the client for the given registry.
+	 */
+	client<R extends Registry<any>>(): Client<R> {
+		return this.#actorContext.client<R>();
 	}
 
 	/**

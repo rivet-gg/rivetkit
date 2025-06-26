@@ -1,8 +1,10 @@
+import type { ActorKey } from "@/actor/mod";
 import type * as wsToClient from "@/actor/protocol/message/to-client";
 import type * as wsToServer from "@/actor/protocol/message/to-server";
+import type { Client } from "@/client/client";
 import type { Logger } from "@/common/log";
-import type { ActorKey } from "@/actor/mod";
 import { isJsonSerializable, stringifyError } from "@/common/utils";
+import type { Registry } from "@/mod";
 import invariant from "invariant";
 import onChange from "on-change";
 import type { ActionContext } from "./action";
@@ -136,6 +138,7 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 	#config: ActorConfig<S, CP, CS, V, I, AD, DB>;
 	#connectionDrivers!: ConnDrivers;
 	#actorDriver!: ActorDriver;
+	#inlineClient!: Client<Registry<any>>;
 	#actorId!: string;
 	#name!: string;
 	#key!: ActorKey;
@@ -154,6 +157,10 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 		return this.#actorId;
 	}
 
+	get inlineClient(): Client<Registry<any>> {
+		return this.#inlineClient;
+	}
+
 	/**
 	 * This constructor should never be used directly.
 	 *
@@ -169,6 +176,7 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 	async start(
 		connectionDrivers: ConnDrivers,
 		actorDriver: ActorDriver,
+		inlineClient: Client<Registry<any>>,
 		actorId: string,
 		name: string,
 		key: ActorKey,
@@ -176,6 +184,7 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 	) {
 		this.#connectionDrivers = connectionDrivers;
 		this.#actorDriver = actorDriver;
+		this.#inlineClient = inlineClient;
 		this.#actorId = actorId;
 		this.#name = name;
 		this.#key = key;

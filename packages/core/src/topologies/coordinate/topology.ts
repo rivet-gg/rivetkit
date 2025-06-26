@@ -11,10 +11,15 @@ import type {
 	ConnectionHandlers,
 	ConnsMessageOpts,
 } from "@/actor/router-endpoints";
-import type { ClientDriver } from "@/client/client";
+import {
+	type Client,
+	type ClientDriver,
+	createClientWithDriver,
+} from "@/client/client";
 import { createInlineClientDriver } from "@/inline-client-driver/mod";
 import { createManagerRouter } from "@/manager/router";
 import type { RegistryConfig } from "@/registry/config";
+import type { Registry } from "@/registry/mod";
 import type { RunConfig } from "@/registry/run-config";
 import { Hono } from "hono";
 import invariant from "invariant";
@@ -37,6 +42,7 @@ export interface GlobalState {
 
 export class CoordinateTopology {
 	public readonly clientDriver: ClientDriver;
+	inlineClient: Client<Registry<any>>;
 	public readonly router: Hono;
 
 	constructor(registryConfig: RegistryConfig, runConfig: RunConfig) {
@@ -73,6 +79,7 @@ export class CoordinateTopology {
 					registryConfig,
 					runConfig,
 					actorDriver,
+					this.inlineClient,
 					CoordinateDriver,
 					globalState,
 					opts.actorId,
@@ -84,6 +91,7 @@ export class CoordinateTopology {
 					registryConfig,
 					runConfig,
 					actorDriver,
+					this.inlineClient,
 					CoordinateDriver,
 					globalState,
 					opts.actorId,
@@ -124,6 +132,7 @@ export class CoordinateTopology {
 		const managerDriver = runConfig.driver.manager;
 		invariant(managerDriver, "missing manager driver");
 		this.clientDriver = createInlineClientDriver(managerDriver, routingHandler);
+		this.inlineClient = createClientWithDriver(this.clientDriver);
 
 		// Build manager router
 		const { router: managerRouter } = createManagerRouter(

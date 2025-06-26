@@ -17,10 +17,14 @@ import type {
 	ConnectionHandlers,
 	ConnsMessageOpts,
 } from "@/actor/router-endpoints";
-import type { ClientDriver } from "@/client/client";
+import {
+	type Client,
+	type ClientDriver,
+	createClientWithDriver,
+} from "@/client/client";
 import { createInlineClientDriver } from "@/inline-client-driver/mod";
 import { createManagerRouter } from "@/manager/router";
-import type { RunConfig } from "@/mod";
+import type { Registry, RunConfig } from "@/mod";
 import type { RegistryConfig } from "@/registry/config";
 import { Hono } from "hono";
 import invariant from "invariant";
@@ -52,6 +56,7 @@ class ActorHandler {
  */
 export class StandaloneTopology {
 	clientDriver: ClientDriver;
+	inlineClient: Client<Registry<any>>;
 	router: Hono;
 
 	#registryConfig: RegistryConfig;
@@ -71,6 +76,7 @@ export class StandaloneTopology {
 		const managerDriver = this.#runConfig.driver.manager;
 		invariant(managerDriver, "missing manager driver");
 		this.clientDriver = createInlineClientDriver(managerDriver, routingHandler);
+		this.inlineClient = createClientWithDriver(this.clientDriver);
 
 		// Build manager router
 		const { router: managerRouter } = createManagerRouter(
@@ -153,6 +159,7 @@ export class StandaloneTopology {
 		await handler.actor.start(
 			connDrivers,
 			this.#runConfig.driver.actor,
+			this.inlineClient,
 			actorId,
 			actorMetadata.name,
 			actorMetadata.key,

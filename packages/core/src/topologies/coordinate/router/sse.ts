@@ -10,11 +10,14 @@ import type { GlobalState } from "@/topologies/coordinate/topology";
 import { RelayConn } from "../conn/mod";
 import type { CoordinateDriver } from "../driver";
 import { logger } from "../log";
+import { Registry } from "@/registry/mod";
+import { Client } from "@/client/client";
 
 export async function serveSse(
 	registryConfig: RegistryConfig,
 	runConfig: RunConfig,
 	actorDriver: ActorDriver,
+	inlineClient: Client<Registry<any>>,
 	CoordinateDriver: CoordinateDriver,
 	globalState: GlobalState,
 	actorId: string,
@@ -27,6 +30,7 @@ export async function serveSse(
 				registryConfig,
 				runConfig,
 				actorDriver,
+				inlineClient,
 				CoordinateDriver,
 				globalState,
 				{

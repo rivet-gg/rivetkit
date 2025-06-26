@@ -24,6 +24,7 @@ import { connStateActor } from "./conn-state";
 // Import actors from individual files
 import { counter } from "./counter";
 import { customTimeoutActor, errorHandlingActor } from "./error-handling";
+import { inlineClientActor } from "./inline-client";
 import { counterWithLifecycle } from "./lifecycle";
 import { metadataActor } from "./metadata";
 import { scheduled } from "./scheduled";
@@ -47,6 +48,8 @@ export const registry = setup({
 		// From error-handling.ts
 		errorHandlingActor,
 		customTimeoutActor,
+		// From inline-client.ts
+		inlineClientActor,
 		// From action-inputs.ts
 		inputActor,
 		// From action-timeout.ts

@@ -7,6 +7,7 @@ import {
 import type { ConnDriver } from "@/actor/driver";
 import * as errors from "@/actor/errors";
 import type { AnyActorInstance } from "@/actor/instance";
+import type { ActorKey } from "@/actor/mod";
 import type {
 	ActionOpts,
 	ActionOutput,
@@ -16,11 +17,15 @@ import type {
 	ConnectWebSocketOutput,
 	ConnsMessageOpts,
 } from "@/actor/router-endpoints";
-import type { ClientDriver } from "@/client/client";
-import type { ActorKey } from "@/actor/mod";
+import {
+	type Client,
+	type ClientDriver,
+	createClientWithDriver,
+} from "@/client/client";
 import { createInlineClientDriver } from "@/inline-client-driver/mod";
 import { createManagerRouter } from "@/manager/router";
 import type { RegistryConfig } from "@/registry/config";
+import type { Registry } from "@/registry/mod";
 import type { RunConfig } from "@/registry/run-config";
 import { createActorRouter } from "@/topologies/partition/actor-router";
 import type { Hono } from "hono";
@@ -50,6 +55,7 @@ export type OpenWebSocketHandler = (
 
 export class PartitionTopologyManager {
 	clientDriver: ClientDriver;
+	inlineClient: Client<Registry<any>>;
 	router: Hono;
 
 	constructor(registryConfig: RegistryConfig, runConfig: RunConfig) {
@@ -62,6 +68,7 @@ export class PartitionTopologyManager {
 		const managerDriver = runConfig.driver.manager;
 		invariant(managerDriver, "missing manager driver");
 		this.clientDriver = createInlineClientDriver(managerDriver, routingHandler);
+		this.inlineClient = createClientWithDriver(this.clientDriver);
 
 		const { router } = createManagerRouter(
 			registryConfig,
@@ -101,6 +108,8 @@ export class PartitionTopologyManager {
 
 /** Manages the actor in the topology. */
 export class PartitionTopologyActor {
+	clientDriver: ClientDriver;
+	inlineClient: Client<Registry<any>>;
 	router: Hono;
 
 	#registryConfig: RegistryConfig;
@@ -121,6 +130,17 @@ export class PartitionTopologyActor {
 	constructor(registryConfig: RegistryConfig, runConfig: RunConfig) {
 		this.#registryConfig = registryConfig;
 		this.#runConfig = runConfig;
+
+		const routingHandler = runConfig.driver.manager.connRoutingHandler;
+		invariant(
+			routingHandler,
+			"partition run config must provide custom routing handler",
+		);
+
+		const managerDriver = runConfig.driver.manager;
+		invariant(managerDriver, "missing manager driver");
+		this.clientDriver = createInlineClientDriver(managerDriver, routingHandler);
+		this.inlineClient = createClientWithDriver(this.clientDriver);
 
 		const genericConnGlobalState = new GenericConnGlobalState();
 		this.#connDrivers = createGenericConnDrivers(genericConnGlobalState);
@@ -331,6 +351,7 @@ export class PartitionTopologyActor {
 		await this.#actor.start(
 			this.#connDrivers,
 			actorDriver,
+			this.inlineClient,
 			id,
 			name,
 			key,

@@ -1,8 +1,10 @@
-import type { Logger } from "@/common/log";
 import type { ActorKey } from "@/actor/mod";
+import type { Logger } from "@/common/log";
 import type { Conn, ConnId } from "./connection";
 import type { ActorInstance, SaveStateOptions } from "./instance";
 import type { Schedule } from "./schedule";
+import { Client } from "@/client/client";
+import { Registry } from "@/registry/mod";
 
 /**
  * ActorContext class that provides access to actor methods and state
@@ -85,6 +87,13 @@ export class ActorContext<S, CP, CS, V, I, AD, DB> {
 	 */
 	get conns(): Map<ConnId, Conn<S, CP, CS, V, I, AD, DB>> {
 		return this.#actor.conns;
+	}
+
+	/**
+	 * Returns the client for the given registry.
+	 */
+	client<R extends Registry<any>>(): Client<R> {
+		return this.#actor.inlineClient as Client<R>;
 	}
 
 	/**

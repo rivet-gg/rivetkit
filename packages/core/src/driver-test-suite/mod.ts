@@ -20,6 +20,7 @@ import { runActorConnStateTests } from "./tests/actor-conn-state";
 import { runActorDriverTests } from "./tests/actor-driver";
 import { runActorErrorHandlingTests } from "./tests/actor-error-handling";
 import { runActorHandleTests } from "./tests/actor-handle";
+import { runActorInlineClientTests } from "./tests/actor-inline-client";
 import { runActorMetadataTests } from "./tests/actor-metadata";
 import { runActorVarsTests } from "./tests/actor-vars";
 import { runManagerDriverTests } from "./tests/manager-driver";
@@ -94,6 +95,8 @@ export function runDriverTests(
 			runActorErrorHandlingTests(driverTestConfig);
 
 			runActorAuthTests(driverTestConfig);
+
+			runActorInlineClientTests(driverTestConfig);
 		});
 	}
 }

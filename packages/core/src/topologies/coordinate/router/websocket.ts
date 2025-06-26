@@ -14,11 +14,14 @@ import { RelayConn } from "../conn/mod";
 import type { CoordinateDriver } from "../driver";
 import { logger } from "../log";
 import { publishMessageToLeader } from "../node/message";
+import { Registry } from "@/registry/mod";
+import { Client } from "@/client/client";
 
 export async function serveWebSocket(
 	registryConfig: RegistryConfig,
 	runConfig: RunConfig,
 	actorDriver: ActorDriver,
+	inlineClient: Client<Registry<any>>,
 	CoordinateDriver: CoordinateDriver,
 	globalState: GlobalState,
 	actorId: string,
@@ -31,6 +34,7 @@ export async function serveWebSocket(
 				registryConfig,
 				runConfig,
 				actorDriver,
+				inlineClient,
 				CoordinateDriver,
 				globalState,
 				{

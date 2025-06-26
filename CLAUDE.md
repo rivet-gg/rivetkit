@@ -196,3 +196,6 @@ Always include a README.md. The `README.md` should always follow this structure:
     Apache 2.0
     ```
 
+## Test Notes
+
+- Using setTimeout in tests & test actors will not work unless you call `await waitFor(driverTestConfig, <ts>)`
