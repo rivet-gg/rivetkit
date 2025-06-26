@@ -1,4 +1,7 @@
-import type { ActorDriver, AnyActorInstance } from "@rivetkit/core/driver-helpers";
+import type {
+	ActorDriver,
+	AnyActorInstance,
+} from "@rivetkit/core/driver-helpers";
 import type Redis from "ioredis";
 import { KEYS } from "./keys";
 
@@ -17,20 +20,13 @@ export class RedisActorDriver implements ActorDriver {
 		return { redis: this.#redis };
 	}
 
-	async readInput(actorId: string): Promise<unknown | undefined> {
-		// TODO: We should read this all in one batch, this will require multiple RTT to Redis
-		const data = await this.#redis.get(KEYS.ACTOR.input(actorId));
-		if (data !== null) return JSON.parse(data);
+	async readPersistedData(actorId: string): Promise<Uint8Array | undefined> {
+		const data = await this.#redis.getBuffer(KEYS.ACTOR.persistedData(actorId));
+		if (data !== null) return data;
 		return undefined;
 	}
 
-	async readPersistedData(actorId: string): Promise<unknown | undefined> {
-		const data = await this.#redis.get(KEYS.ACTOR.persistedData(actorId));
-		if (data !== null) return JSON.parse(data);
-		return undefined;
-	}
-
-	async writePersistedData(actorId: string, data: unknown): Promise<void> {
+	async writePersistedData(actorId: string, data: Uint8Array): Promise<void> {
 		await this.#redis.set(
 			KEYS.ACTOR.persistedData(actorId),
 			JSON.stringify(data),

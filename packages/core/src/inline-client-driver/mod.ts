@@ -30,6 +30,7 @@ import type { WebSocket } from "ws";
 import { FakeEventSource } from "./fake-event-source";
 import { FakeWebSocket } from "./fake-websocket";
 import { logger } from "./log";
+import * as cbor from "cbor-x";
 
 /**
  * Client driver that calls the manager driver inline.

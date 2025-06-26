@@ -10,6 +10,7 @@ import { logger } from "./log";
 import { RivetManagerDriver } from "./manager-driver";
 import { type RivetClientConfig, getRivetClientConfig } from "./rivet-client";
 import { type RivetHandler, deserializeKeyFromTag } from "./util";
+import * as cbor from "cbor-x";
 
 export function createActorHandler(
 	registry: Registry<any>,
@@ -131,7 +132,9 @@ async function startActor(
 	// TODO: This needs to assert this has only been called once
 	// Initialize with data
 	router.post("/initialize", async (c) => {
-		const body = await c.req.json();
+		const bodyBlob = await c.req.blob();
+		const bodyBytes = await bodyBlob.bytes();
+		const body = cbor.decode(bodyBytes);
 
 		logger().debug("received initialize request", {
 			hasInput: !!body.input,
@@ -150,7 +153,7 @@ async function startActor(
 		// Finish initialization
 		initializedPromise.resolve(undefined);
 
-		return c.json({}, 200);
+		return c.body(cbor.encode({}), 200);
 	});
 
 	// Start server

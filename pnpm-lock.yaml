@@ -366,8 +366,8 @@ importers:
   examples/rivet:
     dependencies:
       '@rivetkit/actor':
-        specifier: https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/actor@cb1e6d4
-        version: https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/actor@cb1e6d4(@hono/node-server@1.14.4(hono@4.8.0))(@hono/node-ws@1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0))(eventsource@3.0.7)(ws@8.18.2)
+        specifier: https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/actor@7e018f2
+        version: https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/actor@7e018f2(@hono/node-server@1.14.4(hono@4.8.0))(@hono/node-ws@1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0))(eventsource@3.0.7)(ws@8.18.2)
     devDependencies:
       '@types/node':
         specifier: ^22.13.9
@@ -1769,12 +1769,12 @@ packages:
   '@rivet-gg/actor-core@25.2.0':
     resolution: {integrity: sha512-4K72XcDLVAz44Ae6G6GuyzWyxQZOLN8jM/W+sVKm6fHr70X8FNCSC5+/9hFIxz/OH9E6q6Wi3V/UN/k6immUBQ==}
 
-  '@rivetkit/actor@https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/actor@cb1e6d4':
-    resolution: {tarball: https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/actor@cb1e6d4}
+  '@rivetkit/actor@https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/actor@7e018f2':
+    resolution: {tarball: https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/actor@7e018f2}
     version: 0.9.0-rc.1
 
-  '@rivetkit/core@https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/core@cb1e6d4102ee4b3ab8861d46adbe33f50e7a4fd2':
-    resolution: {tarball: https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/core@cb1e6d4102ee4b3ab8861d46adbe33f50e7a4fd2}
+  '@rivetkit/core@https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/core@7e018f2ae7792d0f3b6a867ab7ad4eaf7cac87a7':
+    resolution: {tarball: https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/core@7e018f2ae7792d0f3b6a867ab7ad4eaf7cac87a7}
     version: 0.9.0-rc.1
     engines: {node: '>=22.0.0'}
     peerDependencies:
@@ -5017,16 +5017,16 @@ snapshots:
     dependencies:
       zod: 3.25.67
 
-  '@rivetkit/actor@https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/actor@cb1e6d4(@hono/node-server@1.14.4(hono@4.8.0))(@hono/node-ws@1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0))(eventsource@3.0.7)(ws@8.18.2)':
+  '@rivetkit/actor@https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/actor@7e018f2(@hono/node-server@1.14.4(hono@4.8.0))(@hono/node-ws@1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0))(eventsource@3.0.7)(ws@8.18.2)':
     dependencies:
-      '@rivetkit/core': https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/core@cb1e6d4102ee4b3ab8861d46adbe33f50e7a4fd2(@hono/node-server@1.14.4(hono@4.8.0))(@hono/node-ws@1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0))(eventsource@3.0.7)(ws@8.18.2)
+      '@rivetkit/core': https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/core@7e018f2ae7792d0f3b6a867ab7ad4eaf7cac87a7(@hono/node-server@1.14.4(hono@4.8.0))(@hono/node-ws@1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0))(eventsource@3.0.7)(ws@8.18.2)
     transitivePeerDependencies:
       - '@hono/node-server'
       - '@hono/node-ws'
       - eventsource
       - ws
 
-  '@rivetkit/core@https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/core@cb1e6d4102ee4b3ab8861d46adbe33f50e7a4fd2(@hono/node-server@1.14.4(hono@4.8.0))(@hono/node-ws@1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0))(eventsource@3.0.7)(ws@8.18.2)':
+  '@rivetkit/core@https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/core@7e018f2ae7792d0f3b6a867ab7ad4eaf7cac87a7(@hono/node-server@1.14.4(hono@4.8.0))(@hono/node-ws@1.1.7(@hono/node-server@1.14.4(hono@4.8.0))(hono@4.8.0))(eventsource@3.0.7)(ws@8.18.2)':
     dependencies:
       '@hono/zod-openapi': 0.19.8(hono@4.8.0)(zod@3.25.67)
       cbor-x: 1.6.0

@@ -18,8 +18,7 @@ export interface ActorState {
 	id: string;
 	name: string;
 	key: ActorKey;
-	persistedData: unknown;
-	input?: unknown;
+	persistedData?: Uint8Array;
 }
 
 /**
@@ -107,15 +106,10 @@ export class FileSystemGlobalState {
 		return cachedActor;
 	}
 
-	readInput(actorId: string): unknown | undefined {
-		const state = this.loadActorState(actorId);
-		return state.input;
-	}
-
 	/**
 	 * Read persisted data for a actor
 	 */
-	readPersistedData(actorId: string): unknown | undefined {
+	readPersistedData(actorId: string): Uint8Array | undefined {
 		const state = this.loadActorState(actorId);
 		return state.persistedData;
 	}
@@ -123,7 +117,7 @@ export class FileSystemGlobalState {
 	/**
 	 * Write persisted data for a actor
 	 */
-	writePersistedData(actorId: string, data: unknown): void {
+	writePersistedData(actorId: string, data: Uint8Array): void {
 		const state = this.loadActorState(actorId);
 		state.persistedData = data;
 	}
@@ -182,7 +176,7 @@ export class FileSystemGlobalState {
 		actorId: string,
 		name: string,
 		key: ActorKey,
-		input?: unknown,
+		input: unknown | undefined,
 	): Promise<void> {
 		// Check if actor already exists
 		if (this.hasActor(actorId)) {
@@ -194,8 +188,7 @@ export class FileSystemGlobalState {
 			id: actorId,
 			name,
 			key,
-			persistedData: undefined,
-			input,
+			persistedData: serializeEmptyPersistData(input),
 		};
 
 		// Cache the state

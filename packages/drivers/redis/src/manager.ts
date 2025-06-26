@@ -108,7 +108,6 @@ export class RedisManagerDriver implements ManagerDriver {
 		// Store basic actor information
 		pipeline.set(KEYS.ACTOR.initialized(actorId), "1");
 		pipeline.set(KEYS.ACTOR.metadata(actorId), JSON.stringify({ name, key }));
-		pipeline.set(KEYS.ACTOR.input(actorId), JSON.stringify(input));
 
 		// Create direct lookup by name+key -> actorId
 		pipeline.set(actorKeyRedisKey, actorId);

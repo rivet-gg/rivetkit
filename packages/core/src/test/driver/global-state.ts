@@ -1,11 +1,11 @@
 import type { ActorKey } from "@/actor/mod";
+import { serializeEmptyPersistData } from "@/driver-helpers/mod";
 
 export interface ActorState {
 	id: string;
 	name: string;
 	key: ActorKey;
-	persistedData: unknown;
-	input?: unknown;
+	persistedData?: Uint8Array;
 }
 
 export class TestGlobalState {
@@ -19,15 +19,11 @@ export class TestGlobalState {
 		return actor;
 	}
 
-	readInput(actorId: string): unknown | undefined {
-		return this.#getActor(actorId).input;
-	}
-
-	readPersistedData(actorId: string): unknown | undefined {
+	readPersistedData(actorId: string): Uint8Array | undefined {
 		return this.#getActor(actorId).persistedData;
 	}
 
-	writePersistedData(actorId: string, data: unknown) {
+	writePersistedData(actorId: string, data: Uint8Array) {
 		this.#getActor(actorId).persistedData = data;
 	}
 
@@ -35,7 +31,7 @@ export class TestGlobalState {
 		actorId: string,
 		name: string,
 		key: ActorKey,
-		input?: unknown,
+		input: unknown | undefined,
 	): void {
 		// Create actor state if it doesn't exist
 		if (!this.#actors.has(actorId)) {
@@ -43,8 +39,7 @@ export class TestGlobalState {
 				id: actorId,
 				name,
 				key,
-				persistedData: undefined,
-				input,
+				persistedData: serializeEmptyPersistData(input),
 			});
 		} else {
 			throw new Error(`Actor already exists for ID: ${actorId}`);

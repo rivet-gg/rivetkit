@@ -26,6 +26,7 @@ import {
 	rivetRequest,
 } from "./rivet-client";
 import { convertKeyToRivetTags } from "./util";
+import * as cbor from "cbor-x";
 
 export interface ActorState {
 	key: string[];
@@ -157,9 +158,9 @@ export class RivetManagerDriver implements ManagerDriver {
 			const res = await fetch(url, {
 				method: "POST",
 				headers: {
-					"Content-Type": "application/json",
+					"Content-Type": "application/cbor",
 				},
-				body: JSON.stringify({ input }),
+				body: cbor.encode({ input }),
 			});
 			if (!res.ok) {
 				throw new InternalError(

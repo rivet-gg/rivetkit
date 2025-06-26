@@ -24,6 +24,7 @@ import { processMessage } from "./protocol/message/mod";
 import { CachedSerializer } from "./protocol/serde";
 import { Schedule } from "./schedule";
 import { DeadlineError, Lock, deadline } from "./utils";
+import * as cbor from "cbor-x";
 
 /**
  * Options for the `_saveState` method.
@@ -122,10 +123,10 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 	 *
 	 * Any data that should be stored indefinitely should be held within this object.
 	 */
-	#persist!: PersistedActor<S, CP, CS>;
+	#persist!: PersistedActor<S, CP, CS, I>;
 
 	/** Raw state without the proxy wrapper */
-	#persistRaw!: PersistedActor<S, CP, CS>;
+	#persistRaw!: PersistedActor<S, CP, CS, I>;
 
 	#writePersistLock = new Lock<void>(void 0);
 
@@ -426,7 +427,7 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 					// Write to KV
 					await this.#actorDriver.writePersistedData(
 						this.#actorId,
-						this.#persistRaw,
+						cbor.encode(this.#persistRaw),
 					);
 
 					logger().debug("persist saved");
@@ -443,7 +444,7 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 	/**
 	 * Creates proxy for `#persist` that handles automatically flagging when state needs to be updated.
 	 */
-	#setPersist(target: PersistedActor<S, CP, CS>) {
+	#setPersist(target: PersistedActor<S, CP, CS, I>) {
 		// Set raw persist object
 		this.#persistRaw = target;
 
@@ -514,11 +515,21 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 
 	async #initialize() {
 		// Read initial state
-		const persistData = (await this.#actorDriver.readPersistedData(
+		const persistDataBuffer = await this.#actorDriver.readPersistedData(
 			this.#actorId,
-		)) as PersistedActor<S, CP, CS>;
+		);
+		invariant(
+			persistDataBuffer !== undefined,
+			"persist data has not been set, it should be set when initialized",
+		);
+		const persistData = cbor.decode(persistDataBuffer) as PersistedActor<
+			S,
+			CP,
+			CS,
+			I
+		>;
 
-		if (persistData !== undefined) {
+		if (persistData.hi) {
 			logger().info("actor restoring", {
 				connections: persistData.c.length,
 			});
@@ -546,8 +557,6 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 		} else {
 			logger().info("actor creating");
 
-			const input = (await this.#actorDriver.readInput(this.#actorId)) as I;
-
 			// Initialize actor state
 			let stateData: unknown = undefined;
 			if (this.stateEnabled) {
@@ -567,7 +576,7 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 							undefined,
 							undefined
 						>,
-						{ input },
+						{ input: persistData.i },
 					);
 				} else if ("state" in this.#config) {
 					stateData = structuredClone(this.#config.state);
@@ -578,21 +587,24 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 				logger().debug("state not enabled");
 			}
 
-			const persist: PersistedActor<S, CP, CS> = {
-				s: stateData as S,
-				c: [],
-				e: [],
-			};
+			// Save state and mark as initialized
+			persistData.s = stateData as S;
+			persistData.hi = true;
 
 			// Update state
 			logger().debug("writing state");
-			await this.#actorDriver.writePersistedData(this.#actorId, persist);
+			await this.#actorDriver.writePersistedData(
+				this.#actorId,
+				cbor.encode(persistData),
+			);
 
-			this.#setPersist(persist);
+			this.#setPersist(persistData);
 
 			// Notify creation
 			if (this.#config.onCreate) {
-				await this.#config.onCreate(this.actorContext, { input });
+				await this.#config.onCreate(this.actorContext, {
+					input: persistData.i,
+				});
 			}
 		}
 	}

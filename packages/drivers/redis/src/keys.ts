@@ -10,8 +10,6 @@ export const KEYS = {
 		metadata: (actorId: string) => `actor:${actorId}:metadata`,
 		// KEY
 		persistedData: (actorId: string) => `actor:${actorId}:persisted_data`,
-		// KEY
-		input: (actorId: string) => `actor:${actorId}:input`,
 	},
 };
 
