@@ -107,7 +107,7 @@ function formatter(log: LogRecord): string {
 	return stringify(
 		//["ts", formatTimestamp(log.datetime)],
 		["level", LevelNameMap[log.level]],
-		["target", log.loggerName],
+		// ["target", log.loggerName],
 		["msg", log.msg],
 		...args,
 	);
