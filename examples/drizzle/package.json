@@ -14,7 +14,7 @@
     "typescript": "^5.5.2"
   },
   "dependencies": {
-    "@rivetkit/db": "workspace:0.9.0-rc.1",
+    "@rivetkit/db": "workspace:*",
     "drizzle-kit": "^0.31.2",
     "drizzle-orm": "^0.44.2"
   },

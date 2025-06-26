@@ -13,7 +13,7 @@
     "typescript": "^5.5.2"
   },
   "dependencies": {
-    "@rivetkit/react": "workspace:0.9.0-rc.1",
+    "@rivetkit/react": "workspace:*",
     "elysia": "^1.3.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
