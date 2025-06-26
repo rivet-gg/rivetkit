@@ -442,34 +442,37 @@ export function createManagerRouter(
 								clientWs = await clientWsPromise;
 
 								// Add message handler to forward messages from client to server
-								clientWs.onmessage = (clientEvt: MessageEvent) => {
-									logger().debug("test websocket connection message");
+								clientWs.addEventListener(
+									"message",
+									(clientEvt: MessageEvent) => {
+										logger().debug("test websocket connection message");
 
-									if (serverWs.readyState === 1) {
-										// OPEN
-										serverWs.send(clientEvt.data as any);
-									}
-								};
+										if (serverWs.readyState === 1) {
+											// OPEN
+											serverWs.send(clientEvt.data as any);
+										}
+									},
+								);
 
 								// Add close handler to close server when client closes
-								clientWs.onclose = (clientEvt: CloseEvent) => {
+								clientWs.addEventListener("close", (clientEvt: CloseEvent) => {
 									logger().debug("test websocket connection closed");
 
 									if (serverWs.readyState !== 3) {
 										// Not CLOSED
 										serverWs.close(clientEvt.code, clientEvt.reason);
 									}
-								};
+								});
 
 								// Add error handler
-								clientWs.onerror = () => {
+								clientWs.addEventListener("error", () => {
 									logger().debug("test websocket connection error");
 
 									if (serverWs.readyState !== 3) {
 										// Not CLOSED
 										serverWs.close(1011, "Error in client websocket");
 									}
-								};
+								});
 							} catch (error) {
 								logger().error(
 									"failed to establish client websocket connection",

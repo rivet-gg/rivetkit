@@ -21,7 +21,7 @@
 // });
 
 // export const registry = setup({
-// 	actors: { counter },
+// 	use: { counter },
 // });
 
 // export type Registry = typeof registry;

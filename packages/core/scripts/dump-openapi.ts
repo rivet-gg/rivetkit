@@ -14,7 +14,7 @@ import { VERSION } from "@/utils";
 
 function main() {
 	const registryConfig: RegistryConfig = RegistryConfigSchema.parse({
-		actors: {},
+		use: {},
 	});
 	const registry = setup(registryConfig);
 

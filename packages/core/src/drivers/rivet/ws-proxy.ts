@@ -26,7 +26,7 @@ export async function createWebSocketProxy(
 			targetWs = new WebSocket(targetUrl, { headers });
 
 			// Set up target websocket handlers
-			targetWs.onopen = () => {
+			targetWs.addEventListener("open", () => {
 				invariant(targetWs, "targetWs does not exist");
 
 				// Process any queued messages once connected
@@ -37,13 +37,13 @@ export async function createWebSocketProxy(
 					// Clear the queue after sending
 					messageQueue.length = 0;
 				}
-			};
+			});
 
-			targetWs.onmessage = (event: any) => {
+			targetWs.addEventListener("message", (event: any) => {
 				wsContext.send(event.data as any);
-			};
+			});
 
-			targetWs.onclose = (event: any) => {
+			targetWs.addEventListener("close", (event: any) => {
 				logger().debug("target websocket closed", {
 					code: event.code,
 					reason: event.reason,
@@ -53,9 +53,9 @@ export async function createWebSocketProxy(
 					// Forward the close code and reason from target to client
 					wsContext.close(event.code, event.reason);
 				}
-			};
+			});
 
-			targetWs.onerror = () => {
+			targetWs.addEventListener("error", () => {
 				logger().warn("target websocket error");
 
 				if (wsContext.readyState === WebSocket.OPEN) {
@@ -63,7 +63,7 @@ export async function createWebSocketProxy(
 					// The connection was closed abnormally, e.g., without sending or receiving a Close control frame
 					wsContext.close(1006, "Error in target connection");
 				}
-			};
+			});
 		},
 
 		// Handle messages from client to target

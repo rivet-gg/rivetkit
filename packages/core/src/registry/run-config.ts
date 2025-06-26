@@ -2,7 +2,7 @@ import type { ActorDriver } from "@/actor/driver";
 import { createMemoryDriver } from "@/drivers/memory/mod";
 import type { ManagerDriver } from "@/manager/driver";
 import type { CoordinateDriver } from "@/topologies/coordinate/driver";
-import type { UpgradeWebSocket } from "@/utils";
+import { createDefaultDriver, type UpgradeWebSocket } from "@/utils";
 import type { Hono } from "hono";
 import type { cors } from "hono/cors";
 import { z } from "zod";
@@ -60,7 +60,7 @@ export type DriverConfig = z.infer<typeof DriverConfigSchema>;
 /** Base config used for the actor config across all platforms. */
 export const RunConfigSchema = z
 	.object({
-		driver: DriverConfigSchema.optional().default(() => createMemoryDriver()),
+		driver: DriverConfigSchema.optional().default(() => createDefaultDriver()),
 
 		// This is dynamic since NodeJS requires a reference to the router to initialize WebSockets
 		getUpgradeWebSocket: z.custom<GetUpgradeWebSocket>().optional(),

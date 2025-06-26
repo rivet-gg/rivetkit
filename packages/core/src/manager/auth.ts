@@ -111,7 +111,7 @@ export async function authenticateEndpoint(
 
 	// Get actor definition
 	const actorName = await getActorNameFromQuery(c, driver, query);
-	const actorDefinition = registryConfig.actors[actorName];
+	const actorDefinition = registryConfig.use[actorName];
 	if (!actorDefinition) {
 		throw new errors.ActorNotFound(actorName);
 	}

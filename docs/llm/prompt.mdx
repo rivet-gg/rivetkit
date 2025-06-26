@@ -134,7 +134,7 @@ When importing from workspace packages, always check the package's `package.json
 
 ## Actor Management
 
-- App is configured with actors using `setup({ actors: { actorName }})` followed by `serve(registry)`
+- App is configured with actors using `setup({ use: { actorName }})` followed by `serve(registry)`
 - Actors are accessed by client using `client.actorName.get()`
 - Actors can pass an ID parameter or object with `client.actorName.get(id)` or `client.actorName.get({key: value})`
 - Actors can be shut down with `c.shutdown()` from within the actor

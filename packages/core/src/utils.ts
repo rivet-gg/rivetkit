@@ -37,7 +37,7 @@ export type UpgradeWebSocket = (
 /**
  * Determines which driver to use if none is provided.
  */
-export function getDefaultDriver(): DriverConfig {
+export function createDefaultDriver(): DriverConfig {
 	const driver = getEnvUniversal("RIVETKIT_DRIVER");
 	console.log("driver", driver);
 	if (!driver || driver === "memory") {

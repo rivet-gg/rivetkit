@@ -11,7 +11,7 @@ When mounting the RivetKit router at a custom path, you **must** specify the sam
 ```typescript
 // Setup the RivetKit app
 const registry = setup({
-  actors: { counter },
+  use: { counter },
   // IMPORTANT: Must specify the same basePath where your router is mounted
   basePath: "/my-path"
 });
@@ -46,7 +46,7 @@ honoApp.get("/hello", (c) => c.text("Hello, world!"));
 
 // Setup the RivetKit app
 const registry = setup({
-  actors: { counter },
+  use: { counter },
   // IMPORTANT: Must specify the same basePath where your router is mounted
   basePath: "/my-path"
 });
@@ -122,7 +122,7 @@ honoApp.get("/hello", (c) => c.text("Hello, world!"));
 
 // Setup the RivetKit app
 const registry = setup({
-  actors: { counter },
+  use: { counter },
   // IMPORTANT: Must specify the same basePath where your router is mounted
   basePath: "/my-path"
 });
@@ -174,7 +174,7 @@ honoApp.get("/hello", (c) => c.text("Hello, world!"));
 
 // Setup the RivetKit app
 const registry = setup({
-  actors: { counter },
+  use: { counter },
   // IMPORTANT: Must specify the same basePath where your router is mounted
   basePath: "/my-path"
 });

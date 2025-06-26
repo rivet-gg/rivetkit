@@ -15,7 +15,7 @@ const counter = actor({
 
 // Create the application
 export const registry = setup({
-  actors: { counter },
+  use: { counter },
   cors: { origin: "http://localhost:8080" }
 });
 

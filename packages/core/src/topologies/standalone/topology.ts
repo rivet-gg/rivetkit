@@ -142,7 +142,7 @@ export class StandaloneTopology {
 		if (!actorMetadata) throw new Error(`No actor found for ID ${actorId}`);
 
 		// Build actor
-		const definition = this.#registryConfig.actors[actorMetadata.name];
+		const definition = this.#registryConfig.use[actorMetadata.name];
 		if (!definition)
 			throw new Error(`no actor in registry for name ${definition}`);
 

@@ -255,18 +255,18 @@ enc
 			signal ? { signal } : undefined,
 		);
 		this.#transport = { websocket: ws };
-		ws.onopen = () => {
+		ws.addEventListener("open", () => {
 			logger().debug("websocket open");
-		};
-		ws.onmessage = async (ev) => {
+		});
+		ws.addEventListener("message", async (ev) => {
 			this.#handleOnMessage(ev.data);
-		};
-		ws.onclose = (ev) => {
+		});
+		ws.addEventListener("close", (ev) => {
 			this.#handleOnClose(ev);
-		};
-		ws.onerror = (ev) => {
+		});
+		ws.addEventListener("error", (ev) => {
 			this.#handleOnError();
-		};
+		});
 	}
 
 	async #connectSse({ signal }: { signal?: AbortSignal } = {}) {

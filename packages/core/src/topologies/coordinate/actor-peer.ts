@@ -217,7 +217,7 @@ export class ActorPeer {
 
 		// Build actor
 		const actorName = this.#actorName;
-		const definition = this.#registryConfig.actors[actorName];
+		const definition = this.#registryConfig.use[actorName];
 		if (!definition)
 			throw new Error(`no actor definition for name ${definition}`);
 

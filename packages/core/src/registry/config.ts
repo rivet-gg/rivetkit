@@ -14,7 +14,7 @@ export type TestConfig = z.infer<typeof TestConfigSchema>;
 
 /** Base config used for the actor config across all platforms. */
 export const RegistryConfigSchema = z.object({
-	actors: z.record(z.string(), z.custom<AnyActorDefinition>()),
+	use: z.record(z.string(), z.custom<AnyActorDefinition>()),
 
 	// TODO: Find a better way of passing around the test config
 	/**
@@ -28,5 +28,5 @@ export const RegistryConfigSchema = z.object({
 export type RegistryConfig = z.infer<typeof RegistryConfigSchema>;
 export type RegistryConfigInput<A extends RegistryActors> = Omit<
 	z.input<typeof RegistryConfigSchema>,
-	"actors"
-> & { actors: A };
+	"use"
+> & { use: A };

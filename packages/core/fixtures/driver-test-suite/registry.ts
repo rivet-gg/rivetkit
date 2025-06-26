@@ -38,7 +38,7 @@ import {
 
 // Consolidated setup with all actors
 export const registry = setup({
-	actors: {
+	use: {
 		// From counter.ts
 		counter,
 		// From lifecycle.ts

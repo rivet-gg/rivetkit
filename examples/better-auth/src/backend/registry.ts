@@ -42,7 +42,7 @@
 // });
 //
 // export const registry = setup({
-// 	actors: { chatRoom },
+// 	use: { chatRoom },
 // });
 //
 // export type Registry = typeof registry;

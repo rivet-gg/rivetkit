@@ -104,7 +104,7 @@ const counter = actor({
 
 // Create and export the app
 const registry = setup({
-  actors: { counter }
+  use: { counter }
 });
 
 export type Registry = typeof registry;

@@ -59,7 +59,7 @@ const myActor = actor({
 });
 
 export const registry = setup({
-  actors: { myActor }
+  use: { myActor }
 });
 
 export type Registry = typeof registry;
@@ -109,7 +109,7 @@ const counter = actor({
 });
 
 export const registry = setup({
-  actors: { counter }
+  use: { counter }
 });
 
 export type Registry = typeof registry;
@@ -164,7 +164,7 @@ export const chatRoom = actor({
 
 // Create and export the app
 export const registry = setup({
-  actors: { chatRoom }
+  use: { chatRoom }
 });
 
 // Export type for client type checking
@@ -225,7 +225,7 @@ const scheduler = actor({
 });
 
 export const registry = setup({
-  actors: { scheduler }
+  use: { scheduler }
 });
 
 export type Registry = typeof registry;

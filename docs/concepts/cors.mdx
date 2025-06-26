@@ -18,7 +18,7 @@ import { setup } from "rivetkit";
 import counter from "./counter";
 
 const registry = setup({
-  actors: { counter },
+  use: { counter },
   // Change this to match your frontend's origin
   cors: { origin: "https://yourdomain.com" }
 });

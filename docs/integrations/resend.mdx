@@ -51,7 +51,7 @@ const user = actor({
   },
 });
 
-export const registry = setup({ actors: { user } });
+export const registry = setup({ use: { user } });
 export type Registry = typeof registry;
 ```
 </Step>

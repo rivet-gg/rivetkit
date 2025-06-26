@@ -22,50 +22,15 @@ export class FakeWebSocket {
 	#wsContext: WSContext;
 	#readyState: 0 | 1 | 2 | 3 = 0; // Start in CONNECTING state
 	#queuedMessages: Array<string | ArrayBuffer | Uint8Array> = [];
-	// Event buffering is needed since onopen/onmessage events can be fired
-	// before JavaScript has a chance to assign handlers (e.g. within the same tick)
+	// Event buffering is needed since events can be fired
+	// before JavaScript has a chance to add event listeners (e.g. within the same tick)
 	#bufferedEvents: Array<{
-		type: "open" | "close" | "error" | "message";
+		type: string;
 		event: any;
 	}> = [];
 
-	// Event handlers with buffering
-	#onopen: ((ev: any) => void) | null = null;
-	#onclose: ((ev: any) => void) | null = null;
-	#onerror: ((ev: any) => void) | null = null;
-	#onmessage: ((ev: any) => void) | null = null;
-
-	get onopen() {
-		return this.#onopen;
-	}
-	set onopen(handler: ((ev: any) => void) | null) {
-		this.#onopen = handler;
-		if (handler) this.#flushBufferedEvents("open");
-	}
-
-	get onclose() {
-		return this.#onclose;
-	}
-	set onclose(handler: ((ev: any) => void) | null) {
-		this.#onclose = handler;
-		if (handler) this.#flushBufferedEvents("close");
-	}
-
-	get onerror() {
-		return this.#onerror;
-	}
-	set onerror(handler: ((ev: any) => void) | null) {
-		this.#onerror = handler;
-		if (handler) this.#flushBufferedEvents("error");
-	}
-
-	get onmessage() {
-		return this.#onmessage;
-	}
-	set onmessage(handler: ((ev: any) => void) | null) {
-		this.#onmessage = handler;
-		if (handler) this.#flushBufferedEvents("message");
-	}
+	// Event listeners with buffering
+	#eventListeners: Map<string, ((ev: any) => void)[]> = new Map();
 
 	constructor(handler: ConnectWebSocketOutput) {
 		this.#handler = handler;
@@ -303,13 +268,7 @@ export class FakeWebSocket {
 		} as unknown as MessageEvent;
 
 		// Dispatch the event
-		if (this.onmessage) {
-			logger().debug("dispatching message to onmessage handler");
-			this.onmessage(event);
-		} else {
-			logger().debug("no onmessage handler registered, buffering message");
-			this.#bufferedEvents.push({ type: "message", event });
-		}
+		this.#dispatchEvent("message", event);
 	}
 
 	#handleClose(code: number, reason: string): void {
@@ -328,14 +287,47 @@ export class FakeWebSocket {
 		} as unknown as CloseEvent;
 
 		// Dispatch the event
-		if (this.onclose) {
-			this.onclose(event);
-		} else {
-			this.#bufferedEvents.push({ type: "close", event });
+		this.#dispatchEvent("close", event);
+	}
+
+	addEventListener(type: string, listener: (ev: any) => void): void {
+		if (!this.#eventListeners.has(type)) {
+			this.#eventListeners.set(type, []);
+		}
+		this.#eventListeners.get(type)!.push(listener);
+		
+		// Flush any buffered events for this type
+		this.#flushBufferedEvents(type);
+	}
+
+	removeEventListener(type: string, listener: (ev: any) => void): void {
+		const listeners = this.#eventListeners.get(type);
+		if (listeners) {
+			const index = listeners.indexOf(listener);
+			if (index !== -1) {
+				listeners.splice(index, 1);
+			}
 		}
 	}
 
-	#flushBufferedEvents(type: "open" | "close" | "error" | "message"): void {
+	#dispatchEvent(type: string, event: any): void {
+		const listeners = this.#eventListeners.get(type);
+		if (listeners && listeners.length > 0) {
+			logger().debug(`dispatching ${type} event to ${listeners.length} listeners`);
+			for (const listener of listeners) {
+				try {
+					listener(event);
+				} catch (err) {
+					logger().error(`error in ${type} event listener`, { error: err });
+				}
+			}
+		} else {
+			logger().debug(`no ${type} listeners registered, buffering event`);
+			this.#bufferedEvents.push({ type, event });
+		}
+	}
+
+	#flushBufferedEvents(type: string): void {
 		const eventsToFlush = this.#bufferedEvents.filter(
 			(buffered) => buffered.type === type,
 		);
@@ -344,24 +336,7 @@ export class FakeWebSocket {
 		);
 
 		for (const { event } of eventsToFlush) {
-			try {
-				switch (type) {
-					case "open":
-						this.#onopen?.(event);
-						break;
-					case "close":
-						this.#onclose?.(event);
-						break;
-					case "error":
-						this.#onerror?.(event);
-						break;
-					case "message":
-						this.#onmessage?.(event);
-						break;
-				}
-			} catch (err) {
-				logger().error(`error in buffered ${type} handler`, { error: err });
-			}
+			this.#dispatchEvent(type, event);
 		}
 	}
 
@@ -374,25 +349,17 @@ export class FakeWebSocket {
 				currentTarget: this,
 			} as unknown as Event;
 
-			if (this.onopen) {
-				this.onopen(event);
-			} else {
-				this.#bufferedEvents.push({ type: "open", event });
-			}
+			this.#dispatchEvent("open", event);
 		} catch (err) {
-			logger().error("error in onopen handler", { error: err });
+			logger().error("error in open event", { error: err });
 		}
 	}
 
 	#fireClose(event: CloseEvent): void {
 		try {
-			if (this.onclose) {
-				this.onclose(event);
-			} else {
-				this.#bufferedEvents.push({ type: "close", event });
-			}
+			this.#dispatchEvent("close", event);
 		} catch (err) {
-			logger().error("error in onclose handler", { error: err });
+			logger().error("error in close event", { error: err });
 		}
 	}
 
@@ -407,13 +374,9 @@ export class FakeWebSocket {
 				message: error instanceof Error ? error.message : String(error),
 			} as unknown as Event;
 
-			if (this.onerror) {
-				this.onerror(event);
-			} else {
-				this.#bufferedEvents.push({ type: "error", event });
-			}
+			this.#dispatchEvent("error", event);
 		} catch (err) {
-			logger().error("error in onerror handler", { error: err });
+			logger().error("error in error event", { error: err });
 		}
 
 		// Log the error

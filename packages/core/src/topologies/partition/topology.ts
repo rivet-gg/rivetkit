@@ -339,7 +339,7 @@ export class PartitionTopologyActor {
 		const actorDriver = this.#runConfig.driver.actor;
 
 		// Find actor prototype
-		const definition = this.#registryConfig.actors[name];
+		const definition = this.#registryConfig.use[name];
 		// TODO: Handle error here gracefully somehow
 		if (!definition)
 			throw new Error(`no actor in registry for name ${definition}`);

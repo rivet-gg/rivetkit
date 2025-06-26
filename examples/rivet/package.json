@@ -14,7 +14,7 @@
     "typescript": "^5.5.2"
   },
   "dependencies": {
-    "@rivetkit/actor": "workspace:*"
+    "@rivetkit/actor": "https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/actor@cb1e6d4"
   },
   "stableVersion": "0.8.0"
 }

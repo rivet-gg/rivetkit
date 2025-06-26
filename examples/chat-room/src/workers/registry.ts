@@ -28,7 +28,7 @@ export const chatRoom = actor({
 
 // Create and export the app
 export const registry = setup({
-	actors: { chatRoom },
+	use: { chatRoom },
 });
 
 // Export type for client type checking
