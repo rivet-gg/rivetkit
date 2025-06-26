@@ -20,6 +20,6 @@ app.post("/increment/:name", async (req, res) => {
 	res.send(`New Count: ${newCount}`);
 });
 
-app.listen(6420, () => {
-	console.log("Listening at http://localhost:6420");
+app.listen(8080, () => {
+	console.log("Listening at http://localhost:8080");
 });

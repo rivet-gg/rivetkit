@@ -3,7 +3,7 @@ import { createReactRivetKit } from "@rivetkit/react";
 import { useState, useEffect, useRef } from "react";
 import type { Contact } from "./actor";
 
-const client = createClient("http://localhost:6420");
+const client = createClient("http://localhost:8080");
 const { useActor, useActorEvent } = createReactRivetKit(client);
 
 export function ContactsApp() {

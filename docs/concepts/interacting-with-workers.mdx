@@ -23,7 +23,7 @@ use rivetkit_client::{Client, EncodingKind, GetOrCreateOptions, TransportKind};
 
 // Create a client with connection address and configuration
 let client = Client::new(
-    "http://localhost:6420",              // Connection address
+    "http://localhost:8080",              // Connection address
     TransportKind::WebSocket,             // Transport (WebSocket or SSE)
     EncodingKind::Cbor,                   // Encoding (Json or Cbor)
 );
@@ -33,7 +33,7 @@ let client = Client::new(
 from rivetkit_client import AsyncClient as ActorClient
 
 # Create a client with the connection address
-client = ActorClient("http://localhost:6420")
+client = ActorClient("http://localhost:8080")
 ```
 </CodeGroup>
 

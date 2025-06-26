@@ -56,7 +56,7 @@ export default chatRoom;
 import { createClient } from "rivetkit/client";
 import type { App } from "./src/index";
 
-const client = createClient<App>("http://localhost:6420");
+const client = createClient<App>("http://localhost:8080");
 
 // Connect to a specific channel
 const randomChannel = await client.chatRoom.get({ channel: "random" });

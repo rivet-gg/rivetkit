@@ -6,7 +6,7 @@ async function main() {
 	const { username, room } = await initPrompt();
 
 	// Create type-aware client
-	const client = createClient<Registry>("http://localhost:6420");
+	const client = createClient<Registry>("http://localhost:8080");
 
 	// connect to chat room - now accessed via property
 	// can still pass parameters like room

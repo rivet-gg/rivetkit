@@ -200,7 +200,7 @@ await client.chatRoom.get({ channel: "random" });
 import { createClient } from "rivetkit/client";
 import type { App } from "./src/index";
 
-const client = createClient<App>("http://localhost:6420");
+const client = createClient<App>("http://localhost:8080");
 
 // Game room with ID parameter
 const gameRoom = await client.gameRoom.get({ roomId: "ABC123" });

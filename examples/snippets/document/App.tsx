@@ -3,7 +3,7 @@ import { createReactRivetKit } from "@rivetkit/react";
 import { useState, useEffect } from "react";
 import type { Registry } from "../actors/registry";
 
-const client = createClient<Registry>("http://localhost:6420");
+const client = createClient<Registry>("http://localhost:8080");
 const { useActor, useActorEvent } = createReactRivetKit(client);
 
 export function DocumentEditor() {

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import type { Registry } from "../actors/registry";
 import type { Message } from "./actor";
 
-const client = createClient<Registry>("http://localhost:6420");
+const client = createClient<Registry>("http://localhost:8080");
 const { useActor, useActorEvent } = createReactRivetKit(client);
 
 export function ChatRoom({ roomId = "general" }) {

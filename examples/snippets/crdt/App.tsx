@@ -5,7 +5,7 @@ import * as Y from 'yjs';
 import { applyUpdate, encodeStateAsUpdate } from 'yjs';
 import type { Registry } from "../actors/registry";
 
-const client = createClient<Registry>("http://localhost:6420");
+const client = createClient<Registry>("http://localhost:8080");
 const { useActor, useActorEvent } = createReactRivetKit(client);
 
 export function YjsEditor({ documentId = "shared-doc" }) {

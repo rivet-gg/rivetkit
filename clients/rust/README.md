@@ -31,7 +31,7 @@ use serde_json::json;
 async fn main() -> anyhow::Result<()> {
     // Create a client connected to your RivetKit manager
     let client = Client::new(
-        "http://localhost:6420",
+        "http://localhost:8080",
         TransportKind::Sse,
         EncodingKind::Json
     );

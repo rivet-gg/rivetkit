@@ -39,7 +39,7 @@ export RIVET_ENVIRONMENT=your_environment
 npm run dev
 ```
 
-This will start the RivetKit server locally at http://localhost:6420.
+This will start the RivetKit server locally at http://localhost:8080.
 
 ### Testing the Client
 

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import type { Registry } from "../actors/registry";
 
 // Create client and hooks
-const client = createClient<Registry>("http://localhost:6420");
+const client = createClient<Registry>("http://localhost:8080");
 const { useActor } = createReactRivetKit(client);
 
 export function OrgDashboard({ orgId }: { orgId: string }) {

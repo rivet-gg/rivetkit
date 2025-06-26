@@ -10,7 +10,7 @@ export const ConfigSchema = RunConfigSchema.removeDefault()
 		port: z
 			.number()
 			.optional()
-			.default(Number.parseInt(process.env.PORT ?? "6420")),
+			.default(Number.parseInt(process.env.PORT ?? "8080")),
 	})
 	.partial({ driver: true })
 	.default({});

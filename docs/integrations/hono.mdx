@@ -139,13 +139,13 @@ export type Registry = typeof registry;
 // Create server with the combined app
 const server = serve({
   fetch: honoApp.fetch,
-  port: 6420,
+  port: 8080,
 });
 
 // IMPORTANT: Inject the websocket handler into the server
 injectWebSocket(server);
 
-console.log("Server running at http://localhost:6420");
+console.log("Server running at http://localhost:8080");
 ```
 
 Make sure to update your client connection URL to include the custom path:
@@ -155,7 +155,7 @@ Make sure to update your client connection URL to include the custom path:
 import { createClient } from "rivetkit/client";
 import type { App } from "./src/index";
 
-const client = createClient<App>("http://localhost:6420/my-path");
+const client = createClient<App>("http://localhost:8080/my-path");
 ```
 
 ### Bun
@@ -190,7 +190,7 @@ export type Registry = typeof registry;
 
 // Create and start the server
 export default {
-  port: 6420,
+  port: 8080,
   fetch: honoApp.fetch,
   // IMPORTANT: Pass the webSocketHandler to Bun
   websocket: webSocketHandler,
@@ -204,5 +204,5 @@ Make sure to update your client connection URL to include the custom path:
 import { createClient } from "rivetkit/client";
 import type { App } from "./src/index";
 
-const client = createClient<App>("http://localhost:6420/my-path");
+const client = createClient<App>("http://localhost:8080/my-path");
 ```

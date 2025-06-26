@@ -34,7 +34,7 @@ const chatRoom = actor({
 import { createClient } from "rivetkit/client";
 import type { App } from "./src/index";
 
-const client = createClient<App>("http://localhost:6420");
+const client = createClient<App>("http://localhost:8080");
 const chatRoom = await client.chatRoom.get();
 await chatRoom.sendMessage('Hello, world!');
 ```
@@ -67,7 +67,7 @@ const chatRoom = actor({
 import { createClient } from "rivetkit/client";
 import type { App } from "./src/index";
 
-const client = createClient<App>("http://localhost:6420");
+const client = createClient<App>("http://localhost:8080");
 const chatRoom = await client.chatRoom.get();
 await chatRoom.sendPrivateMessage(123, 'Hello, world!');
 ```
@@ -90,7 +90,7 @@ Clients can subscribe to events that will happen repeatedly using `actor.on(name
 import { createClient } from "rivetkit/client";
 import type { App } from "./src/index";
 
-const client = createClient<App>("http://localhost:6420");
+const client = createClient<App>("http://localhost:8080");
 const chatRoom = await client.chatRoom.get();
 
 chatRoom.on('newMessage', ({ message }) => {
@@ -125,7 +125,7 @@ Clients can listen for an event only one time with `actor.once(name, callback)`.
 import { createClient } from "rivetkit/client";
 import type { App } from "./src/index";
 
-const client = createClient<App>("http://localhost:6420");
+const client = createClient<App>("http://localhost:8080");
 const chatRoom = await client.chatRoom.get();
 
 chatRoom.once('joinRequestApproved', () => {

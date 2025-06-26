@@ -26,7 +26,7 @@ import asyncio
 
 async def main():
     # Create a client connected to your RivetKit manager
-    client = ActorClient("http://localhost:6420")
+    client = ActorClient("http://localhost:8080")
 
     # Connect to a chat room actor
     chat_room = await client.get("chat-room", tags=[("room", "general")])

@@ -151,9 +151,7 @@
     "dump-openapi": "tsx scripts/dump-openapi.ts"
   },
   "dependencies": {
-    "@hono/zod-openapi": "^0.19.6",
     "cbor-x": "^1.6.0",
-    "hono": "^4.7.0",
     "invariant": "^2.2.4",
     "on-change": "^5.0.1",
     "p-retry": "^6.2.1",
@@ -178,20 +176,28 @@
   "peerDependencies": {
     "@hono/node-server": "^1.14.0",
     "@hono/node-ws": "^1.1.1",
+    "@hono/zod-openapi": "^0.19.6",
     "eventsource": "^3.0.5",
+    "hono": "^4.7.0",
     "ws": "^8.0.0"
   },
   "peerDependenciesMeta": {
-    "eventsource": {
-      "optional": true
-    },
-    "ws": {
-      "optional": true
-    },
     "@hono/node-server": {
       "optional": true
     },
     "@hono/node-ws": {
+      "optional": true
+    },
+    "@hono/zod-openapi": {
+      "optional": true
+    },
+    "eventsource": {
+      "optional": true
+    },
+    "hono": {
+      "optional": true
+    },
+    "ws": {
       "optional": true
     }
   },

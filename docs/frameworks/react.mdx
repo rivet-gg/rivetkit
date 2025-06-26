@@ -76,7 +76,7 @@ Learn how to create realtime, stateful React applications with RivetKit's actor 
     import React, { useState } from "react";
 
     // Replace with your endpoint URL after deployment
-    const client = createClient<App>("http://localhost:6420");
+    const client = createClient<App>("http://localhost:8080");
     const { useActor, useActorEvent } = createReactRivetKit(client);
 
     function App() {
@@ -218,7 +218,7 @@ import type { App } from "../actors/app";
 import { useState } from "react";
 
 // Connect to RivetKit
-const client = createClient<App>("http://localhost:6420");
+const client = createClient<App>("http://localhost:8080");
 const { useActor, useActorEvent } = createReactRivetKit(client);
 
 function Counter() {

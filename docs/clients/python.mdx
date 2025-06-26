@@ -51,7 +51,7 @@ The RivetKit Python client provides a way to connect to and interact with actors
 
         async def main():
             # Replace with your endpoint URL after deployment
-            client = AsyncClient("http://localhost:6420")
+            client = AsyncClient("http://localhost:8080")
             
             # Get or create a actor instance
             counter = await client.get("counter")
@@ -80,7 +80,7 @@ The RivetKit Python client provides a way to connect to and interact with actors
         from rivetkit_client import Client
 
         # Replace with your endpoint URL after deployment
-        client = Client("http://localhost:6420")
+        client = Client("http://localhost:8080")
         
         # Get or create a actor instance
         counter = client.get("counter")

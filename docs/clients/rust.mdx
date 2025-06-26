@@ -49,7 +49,7 @@ The RivetKit Rust client provides a way to connect to and interact with actors f
     async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Replace with your endpoint URL after deployment
         let client = Client::new(
-            "http://localhost:6420",
+            "http://localhost:8080",
             TransportKind::Sse,
             EncodingKind::Json
         );

@@ -72,7 +72,7 @@ Calling actions from the client is simple:
 import { createClient } from "rivetkit/client";
 import type { App } from "./src/index";
 
-const client = createClient<App>("http://localhost:6420");
+const client = createClient<App>("http://localhost:8080");
 const counter = await client.counter.get();
 const result = await counter.increment(42);
 console.log(result); // The value returned by the action
@@ -114,7 +114,7 @@ export type Registry = typeof registry;
 import { createClient } from "rivetkit/client";
 import type { App } from "./src/index";
 
-const client = createClient<App>("http://localhost:6420");
+const client = createClient<App>("http://localhost:8080");
 
 // Type-safe client usage
 const counter = await client.counter.get();

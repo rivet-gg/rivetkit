@@ -2,7 +2,7 @@
 // import { createClient, createRivetKit } from "@rivetkit/react";
 // import type { Registry } from "../backend/registry";
 //
-// const client = createClient<Registry>("http://localhost:6420/registry", {
+// const client = createClient<Registry>("http://localhost:8080/registry", {
 // 	transport: "sse",
 // });
 // const { useActor } = createRivetKit(client);

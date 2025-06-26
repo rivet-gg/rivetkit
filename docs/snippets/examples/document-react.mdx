@@ -4,7 +4,7 @@ import { createReactRivetKit } from "@rivetkit/react";
 import { useState, useEffect } from "react";
 import type { App } from "../actors/app";
 
-const client = createClient<App>("http://localhost:6420");
+const client = createClient<App>("http://localhost:8080");
 const { useActor, useActorEvent } = createReactRivetKit(client);
 
 export function DocumentEditor() {
