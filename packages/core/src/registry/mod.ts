@@ -52,6 +52,12 @@ export class Registry<A extends RegistryActors> {
 	public createServer(inputConfig?: RunConfigInput): ServerOutput<this> {
 		const config = RunConfigSchema.parse(inputConfig);
 
+		// Configure getUpgradeWebSocket lazily so we can assign it in crossPlatformServe
+		let upgradeWebSocket = undefined;
+		if (!config.getUpgradeWebSocket) {
+			config.getUpgradeWebSocket = () => upgradeWebSocket!;
+		}
+
 		// Setup topology
 		let hono: Hono;
 		let clientDriver: ClientDriver;
@@ -78,7 +84,10 @@ export class Registry<A extends RegistryActors> {
 			client,
 			hono,
 			handler: async (req: Request) => await hono.fetch(req),
-			serve: (app) => crossPlatformServe(config, hono, app),
+			serve: async (app) => {
+				const out = await crossPlatformServe(hono, app);
+				upgradeWebSocket = out.upgradeWebSocket;
+			},
 		};
 	}
 
@@ -96,6 +105,12 @@ export class Registry<A extends RegistryActors> {
 	public createWorker(inputConfig?: RunConfigInput): ActorNodeOutput {
 		const config = RunConfigSchema.parse(inputConfig);
 
+		// Configure getUpgradeWebSocket lazily so we can assign it in crossPlatformServe
+		let upgradeWebSocket = undefined;
+		if (!config.getUpgradeWebSocket) {
+			config.getUpgradeWebSocket = () => upgradeWebSocket!;
+		}
+
 		// Setup topology
 		let hono: Hono;
 		if (config.driver.topology === "standalone") {
@@ -112,7 +127,10 @@ export class Registry<A extends RegistryActors> {
 		return {
 			hono,
 			handler: async (req: Request) => await hono.fetch(req),
-			serve: (app) => crossPlatformServe(config, hono, app),
+			serve: async (app) => {
+				const out = await crossPlatformServe(hono, app);
+				upgradeWebSocket = out.upgradeWebSocket;
+			},
 		};
 	}
 

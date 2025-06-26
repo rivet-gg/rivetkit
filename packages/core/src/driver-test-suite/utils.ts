@@ -3,7 +3,7 @@ import { assertUnreachable } from "@/actor/utils";
 import { createClientWithDriver } from "@/client/client";
 import { type Client, createClient } from "@/client/mod";
 import { type TestContext, vi } from "vitest";
-import type { Registry } from "../../fixtures/driver-test-suite/registry";
+import type { registry } from "../../fixtures/driver-test-suite/registry";
 import type { DriverTestConfig } from "./mod";
 import { createTestInlineClientDriver } from "./test-inline-client-driver";
 
@@ -12,7 +12,7 @@ export async function setupDriverTest(
 	c: TestContext,
 	driverTestConfig: DriverTestConfig,
 ): Promise<{
-	client: Client<Registry>;
+	client: Client<typeof registry>;
 }> {
 	if (!driverTestConfig.useRealTimers) {
 		vi.useFakeTimers();
@@ -23,10 +23,10 @@ export async function setupDriverTest(
 	const { endpoint, cleanup } = await driverTestConfig.start(projectPath);
 	c.onTestFinished(cleanup);
 
-	let client: Client<Registry>;
+	let client: Client<typeof registry>;
 	if (driverTestConfig.clientType === "http") {
 		// Create client
-		client = createClient<Registry>(endpoint, {
+		client = createClient<typeof registry>(endpoint, {
 			transport: driverTestConfig.transport,
 		});
 	} else if (driverTestConfig.clientType === "inline") {

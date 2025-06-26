@@ -3,11 +3,6 @@ export { stringifyError } from "@/common/utils";
 import type { Context as HonoContext, Handler as HonoHandler } from "hono";
 
 import pkgJson from "../package.json" with { type: "json" };
-import { logger } from "./actor/log";
-import { createMemoryDriver } from "./drivers/memory/mod";
-import { createRivetManagerDriver } from "./drivers/rivet/mod";
-import { type DriverConfig, UserError } from "./mod";
-import { createFileSystemDriver } from "./drivers/file-system/mod";
 
 export const VERSION = pkgJson.version;
 
@@ -34,25 +29,6 @@ export function httpUserAgent(): string {
 export type UpgradeWebSocket = (
 	createEvents: (c: HonoContext) => any,
 ) => HonoHandler;
-
-/**
- * Determines which driver to use if none is provided.
- */
-export function createDefaultDriver(): DriverConfig {
-	const driver = getEnvUniversal("RIVETKIT_DRIVER");
-	if (!driver || driver === "file-system") {
-		logger().info("using default file system driver");
-		return createFileSystemDriver();
-	} else if (driver === "memory") {
-		logger().info("using default memory driver");
-		return createMemoryDriver();
-	} else if (driver === "rivet") {
-		logger().info("using default rivet driver");
-		return createRivetManagerDriver();
-	} else {
-		throw new UserError(`Unrecognized driver: ${driver}`);
-	}
-}
 
 export function getEnvUniversal(key: string): string | undefined {
 	if (typeof Deno !== "undefined") {

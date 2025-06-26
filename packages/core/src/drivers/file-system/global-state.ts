@@ -5,12 +5,14 @@ import type { ActorKey } from "@/actor/mod";
 import { logger } from "./log";
 import {
 	getStoragePath,
-	getActorStoragePath,
+	getActorStoragePath as getActorDataPath,
 	ensureDirectoryExists,
 	ensureDirectoryExistsSync,
+	getActorsDir,
 } from "./utils";
 import invariant from "invariant";
 import { serializeEmptyPersistData } from "@/driver-helpers/mod";
+import * as cbor from "cbor-x";
 
 /**
  * Interface representing a actor's state
@@ -19,7 +21,7 @@ export interface ActorState {
 	id: string;
 	name: string;
 	key: ActorKey;
-	persistedData?: Uint8Array;
+	persistedData: Uint8Array;
 }
 
 /**
@@ -34,8 +36,7 @@ export class FileSystemGlobalState {
 		this.#storagePath = getStoragePath(customPath);
 
 		// Ensure storage directories exist synchronously during initialization
-		ensureDirectoryExistsSync(this.#storagePath);
-		ensureDirectoryExistsSync(`${this.#storagePath}/actors`);
+		ensureDirectoryExistsSync(getActorsDir(this.#storagePath));
 
 		// Load all actors into cache synchronously
 		this.#loadAllActorsIntoCache();
@@ -51,19 +52,19 @@ export class FileSystemGlobalState {
 	 * Only called once during initialization
 	 */
 	#loadAllActorsIntoCache(): void {
-		const actorsDir = path.join(this.#storagePath, "actors");
+		const actorsDir = getActorsDir(this.#storagePath);
 
 		try {
 			// HACK: Use synchronous filesystem operations for initialization
 			const actorIds = fsSync.readdirSync(actorsDir);
 
 			for (const actorId of actorIds) {
-				const stateFilePath = this.getStateFilePath(actorId);
+				const stateFilePath = getActorDataPath(this.#storagePath, actorId);
 
 				if (fsSync.existsSync(stateFilePath)) {
 					try {
-						const stateData = fsSync.readFileSync(stateFilePath, "utf8");
-						const state = JSON.parse(stateData) as ActorState;
+						const stateData = fsSync.readFileSync(stateFilePath);
+						const state = cbor.decode(stateData) as ActorState;
 
 						this.#stateCache.set(actorId, state);
 					} catch (error) {
@@ -84,14 +85,6 @@ export class FileSystemGlobalState {
 	 */
 	get storagePath(): string {
 		return this.#storagePath;
-	}
-
-	/**
-	 * Get state file path for a actor
-	 */
-	getStateFilePath(actorId: string): string {
-		const actorDir = getActorStoragePath(this.#storagePath, actorId);
-		return path.join(actorDir, "state.json");
 	}
 
 	/**
@@ -132,22 +125,17 @@ export class FileSystemGlobalState {
 			return;
 		}
 
-		const actorDir = getActorStoragePath(this.#storagePath, actorId);
-		const stateFilePath = this.getStateFilePath(actorId);
+		const dataPath = getActorDataPath(this.#storagePath, actorId);
 
 		try {
+			// TODO: This only needs to be done once
 			// Create actor directory
-			await ensureDirectoryExists(actorDir);
+			await ensureDirectoryExists(path.dirname(dataPath));
 
-			// Create serializable object
-			// State is already in serializable format
-			const serializedState = state;
-
-			await fs.writeFile(
-				stateFilePath,
-				JSON.stringify(serializedState),
-				"utf8",
-			);
+			// Write data
+			const serializedState = cbor.encode(state);
+			await fs.writeFile(dataPath, serializedState);
+			console.log("saving state", dataPath);
 		} catch (error) {
 			logger().error("failed to save actor state", { actorId, error });
 			throw new Error(`Failed to save actor state: ${error}`);

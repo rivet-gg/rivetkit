@@ -27,6 +27,7 @@ import type { RegistryConfig } from "@/registry/config";
 import type { RunConfig } from "@/registry/run-config";
 import { Hono, type Context as HonoContext } from "hono";
 import { logger } from "./log";
+import { noopNext } from "@/common/utils";
 
 export type {
 	ConnectWebSocketOpts,
@@ -57,8 +58,6 @@ export function createActorRouter(
 ): Hono {
 	const router = new Hono({ strict: false });
 
-	const upgradeWebSocket = runConfig.getUpgradeWebSocket?.(router);
-
 	router.use("*", loggerMiddleware(logger()));
 
 	router.get("/", (c) => {
@@ -74,9 +73,9 @@ export function createActorRouter(
 	// Use the handlers from connectionHandlers
 	const handlers = handler.connectionHandlers;
 
-	if (upgradeWebSocket) {
-		router.get(
-			"/connect/websocket",
+	router.get("/connect/websocket", async (c) => {
+		let upgradeWebSocket = runConfig.getUpgradeWebSocket?.();
+		if (upgradeWebSocket) {
 			upgradeWebSocket(async (c) => {
 				const actorId = await handler.getActorId();
 				const encodingRaw = c.req.header(HEADER_ENCODING);
@@ -99,16 +98,14 @@ export function createActorRouter(
 					connParams,
 					authData,
 				);
-			}),
-		);
-	} else {
-		router.get("/connect/websocket", (c) => {
+			})(c, noopNext());
+		} else {
 			return c.text(
 				"WebSockets are not enabled for this driver. Use SSE instead.",
 				400,
 			);
-		});
-	}
+		}
+	});
 
 	router.get("/connect/sse", async (c) => {
 		if (!handlers.onConnectSse) {

@@ -2,6 +2,7 @@ import * as errors from "@/actor/errors";
 import { getEnvUniversal } from "@/utils";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { Logger } from "./log";
+import { type Next } from "hono";
 
 export function assertUnreachable(x: never): never {
 	throw new Error(`Unreachable case: ${x}`);
@@ -222,4 +223,9 @@ function getErrorMessage(err: unknown): string {
 	} else {
 		return String(err);
 	}
+}
+
+/** Generates a `Next` handler to pass to middleware in order to be able to call arbitrary middleware. */
+export function noopNext(): Next {
+	return async () => {};
 }

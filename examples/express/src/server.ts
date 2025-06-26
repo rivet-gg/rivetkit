@@ -2,7 +2,7 @@ import { registry } from "./registry";
 import express from "express";
 
 // Start RivetKit
-const { client, handler } = registry.run();
+const { client, handler } = registry.createServer();
 
 // Setup router
 const app = express();

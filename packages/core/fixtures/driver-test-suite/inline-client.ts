@@ -1,5 +1,5 @@
 import { actor } from "@rivetkit/core";
-import type { Registry } from "./registry";
+import type { registry } from "./registry";
 
 export const inlineClientActor = actor({
 	onAuth: () => {},
@@ -7,26 +7,32 @@ export const inlineClientActor = actor({
 	actions: {
 		// Action that uses client to call another actor (stateless)
 		callCounterIncrement: async (c, amount: number) => {
-			const client = c.client<Registry>();
-			const result = await client.counter.getOrCreate(["inline-test"]).increment(amount);
-			c.state.messages.push(`Called counter.increment(${amount}), result: ${result}`);
+			const client = c.client<typeof registry>();
+			const result = await client.counter
+				.getOrCreate(["inline-test"])
+				.increment(amount);
+			c.state.messages.push(
+				`Called counter.increment(${amount}), result: ${result}`,
+			);
 			return result;
 		},
 
 		// Action that uses client to get counter state (stateless)
 		getCounterState: async (c) => {
-			const client = c.client<Registry>();
-			const count = await client.counter.getOrCreate(["inline-test"]).getCount();
+			const client = c.client<typeof registry>();
+			const count = await client.counter
+				.getOrCreate(["inline-test"])
+				.getCount();
 			c.state.messages.push(`Got counter state: ${count}`);
 			return count;
 		},
 
 		// Action that uses client with .connect() for stateful communication
 		connectToCounterAndIncrement: async (c, amount: number) => {
-			const client = c.client<Registry>();
+			const client = c.client<typeof registry>();
 			const handle = client.counter.getOrCreate(["inline-test-stateful"]);
 			const connection = handle.connect();
-			
+
 			// Set up event listener
 			const events: number[] = [];
 			connection.on("newCount", (count: number) => {
@@ -36,11 +42,13 @@ export const inlineClientActor = actor({
 			// Perform increments
 			const result1 = await connection.increment(amount);
 			const result2 = await connection.increment(amount * 2);
-			
+
 			await connection.dispose();
-			
-			c.state.messages.push(`Connected to counter, incremented by ${amount} and ${amount * 2}, results: ${result1}, ${result2}, events: ${JSON.stringify(events)}`);
-			
+
+			c.state.messages.push(
+				`Connected to counter, incremented by ${amount} and ${amount * 2}, results: ${result1}, ${result2}, events: ${JSON.stringify(events)}`,
+			);
+
 			return { result1, result2, events };
 		},
 

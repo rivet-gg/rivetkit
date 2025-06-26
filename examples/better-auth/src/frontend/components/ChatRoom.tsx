@@ -3,9 +3,7 @@ import { createClient, createRivetKit } from "@rivetkit/react";
 import { authClient } from "../auth-client";
 import type { Registry } from "../../backend/registry";
 
-const client = createClient<Registry>("http://localhost:8080/registry", {
-	transport: "sse",
-});
+const client = createClient<Registry>("http://localhost:8080/registry");
 
 const { useActor } = createRivetKit(client);
 

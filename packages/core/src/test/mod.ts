@@ -11,14 +11,9 @@ import { type TestContext, vi } from "vitest";
 import { ConfigSchema, type InputConfig } from "./config";
 import { logger } from "./log";
 import { createMemoryDriver } from "@/drivers/memory/mod";
+import { upgradeWebSocket } from "hono/deno";
 
-function createRouter(
-	registry: Registry<any>,
-	inputConfig?: InputConfig,
-): {
-	router: Hono;
-	injectWebSocket: NodeWebSocket["injectWebSocket"];
-} {
+function serve(registry: Registry<any>, inputConfig?: InputConfig): ServerType {
 	const config = ConfigSchema.parse(inputConfig);
 
 	// Configure default configuration
@@ -26,46 +21,34 @@ function createRouter(
 		config.driver = createMemoryDriver();
 	}
 
-	// Setup WebSocket routing for Node
-	//
-	// Save `injectWebSocket` for after server is created
-	let injectWebSocket: NodeWebSocket["injectWebSocket"] | undefined;
+	let upgradeWebSocket = undefined;
 	if (!config.getUpgradeWebSocket) {
-		config.getUpgradeWebSocket = (router) => {
-			const webSocket = createNodeWebSocket({ app: router });
-			injectWebSocket = webSocket.injectWebSocket;
-			return webSocket.upgradeWebSocket;
-		};
+		config.getUpgradeWebSocket = () => upgradeWebSocket!;
 	}
 
 	// Setup topology
 	const runConfig = RunConfigSchema.parse(inputConfig);
+	let topology;
 	if (config.driver.topology === "standalone") {
-		const topology = new StandaloneTopology(registry.config, runConfig);
-		if (!injectWebSocket) throw new Error("injectWebSocket not defined");
-		return { router: topology.router, injectWebSocket };
+		topology = new StandaloneTopology(registry.config, runConfig);
 	} else if (config.driver.topology === "partition") {
 		throw new Error("Node.js only supports standalone & coordinate topology.");
 	} else if (config.driver.topology === "coordinate") {
-		const topology = new CoordinateTopology(registry.config, runConfig);
-		if (!injectWebSocket) throw new Error("injectWebSocket not defined");
-		return { router: topology.router, injectWebSocket };
+		topology = new CoordinateTopology(registry.config, runConfig);
 	} else {
 		assertUnreachable(config.driver.topology);
 	}
-}
 
-function serve(registry: Registry<any>, inputConfig?: InputConfig): ServerType {
-	const config = ConfigSchema.parse(inputConfig);
-
-	const { router, injectWebSocket } = createRouter(registry, config);
+	// Inject WebSocket
+	const nodeWebSocket = createNodeWebSocket({ app: topology.router });
+	upgradeWebSocket = nodeWebSocket.upgradeWebSocket;
 
 	const server = honoServe({
-		fetch: router.fetch,
+		fetch: topology.router.fetch,
 		hostname: config.hostname,
 		port: config.port,
 	});
-	injectWebSocket(server);
+	nodeWebSocket.injectWebSocket(server);
 
 	logger().info("rivetkit started", {
 		hostname: config.hostname,

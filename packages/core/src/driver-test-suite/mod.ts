@@ -128,13 +128,10 @@ export async function createTestRuntime(
 
 	// Build driver config
 	let injectWebSocket: NodeWebSocket["injectWebSocket"] | undefined;
+	let upgradeWebSocket = undefined;
 	const config: RunConfig = RunConfigSchema.parse({
 		driver,
-		getUpgradeWebSocket: (router: any) => {
-			const webSocket = createNodeWebSocket({ app: router });
-			injectWebSocket = webSocket.injectWebSocket;
-			return webSocket.upgradeWebSocket;
-		},
+		getUpgradeWebSocket: () => upgradeWebSocket!,
 	});
 
 	// Build topology
@@ -142,7 +139,10 @@ export async function createTestRuntime(
 		config.driver.topology === "coordinate"
 			? new CoordinateTopology(registry.config, config)
 			: new StandaloneTopology(registry.config, config);
-	if (!injectWebSocket) throw new Error("injectWebSocket not defined");
+
+	// Inject WebSocket
+	const nodeWebSocket = createNodeWebSocket({ app: topology.router });
+	upgradeWebSocket = nodeWebSocket.upgradeWebSocket;
 
 	// Start server
 	const port = await getPort();
@@ -152,7 +152,7 @@ export async function createTestRuntime(
 		port,
 	});
 	invariant(injectWebSocket !== undefined, "should have injectWebSocket");
-	injectWebSocket(server);
+	nodeWebSocket.injectWebSocket(server);
 	const endpoint = `http://127.0.0.1:${port}`;
 
 	// Cleanup

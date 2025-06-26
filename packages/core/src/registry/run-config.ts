@@ -1,8 +1,8 @@
 import type { ActorDriver } from "@/actor/driver";
-import { createMemoryDriver } from "@/drivers/memory/mod";
 import type { ManagerDriver } from "@/manager/driver";
 import type { CoordinateDriver } from "@/topologies/coordinate/driver";
-import { createDefaultDriver, type UpgradeWebSocket } from "@/utils";
+import { type UpgradeWebSocket } from "@/utils";
+import { createDefaultDriver } from "@/drivers/default";
 import type { Hono } from "hono";
 import type { cors } from "hono/cors";
 import { z } from "zod";
@@ -46,7 +46,7 @@ export type ActorPeerConfig = z.infer<typeof ActorPeerConfigSchema>;
 export const TopologySchema = z.enum(["standalone", "partition", "coordinate"]);
 export type Topology = z.infer<typeof TopologySchema>;
 
-export type GetUpgradeWebSocket = (router: Hono) => UpgradeWebSocket;
+export type GetUpgradeWebSocket = () => UpgradeWebSocket;
 
 export const DriverConfigSchema = z.object({
 	topology: TopologySchema,
@@ -62,7 +62,10 @@ export const RunConfigSchema = z
 	.object({
 		driver: DriverConfigSchema.optional().default(() => createDefaultDriver()),
 
-		// This is dynamic since NodeJS requires a reference to the router to initialize WebSockets
+		// This is a function to allow for lazy configuration of upgradeWebSocket on the
+		// fly. This is required since the dependencies that profie upgradeWebSocket
+		// (specifically Node.js) can sometimes only be specified after the router is
+		// created or must be imported async using `await import(...)`
 		getUpgradeWebSocket: z.custom<GetUpgradeWebSocket>().optional(),
 
 		/** CORS configuration for the router. Uses Hono's CORS middleware options. */

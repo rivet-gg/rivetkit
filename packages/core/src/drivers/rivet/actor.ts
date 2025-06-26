@@ -5,20 +5,20 @@ import { PartitionTopologyActor } from "@/topologies/partition/mod";
 import type { ActorContext } from "@rivet-gg/actor-core";
 import invariant from "invariant";
 import { RivetActorDriver } from "./actor-driver";
-import { type Config, ConfigSchema, type InputConfig } from "./config";
 import { logger } from "./log";
 import { RivetManagerDriver } from "./manager-driver";
 import { type RivetClientConfig, getRivetClientConfig } from "./rivet-client";
 import { type RivetHandler, deserializeKeyFromTag } from "./util";
 import * as cbor from "cbor-x";
+import { RunConfigInput, RunConfigSchema } from "@/registry/run-config";
 
 export function createActorHandler(
 	registry: Registry<any>,
-	inputConfig?: InputConfig,
+	inputConfig?: RunConfigInput,
 ): RivetHandler {
-	let config: Config;
+	let config: RunConfig;
 	try {
-		config = ConfigSchema.parse(inputConfig);
+		config = RunConfigSchema.parse(inputConfig);
 	} catch (error) {
 		logger().error("failed to start manager", { error: stringifyError(error) });
 		Deno.exit(1);
@@ -39,7 +39,7 @@ export function createActorHandler(
 async function startActor(
 	ctx: ActorContext,
 	registry: Registry<any>,
-	config: Config,
+	config: RunConfig,
 ): Promise<void> {
 	const { upgradeWebSocket } = await import("hono/deno");
 
@@ -56,15 +56,12 @@ async function startActor(
 
 	const clientConfig: RivetClientConfig = getRivetClientConfig();
 
-	const runConfig = {
-		driver: {
-			topology: "partition",
-			manager: new RivetManagerDriver(clientConfig),
-			actor: new RivetActorDriver(ctx),
-		},
-		getUpgradeWebSocket: () => upgradeWebSocket,
-		...config,
-	} satisfies RunConfig;
+	config.driver = {
+		topology: "partition",
+		manager: new RivetManagerDriver(clientConfig),
+		actor: new RivetActorDriver(ctx),
+	};
+	config.getUpgradeWebSocket = () => upgradeWebSocket;
 
 	// Initialization promise
 	//
@@ -123,7 +120,7 @@ async function startActor(
 	//};
 
 	// Create actor topology
-	const actorTopology = new PartitionTopologyActor(registry.config, runConfig);
+	const actorTopology = new PartitionTopologyActor(registry.config, config);
 
 	// Set a catch-all route
 	const router = actorTopology.router;

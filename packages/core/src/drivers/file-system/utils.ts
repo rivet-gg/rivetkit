@@ -1,11 +1,8 @@
-import * as fs from "fs/promises";
-import * as fsSync from "fs";
-import * as path from "path";
-import * as crypto from "crypto";
-import * as os from "os";
-
-// Get platform-specific data directory
-const paths = { data: getDataPath("rivetkit") };
+import * as fs from "node:fs/promises";
+import * as fsSync from "node:fs";
+import * as path from "node:path";
+import * as crypto from "node:crypto";
+import * as os from "node:os";
 
 /**
  * Create a hash for a path, normalizing it first
@@ -31,14 +28,16 @@ function createHashForPath(dirPath: string): string {
  * Get the storage path for the current working directory or a specified path
  */
 export function getStoragePath(customPath?: string): string {
+	const dataPath = getDataPath("rivetkit");
 	const pathToHash = customPath || process.cwd();
 	const dirHash = createHashForPath(pathToHash);
-	return path.join(paths.data, dirHash);
+	return path.join(dataPath, dirHash);
 }
 
-/**
- * Get actor's storage directory
- */
+export function getActorsDir(baseDir: string): string {
+	return path.join(baseDir, "actors");
+}
+
 export function getActorStoragePath(baseDir: string, actorId: string): string {
 	return path.join(baseDir, "actors", actorId);
 }

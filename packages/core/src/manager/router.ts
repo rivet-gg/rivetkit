@@ -38,7 +38,7 @@ import { VERSION } from "@/utils";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { createRoute } from "@hono/zod-openapi";
 import * as cbor from "cbor-x";
-import { Hono, type Context as HonoContext, type Next } from "hono";
+import { Hono, type Context as HonoContext } from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
 import type { WSContext } from "hono/ws";
@@ -55,6 +55,7 @@ import {
 	ResolveRequestSchema,
 } from "./protocol/query";
 import type { ActorQuery } from "./protocol/query";
+import { noopNext } from "@/common/utils";
 
 type ManagerRouterHandler = {
 	// onConnectInspector?: ManagerInspectorConnHandler;
@@ -115,10 +116,6 @@ export function createManagerRouter(
 ): { router: Hono; openapi: OpenAPIHono } {
 	const driver = runConfig.driver.manager;
 	const router = new OpenAPIHono({ strict: false });
-
-	const upgradeWebSocket = runConfig.getUpgradeWebSocket?.(
-		router as unknown as Hono,
-	);
 
 	router.use("*", loggerMiddleware(logger()));
 
@@ -203,7 +200,6 @@ export function createManagerRouter(
 			if (c.req.path.endsWith("/actors/connect/websocket")) {
 				return handleWebSocketConnectRequest(
 					c,
-					upgradeWebSocket,
 					registryConfig,
 					runConfig,
 					driver,
@@ -397,158 +393,152 @@ export function createManagerRouter(
 			return c.body(cbor.encode(response));
 		});
 
-		if (upgradeWebSocket) {
-			router.get(
-				".test/inline-driver/connect-websocket",
-				upgradeWebSocket(async (c: any) => {
-					const {
-						actorQuery: actorQueryRaw,
-						params: paramsRaw,
-						encodingKind,
-					} = c.req.query() as {
-						actorQuery: string;
-						params?: string;
-						encodingKind: Encoding;
-					};
-					const actorQuery = JSON.parse(actorQueryRaw);
-					const params =
-						paramsRaw !== undefined ? JSON.parse(paramsRaw) : undefined;
+		router.get(".test/inline-driver/connect-websocket", async (c) => {
+			const upgradeWebSocket = runConfig.getUpgradeWebSocket?.();
+			invariant(upgradeWebSocket, "websockets not supported on this platform");
 
-					logger().debug("received test inline driver websocket", {
-						actorQuery,
-						params,
-						encodingKind,
-					});
+			return upgradeWebSocket(async (c: any) => {
+				const {
+					actorQuery: actorQueryRaw,
+					params: paramsRaw,
+					encodingKind,
+				} = c.req.query() as {
+					actorQuery: string;
+					params?: string;
+					encodingKind: Encoding;
+				};
+				const actorQuery = JSON.parse(actorQueryRaw);
+				const params =
+					paramsRaw !== undefined ? JSON.parse(paramsRaw) : undefined;
 
-					// Connect to the actor using the inline client driver - this returns a Promise<WebSocket>
-					const clientWsPromise = inlineClientDriver.connectWebSocket(
-						undefined,
-						actorQuery,
-						encodingKind,
-						params,
-						undefined,
-					);
+				logger().debug("received test inline driver websocket", {
+					actorQuery,
+					params,
+					encodingKind,
+				});
 
-					// Store a reference to the resolved WebSocket
-					let clientWs: WebSocket | null = null;
-
-					// Create WebSocket proxy handlers to relay messages between client and server
-					return {
-						onOpen: async (_evt: any, serverWs: WSContext) => {
-							logger().debug("test websocket connection opened");
-
-							try {
-								// Resolve the client WebSocket promise
-								clientWs = await clientWsPromise;
-
-								// Add message handler to forward messages from client to server
-								clientWs.addEventListener(
-									"message",
-									(clientEvt: MessageEvent) => {
-										logger().debug("test websocket connection message");
-
-										if (serverWs.readyState === 1) {
-											// OPEN
-											serverWs.send(clientEvt.data as any);
-										}
-									},
-								);
-
-								// Add close handler to close server when client closes
-								clientWs.addEventListener("close", (clientEvt: CloseEvent) => {
-									logger().debug("test websocket connection closed");
-
-									if (serverWs.readyState !== 3) {
-										// Not CLOSED
-										serverWs.close(clientEvt.code, clientEvt.reason);
-									}
-								});
-
-								// Add error handler
-								clientWs.addEventListener("error", () => {
-									logger().debug("test websocket connection error");
-
-									if (serverWs.readyState !== 3) {
-										// Not CLOSED
-										serverWs.close(1011, "Error in client websocket");
-									}
-								});
-							} catch (error) {
-								logger().error(
-									"failed to establish client websocket connection",
-									{ error },
-								);
-								serverWs.close(1011, "Failed to establish connection");
-							}
-						},
-						onMessage: async (evt: { data: any }, serverWs: WSContext) => {
-							// If clientWs hasn't been resolved yet, messages will be lost
-							if (!clientWs) {
-								logger().debug(
-									"received server message before client WebSocket connected",
-								);
-								return;
-							}
-
-							logger().debug("received message from server", {
-								dataType: typeof evt.data,
-							});
-
-							// Forward messages from server websocket to client websocket
-							if (clientWs.readyState === 1) {
-								// OPEN
-								clientWs.send(evt.data);
-							}
-						},
-						onClose: async (
-							event: {
-								wasClean: boolean;
-								code: number;
-								reason: string;
-							},
-							serverWs: WSContext,
-						) => {
-							logger().debug("server websocket closed", {
-								wasClean: event.wasClean,
-								code: event.code,
-								reason: event.reason,
-							});
-
-							// HACK: Close socket in order to fix bug with Cloudflare leaving WS in closing state
-							// https://github.com/cloudflare/workerd/issues/2569
-							serverWs.close(1000, "hack_force_close");
-
-							// Close the client websocket when the server websocket closes
-							if (
-								clientWs &&
-								clientWs.readyState !== clientWs.CLOSED &&
-								clientWs.readyState !== clientWs.CLOSING
-							) {
-								clientWs.close(event.code, event.reason);
-							}
-						},
-						onError: async (error: unknown) => {
-							logger().error("error in server websocket", { error });
-
-							// Close the client websocket on error
-							if (
-								clientWs &&
-								clientWs.readyState !== clientWs.CLOSED &&
-								clientWs.readyState !== clientWs.CLOSING
-							) {
-								clientWs.close(1011, "Error in server websocket");
-							}
-						},
-					};
-				}),
-			);
-		} else {
-			router.get(".test/inline-driver/connect-websocket", (c) => {
-				throw new Error(
-					"websocket unsupported, fix the test to exclude websockets for this platform",
+				// Connect to the actor using the inline client driver - this returns a Promise<WebSocket>
+				const clientWsPromise = inlineClientDriver.connectWebSocket(
+					undefined,
+					actorQuery,
+					encodingKind,
+					params,
+					undefined,
 				);
-			});
-		}
+
+				// Store a reference to the resolved WebSocket
+				let clientWs: WebSocket | null = null;
+
+				// Create WebSocket proxy handlers to relay messages between client and server
+				return {
+					onOpen: async (_evt: any, serverWs: WSContext) => {
+						logger().debug("test websocket connection opened");
+
+						try {
+							// Resolve the client WebSocket promise
+							clientWs = await clientWsPromise;
+
+							// Add message handler to forward messages from client to server
+							clientWs.addEventListener(
+								"message",
+								(clientEvt: MessageEvent) => {
+									logger().debug("test websocket connection message");
+
+									if (serverWs.readyState === 1) {
+										// OPEN
+										serverWs.send(clientEvt.data as any);
+									}
+								},
+							);
+
+							// Add close handler to close server when client closes
+							clientWs.addEventListener("close", (clientEvt: CloseEvent) => {
+								logger().debug("test websocket connection closed");
+
+								if (serverWs.readyState !== 3) {
+									// Not CLOSED
+									serverWs.close(clientEvt.code, clientEvt.reason);
+								}
+							});
+
+							// Add error handler
+							clientWs.addEventListener("error", () => {
+								logger().debug("test websocket connection error");
+
+								if (serverWs.readyState !== 3) {
+									// Not CLOSED
+									serverWs.close(1011, "Error in client websocket");
+								}
+							});
+						} catch (error) {
+							logger().error(
+								"failed to establish client websocket connection",
+								{ error },
+							);
+							serverWs.close(1011, "Failed to establish connection");
+						}
+					},
+					onMessage: async (evt: { data: any }, serverWs: WSContext) => {
+						// If clientWs hasn't been resolved yet, messages will be lost
+						if (!clientWs) {
+							logger().debug(
+								"received server message before client WebSocket connected",
+							);
+							return;
+						}
+
+						logger().debug("received message from server", {
+							dataType: typeof evt.data,
+						});
+
+						// Forward messages from server websocket to client websocket
+						if (clientWs.readyState === 1) {
+							// OPEN
+							clientWs.send(evt.data);
+						}
+					},
+					onClose: async (
+						event: {
+							wasClean: boolean;
+							code: number;
+							reason: string;
+						},
+						serverWs: WSContext,
+					) => {
+						logger().debug("server websocket closed", {
+							wasClean: event.wasClean,
+							code: event.code,
+							reason: event.reason,
+						});
+
+						// HACK: Close socket in order to fix bug with Cloudflare leaving WS in closing state
+						// https://github.com/cloudflare/workerd/issues/2569
+						serverWs.close(1000, "hack_force_close");
+
+						// Close the client websocket when the server websocket closes
+						if (
+							clientWs &&
+							clientWs.readyState !== clientWs.CLOSED &&
+							clientWs.readyState !== clientWs.CLOSING
+						) {
+							clientWs.close(event.code, event.reason);
+						}
+					},
+					onError: async (error: unknown) => {
+						logger().error("error in server websocket", { error });
+
+						// Close the client websocket on error
+						if (
+							clientWs &&
+							clientWs.readyState !== clientWs.CLOSED &&
+							clientWs.readyState !== clientWs.CLOSING
+						) {
+							clientWs.close(1011, "Error in server websocket");
+						}
+					},
+				};
+			})(c, noopNext());
+		});
 	}
 
 	router.doc("/openapi.json", {
@@ -796,17 +786,18 @@ async function handleSseConnectRequest(
  */
 async function handleWebSocketConnectRequest(
 	c: HonoContext,
-	upgradeWebSocket:
-		| ((
-				createEvents: (c: HonoContext) => any,
-		  ) => (c: HonoContext, next: Next) => Promise<Response>)
-		| undefined,
 	registryConfig: RegistryConfig,
 	runConfig: RunConfig,
 	driver: ManagerDriver,
 	handler: ManagerRouterHandler,
 ): Promise<Response> {
-	invariant(upgradeWebSocket, "WebSockets not supported");
+	const upgradeWebSocket = runConfig.getUpgradeWebSocket?.();
+	if (!upgradeWebSocket) {
+		return c.text(
+			"WebSockets are not enabled for this driver. Use SSE instead.",
+			400,
+		);
+	}
 
 	let encoding: Encoding | undefined;
 	try {
@@ -1215,9 +1206,4 @@ async function handleResolveRequest(
 	};
 	const serialized = serialize(response, encoding);
 	return c.body(serialized);
-}
-
-/** Generates a `Next` handler to pass to middleware in order to be able to call arbitrary middleware. */
-function noopNext(): Next {
-	return async () => {};
 }

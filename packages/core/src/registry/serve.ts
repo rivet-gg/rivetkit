@@ -4,7 +4,6 @@ import { logger } from "./log";
 import type { RunConfig } from "./run-config";
 
 export async function crossPlatformServe(
-	config: RunConfig,
 	rivetKitRouter: Hono,
 	userRouter: Hono | undefined,
 ) {
@@ -42,9 +41,6 @@ export async function crossPlatformServe(
 		app,
 	});
 
-	// Update config for new WS
-	config.getUpgradeWebSocket = () => upgradeWebSocket;
-
 	// Start server
 	const port = Number.parseInt(
 		getEnvUniversal("PORT") ?? getEnvUniversal("PORT_HTTP") ?? "8080",
@@ -53,4 +49,6 @@ export async function crossPlatformServe(
 		logger().info(`listening on port ${port}`),
 	);
 	injectWebSocket(server);
+
+	return { upgradeWebSocket };
 }

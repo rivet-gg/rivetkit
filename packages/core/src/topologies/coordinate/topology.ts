@@ -68,8 +68,6 @@ export class CoordinateTopology {
 		// Build router
 		const router = new Hono();
 
-		const upgradeWebSocket = runConfig.getUpgradeWebSocket?.(router);
-
 		// Share connection handlers for both routers
 		const connectionHandlers: ConnectionHandlers = {
 			onConnectWebSocket: async (
