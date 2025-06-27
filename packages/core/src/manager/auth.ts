@@ -83,10 +83,7 @@ export async function authenticateRequest(
 		}
 	} catch (error) {
 		logger().info("authentication error", { error: stringifyError(error) });
-		if (errors.ActorError.isActorError(error)) {
-			throw error;
-		}
-		throw new errors.Forbidden("Authentication failed");
+		throw error;
 	}
 }
 
