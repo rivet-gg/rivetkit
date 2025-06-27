@@ -64,7 +64,7 @@ export async function authenticateRequest(
 	intents: Set<AuthIntent>,
 	params: unknown,
 ): Promise<unknown> {
-	if (!actorDefinition.config.onAuth) {
+	if (!("onAuth" in actorDefinition.config)) {
 		throw new errors.Forbidden(
 			"Actor requires authentication but no onAuth handler is defined",
 		);

@@ -172,6 +172,40 @@ type CreateVars<S, CP, CS, V, I, AD, DB> =
 	  }
 	| Record<never, never>;
 
+// Creates auth config
+//
+// This must have only one or the other or else AD will not be able to be inferred
+type OnAuth<CP, AD> =
+	| {
+			/**
+			 * Called on the HTTP server before clients can interact with the actor.
+			 *
+			 * Only called for public endpoints. Calls to actors from within the backend
+			 * do not trigger this handler.
+			 *
+			 * Data returned from this handler will be available on `c.conn.auth`.
+			 *
+			 * This function is required for any public HTTP endpoint access. Use this hook
+			 * to validate client credentials and return authentication data that will be
+			 * available on connections. This runs on the HTTP server (not the actor)
+			 * in order to reduce load on the actor & prevent denial of server attacks
+			 * against individual actors.
+			 *
+			 * If you need access to actor state for authentication, use onBeforeConnect
+			 * with an empty onAuth function instead.
+			 *
+			 * You can also provide your own authentication middleware on your router if you
+			 * choose, then use onAuth to pass the authentication data (e.g. user ID) to the
+			 * actor itself.
+			 *
+			 * @param opts Authentication options including request and intent
+			 * @returns Authentication data to attach to connections (must be serializable)
+			 * @throws Throw an error to deny access to the actor
+			 */
+			onAuth: (opts: OnAuthOptions<CP>) => AD | Promise<AD>;
+	  }
+	| Record<never, never>;
+
 export interface Actions<S, CP, CS, V, I, AD, DB> {
 	[Action: string]: (
 		c: ActionContext<S, CP, CS, V, I, AD, DB>,
@@ -189,7 +223,7 @@ export interface Actions<S, CP, CS, V, I, AD, DB> {
  */
 export type AuthIntent = "get" | "create" | "connect" | "action" | "message";
 
-interface OnAuthOptions<CP> {
+export interface OnAuthOptions<CP = unknown> {
 	req: Request;
 	/**
 	 * @experimental
@@ -208,33 +242,6 @@ interface BaseActorConfig<
 	DB,
 	R extends Actions<S, CP, CS, V, I, AD, DB>,
 > {
-	/**
-	 * Called on the HTTP server before clients can interact with the actor.
-	 *
-	 * Only called for public endpoints. Calls to actors from within the backend
-	 * do not trigger this handler.
-	 *
-	 * Data returned from this handler will be available on `c.conn.auth`.
-	 *
-	 * This function is required for any public HTTP endpoint access. Use this hook
-	 * to validate client credentials and return authentication data that will be
-	 * available on connections. This runs on the HTTP server (not the actor)
-	 * in order to reduce load on the actor & prevent denial of server attacks
-	 * against individual actors.
-	 *
-	 * If you need access to actor state for authentication, use onBeforeConnect
-	 * with an empty onAuth function instead.
-	 *
-	 * You can also provide your own authentication middleware on your router if you
-	 * choose, then use onAuth to pass the authentication data (e.g. user ID) to the
-	 * actor itself.
-	 *
-	 * @param opts Authentication options including request and intent
-	 * @returns Authentication data to attach to connections (must be serializable)
-	 * @throws Throw an error to deny access to the actor
-	 */
-	onAuth?: (opts: OnAuthOptions<CP>) => AD | Promise<AD>;
-
 	/**
 	 * Called when the actor is first initialized.
 	 *
@@ -389,6 +396,7 @@ export type ActorConfig<S, CP, CS, V, I, AD, DB> = Omit<
 	| "db"
 > &
 	BaseActorConfig<S, CP, CS, V, I, AD, DB, Actions<S, CP, CS, V, I, AD, DB>> &
+	OnAuth<CP, AD> &
 	CreateState<S, CP, CS, V, I, AD, DB> &
 	CreateConnState<S, CP, CS, V, I, AD, DB> &
 	CreateVars<S, CP, CS, V, I, AD, DB> &
@@ -424,6 +432,7 @@ export type ActorConfigInput<
 	| "db"
 > &
 	BaseActorConfig<S, CP, CS, V, I, AD, DB, R> &
+	OnAuth<CP, AD> &
 	CreateState<S, CP, CS, V, I, AD, DB> &
 	CreateConnState<S, CP, CS, V, I, AD, DB> &
 	CreateVars<S, CP, CS, V, I, AD, DB> &
