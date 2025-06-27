@@ -1,9 +1,16 @@
 packages:
-  - 'packages/*'
-  - 'packages/platforms/*'
-  - 'packages/drivers/*'
-  - 'packages/components/*'
-  - 'packages/misc/*'
-  - 'packages/frameworks/*'
-  - 'examples/*'
-
+  - packages/*
+  - packages/platforms/*
+  - packages/drivers/*
+  - packages/components/*
+  - packages/misc/*
+  - packages/frameworks/*
+  - examples/*
+onlyBuiltDependencies:
+  - '@biomejs/biome'
+  - better-sqlite3
+  - cbor-extract
+  - esbuild
+  - lefthook
+  - sharp
+  - workerd

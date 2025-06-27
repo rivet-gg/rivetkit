@@ -1,4 +1,5 @@
-import { actor, OnAuthOptions, setup, UserError } from "@rivetkit/actor";
+import { actor, setup, type OnAuthOptions } from "@rivetkit/actor";
+import { Unauthorized } from "@rivetkit/actor/errors";
 import { auth } from "./auth";
 
 interface State {
@@ -13,17 +14,25 @@ interface Message {
 	timestamp: number;
 }
 
+
+
+
+
+
+
+
+
+
 export const chatRoom = actor({
+	// onAuth runs on the server & before connecting to the actor
 	onAuth: async (c: OnAuthOptions) => {
+		// ✨ NEW ✨ Access Better Auth session
 		const authResult = await auth.api.getSession({
 			headers: c.req.headers,
 		});
-		console.log("auth result", authResult);
+		if (!authResult) throw new Unauthorized();
 
-		if (!authResult?.session || !authResult?.user) {
-			throw new UserError("Unauthorized");
-		}
-
+		// Passes auth data to the actor (c.conn.auth)
 		return {
 			user: authResult.user,
 			session: authResult.session,
@@ -34,10 +43,11 @@ export const chatRoom = actor({
 	} as State,
 	actions: {
 		sendMessage: (c, message: string) => {
+			// ✨ NEW ✨ — Access Better Auth with c.conn.auth
 			const newMessage = {
 				id: crypto.randomUUID(),
-				userId: "TODO",
-				username: c.conn.auth.user.email || "Unknown",
+				userId: c.conn.auth.user.id,
+				username: c.conn.auth.user.name,
 				message,
 				timestamp: Date.now(),
 			};
@@ -52,6 +62,17 @@ export const chatRoom = actor({
 		},
 	},
 });
+
+
+
+
+
+
+
+
+
+
+
 
 export const registry = setup({
 	use: { chatRoom },

@@ -182,7 +182,8 @@ export class InvalidStateType extends ActorError {
 		} else {
 			msg += "Attempted to set invalid state.";
 		}
-		msg += " State must be CBOR serializable. Valid types include: null, undefined, boolean, string, number, BigInt, Date, RegExp, Error, typed arrays (Uint8Array, Int8Array, Float32Array, etc.), Map, Set, Array, and plain objects.";
+		msg +=
+			" State must be CBOR serializable. Valid types include: null, undefined, boolean, string, number, BigInt, Date, RegExp, Error, typed arrays (Uint8Array, Int8Array, Float32Array, etc.), Map, Set, Array, and plain objects.";
 		super("invalid_state_type", msg);
 	}
 }
@@ -289,9 +290,20 @@ export class InvalidParams extends ActorError {
 	}
 }
 
+export class Unauthorized extends ActorError {
+	constructor(message?: string) {
+		super("unauthorized", message ?? "Unauthorized. Access denied.", {
+			public: true,
+		});
+		this.statusCode = 401;
+	}
+}
+
 export class Forbidden extends ActorError {
 	constructor(message?: string) {
-		super("forbidden", message ?? "Access denied", { public: true });
+		super("forbidden", message ?? "Forbidden. Access denied.", {
+			public: true,
+		});
 		this.statusCode = 403;
 	}
 }

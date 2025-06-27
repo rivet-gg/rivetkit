@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createClient, createRivetKit } from "@rivetkit/react";
 import type { registry } from "../backend/registry";
 
-const client = createClient<typeof registry>(`http://localhost:8080/registry`);
+const client = createClient<typeof registry>(`http://localhost:8080`);
 const { useActor } = createRivetKit(client);
 
 function App() {

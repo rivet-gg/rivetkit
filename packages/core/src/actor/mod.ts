@@ -42,4 +42,4 @@ export type {
 	ActorContextOf,
 	ActionContextOf,
 } from "./definition";
-export { ALLOWED_PUBLIC_HEADERS} from "./router-endpoints";
+export { ALLOWED_PUBLIC_HEADERS } from "./router-endpoints";
