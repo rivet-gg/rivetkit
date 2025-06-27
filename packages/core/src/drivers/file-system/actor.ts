@@ -25,12 +25,10 @@ export class FileSystemActorDriver implements ActorDriver {
 	}
 
 	async readPersistedData(actorId: string): Promise<Uint8Array | undefined> {
-		console.log("reading data", this.#state.readPersistedData(actorId));
 		return this.#state.readPersistedData(actorId);
 	}
 
 	async writePersistedData(actorId: string, data: Uint8Array): Promise<void> {
-		console.log("writing data", data);
 		this.#state.writePersistedData(actorId, data);
 
 		// Save state to disk

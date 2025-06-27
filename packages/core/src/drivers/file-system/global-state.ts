@@ -38,47 +38,22 @@ export class FileSystemGlobalState {
 		// Ensure storage directories exist synchronously during initialization
 		ensureDirectoryExistsSync(getActorsDir(this.#storagePath));
 
-		// Load all actors into cache synchronously
-		this.#loadAllActorsIntoCache();
+		const actorsDir = getActorsDir(this.#storagePath);
+		let actorCount = 0;
+		
+		try {
+			const actorIds = fsSync.readdirSync(actorsDir);
+			actorCount = actorIds.length;
+		} catch (error) {
+			logger().error("failed to count actors", { error });
+		}
 
 		logger().info("file system loaded", {
 			dir: this.#storagePath,
-			actorCount: this.#stateCache.size,
+			actorCount,
 		});
 	}
 
-	/**
-	 * Load all actors into the state cache from the file system
-	 * Only called once during initialization
-	 */
-	#loadAllActorsIntoCache(): void {
-		const actorsDir = getActorsDir(this.#storagePath);
-
-		try {
-			// HACK: Use synchronous filesystem operations for initialization
-			const actorIds = fsSync.readdirSync(actorsDir);
-
-			for (const actorId of actorIds) {
-				const stateFilePath = getActorDataPath(this.#storagePath, actorId);
-
-				if (fsSync.existsSync(stateFilePath)) {
-					try {
-						const stateData = fsSync.readFileSync(stateFilePath);
-						const state = cbor.decode(stateData) as ActorState;
-
-						this.#stateCache.set(actorId, state);
-					} catch (error) {
-						logger().error(
-							"failed to read actor state during cache initialization",
-							{ actorId, error },
-						);
-					}
-				}
-			}
-		} catch (error) {
-			logger().error("failed to load actors into cache", { error });
-		}
-	}
 
 	/**
 	 * Get the current storage directory path
@@ -88,16 +63,34 @@ export class FileSystemGlobalState {
 	}
 
 	/**
-	 * Load actor state from cache
+	 * Load actor state from cache or disk (lazy loading)
 	 */
 	loadActorState(actorId: string): ActorState {
-		this.ensureActorExists(actorId);
-
-		// Get actor state from cache
+		// Check if already in cache
 		const cachedActor = this.#stateCache.get(actorId);
-		invariant(cachedActor, `actor state should exist in cache for ${actorId}`);
+		if (cachedActor) {
+			return cachedActor;
+		}
 
-		return cachedActor;
+		// Try to load from disk
+		const stateFilePath = getActorDataPath(this.#storagePath, actorId);
+		
+		if (!fsSync.existsSync(stateFilePath)) {
+			throw new Error(`Actor does not exist for ID: ${actorId}`);
+		}
+
+		try {
+			const stateData = fsSync.readFileSync(stateFilePath);
+			const state = cbor.decode(stateData) as ActorState;
+			
+			// Cache the loaded state
+			this.#stateCache.set(actorId, state);
+			
+			return state;
+		} catch (error) {
+			logger().error("failed to load actor state", { actorId, error });
+			throw new Error(`Failed to load actor state: ${error}`);
+		}
 	}
 
 	/**
@@ -135,7 +128,6 @@ export class FileSystemGlobalState {
 			// Write data
 			const serializedState = cbor.encode(state);
 			await fs.writeFile(dataPath, serializedState);
-			console.log("saving state", dataPath);
 		} catch (error) {
 			logger().error("failed to save actor state", { actorId, error });
 			throw new Error(`Failed to save actor state: ${error}`);
@@ -143,20 +135,19 @@ export class FileSystemGlobalState {
 	}
 
 	/**
-	 * Check if a actor exists in the cache
+	 * Check if a actor exists in cache or on disk
 	 */
 	hasActor(actorId: string): boolean {
-		return this.#stateCache.has(actorId);
+		// Check cache first
+		if (this.#stateCache.has(actorId)) {
+			return true;
+		}
+		
+		// Check if file exists on disk
+		const stateFilePath = getActorDataPath(this.#storagePath, actorId);
+		return fsSync.existsSync(stateFilePath);
 	}
 
-	/**
-	 * Ensure a actor exists, throwing if it doesn't
-	 */
-	ensureActorExists(actorId: string): void {
-		if (!this.hasActor(actorId)) {
-			throw new Error(`Actor does not exist for ID: ${actorId}`);
-		}
-	}
 
 	/**
 	 * Create a actor
@@ -185,50 +176,5 @@ export class FileSystemGlobalState {
 
 		// Save to disk
 		await this.saveActorState(actorId);
-	}
-
-	/**
-	 * Find actor by name and key
-	 */
-	findActorByNameAndKey(name: string, key: ActorKey): ActorState | undefined {
-		// NOTE: This is a slow implementation that checks each actor individually.
-		// This can be optimized with an index in the future.
-
-		return this.findActor((actor) => {
-			if (actor.name !== name) return false;
-
-			// If actor doesn't have a key, it's not a match
-			if (!actor.key || actor.key.length !== key.length) {
-				return false;
-			}
-
-			// Check if all elements in key are in actor.key
-			for (let i = 0; i < key.length; i++) {
-				if (key[i] !== actor.key[i]) {
-					return false;
-				}
-			}
-			return true;
-		});
-	}
-
-	/**
-	 * Find actor by filter function
-	 */
-	findActor(filter: (actor: ActorState) => boolean): ActorState | undefined {
-		for (const actor of this.#stateCache.values()) {
-			if (filter(actor)) {
-				return actor;
-			}
-		}
-		return undefined;
-	}
-
-	/**
-	 * Get all actors from the cache
-	 */
-	getAllActors(): ActorState[] {
-		// Return all actors from the cache
-		return Array.from(this.#stateCache.values());
 	}
 }

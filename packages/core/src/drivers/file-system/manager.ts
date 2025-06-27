@@ -1,4 +1,3 @@
-import * as crypto from "node:crypto";
 import type {
 	GetOrCreateWithKeyInput,
 	GetForIdInput,
@@ -12,6 +11,7 @@ import { logger } from "./log";
 import type { FileSystemGlobalState } from "./global-state";
 import { ActorState } from "./global-state";
 import type { Registry } from "@/registry/mod";
+import { generateActorId } from "./utils";
 
 export class FileSystemManagerDriver implements ManagerDriver {
 	#state: FileSystemGlobalState;
@@ -52,14 +52,15 @@ export class FileSystemManagerDriver implements ManagerDriver {
 		name,
 		key,
 	}: GetWithKeyInput): Promise<ActorOutput | undefined> {
-		// Search through all actors to find a match
-		const actor = this.#state.findActorByNameAndKey(name, key);
-
-		if (actor) {
+		// Generate the deterministic actor ID
+		const actorId = generateActorId(name, key);
+		
+		// Check if actor exists
+		if (this.#state.hasActor(actorId)) {
 			return {
-				actorId: actor.id,
+				actorId,
 				name,
-				key: actor.key,
+				key,
 			};
 		}
 
@@ -79,13 +80,14 @@ export class FileSystemManagerDriver implements ManagerDriver {
 	}
 
 	async createActor({ name, key, input }: CreateInput): Promise<ActorOutput> {
-		// Check if actor with the same name and key already exists
-		const existingActor = await this.getWithKey({ name, key });
-		if (existingActor) {
+		// Generate the deterministic actor ID
+		const actorId = generateActorId(name, key);
+		
+		// Check if actor already exists
+		if (this.#state.hasActor(actorId)) {
 			throw new ActorAlreadyExists(name, key);
 		}
 
-		const actorId = crypto.randomUUID();
 		await this.#state.createActor(actorId, name, key, input);
 
 		// Notify inspector about actor changes
