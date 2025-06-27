@@ -182,7 +182,7 @@ export class InvalidStateType extends ActorError {
 		} else {
 			msg += "Attempted to set invalid state.";
 		}
-		msg += " State must be JSON serializable.";
+		msg += " State must be CBOR serializable. Valid types include: null, undefined, boolean, string, number, BigInt, Date, RegExp, Error, typed arrays (Uint8Array, Int8Array, Float32Array, etc.), Map, Set, Array, and plain objects.";
 		super("invalid_state_type", msg);
 	}
 }

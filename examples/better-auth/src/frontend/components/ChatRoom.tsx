@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { createClient, createRivetKit } from "@rivetkit/react";
 import { authClient } from "../auth-client";
-import type { Registry } from "../../backend/registry";
+import type { registry } from "../../backend/registry";
 
-const client = createClient<Registry>("http://localhost:8080/registry");
+const client = createClient<typeof registry>("http://localhost:8080/registry");
 
 const { useActor } = createRivetKit(client);
 
@@ -30,7 +30,13 @@ export function ChatRoom({ user, onSignOut }: ChatRoomProps) {
 
 	// Listen for new messages
 	chatRoom.useEvent("newMessage", (newMessage) => {
-		setMessages(prev => [...prev, newMessage]);
+		setMessages(prev => [...prev, newMessage as { 
+			id: string; 
+			userId: string; 
+			username: string; 
+			message: string; 
+			timestamp: number; 
+		}]);
 	});
 
 	// Load initial messages when connected

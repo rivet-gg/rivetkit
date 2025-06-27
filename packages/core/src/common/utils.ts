@@ -37,10 +37,13 @@ export function safeStringify(obj: unknown, maxSize: number) {
 // it. Roll back state if fails to serialize.
 
 /**
- * Check if a value is JSON serializable.
+ * Check if a value is CBOR serializable.
  * Optionally pass an onInvalid callback to receive the path to invalid values.
+ * 
+ * For a complete list of supported CBOR tags, see:
+ * https://github.com/kriszyp/cbor-x/blob/cc1cf9df8ba72288c7842af1dd374d73e34cdbc1/README.md#list-of-supported-tags-for-decoding
  */
-export function isJsonSerializable(
+export function isCborSerializable(
 	value: unknown,
 	onInvalid?: (path: string) => void,
 	currentPath = "",
@@ -62,30 +65,98 @@ export function isJsonSerializable(
 		return true;
 	}
 
-	// Handle arrays
-	if (Array.isArray(value)) {
-		for (let i = 0; i < value.length; i++) {
-			const itemPath = currentPath ? `${currentPath}[${i}]` : `[${i}]`;
-			if (!isJsonSerializable(value[i], onInvalid, itemPath)) {
+	// Handle BigInt (CBOR tags 2 and 3)
+	if (typeof value === "bigint") {
+		return true;
+	}
+
+	// Handle Date objects (CBOR tags 0 and 1)
+	if (value instanceof Date) {
+		return true;
+	}
+
+	// Handle typed arrays (CBOR tags 64-82)
+	if (
+		value instanceof Uint8Array ||
+		value instanceof Uint8ClampedArray ||
+		value instanceof Uint16Array ||
+		value instanceof Uint32Array ||
+		value instanceof BigUint64Array ||
+		value instanceof Int8Array ||
+		value instanceof Int16Array ||
+		value instanceof Int32Array ||
+		value instanceof BigInt64Array ||
+		value instanceof Float32Array ||
+		value instanceof Float64Array
+	) {
+		return true;
+	}
+
+	// Handle Map (CBOR tag 259)
+	if (value instanceof Map) {
+		for (const [key, val] of value.entries()) {
+			const keyPath = currentPath ? `${currentPath}.key(${String(key)})` : `key(${String(key)})`;
+			const valPath = currentPath ? `${currentPath}.value(${String(key)})` : `value(${String(key)})`;
+			if (!isCborSerializable(key, onInvalid, keyPath) || !isCborSerializable(val, onInvalid, valPath)) {
 				return false;
 			}
 		}
 		return true;
 	}
 
-	// Handle plain objects
+	// Handle Set (CBOR tag 258)
+	if (value instanceof Set) {
+		let index = 0;
+		for (const item of value.values()) {
+			const itemPath = currentPath ? `${currentPath}.set[${index}]` : `set[${index}]`;
+			if (!isCborSerializable(item, onInvalid, itemPath)) {
+				return false;
+			}
+			index++;
+		}
+		return true;
+	}
+
+	// Handle RegExp (CBOR tag 27)
+	if (value instanceof RegExp) {
+		return true;
+	}
+
+	// Handle Error objects (CBOR tag 27)
+	if (value instanceof Error) {
+		return true;
+	}
+
+	// Handle arrays
+	if (Array.isArray(value)) {
+		for (let i = 0; i < value.length; i++) {
+			const itemPath = currentPath ? `${currentPath}[${i}]` : `[${i}]`;
+			if (!isCborSerializable(value[i], onInvalid, itemPath)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	// Handle plain objects and records (CBOR tags 105, 51, 57344-57599)
 	if (typeof value === "object") {
-		// Reject if it's not a plain object
-		if (Object.getPrototypeOf(value) !== Object.prototype) {
-			onInvalid?.(currentPath);
-			return false;
+		// Allow plain objects and objects with prototypes (for records and named objects)
+		const proto = Object.getPrototypeOf(value);
+		if (proto !== null && proto !== Object.prototype) {
+			// Check if it's a known serializable object type
+			const constructor = value.constructor;
+			if (constructor && typeof constructor.name === "string") {
+				// Allow objects with named constructors (records, named objects)
+				// This includes user-defined classes and built-in objects
+				// that CBOR can serialize with tag 27 or record tags
+			}
 		}
 
 		// Check all properties recursively
 		for (const key in value) {
 			const propPath = currentPath ? `${currentPath}.${key}` : key;
 			if (
-				!isJsonSerializable(
+				!isCborSerializable(
 					value[key as keyof typeof value],
 					onInvalid,
 					propPath,

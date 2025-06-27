@@ -8,6 +8,7 @@ interface AuthFormProps {
 export function AuthForm({ onAuthSuccess }: AuthFormProps) {
 	const [isLogin, setIsLogin] = useState(true);
 	const [email, setEmail] = useState("");
+	const [name, setName] = useState("");
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState("");
 	const [loading, setLoading] = useState(false);
@@ -26,6 +27,7 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
 			} else {
 				await authClient.signUp.email({
 					email,
+					name,
 					password,
 				});
 			}
@@ -53,6 +55,20 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
 						style={{ width: "100%", padding: "8px", marginTop: "5px" }}
 					/>
 				</div>
+				
+				{!isLogin && (
+					<div>
+						<label htmlFor="name">Name:</label>
+						<input
+							id="name"
+							type="text"
+							value={name}
+							onChange={(e) => setName(e.target.value)}
+							required
+							style={{ width: "100%", padding: "8px", marginTop: "5px" }}
+						/>
+					</div>
+				)}
 				
 				<div>
 					<label htmlFor="password">Password:</label>

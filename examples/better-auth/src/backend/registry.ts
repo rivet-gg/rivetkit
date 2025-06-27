@@ -1,31 +1,43 @@
-import { actor, setup } from "@rivetkit/actor";
-import { auth, type Session, type User } from "./auth";
+import { actor, OnAuthOptions, setup, UserError } from "@rivetkit/actor";
+import { auth } from "./auth";
+
+interface State {
+	messages: Message[];
+}
+
+interface Message {
+	id: string;
+	userId: string;
+	username: string;
+	message: string;
+	timestamp: number;
+}
 
 export const chatRoom = actor({
-	onAuth: async (c) => {
+	onAuth: async (c: OnAuthOptions) => {
 		const authResult = await auth.api.getSession({
 			headers: c.req.headers,
 		});
+		console.log("auth result", authResult);
 
 		if (!authResult?.session || !authResult?.user) {
-			throw new Error("Unauthorized");
+			throw new UserError("Unauthorized");
 		}
 
 		return {
-			userId: authResult.user.id,
 			user: authResult.user,
 			session: authResult.session,
 		};
 	},
-	state: { 
-		messages: [] as Array<{ id: string; userId: string; username: string; message: string; timestamp: number }> 
-	},
+	state: {
+		messages: [],
+	} as State,
 	actions: {
 		sendMessage: (c, message: string) => {
 			const newMessage = {
 				id: crypto.randomUUID(),
-				userId: c.auth.userId,
-				username: c.auth.user.email,
+				userId: "TODO",
+				username: c.conn.auth.user.email || "Unknown",
 				message,
 				timestamp: Date.now(),
 			};
@@ -44,4 +56,3 @@ export const chatRoom = actor({
 export const registry = setup({
 	use: { chatRoom },
 });
-

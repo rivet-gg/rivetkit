@@ -3,7 +3,7 @@ import type * as wsToClient from "@/actor/protocol/message/to-client";
 import type * as wsToServer from "@/actor/protocol/message/to-server";
 import type { Client } from "@/client/client";
 import type { Logger } from "@/common/log";
-import { isJsonSerializable, stringifyError } from "@/common/utils";
+import { isCborSerializable, stringifyError } from "@/common/utils";
 import type { Registry } from "@/mod";
 import invariant from "invariant";
 import onChange from "on-change";
@@ -454,7 +454,7 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 		if (target === null || typeof target !== "object") {
 			let invalidPath = "";
 			if (
-				!isJsonSerializable(
+				!isCborSerializable(
 					target,
 					(path) => {
 						invalidPath = path;
@@ -479,7 +479,7 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 			(path: string, value: any, _previousValue: any, _applyData: any) => {
 				let invalidPath = "";
 				if (
-					!isJsonSerializable(
+					!isCborSerializable(
 						value,
 						(invalidPathPart) => {
 							invalidPath = invalidPathPart;
