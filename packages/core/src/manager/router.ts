@@ -5,7 +5,7 @@ import type { Transport } from "@/actor/protocol/message/mod";
 import type { ToClient } from "@/actor/protocol/message/to-client";
 import { type Encoding, serialize } from "@/actor/protocol/serde";
 import {
-	ALL_PUBLIC_HEADERS,
+	ALLOWED_PUBLIC_HEADERS,
 	HEADER_ACTOR_ID,
 	HEADER_ACTOR_QUERY,
 	HEADER_AUTH_DATA,
@@ -137,7 +137,7 @@ export function createManagerRouter(
 				...corsConfig,
 				allowHeaders: [
 					...(corsConfig?.allowHeaders ?? []),
-					...ALL_PUBLIC_HEADERS,
+					...ALLOWED_PUBLIC_HEADERS,
 					"Content-Type",
 					"User-Agent",
 				],

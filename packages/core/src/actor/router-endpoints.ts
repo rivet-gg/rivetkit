@@ -470,7 +470,9 @@ export const HEADER_CONN_TOKEN = "X-RivetKit-Conn-Token";
  *
  * Used for CORS.
  **/
-export const ALL_PUBLIC_HEADERS = [
+export const ALLOWED_PUBLIC_HEADERS = [
+	"Content-Type",
+	"User-Agent",
 	HEADER_ACTOR_QUERY,
 	HEADER_ENCODING,
 	HEADER_CONN_PARAMS,

@@ -6,7 +6,6 @@ import {
 } from "./config";
 import { ActorDefinition } from "./definition";
 
-
 export function actor<
 	S,
 	CP,
@@ -43,3 +42,4 @@ export type {
 	ActorContextOf,
 	ActionContextOf,
 } from "./definition";
+export { ALLOWED_PUBLIC_HEADERS} from "./router-endpoints";
