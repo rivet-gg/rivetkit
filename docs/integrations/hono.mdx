@@ -1,199 +1,102 @@
 ---
 title: Hono
+description: Integrate RivetKit with Hono for ultra-fast web applications
 ---
 
-[Hono](https://hono.dev/) is a lightweight web framework that works well with RivetKit across multiple deployment platforms. This guide explains how to integrate RivetKit with Hono on different platforms.
+Hono is an ultra-fast web framework that works on any runtime. RivetKit integrates seamlessly with Hono through the `serve()` method.
 
-## Mounting The RivetKit Router
+<Card title="View Example on GitHub" icon="github" href="https://github.com/rivet-gg/rivetkit/tree/main/examples/hono" arrow horizontal>
+	Check out the complete example
+</Card>
 
-When mounting the RivetKit router at a custom path, you **must** specify the same path in the router configuration using `basePath`:
+## Installation
 
-```typescript
-// Setup the RivetKit app
-const registry = setup({
-  use: { counter },
-  // IMPORTANT: Must specify the same basePath where your router is mounted
-  basePath: "/my-path"
-});
+Install Hono alongside RivetKit:
 
-// Create a router from the app
-const { router: actorRouter } = createRouter(app);
-
-// Mount at the same path specified in basePath
-honoApp.route("/my-path", actorRouter);
+```bash
+npm install hono
 ```
 
-This ensures that WebSocket connections and other functionality work correctly when accessing your actors through the custom path.
+## Basic Setup
 
-## Platform-Specific Examples
-
-Each platform has specific requirements for integrating Hono with RivetKit.
-
-### Cloudflare Workers
+<Steps>
+<Step title="Create Your Registry">
+Set up your Rivet Actor:
 
 ```typescript
-import { createRouter } from "@rivetkit/cloudflare-workers";
-import { setup } from "rivetkit";
-import { Hono } from "hono";
-import counter from "./counter";
+// registry.ts
+import { actor, setup } from "@rivetkit/actor";
 
-// Create your Hono app inside the fetch handler
-const honoApp = new Hono();
-
-// Add your custom routes
-honoApp.get("/", (c) => c.text("Welcome to my app!"));
-honoApp.get("/hello", (c) => c.text("Hello, world!"));
-
-// Setup the RivetKit app
-const registry = setup({
-  use: { counter },
-  // IMPORTANT: Must specify the same basePath where your router is mounted
-  basePath: "/my-path"
-});
-
-// Create a router and handler from the app
-const { router: actorRouter, ActorHandler } = createRouter(app);
-
-// Mount the RivetKit router at /my-path
-honoApp.route("/my-path", actorRouter);
-
-// IMPORTANT: Must export `ActorHandler` as this exact name
-export { honoApp as default, ActorHandler };
-```
-
-Make sure to update your client connection URL to include the custom path:
-
-```typescript
-// If you mounted RivetKit at /my-path
-import { createClient } from "rivetkit/client";
-import type { App } from "./src/index";
-
-const client = createClient<App>("https://your-actor.actors.dev/my-path");
-```
-
-For this to work with Cloudflare Workers, your `wrangler.json` **must** include specific Durable Object and KV namespace bindings with the exact names expected by RivetKit:
-
-```json
-{
-  "name": "counter",
-  "main": "src/index.ts",
-  "compatibility_date": "2025-01-29",
-  "migrations": [
-    {
-      "new_classes": ["ActorHandler"],
-      "tag": "v1"
-    }
-  ],
-  "durable_objects": {
-    "bindings": [
-      {
-        "class_name": "ActorHandler", // Must match exported class
-        "name": "ACTOR_DO"            // Must use this exact name
-      }
-    ]
+export const counter = actor({
+  state: { count: 0 },
+  actions: {
+    increment: (c, amount: number = 1) => {
+      c.state.count += amount;
+      c.broadcast("countChanged", c.state.count);
+      return c.state.count;
+    },
+    getCount: (c) => c.state.count,
   },
-  "kv_namespaces": [
-    {
-      "binding": "ACTOR_KV",          // Must use this exact name
-      "id": "YOUR_KV_NAMESPACE_ID"    // Replace with your KV ID
-    }
-  ]
-}
-```
+});
 
-
-### Node.js
-
-```typescript
-import { serve } from "@hono/node-server";
-import { Hono } from "hono";
-import { setup, createRouter } from "@rivetkit/nodejs";
-import counter from "./counter";
-
-// Create your Hono app
-const honoApp = new Hono();
-
-// Add your custom routes
-honoApp.get("/", (c) => c.text("Welcome to my app!"));
-honoApp.get("/hello", (c) => c.text("Hello, world!"));
-
-// Setup the RivetKit app
-const registry = setup({
+export const registry = setup({
   use: { counter },
-  // IMPORTANT: Must specify the same basePath where your router is mounted
-  basePath: "/my-path"
 });
-
-// Create a router from the app
-const { router: actorRouter, injectWebSocket } = createRouter(app);
-
-// Mount the RivetKit router at /my-path
-honoApp.route("/my-path", actorRouter);
-
-// Create server with the combined app
-const server = serve({
-  fetch: honoApp.fetch,
-  port: 8080,
-});
-
-// IMPORTANT: Inject the websocket handler into the server
-injectWebSocket(server);
-
-console.log("Server running at http://localhost:8080");
 ```
+</Step>
 
-Make sure to update your client connection URL to include the custom path:
+<Step title="Integrate with Hono">
+Use RivetKit's `serve()` method with your Hono app:
 
 ```typescript
-// If you mounted RivetKit at /my-path
-import { createClient } from "rivetkit/client";
-import type { App } from "./src/index";
-
-const client = createClient<App>("http://localhost:8080/my-path");
-```
-
-### Bun
-
-```typescript
+// server.ts
+import { registry } from "./registry";
 import { Hono } from "hono";
-import { setup, createRouter } from "@rivetkit/bun";
-import counter from "./counter";
 
-// Create your Hono app
-const honoApp = new Hono();
+// Start RivetKit
+const { client, serve } = registry.createServer();
 
-// Add your custom routes
-honoApp.get("/", (c) => c.text("Welcome to my app!"));
-honoApp.get("/hello", (c) => c.text("Hello, world!"));
+// Setup Hono app
+const app = new Hono();
 
-// Setup the RivetKit app
-const registry = setup({
-  use: { counter },
-  // IMPORTANT: Must specify the same basePath where your router is mounted
-  basePath: "/my-path"
+// Add your API routes
+app.post("/increment/:name", async (c) => {
+  const name = c.req.param("name");
+  const body = await c.req.json().catch(() => ({}));
+  const amount = body.amount || 1;
+  
+  try {
+    const counter = client.counter.getOrCreate([name]);
+    const newCount = await counter.increment(amount);
+    
+    return c.json({ success: true, count: newCount });
+  } catch (error) {
+    return c.json({ 
+      success: false, 
+      error: error.message 
+    }, 500);
+  }
 });
 
-// Create a router from the app
-const { router: actorRouter, webSocketHandler } = createRouter(app);
+app.get("/count/:name", async (c) => {
+  const name = c.req.param("name");
+  
+  try {
+    const counter = client.counter.getOrCreate([name]);
+    const count = await counter.getCount();
+    
+    return c.json({ name, count });
+  } catch (error) {
+    return c.json({ 
+      success: false, 
+      error: error.message 
+    }, 500);
+  }
+});
 
-// Mount the RivetKit router at /my-path
-honoApp.route("/my-path", actorRouter);
-
-// Create and start the server
-export default {
-  port: 8080,
-  fetch: honoApp.fetch,
-  // IMPORTANT: Pass the webSocketHandler to Bun
-  websocket: webSocketHandler,
-};
+// Start server with RivetKit integration
+serve(app);
 ```
+</Step>
+</Steps>
 
-Make sure to update your client connection URL to include the custom path:
-
-```typescript
-// If you mounted RivetKit at /my-path
-import { createClient } from "rivetkit/client";
-import type { App } from "./src/index";
-
-const client = createClient<App>("http://localhost:8080/my-path");
-```

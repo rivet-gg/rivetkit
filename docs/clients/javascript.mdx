@@ -54,19 +54,19 @@ The RivetKit JavaScript client allows you to connect to and interact with actors
     
     <CodeGroup>
       ```sh npm
-      npm install rivetkit
+      npm install @rivetkit/actor
       ```
       
       ```sh pnpm
-      pnpm add rivetkit
+      pnpm add @rivetkit/actor
       ```
       
       ```sh yarn
-      yarn add rivetkit
+      yarn add @rivetkit/actor
       ```
       
       ```sh bun
-      bun add rivetkit
+      bun add @rivetkit/actor
       ```
     </CodeGroup>
   </Step>
@@ -77,7 +77,7 @@ The RivetKit JavaScript client allows you to connect to and interact with actors
     Create a file `src/client.ts` in your project to connect to your actor:
 
     ```typescript src/client.ts
-    import { createClient } from "rivetkit/client";
+    import { createClient } from "@rivetkit/actor/client";
     import type { App } from "../actors/app";
 
     async function main() {
@@ -139,5 +139,5 @@ The RivetKit JavaScript client allows you to connect to and interact with actors
 
 ## Next Steps
 
-See the [Interacting with Actors](/concepts/interacting-with-actors) documentation for information on how to use the client.
+For more information on communicating with actors, including event handling and RPC calls, see [Communicating with Actors](/actors/communicating-with-actors).
 

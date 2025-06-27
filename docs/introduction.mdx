@@ -5,11 +5,9 @@ sidebarTitle: Welcome
 mode: custom
 ---
 
-import ComparisonTable from "/snippets/landing-comparison-table.mdx";
 import Snippets from "/snippets/landing-snippets.mdx";
 import Tech from "/snippets/landing-tech.mdx";
 import Quotes from "/snippets/landing-quotes.mdx";
-import Manifesto from "/snippets/landing-manifesto.mdx";
 import FAQ from "/snippets/landing-faq.mdx";
 
 {/*<div className="particle-container"></div>*/}
@@ -55,11 +53,11 @@ import FAQ from "/snippets/landing-faq.mdx";
     		</div>
     	</div>*/}
 
-		<div className="libraries-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)", maxWidth: "800px" }}>
-			<a href="/actor/overview" className="library-box library-box-orange">
+		<div className="libraries-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)", maxWidth: "800px", display: "none" }}>
+			<a href="/actors/overview" className="library-box library-box-orange">
 				<div className="library-content">
 					<div className="library-title">
-						<div className="library-icon"><Icon icon="microchip" color="#ff4f00" size={28} /></div>
+						<div className="library-icon"><Icon icon="shapes" color="#ff4f00" size={28} /></div>
 						<h3 className="not-prose">Actors</h3>
 					</div>
 					<div className="library-description">
@@ -69,7 +67,7 @@ import FAQ from "/snippets/landing-faq.mdx";
 				</div>
 				<div className="library-arrow"><Icon icon="arrow-right" color="rgba(255, 255, 255, 0.8)" size={20} /></div>
 			</a>
-			<a href="/experimental/concepts/multiplayer" className="library-box library-box-green">
+			<a href="/" className="library-box library-box-green">
 				<div className="library-content">
 					<div className="library-title">
 						<div className="library-icon"><Icon icon="tower-broadcast" color="#10b981" size={28} /></div>
@@ -82,7 +80,7 @@ import FAQ from "/snippets/landing-faq.mdx";
 				</div>
 				<div className="library-arrow"><Icon icon="arrow-right" color="rgba(255, 255, 255, 0.8)" size={20} /></div>
 			</a>
-			<a href="/experimental/concepts/edge" className="library-box library-box-purple">
+			<a href="/" className="library-box library-box-purple">
 				<div className="library-content">
 					<div className="library-title">
 						<div className="library-icon"><Icon icon="diagram-project" color="#a855f7" size={28} /></div>
@@ -95,7 +93,7 @@ import FAQ from "/snippets/landing-faq.mdx";
 				</div>
 				<div className="library-arrow"><Icon icon="arrow-right" color="rgba(255, 255, 255, 0.8)" size={20} /></div>
 			</a>
-			{/* <a href="/experimental/concepts/multiplayer" className="library-box library-box-blue">
+			{/* <a href="/" className="library-box library-box-blue">
 				<div className="library-content">
 					<div className="library-title">
 						<div className="library-icon"><Icon icon="robot" color="#3b82f6" size={28} /></div>
@@ -165,21 +163,21 @@ import FAQ from "/snippets/landing-faq.mdx";
             <div className="platform-icons-label">Supports</div>
             <div className="platform-icons-row">
                 {/* Platforms (all-in-one) */}
-                <a href="/platforms/rivet" className="platform-icon-wrapper">
+                <a href="/drivers/rivet" className="platform-icon-wrapper">
                     <img src="/images/platforms/rivet-white.svg" alt="Rivet Platform" className="platform-icon" noZoom />
                     <div className="platform-icon-tooltip">Rivet</div>
                 </a>
-                <a href="/platforms/cloudflare-workers" className="platform-icon-wrapper">
+                <a href="/drivers/cloudflare-workers" className="platform-icon-wrapper">
                     <img src="/images/platforms/cloudflare-workers.svg" alt="Cloudflare Workers" className="platform-icon" noZoom />
                     <div className="platform-icon-tooltip">Cloudflare Workers</div>
                 </a>
                 
                 {/* Compute */}
-                <a href="/platforms/nodejs" className="platform-icon-wrapper">
+                <a href="/actors/quickstart-backend" className="platform-icon-wrapper">
                     <img src="/images/platforms/nodejs.svg" alt="Node.js" className="platform-icon" noZoom />
                     <div className="platform-icon-tooltip">Node.js</div>
                 </a>
-                <a href="/platforms/bun" className="platform-icon-wrapper">
+                <a href="/actors/quickstart-backend" className="platform-icon-wrapper">
                     <img src="/images/platforms/bun.svg" alt="Bun" className="platform-icon" noZoom />
                     <div className="platform-icon-tooltip">Bun</div>
                 </a>
@@ -203,15 +201,11 @@ import FAQ from "/snippets/landing-faq.mdx";
                     <img src="/images/clients/typescript.svg" alt="TypeScript" className="platform-icon" noZoom />
                     <div className="platform-icon-tooltip">TypeScript</div>
                 </a>
-                <a href="/clients/python" className="platform-icon-wrapper">
-                    <img src="/images/clients/python.svg" alt="Python" className="platform-icon" noZoom />
-                    <div className="platform-icon-tooltip">Python (Client)</div>
-                </a>
                 <a href="/clients/rust" className="platform-icon-wrapper">
                     <img src="/images/clients/rust.svg" alt="Rust" className="platform-icon" noZoom />
                     <div className="platform-icon-tooltip">Rust (Client)</div>
                 </a>
-                <a href="/frameworks/react" className="platform-icon-wrapper">
+                <a href="/clients/react" className="platform-icon-wrapper">
                     <img src="/images/clients/react.svg" alt="React" className="platform-icon" noZoom />
                     <div className="platform-icon-tooltip">React</div>
                 </a>
@@ -221,7 +215,19 @@ import FAQ from "/snippets/landing-faq.mdx";
                     <img src="/images/integrations/hono.svg" alt="Hono" className="platform-icon" noZoom />
                     <div className="platform-icon-tooltip">Hono</div>
                 </a>
-                <a href="/concepts/testing" className="platform-icon-wrapper">
+                <a href="/integrations/express" className="platform-icon-wrapper">
+                    <img src="/images/integrations/express.svg" alt="Express" className="platform-icon" noZoom />
+                    <div className="platform-icon-tooltip">Express</div>
+                </a>
+                <a href="/integrations/elysia" className="platform-icon-wrapper">
+                    <img src="/images/integrations/elysia.svg" alt="Express" className="platform-icon" noZoom />
+                    <div className="platform-icon-tooltip">Elysia</div>
+                </a>
+                <a href="/integrations/trpc" className="platform-icon-wrapper">
+                    <img src="/images/integrations/trpc.svg" alt="tRPC" className="platform-icon" noZoom />
+                    <div className="platform-icon-tooltip">tRPC</div>
+                </a>
+                <a href="/general/testing" className="platform-icon-wrapper">
                     <img src="/images/integrations/vitest.svg" alt="Vitest" className="platform-icon" noZoom />
                     <div className="platform-icon-tooltip">Vitest</div>
                 </a>
@@ -237,19 +243,6 @@ import FAQ from "/snippets/landing-faq.mdx";
 		<div style={{ height: '20px' }} />
 		<Snippets />
 	</div>
-
-    {/*
-    <div style={{ height: '300px' }} />
-
-    <div className="text-center landing-section">
-    	<h2 className="landing-section-heading">Less Complexity, More Functionality</h2>
-    	<p className="landing-section-text">RivetKit provides a solid foundation with the features you'd expect for modern apps.</p>
-
-    	<div style={{ height: '80px' }} />
-
-    	<ComparisonTable />
-    </div>
-    */}
 
     <div style={{ height: '260px' }} />
 
@@ -326,12 +319,6 @@ import FAQ from "/snippets/landing-faq.mdx";
 
     <div className="landing-section">
         <FAQ />
-    </div> */}
-
-    {/*<div style={{ height: '260px' }} />
-
-    <div className="landing-section">
-        <Manifesto />
     </div> */}
 
     <div style={{ height: '260px' }} />

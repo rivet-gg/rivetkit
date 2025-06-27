@@ -57,7 +57,7 @@ Deploy to Rivet Cloud:
 rivet deploy
 ```
 
-Your RivetKit actors will be deployed as Rivet actors with automatic scaling and management.
+Your Rivet Actors will be deployed as Rivet actors with automatic scaling and management.
 
 ## License
 

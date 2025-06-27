@@ -41,136 +41,124 @@
     "groups": [
       {
         "group": "Getting Started",
-        "pages": [
-          "introduction"
-        ]
+        "pages": ["introduction"]
       },
       {
         "group": "Actors",
+        "icon": "shapes",
         "pages": [
-"actors/overview",
-{
-"group": "Quickstart",
-"icon": "forward",
-"pages": [
-"actors/quickstart",
-"actors/quickstart-frontend"
-]
-},
-"actors/state",
-"actors/actions",
-"actors/events",
+          "actors/overview",
+          {
+            "group": "Quickstart",
+            "icon": "forward",
+            "pages": [
+              "actors/quickstart-backend",
+              "actors/quickstart-react"
+            ]
+          },
+          "actors/state",
+          "actors/actions",
+          "actors/events",
+          "actors/schedule",
           {
             "group": "More",
             "pages": [
-"actors/schedule",
-
-"actors/lifecycle",
-"actors/connections",
-"actors/authentication",
-              {
-                "group": "Advanced",
-                "pages": [
-"actors/metadata",
-"actors/types"
-
-                ]
-              }
+              "actors/communicating-with-actors",
+              "actors/communicating-between-actors",
+              "actors/connections",
+              "actors/lifecycle",
+              "actors/metadata",
+              "actors/helper-types",
+              "actors/external-sql",
+              "actors/scaling"
             ]
           }
-        ]
-      },
-      {
-        "group": "Workflows",
-        "pages": [
-          "workflows/overview"
         ]
       },
       {
         "group": "Integrations",
         "pages": [
-          "integrations/better-auth",
           {
-            "group": "Frameworks",
+            "group": "Frontend & Clients",
+            "icon": "code",
             "pages": [
-              "frameworks/react",
               "clients/javascript",
-              "clients/rust",
-              "clients/python"
+              "clients/react",
+              "clients/rust"
             ]
           },
           {
-            "group": "Deploy",
-            "pages": [
-              "platforms/rivet",
-              "platforms/cloudflare-workers",
-              "platforms/bun",
-              "platforms/nodejs"
-            ]
+            "group": "Frontend",
+            "pages": []
           },
           {
-            "group": "Libraries & Services",
+            "group": "Backend",
+            "icon": "server",
             "pages": [
               "integrations/hono",
-              "integrations/resend"
+              "integrations/express",
+              "integrations/elysia",
+              "integrations/trpc"
             ]
           },
           {
-            "group": "Drivers",
+            "group": "Auth",
+            "icon": "lock",
             "pages": [
-              "drivers/overview",
-              "drivers/file-system",
-              "drivers/memory",
-              "drivers/redis",
-              "drivers/rivet",
-              "drivers/cloudflare-workers",
-              "drivers/build"
+              "integrations/better-auth"
+            ]
+          },
+          {
+            "group": "Misc",
+            "pages": [
+              "integrations/vitest"
             ]
           }
         ]
       },
+      {
+        "group": "Reference",
+        "pages": [
+          "general/authentication",
+          "general/testing",
           {
-            "group": "Reference",
+            "group": "More",
             "pages": [
-              {
-                "group": "Common Concepts",
-                "pages": [
-                  "concepts/cors",
-                  "concepts/external-sql",
-                  "concepts/interacting-with-actors",
-                  "concepts/logging",
-                  "concepts/overview",
-                  "concepts/scaling",
-                  "concepts/testing",
-                  "concepts/edge",
-                  "concepts/topology"
-                ]
-              },
-              {
-                "group": "LLM Prompts",
-                "pages": [
-                  "llm/cursor",
-                  "llm/windsurf",
-                  "llm/claude",
-                  "llm/docs-as-markdown",
-                  "llm/prompt",
-                  "llm/llms",
-                  "llm/llms-full"
-                ]
-              },
+              "general/edge", 
+              "general/cors",
+              "general/logging"
+            ]
+          },
           {
-            "group": "API",
+            "group": "HTTP API",
             "openapi": {
               "source": "./openapi.json",
-              "directory": "api"
+              "directory": "reference/api"
             }
-          },
-              "support/enterprise"
-            ]
           }
+        ]
+      }
     ]
   },
-   "contextual": {
+  "_temp": [
+              "general/architecture",
+              "general/registry",
+              "general/webhooks",
+    {
+      "group": "Drivers",
+      "icon": "database",
+      "pages": [
+        "drivers/overview",
+        "drivers/rivet",
+        "drivers/cloudflare-workers",
+        "drivers/file-system",
+        "drivers/memory",
+        "drivers/redis",
+        "drivers/building-drivers"
+      ]
+    }
+  ],
+  "contextual": {
    "options": [
      "copy",
      "view",

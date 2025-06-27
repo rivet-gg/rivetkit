@@ -1,285 +1,213 @@
 ---
-title: Rivet Actors
+title: Actors Overview
 icon: square-info
 sidebarTitle: "Overview"
-description: A library for building stateful, scalable, realtime backend applications.
+description: Stateful serverless functions with persistence, real-time communication, and automatic scaling
 ---
 
-import CreateActorCli from "/snippets/create-actor-cli.mdx";
+Actors are lightweight, stateful serverless functions that maintain persistent state and provide real-time communication. They're the core building blocks of RivetKit applications.
 
-Actors combine compute and storage into unified entities for simplified architecture. Actors seamlessly integrate with your existing infrastructure or can serve as a complete standalone solution.
+## Getting Started
 
-## Quickstart
-
-<CardGroup>
-<Card title="Node.js & Bun" icon="node-js" />
-<Card title="React" icon="react" />
+<CardGroup cols={2}>
+<Card title="Backend Quickstart" href="/actors/quickstart-backend" icon="server" arrow horizontal>
+  Set up actors with Node.js, Bun, and web frameworks
+</Card>
+<Card title="React Quickstart" href="/actors/quickstart-react" icon="react" arrow horizontal>
+  Build real-time React applications with actors
+</Card>
 </CardGroup>
 
-## Concepts
+## Key Features
 
-The core concepts that power Rivet Actor applications:
+<CardGroup cols={2}>
+<Card title="Long-Lived, Stateful Compute" icon="microchip">
+  Each unit of compute is like a tiny server that remembers things between requests – no need to reload data or worry about timeouts. Like AWS Lambda, but with memory and no timeouts.
+</Card>
+<Card title="Blazing-Fast Reads & Writes" icon="bolt">
+  State is stored on the same machine as your compute, so reads and writes are ultra-fast. No database round trips, no latency spikes.
+</Card>
+<Card title="Realtime, Made Simple" icon="tower-broadcast">
+  Update state and broadcast changes in realtime. No external pub/sub systems, no polling – just built-in low-latency events.
+</Card>
+<Card title="Store Data Near Your Users" icon="globe">
+  Your state lives close to your users on the edge – not in a faraway data center – so every interaction feels instant.
+</Card>
+</CardGroup>
 
-- **State Is Automatically Persisted**: State automatically persists between restarts, upgrades, & crashes
-- **State Is Stored In-Memory**: State is stored in memory for high-performance reads/writes while also automatically persisted
-- **Isolated State Ownership**: Actors only manage their own state, which can only be modified by the actor itself
-- **Communicates via Actions**: How clients and other actors interact with a actor
-- **Actions Are Low-Latency**: Actions provide WebSocket-like performance for time-sensitive operations
-- **Broadcast Updates With Events**: Actors can publish real-time updates to connected clients
 
-## Quickstart
+## Use Cases
 
-Run this to get started:
+Actors are perfect for applications that need persistent state and real-time updates:
 
-<CreateActorCli />
+### Real-time Communication
+- **Chat rooms**: Real-time messaging with message history and user presence
+- **Collaborative documents**: Multiple users editing documents simultaneously
+- **Live events**: Broadcasting updates to many participants
 
-## Code Example
+### AI & Automation
+- **AI agents**: Stateful AI assistants with conversation history
+- **Workflow automation**: Long-running business processes with state persistence
+- **Stream processing**: Real-time data processing with persistent state
 
-Here's a complete chat room actor that maintains state and handles messages. We'll explore each component in depth throughout this document:
+### Data & Synchronization
+- **Local-first sync**: Offline-first applications with server synchronization
+- **Per-user databases**: Isolated data stores for each user or tenant
+- **Per-tenant SaaS**: Multi-tenant applications with isolated state
+- **CRDT collaboration**: Conflict-free replicated data types for real-time editing
 
-```typescript chat_room.ts
-import { actor } from "rivetkit";
+### Gaming & Interactive Applications
+- **Multiplayer games**: Game state management with real-time updates
+- **Rate limiting**: Distributed rate limiting with persistent counters
 
-// Define a chat room actor
-const chatRoom = actor({
-  // Initialize state when the actor is first created
-  createState: () => ({
-    messages: []
-  }),
+## State Management
 
-  // Define actions clients can call
-  actions: {
-    // Action to send a message
-    sendMessage: (c, sender, text) => {
-      // Update state
-      c.state.messages.push({ sender, text });
-      
-      // Broadcast to all connected clients
-      c.broadcast("newMessage", { sender, text });
-    },
-    
-    // Action to get chat history
-    getHistory: (c) => {
-      return c.state.messages;
-    }
-  }
-});
-
-export default chatRoom;
-```
-
-## Using the App
-
-To start using your actor, create an app and serve it:
-
-```typescript app.ts
-import { setup, serve } from "rivetkit";
-import chatRoom from "./chat_room";
-
-// Create the application
-const registry = setup({
-  use: { chatRoom }
-});
-
-// Start serving on default port
-serve(registry);
-```
-
-## Key Actor Components
-
-### State
-
-Actors maintain state that's stored in memory and automatically persisted. State is defined either as a constant or via a `createState` function:
+Actors maintain persistent state that survives restarts, crashes, and deployments. State can be defined as a constant or created dynamically:
 
 ```typescript
-import { actor } from "rivetkit";
-
-// Method 1: State constant
-const counter1 = actor({
-  state: { count: 0 },
-  actions: {
-    // ...
-  }
-});
-
-// Method 2: CreateState function
-const counter2 = actor({
-  createState: () => ({ count: 0 }),
-  actions: {
-    // ...
-  }
-});
-```
-
-Update state by modifying `c.state` in your actions:
-
-```typescript
-import { actor } from "rivetkit";
+import { actor } from "@rivetkit/actor";
 
 const counter = actor({
   state: { count: 0 },
-  actions: {
-    // Example of state update in an action
-    increment: (c) => {
-      c.state.count += 1;
-      return c.state.count;
-    }
-  }
-});
-```
-
-These changes are durable and are automatically persisted across updates, restarts, and crashes.
-
-Learn more about [state management](/actor/state).
-
-### Actions
-
-Actions are functions defined in your actor configuration that clients & other actors can call:
-
-```typescript
-import { actor } from "rivetkit";
-
-const mathUtils = actor({
-  state: {},
-  actions: {
-    multiplyByTwo: (c, x) => {
-      return x * 2;
-    }
-  }
-});
-```
-
-Each action receives a context object (commonly named `c`) as its first parameter, which provides access to state, connections, and other utilities.
-
-Learn more about [actions](/actor/actions).
-
-### Events
-
-Actors can broadcast events to connected clients:
-
-```typescript
-import { actor } from "rivetkit";
-
-const inventory = actor({
-  createState: () => ({ 
-    items: [] 
-  }),
   
   actions: {
-    addItem: (c, item) => {
-      // Add to state
-      c.state.items.push(item);
-      
-      // Notify all clients about the new item
-      c.broadcast("itemAdded", { item });
-    }
+    increment: (c) => {
+      c.state.count++;
+      return c.state.count;
+    },
+    
+    getCount: (c) => c.state.count,
   }
 });
 ```
 
-You can also send events to specific clients:
+Learn more about [state management](/actors/state).
+
+## Actions
+
+Actions are the primary way to interact with actors. They're type-safe functions that can modify state and communicate with clients:
 
 ```typescript
-import { actor } from "rivetkit";
-
-const messageService = actor({
-  state: {},
-  actions: {
-    sendPrivateMessage: (c, userId, text) => {
-      // Send to a specific connection
-      const conn = c.conns.find(conn => conn.params.userId === userId);
-      if (conn) {
-        conn.send("privateMessage", { text });
-      }
-    }
-  }
-});
-```
-
-Learn more about [events](/actor/events).
-
-## Actor Tags
-
-Tags are key-value pairs attached to actors that serve two purposes:
-
-1. **Actor Discovery**: Find specific actors using `client.get(tags)`
-2. **Organization**: Group related actors for management purposes
-
-For example, you can query chat rooms by tag like:
-
-```typescript client.ts
-await client.chatRoom.get({ channel: "random" });
-```
-
-### Common Tag Patterns
-
-```typescript
-import { createClient } from "rivetkit/client";
-import type { App } from "./src/index";
-
-const client = createClient<App>("http://localhost:8080");
-
-// Game room with ID parameter
-const gameRoom = await client.gameRoom.get({ roomId: "ABC123" });
-
-// User profile with ID
-const userProfile = await client.userProfile.get({ profileId: "1234" });
-
-// Document with multiple parameters
-const document = await client.document.get({
-  workspaceId: "team-alpha",
-  documentId: "budget-2024"
-});
-```
-
-## Actor Lifecycle
-
-Actors are created automatically when needed and persist until explicitly shutdown.
-
-To shut down a actor, use `c.shutdown()` from within an action:
-
-```typescript
-import { actor } from "rivetkit";
+import { actor } from "@rivetkit/actor";
 
 const chatRoom = actor({
-  createState: () => ({
-    messages: []
-  }),
+  state: { messages: [] as Array<{text: string, userId: string}> },
+  
   actions: {
-    closeRoom: (c) => {
-      // Do any cleanup needed
-      c.broadcast("roomClosed");
-      
-      // Shutdown the actor
-      c.shutdown();
+    sendMessage: (c, userId: string, text: string) => {
+      const message = { text, userId };
+      c.state.messages.push(message);
+      c.broadcast("newMessage", message);
+      return message;
+    },
+    
+    getMessages: (c) => c.state.messages
+  }
+});
+```
+
+Actions can be called from your backend, your clients, or other actors:
+
+```typescript
+const room = client.chatRoom.getOrCreate(["general"]);
+const message = await room.sendMessage("user-123", "Hello everyone!");
+```
+
+Learn more about [actions](/actors/actions) and [communicating with actors](/actors/communicating-with-actors).
+
+## Real-time Communication
+
+Actors support real-time bidirectional communication through WebSocket and SSE connections. Clients can establish persistent connections to receive live updates.
+
+For example, to send events to all connected clients:
+
+```typescript
+import { actor } from "@rivetkit/actor";
+
+const liveAuction = actor({
+  state: { currentBid: 0 },
+  
+  actions: {
+    placeBid: (c, amount: number) => {
+      c.state.currentBid = amount;
+      c.broadcast("newBid", { amount });
+      return amount;
     }
   }
 });
 ```
 
-Learn more about the [actor lifecycle](/actor/lifecycle).
+Clients connect and listen for real-time updates:
 
-## Documentation
+```typescript
+const auction = client.liveAuction.getOrCreate(["auction-123"]);
+const connection = auction.connect();
 
-Learn more about Rivet Actors:
+connection.on("newBid", (data) => {
+  console.log(`New bid: $${data.amount}`);
+});
 
-<CardGroup cols={2}>
-  <Card title="Quickstart" icon="forward" href="/actor/quickstart">
-    Get started with Rivet Actors in minutes
-  </Card>
-  <Card title="State" icon="floppy-disk" href="/actor/state">
-    Understand how actor state is managed, persisted, and accessed.
-  </Card>
-  <Card title="Actions" icon="bolt" href="/actor/actions">
-    Define and implement actor actions (RPCs) for client interaction.
-  </Card>
-  <Card title="Events" icon="tower-broadcast" href="/actor/events">
-    Real-time communication with events and broadcasts.
-  </Card>
-  <Card title="Lifecycle" icon="rotate" href="/actor/lifecycle">
-    Managing the creation, execution, and termination of actors.
-  </Card>
-  <Card title="Schedule" icon="clock" href="/actor/schedule">
-    Schedule tasks and alarms with actors for time-based operations.
-  </Card>
-</CardGroup>
+await auction.placeBid(150);
+```
+
+Learn more about [events](/actors/events) and [client communication](/actors/communicating-with-actors).
+
+## Scheduling & Lifecycle
+
+Actors support scheduled tasks and lifecycle management:
+
+```typescript
+import { actor } from "@rivetkit/actor";
+
+const reminder = actor({
+  state: { message: "" },
+  
+  actions: {
+    setReminder: (c, message: string, delayMs: number) => {
+      c.state.message = message;
+      c.schedule.after(delayMs, "sendReminder");
+    },
+    
+    sendReminder: (c) => {
+      c.broadcast("reminder", { message: c.state.message });
+    }
+  }
+});
+```
+
+Learn more about [actor lifecycle](/actors/lifecycle).
+
+## Type Safety
+
+RivetKit provides end-to-end TypeScript safety between clients and actors:
+
+<CodeGroup>
+
+```typescript Actor
+const userManager = actor({
+  state: { users: {} as Record<string, {name: string}> },
+  
+  actions: {
+    createUser: (c, name: string) => {
+      const userId = crypto.randomUUID();
+      c.state.users[userId] = { name };
+      return { userId, name };
+    },
+    
+    getUser: (c, userId: string) => c.state.users[userId]
+  }
+});
+```
+
+```typescript Client
+const manager = client.userManager.getOrCreate(["default"]);
+
+const user = await manager.createUser("Alice");
+// Type: {userId: string, name: string}
+
+const foundUser = await manager.getUser(user.userId);
+// Type: {name: string} | undefined
+```
+
+</CodeGroup>
+

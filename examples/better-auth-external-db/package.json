@@ -4,13 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev": "pnpm db:migrate && concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "tsx --watch src/backend/server.ts",
     "dev:frontend": "vite",
     "build": "vite build",
     "check-types": "tsc --noEmit",
     "test": "vitest run",
-    "db:setup": "tsx scripts/setup-db.ts"
+    "db:generate": "pnpm dlx @better-auth/cli@latest generate --config src/backend/auth.ts",
+    "db:migrate": "pnpm dlx @better-auth/cli@latest migrate --config src/backend/auth.ts -y"
   },
   "devDependencies": {
     "@rivetkit/actor": "workspace:*",

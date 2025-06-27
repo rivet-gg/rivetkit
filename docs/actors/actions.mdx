@@ -17,7 +17,7 @@ actor.
 Actions are defined in the `actions` object when creating a actor:
 
 ```typescript
-import { actor } from "rivetkit";
+import { actor } from "@rivetkit/actor";
 
 const mathUtils = actor({
   state: {},
@@ -37,7 +37,7 @@ Each action receives a context object (commonly named `c`) as its first paramete
 You can define helper functions outside the actions object to keep your code organized. These functions cannot be called directly by clients:
 
 ```typescript
-import { actor } from "rivetkit";
+import { actor } from "@rivetkit/actor";
 
 // Private helper function - not callable by clients
 const calculateFee = (amount) => {
@@ -62,7 +62,7 @@ const paymentProcessor = actor({
 
 ### Streaming Return Data
 
-Actions have a single return value. To stream realtime data in response to an action, use [events](/concepts/events).
+Actions have a single return value. To stream realtime data in response to an action, use [events](/actors/events).
 
 ## Calling Actions
 
@@ -89,7 +89,7 @@ The actor client includes type safety out of the box. When you use `createClient
 <CodeGroup>
 
 ```typescript src/index.ts
-import { setup } from "rivetkit";
+import { setup } from "@rivetkit/actor";
 
 // Create simple counter
 const counter = actor({
@@ -140,7 +140,7 @@ For example:
 <CodeGroup>
 
 ```typescript actor.ts
-import { actor, UserError } from "rivetkit";
+import { actor, UserError } from "@rivetkit/actor";
 
 const user = actor({
   state: { users: [] },
@@ -188,7 +188,7 @@ Data schemas are not validated by default. For production applications, use a li
 For example, to validate action parameters:
 
 ```typescript
-import { actor, UserError } from "rivetkit";
+import { actor, UserError } from "@rivetkit/actor";
 import { z } from "zod";
 
 // Define schema for action parameters
@@ -222,7 +222,7 @@ const counter = actor({
 
 ## Authentication
 
-By default, clients can call all actions on a actor without restriction. Make sure to implement authentication if needed. Documentation on authentication is available [here](/concepts/authentication).
+By default, clients can call all actions on a actor without restriction. Make sure to implement authentication if needed. Documentation on authentication is available [here](/general/authentication).
 
 ## Using `ActionContext` Type Externally
 
@@ -231,7 +231,7 @@ When writing complex logic for actions, you may want to extract parts of your im
 RivetKit provides the `ActionContextOf` utility type for exactly this purpose:
 
 ```typescript
-import { actor, ActionContextOf } from "rivetkit";
+import { actor, ActionContextOf } from "@rivetkit/actor";
 
 const counter = actor({
   state: { count: 0 },
@@ -250,4 +250,4 @@ function incrementCount(c: ActionContextOf<typeof counter>) {
 }
 ```
 
-See [Helper Types](/concepts/types) for more details on using `ActionContextOf` and other type utilities.
+See [Helper Types](/actors/helper-types) for more details on using `ActionContextOf` and other type utilities.

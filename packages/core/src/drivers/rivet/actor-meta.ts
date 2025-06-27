@@ -195,7 +195,7 @@ function convertActorToMeta(actor: RivetActor): ActorMeta | undefined {
 		throw new Error(`Actor ${actor.id} does not have a actor role.`);
 	}
 	if (actor.tags.framework !== "rivetkit") {
-		throw new Error(`Actor ${actor.id} is not an RivetKit actor.`);
+		throw new Error(`Actor ${actor.id} is not an Rivet Actor.`);
 	}
 
 	return {

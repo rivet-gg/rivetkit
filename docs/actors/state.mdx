@@ -9,17 +9,19 @@ Actor state provides the best of both worlds: it's stored in-memory and persiste
 **Using External SQL Databases**
 
 Actors can also be used with external SQL databases. This can be useful to integrate actors with existing
-applications or for storing relational data. Read more [here](/concepts/external-sql).
+applications or for storing relational data. Read more [here](/actors/external-sql).
 </Tip>
 
 ## Initializing State
 
 There are two ways to define a actor's initial state:
 
-**Method 1: Static Initial State**
+<Tabs>
+
+<Tab title="Static Initial State">
 
 ```typescript
-import { actor } from "rivetkit";
+import { actor } from "@rivetkit/actor";
 
 // Simple state with a constant
 const counter = actor({
@@ -32,10 +34,12 @@ const counter = actor({
 });
 ```
 
-**Method 2: Dynamic Initial State**
+</Tab>
+
+<Tab title="Dynamic Initial State">
 
 ```typescript
-import { actor } from "rivetkit";
+import { actor } from "@rivetkit/actor";
 
 // State with initialization logic
 const counter = actor({
@@ -50,14 +54,18 @@ const counter = actor({
 });
 ```
 
-The `createState` function is called once when the actor is first created. See [Lifecycle](/concepts/lifecycle) for more details.
+</Tab>
+
+</Tabs>
+
+The `createState` function is called once when the actor is first created. See [Lifecycle](/actors/lifecycle) for more details.
 
 ## Modifying State
 
 To update state, modify the `state` property on the context object (`c.state`) in your actions:
 
 ```typescript
-import { actor } from "rivetkit";
+import { actor } from "@rivetkit/actor";
 
 const counter = actor({
   state: { count: 0 },
@@ -89,7 +97,7 @@ Actors automatically handle persisting state transparently. This happens at the 
 In the rare occasion you need to force a state change mid-action, you can use `c.saveState()`. This should only be used if your action makes an important state change that needs to be persisted before the action completes.
 
 ```typescript
-import { actor } from "rivetkit";
+import { actor } from "@rivetkit/actor";
 
 const criticalProcess = actor({
   state: { 
@@ -122,14 +130,14 @@ const criticalProcess = actor({
 
 Each actor's state is completely isolated, meaning it cannot be accessed directly by other actors or clients. This allows actors to maintain a high level of security and data integrity, ensuring that state changes are controlled and predictable.
 
-To interact with a actor's state, you must use [Actions](/concepts/actions). Actions provide a controlled way to read from and write to the state.
+To interact with a actor's state, you must use [Actions](/actors/actions). Actions provide a controlled way to read from and write to the state.
 
 ## Sharing State Between Actors
 
 If you need a shared state between multiple actors, you have two options:
 
 1. Create a actor that holds the shared state that other actors can make action calls to
-2. Use an external database, see [External SQL Databases](/concepts/external-sql)
+2. Use an external database, see [External SQL Databases](/actors/external-sql)
 
 ## Ephemeral Variables
 
@@ -141,10 +149,12 @@ In addition to persisted state, RivetKit provides a way to store ephemeral data 
 
 There are two ways to define a actor's initial vars:
 
-**Method 1: Static Initial Variables**
+<Tabs>
+
+<Tab title="Static Initial Variables">
 
 ```typescript
-import { actor } from "rivetkit";
+import { actor } from "@rivetkit/actor";
 
 // Define vars as a constant
 const counter = actor({
@@ -166,10 +176,12 @@ const counter = actor({
 When using static `vars`, all values must be compatible with `structuredClone()`. If you need to use non-serializable objects, use `createVars` instead, which allows you to create these objects on the fly.
 </Warning>
 
-**Method 2: Dynamic Initial Variables**
+</Tab>
+
+<Tab title="Dynamic Initial Variables">
 
 ```typescript
-import { actor } from "rivetkit";
+import { actor } from "@rivetkit/actor";
 
 // Define vars with initialization logic
 const counter = actor({
@@ -189,12 +201,16 @@ const counter = actor({
 });
 ```
 
+</Tab>
+
+</Tabs>
+
 ### Using Variables
 
 Vars can be accessed and modified through the context object with `c.vars`:
 
 ```typescript
-import { actor } from "rivetkit";
+import { actor } from "@rivetkit/actor";
 import { createNanoEvents } from "nanoevents";
 
 const counter = actor({

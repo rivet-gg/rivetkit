@@ -1,7 +1,96 @@
 ---
 title: Lifecycle
+description: Understand actor lifecycle hooks and initialization patterns
 icon: rotate
 ---
+
+Actors follow a well-defined lifecycle with hooks at each stage. Understanding these hooks is essential for proper initialization, state management, and cleanup.
+
+## Input Parameters
+
+Actors can receive input parameters when created, allowing for flexible initialization:
+
+### Defining Input Schema
+
+Use Zod to define a schema for input validation:
+
+```typescript
+import { actor } from "@rivetkit/actor";
+import { z } from "zod";
+
+const gameActor = actor({
+  createState: (c, opts) => ({
+    mode: opts.input?.gameMode ?? "classic",
+    maxPlayers: opts.input?.maxPlayers ?? 4,
+    difficulty: opts.input?.difficulty ?? "medium",
+    players: [],
+    status: "waiting",
+  }),
+  
+  actions: {
+    // Actions can access input via context
+    getGameConfig: (c) => ({
+      mode: c.state.mode,
+      maxPlayers: c.state.maxPlayers,
+      difficulty: c.state.difficulty,
+    }),
+  },
+});
+```
+
+### Passing Input to Actors
+
+Input is provided when creating actor instances:
+
+```typescript
+// Client side - create with input
+const game = await client.game.create(["game-123"], {
+  gameMode: "tournament",
+  maxPlayers: 8,
+  difficulty: "hard",
+});
+
+// getOrCreate can also accept input (used only if creating)
+const gameHandle = client.game.getOrCreate(["game-456"], {
+  gameMode: "casual",
+  maxPlayers: 4,
+});
+```
+
+### Input in Lifecycle Hooks
+
+Input is available in lifecycle hooks via the `opts` parameter:
+
+```typescript
+const chatRoom = actor({
+  createState: (c, opts) => ({
+    name: opts.input?.roomName ?? "Unnamed Room",
+    isPrivate: opts.input?.isPrivate ?? false,
+    maxUsers: opts.input?.maxUsers ?? 50,
+    users: {},
+    messages: [],
+  }),
+  
+  onCreate: (c, opts) => {
+    console.log(`Creating room: ${opts.input?.roomName}`);
+    
+    // Setup external services based on input
+    if (opts.input?.isPrivate) {
+      setupPrivateRoomLogging(opts.input.roomName);
+    }
+  },
+  
+  actions: {
+    // Input remains accessible in actions
+    getRoomInfo: (c) => ({
+      name: c.state.name,
+      isPrivate: c.state.isPrivate,
+      maxUsers: c.state.maxUsers,
+      currentUsers: Object.keys(c.state.users).length,
+    }),
+  },
+});
+```
 
 ## Lifecycle Hooks
 
@@ -11,16 +100,16 @@ Actor lifecycle hooks are defined as functions in the actor configuration.
 
 {/* [Documentation](https://jsr.io/@rivet-gg/actor/doc/~/Actor.prototype._onInitialize) */}
 
-The `createState` function or `state` constant defines the initial state of the actor (see [state documentation](/concepts/state)). The `createState` function is called only once when the actor is first created.
+The `createState` function or `state` constant defines the initial state of the actor (see [state documentation](/actors/state)). The `createState` function is called only once when the actor is first created.
 
 ### `createVars` and `vars`
 
-The `createVars` function or `vars` constant defines ephemeral variables for the actor (see [state documentation](/concepts/state)). These variables are not persisted and are useful for storing runtime-only objects or temporary data.
+The `createVars` function or `vars` constant defines ephemeral variables for the actor (see [state documentation](/actors/state)). These variables are not persisted and are useful for storing runtime-only objects or temporary data.
 
 The `createVars` function can also receive driver-specific context as its second parameter, allowing access to driver capabilities like Rivet KV or Cloudflare Durable Object storage.
 
 ```typescript
-import { actor } from "rivetkit";
+import { actor } from "@rivetkit/actor";
 
 // Using vars constant
 const counter1 = actor({
@@ -36,7 +125,7 @@ const counter2 = actor({
     // Initialize with non-serializable objects
     return { 
       lastAccessTime: Date.now(),
-      emitter: createNanoEvents() 
+      emitter: new EventTarget() 
     };
   },
   actions: { /* ... */ }
@@ -46,13 +135,13 @@ const counter2 = actor({
 const exampleActor = actor({
   state: { count: 0 },
   // Access driver context in createVars
-  createVars: (c, rivet) => ({
-    ctx: rivet.ctx,
+  createVars: (c, driverCtx) => ({
+    driverCtx,
   }),
   actions: {
     doSomething: (c) => {
       // Use driver-specific context
-      console.log(`Region: ${c.vars.rivet.metadata.region.name}`);
+      console.log("Driver context:", c.vars.driverCtx);
     }
   }
 });
@@ -63,7 +152,7 @@ const exampleActor = actor({
 The `onCreate` hook is called at the same time as `createState`, but unlike `createState`, it doesn't return any value. Use this hook for initialization logic that doesn't affect the initial state.
 
 ```typescript
-import { actor } from "rivetkit";
+import { actor } from "@rivetkit/actor";
 
 // Using state constant
 const counter1 = actor({
@@ -85,8 +174,10 @@ const counter3 = actor({
   state: { count: 0 },
   
   // Run initialization logic (logging, external service setup, etc.)
-  onCreate: (c) => {
+  onCreate: (c, opts) => {
     console.log("Counter actor initialized");
+    // Access input parameters if provided
+    console.log("Input:", opts.input);
     // Can perform async operations or setup
     // No need to return anything
   },
@@ -106,10 +197,11 @@ This is called after the actor has been initialized but before any connections a
 Use this hook to set up any resources or start any background tasks, such as `setInterval`.
 
 ```typescript
-import { actor } from "rivetkit";
+import { actor } from "@rivetkit/actor";
 
 const counter = actor({
   state: { count: 0 },
+  vars: { intervalId: null as NodeJS.Timeout | null },
   
   onStart: (c) => {
     console.log('Actor started with count:', c.state.count);
@@ -117,14 +209,22 @@ const counter = actor({
     // Set up interval for automatic counting
     const intervalId = setInterval(() => {
       c.state.count++;
+      c.broadcast("countChanged", c.state.count);
       console.log('Auto-increment:', c.state.count);
     }, 10000);
     
-    // Store interval ID to clean up later if needed
-    c.custom.intervalId = intervalId;
+    // Store interval ID in vars to clean up later if needed
+    c.vars.intervalId = intervalId;
   },
   
-  actions: { /* ... */ }
+  actions: { 
+    stop: (c) => {
+      if (c.vars.intervalId) {
+        clearInterval(c.vars.intervalId);
+        c.vars.intervalId = null;
+      }
+    }
+  }
 });
 ```
 
@@ -135,7 +235,7 @@ const counter = actor({
 Called whenever the actor's state changes. This is often used to broadcast state updates.
 
 ```typescript
-import { actor } from "rivetkit";
+import { actor } from "@rivetkit/actor";
 
 const counter = actor({
   state: { count: 0 },
@@ -173,7 +273,7 @@ The `onBeforeConnect` hook is called whenever a new client connects to the actor
 The `onBeforeConnect` hook does NOT return connection state - it's used solely for validation.
 
 ```typescript
-import { actor } from "rivetkit";
+import { actor } from "@rivetkit/actor";
 
 const chatRoom = actor({
   state: { messages: [] },
@@ -209,7 +309,7 @@ const chatRoom = actor({
 });
 ```
 
-Connections cannot interact with the actor until this method completes successfully. Throwing an error will abort the connection. This can be used for authentication - see [Authentication](/concepts/authentication) for details.
+Connections cannot interact with the actor until this method completes successfully. Throwing an error will abort the connection. This can be used for authentication - see [Authentication](/general/authentication) for details.
 
 ### `onConnect`
 
@@ -218,7 +318,7 @@ Connections cannot interact with the actor until this method completes successfu
 Executed after the client has successfully connected.
 
 ```typescript
-import { actor } from "rivetkit";
+import { actor } from "@rivetkit/actor";
 
 const chatRoom = actor({
   state: { users: {}, messages: [] },
@@ -250,7 +350,7 @@ Messages will not be processed for this actor until this hook succeeds. Errors t
 Called when a client disconnects from the actor. Use this to clean up any connection-specific resources.
 
 ```typescript
-import { actor } from "rivetkit";
+import { actor } from "@rivetkit/actor";
 
 const chatRoom = actor({
   state: { users: {}, messages: [] },
@@ -278,7 +378,7 @@ const chatRoom = actor({
 Actors can be shut down gracefully with `c.shutdown()`. Clients will be gracefully disconnected.
 
 ```typescript
-import { actor } from "rivetkit";
+import { actor } from "@rivetkit/actor";
 
 const temporaryRoom = actor({
   state: { 
@@ -328,7 +428,7 @@ This action is permanent and cannot be reverted.
 When extracting logic from lifecycle hooks or actions into external functions, you'll often need to define the type of the context parameter. RivetKit provides helper types that make it easy to extract and pass these context types to external functions.
 
 ```typescript
-import { actor, ActorContextOf } from "rivetkit";
+import { actor, ActorContextOf } from "@rivetkit/actor";
 
 const myActor = actor({
   state: { count: 0 },
@@ -343,23 +443,26 @@ function logActorStarted(c: ActorContextOf<typeof myActor>) {
 }
 ```
 
-See [Helper Types](/concepts/types) for more details on using `ActorContextOf`.
+See [Helper Types](/actors/helper-types) for more details on using `ActorContextOf`.
 
 ## Full Example
 
 ```typescript
-import { actor } from "rivetkit";
+import { actor } from "@rivetkit/actor";
+import { z } from "zod";
 
 const counter = actor({
-  // Initialize state
-  createState: () => ({
-    count: 0
+  // Initialize state with input
+  createState: (c, opts) => ({
+    count: opts.input?.initialCount ?? 0,
+    stepSize: opts.input?.stepSize ?? 1,
+    name: opts.input?.name ?? "Unnamed Counter",
   }),
   
   // Initialize actor (run setup that doesn't affect initial state)
-  onCreate: (c) => {
-    console.log('Counter actor initialized');
-    // Set up external resources, etc.
+  onCreate: (c, opts) => {
+    console.log(`Counter "${opts.input?.name}" initialized`);
+    // Set up external resources, logging, etc.
   },
   
   // Define default connection state
@@ -381,11 +484,14 @@ const counter = actor({
   
   // Lifecycle hooks
   onStart: (c) => {
-    console.log('Counter started with count:', c.state.count);
+    console.log(`Counter "${c.state.name}" started with count:`, c.state.count);
   },
   
   onStateChange: (c, newState) => {
-    c.broadcast('countUpdated', { count: newState.count });
+    c.broadcast('countUpdated', { 
+      count: newState.count,
+      name: newState.name 
+    });
   },
   
   onBeforeConnect: (c, { params }) => {
@@ -406,29 +512,36 @@ const counter = actor({
   },
   
   onConnect: (c) => {
-    console.log(`User ${c.conn.state.userId} connected`);
+    console.log(`User ${c.conn.state.userId} connected to "${c.state.name}"`);
   },
   
   onDisconnect: (c) => {
-    console.log(`User ${c.conn.state.userId} disconnected`);
+    console.log(`User ${c.conn.state.userId} disconnected from "${c.state.name}"`);
   },
   
   // Define actions
   actions: {
-    increment: (c) => {
-      c.state.count++;
+    increment: (c, amount?: number) => {
+      const step = amount ?? c.state.stepSize;
+      c.state.count += step;
       return c.state.count;
     },
     
     reset: (c) => {
       // Check if user has admin role
-      if (c.conns.state.role !== "admin") {
+      if (c.conn.state.role !== "admin") {
         throw new Error("Unauthorized: requires admin role");
       }
       
       c.state.count = 0;
       return c.state.count;
-    }
+    },
+    
+    getInfo: (c) => ({
+      name: c.state.name,
+      count: c.state.count,
+      stepSize: c.state.stepSize,
+    }),
   }
 });
 

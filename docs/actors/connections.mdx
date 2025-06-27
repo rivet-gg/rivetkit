@@ -14,7 +14,7 @@ For example:
 <CodeGroup>
 
 ```typescript actor.ts
-import { actor } from "rivetkit";
+import { actor } from "@rivetkit/actor";
 
 const gameRoom = actor({
   state: {},
@@ -54,63 +54,67 @@ const gameRoom = await client.gameRoom.get({
 
 There are two ways to define a actor's connection state:
 
-### Method 1: `ConnState` constant
+<Tabs>
+	<Tab title="connState constant">
+		Define connection state as a constant value:
 
-```typescript
-import { actor } from "rivetkit";
+		```typescript
+		import { actor } from "@rivetkit/actor";
 
-const chatRoom = actor({
-  state: { messages: [] },
-  
-  // Define default connection state as a constant
-  connState: {
-    role: "guest",
-    joinedAt: 0
-  },
-  
-  onConnect: (c) => {
-    // Update join timestamp when a client connects
-    c.conn.state.joinedAt = Date.now();
-  },
-  
-  actions: {
-    // ...
-  }
-});
-```
+		const chatRoom = actor({
+		  state: { messages: [] },
+		  
+		  // Define default connection state as a constant
+		  connState: {
+		    role: "guest",
+		    joinedAt: 0
+		  },
+		  
+		  onConnect: (c) => {
+		    // Update join timestamp when a client connects
+		    c.conn.state.joinedAt = Date.now();
+		  },
+		  
+		  actions: {
+		    // ...
+		  }
+		});
+		```
+	</Tab>
 
-### Method 2: `createConnState` function
+	<Tab title="createConnState function">
+		Create connection state dynamically with a function. The data returned is used as the initial state of the connection. The connection state can be accessed through `conn.state`.
 
-The data returned from `createConnState` is used as the initial state of the connection. The connection state can be accessed through `conn.state`.
+		```typescript
+		import { actor } from "@rivetkit/actor";
 
-```typescript
-import { actor } from "rivetkit";
-
-const chatRoom = actor({
-  state: { messages: [] },
-  
-  // Create connection state dynamically
-  createConnState: (c) => {
-    // Validate any connection parameters
-    // ...
-    
-    // Return the connection state
-    return { 
-      userId: generateUserId(),
-      role: "guest",
-      joinedAt: Date.now()
-    };
-  },
-  
-  actions: {
-    sendMessage: (c, message) => {
-      const username = c.conn.state.userId;
-      c.state.messages.push({ username, message });
-      c.broadcast("newMessage", { username, message });
-    }
-  }
-});
-```
+		const chatRoom = actor({
+		  state: { messages: [] },
+		  
+		  // Create connection state dynamically
+		  createConnState: (c) => {
+		    // Validate any connection parameters
+		    // ...
+		    
+		    // Return the connection state
+		    return { 
+		      userId: generateUserId(),
+		      role: "guest",
+		      joinedAt: Date.now()
+		    };
+		  },
+		  
+		  actions: {
+		    sendMessage: (c, message) => {
+		      const username = c.conn.state.userId;
+		      c.state.messages.push({ username, message });
+		      c.broadcast("newMessage", { username, message });
+		    }
+		  }
+		});
+		```
+	</Tab>
+</Tabs>
 
 ## Lifecycle Hooks
 
@@ -120,7 +124,7 @@ The connection lifecycle has several hooks:
 - `onConnect`: Called when a client successfully connects
 - `onDisconnect`: Called when a client disconnects
 
-See the documentation on [Actor Lifecycle](/concepts/lifecycle) for more details.
+See the documentation on [Actor Lifecycle](/actors/lifecycle) for more details.
 
 ## Connection List
 
@@ -131,7 +135,7 @@ This is frequently used with `conn.send(name, event)` to send messages directly 
 For example:
 
 ```typescript
-import { actor } from "rivetkit";
+import { actor } from "@rivetkit/actor";
 
 const chatRoom = actor({
   state: { users: {} },
@@ -158,7 +162,7 @@ const chatRoom = actor({
 Connections can be disconnected from within an action:
 
 ```typescript
-import { actor } from "rivetkit";
+import { actor } from "@rivetkit/actor";
 
 const secureRoom = actor({
   state: {},
@@ -189,4 +193,4 @@ This ensures the underlying network connections close cleanly before continuing.
 
 ## Offline & Auto-Reconnection
 
-See [Interacting with Actors](/concepts/interacting-with-actors#offline-and-auto-reconnection) for details on reconnection behavior.
+See [client documentation](/actors/communicating-with-actors) for details on reconnection behavior.
