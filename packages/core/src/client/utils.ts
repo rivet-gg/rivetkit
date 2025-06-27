@@ -5,6 +5,7 @@ import { httpUserAgent } from "@/utils";
 import * as cbor from "cbor-x";
 import { ActorError, HttpRequestError } from "./errors";
 import { logger } from "./log";
+import { warn } from "node:console";
 
 export type WebSocketMessage = string | Blob | ArrayBuffer | Uint8Array;
 
@@ -76,6 +77,7 @@ export async function sendHttpRequest<
 					"User-Agent": httpUserAgent(),
 				},
 				body: bodyData,
+				credentials: "include",
 				signal: opts.signal,
 			}),
 		);

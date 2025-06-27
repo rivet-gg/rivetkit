@@ -183,6 +183,7 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 								? { [HEADER_CONN_PARAMS]: JSON.stringify(params) }
 								: {}),
 						},
+						credentials: "include",
 					});
 				},
 			});
@@ -211,6 +212,7 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 					[HEADER_CONN_TOKEN]: connectionToken,
 				},
 				body: messageSerialized,
+				credentials: "include",
 			});
 			return res;
 		},
