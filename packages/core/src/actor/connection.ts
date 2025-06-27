@@ -52,8 +52,8 @@ export class Conn<S, CP, CS, V, I, AD, DB> {
 		return this.__persist.p;
 	}
 
-	public get auth(): unknown {
-		return this.__persist.a;
+	public get auth(): AD {
+		return this.__persist.a as AD;
 	}
 
 	public get _stateEnabled() {
