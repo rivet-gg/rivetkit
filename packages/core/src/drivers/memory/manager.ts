@@ -9,14 +9,51 @@ import type {
 	ManagerDriver,
 } from "@/driver-helpers/mod";
 import type { MemoryGlobalState } from "./global-state";
+import { ManagerInspector } from "@/inspector/manager";
+import type { ActorId } from "@/inspector/mod";
 
 export class MemoryManagerDriver implements ManagerDriver {
 	#state: MemoryGlobalState;
 
-	// inspector: ManagerInspector = new ManagerInspector(this, {
-	// 	getAllActors: () => this.#state.getAllActors(),
-	// 	getAllTypesOfActors: () => Object.keys(this.registry.config.actors),
-	// });
+	inspector = new ManagerInspector(() => {
+		const startedAt = new Date().toISOString();
+		return {
+			getAllActors: async ({ cursor, limit }) => {
+				const actors = this.#state
+					.getAllActors()
+					.sort((a, b) => a.id.localeCompare(b.id));
+				if (cursor) {
+					const cursorIndex = actors.findIndex((actor) => actor.id === cursor);
+					if (cursorIndex !== -1) {
+						actors.splice(0, cursorIndex + 1);
+					}
+				}
+				if (limit) {
+					actors.splice(limit);
+				}
+				return actors.map((actor) => ({
+					id: actor.id as ActorId,
+					name: actor.name,
+					key: actor.key,
+					startedAt,
+					createdAt: actor.createdAt?.toISOString() || new Date().toISOString(),
+				}));
+			},
+			getActorById: async (id) => {
+				const actor = this.#state.getActor(id);
+				if (!actor) {
+					return null;
+				}
+				return {
+					id: actor.id as ActorId,
+					name: actor.name,
+					key: actor.key,
+					startedAt,
+					createdAt: actor.createdAt?.toISOString() || new Date().toISOString(),
+				};
+			},
+		};
+	});
 
 	constructor(state: MemoryGlobalState) {
 		this.#state = state;
@@ -92,8 +129,6 @@ export class MemoryManagerDriver implements ManagerDriver {
 
 		const actorId = crypto.randomUUID();
 		this.#state.createActor(actorId, name, key, input);
-
-		// this.inspector.onActorsChange(this.#state.getAllActors());
 
 		return { actorId, name, key };
 	}

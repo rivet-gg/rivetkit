@@ -1,6 +1,7 @@
 //! These configs configs hold anything that's not platform-specific about running actors.
 
 import type { ActorDefinition, AnyActorDefinition } from "@/actor/definition";
+import { InspectorConfigSchema } from "@/inspector/config";
 import { z } from "zod";
 
 export const ActorsSchema = z.record(
@@ -15,6 +16,8 @@ export type TestConfig = z.infer<typeof TestConfigSchema>;
 /** Base config used for the actor config across all platforms. */
 export const RegistryConfigSchema = z.object({
 	use: z.record(z.string(), z.custom<AnyActorDefinition>()),
+
+	inspector: InspectorConfigSchema,
 
 	// TODO: Find a better way of passing around the test config
 	/**

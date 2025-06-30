@@ -5,6 +5,7 @@ export interface ActorState {
 	id: string;
 	name: string;
 	key: ActorKey;
+	createdAt?: Date;
 	persistedData: Uint8Array;
 }
 
@@ -40,6 +41,7 @@ export class MemoryGlobalState {
 				name,
 				key,
 				persistedData: serializeEmptyPersistData(input),
+				createdAt: new Date(),
 			});
 		} else {
 			throw new Error(`Actor already exists for ID: ${actorId}`);

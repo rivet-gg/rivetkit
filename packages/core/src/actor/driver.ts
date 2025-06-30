@@ -2,6 +2,7 @@ import type * as messageToClient from "@/actor/protocol/message/to-client";
 import type { CachedSerializer } from "@/actor/protocol/serde";
 import type { AnyConn } from "./connection";
 import type { AnyActorInstance } from "./instance";
+import type { ActorInspector } from "@/inspector/actor";
 
 export type ConnDrivers = Record<string, ConnDriver>;
 

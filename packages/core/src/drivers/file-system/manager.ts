@@ -9,21 +9,65 @@ import type {
 import { ActorAlreadyExists } from "@/actor/errors";
 import { logger } from "./log";
 import type { FileSystemGlobalState } from "./global-state";
-import { ActorState } from "./global-state";
-import type { Registry } from "@/registry/mod";
 import { generateActorId } from "./utils";
+import { ManagerInspector } from "@/inspector/manager";
+import { ActorFeature, type Actor, type ActorId } from "@/inspector/mod";
 
 export class FileSystemManagerDriver implements ManagerDriver {
 	#state: FileSystemGlobalState;
 
-	// inspector: ManagerInspector = new ManagerInspector(this, {
-	// 	getAllActors: () => this.#state.getAllActors(),
-	// 	getAllTypesOfActors: () => Object.keys(this.registry.config.actors),
-	// });
+	inspector = new ManagerInspector(() => {
+		const startedAt = new Date().toISOString();
+		return {
+			getAllActors: async ({ cursor, limit }) => {
+				const itr = this.#state.getActorsIterator({ cursor });
+				const actors: Actor[] = [];
+				for (let i = 0; i < limit; i++) {
+					const res = itr.next();
+					if (!res.done) {
+						actors.push({
+							id: res.value.id as ActorId,
+							name: res.value.name,
+							key: res.value.key,
+							startedAt,
+							createdAt:
+								res.value.createdAt?.toISOString() || new Date().toISOString(),
+							features: [
+								ActorFeature.State,
+								ActorFeature.Connections,
+								ActorFeature.Console,
+							],
+						});
+					} else {
+						break;
+					}
+				}
+				return actors;
+			},
+			getActorById: async (id) => {
+				try {
+					const result = this.#state.loadActorState(id);
+					return {
+						id: result.id as ActorId,
+						name: result.name,
+						key: result.key,
+						startedAt,
+						createdAt:
+							result.createdAt?.toISOString() || new Date().toISOString(),
+						features: [
+							ActorFeature.State,
+							ActorFeature.Connections,
+							ActorFeature.Console,
+						],
+					};
+				} catch {
+					return null;
+				}
+			},
+		};
+	});
 
-	constructor(
-		state: FileSystemGlobalState,
-	) {
+	constructor(state: FileSystemGlobalState) {
 		this.#state = state;
 	}
 
@@ -54,7 +98,7 @@ export class FileSystemManagerDriver implements ManagerDriver {
 	}: GetWithKeyInput): Promise<ActorOutput | undefined> {
 		// Generate the deterministic actor ID
 		const actorId = generateActorId(name, key);
-		
+
 		// Check if actor exists
 		if (this.#state.hasActor(actorId)) {
 			return {
@@ -82,16 +126,13 @@ export class FileSystemManagerDriver implements ManagerDriver {
 	async createActor({ name, key, input }: CreateInput): Promise<ActorOutput> {
 		// Generate the deterministic actor ID
 		const actorId = generateActorId(name, key);
-		
+
 		// Check if actor already exists
 		if (this.#state.hasActor(actorId)) {
 			throw new ActorAlreadyExists(name, key);
 		}
 
 		await this.#state.createActor(actorId, name, key, input);
-
-		// Notify inspector about actor changes
-		// this.inspector.onActorsChange(this.#state.getAllActors());
 
 		return {
 			actorId,

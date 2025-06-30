@@ -85,30 +85,15 @@ export class StandaloneTopology {
 			this.clientDriver,
 			{
 				routingHandler,
-				// onConnectInspector: async () => {
-				// 	const inspector = driverConfig.drivers?.manager?.inspector;
-				// 	if (!inspector) throw new errors.Unsupported("inspector");
-				//
-				// 	let conn: ManagerInspectorConnection | undefined;
-				// 	return {
-				// 		onOpen: async (ws) => {
-				// 			conn = inspector.createConnection(ws);
-				// 		},
-				// 		onMessage: async (message) => {
-				// 			if (!conn) {
-				// 				logger().warn("`conn` does not exist");
-				// 				return;
-				// 			}
-				//
-				// 			inspector.processMessage(conn, message);
-				// 		},
-				// 		onClose: async () => {
-				// 			if (conn) {
-				// 				inspector.removeConnection(conn);
-				// 			}
-				// 		},
-				// 	};
-				// },
+				getActor: async (actorId: string) => {
+					const { handler, actor } = await this.#getActor(actorId);
+					if (!actor) return null;
+
+					// Ensure actor is started
+					if (handler.actorPromise) await handler.actorPromise.promise;
+
+					return actor;
+				},
 			},
 		);
 

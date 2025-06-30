@@ -29,6 +29,7 @@ import { publishMessageToLeader } from "./node/message";
 import { Node } from "./node/mod";
 import { serveSse } from "./router/sse";
 import { serveWebSocket } from "./router/websocket";
+import { createMiddleware } from "hono/factory";
 
 export interface GlobalState {
 	nodeId: string;
@@ -139,9 +140,6 @@ export class CoordinateTopology {
 			this.clientDriver,
 			{
 				routingHandler,
-				// onConnectInspector: () => {
-				// 	throw new errors.Unsupported("inspect");
-				// },
 			},
 		);
 

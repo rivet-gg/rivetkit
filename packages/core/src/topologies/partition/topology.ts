@@ -76,30 +76,6 @@ export class PartitionTopologyManager {
 			this.clientDriver,
 			{
 				routingHandler,
-				// onConnectInspector: async () => {
-				// 	const inspector = driverConfig.drivers?.manager?.inspector;
-				// 	if (!inspector) throw new errors.Unsupported("inspector");
-				//
-				// 	let conn: ManagerInspectorConnection | undefined;
-				// 	return {
-				// 		onOpen: async (ws) => {
-				// 			conn = inspector.createConnection(ws);
-				// 		},
-				// 		onMessage: async (message) => {
-				// 			if (!conn) {
-				// 				logger().warn("`conn` does not exist");
-				// 				return;
-				// 			}
-				//
-				// 			inspector.processMessage(conn, message);
-				// 		},
-				// 		onClose: async () => {
-				// 			if (conn) {
-				// 				inspector.removeConnection(conn);
-				// 			}
-				// 		},
-				// 	};
-				// },
 			},
 		);
 		this.router = router;
@@ -150,6 +126,10 @@ export class PartitionTopologyActor {
 			getActorId: async () => {
 				if (this.#actorStartedPromise) await this.#actorStartedPromise.promise;
 				return this.actor.id;
+			},
+			getActor: async () => {
+				if (this.#actorStartedPromise) await this.#actorStartedPromise.promise;
+				return this.actor;
 			},
 			connectionHandlers: {
 				onConnectWebSocket: async (
@@ -305,33 +285,6 @@ export class PartitionTopologyActor {
 					await actor.processMessage(opts.message, conn);
 				},
 			},
-			// onConnectInspector: async () => {
-			// 	if (this.#actorStartedPromise)
-			// 		await this.#actorStartedPromise.promise;
-			//
-			// 	const actor = this.#actor;
-			// 	if (!actor) throw new Error("Actor should be defined");
-			//
-			// 	let conn: ActorInspectorConnection | undefined;
-			// 	return {
-			// 		onOpen: async (ws) => {
-			// 			conn = actor.inspector.createConnection(ws);
-			// 		},
-			// 		onMessage: async (message) => {
-			// 			if (!conn) {
-			// 				logger().warn("`conn` does not exist");
-			// 				return;
-			// 			}
-			//
-			// 			actor.inspector.processMessage(conn, message);
-			// 		},
-			// 		onClose: async () => {
-			// 			if (conn) {
-			// 				actor.inspector.removeConnection(conn);
-			// 			}
-			// 		},
-			// 	};
-			// },
 		});
 	}
 

@@ -13,7 +13,13 @@
     "actors",
     "framework"
   ],
-  "files": ["dist", "src", "deno.json", "bun.json", "package.json"],
+  "files": [
+    "dist",
+    "src",
+    "deno.json",
+    "bun.json",
+    "package.json"
+  ],
   "type": "module",
   "exports": {
     ".": {
@@ -135,6 +141,16 @@
         "types": "./dist/test/mod.d.cts",
         "default": "./dist/test/mod.cjs"
       }
+    },
+    "./inspector": {
+      "import": {
+        "types": "./dist/inspector/mod.d.ts",
+        "default": "./dist/inspector/mod.js"
+      },
+      "require": {
+        "types": "./dist/inspector/mod.d.cts",
+        "default": "./dist/inspector/mod.cjs"
+      }
     }
   },
   "engines": {
@@ -143,7 +159,7 @@
   "sideEffects": false,
   "scripts": {
     "dev": "pnpm build --watch",
-    "build": "tsup src/mod.ts src/client/mod.ts src/common/log.ts src/common/websocket.ts src/actor/errors.ts src/topologies/coordinate/mod.ts src/topologies/partition/mod.ts src/utils.ts src/drivers/rivet/mod.ts src/driver-helpers/mod.ts src/driver-test-suite/mod.ts src/test/mod.ts",
+    "build": "tsup src/mod.ts src/client/mod.ts src/common/log.ts src/common/websocket.ts src/actor/errors.ts src/topologies/coordinate/mod.ts src/topologies/partition/mod.ts src/utils.ts src/drivers/rivet/mod.ts src/driver-helpers/mod.ts src/driver-test-suite/mod.ts src/test/mod.ts src/inspector/mod.ts",
     "check-types": "tsc --noEmit",
     "boop": "tsc --outDir dist/test -d",
     "test": "vitest run",
@@ -151,8 +167,11 @@
     "dump-openapi": "tsx scripts/dump-openapi.ts"
   },
   "dependencies": {
+    "@hono/standard-validator": "^0.1.3",
     "cbor-x": "^1.6.0",
+    "fast-json-patch": "^3.1.1",
     "invariant": "^2.2.4",
+    "nanoevents": "^9.1.0",
     "on-change": "^5.0.1",
     "p-retry": "^6.2.1",
     "zod": "^3.25.67"

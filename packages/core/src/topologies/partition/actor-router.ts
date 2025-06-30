@@ -28,6 +28,12 @@ import type { RunConfig } from "@/registry/run-config";
 import { Hono, type Context as HonoContext } from "hono";
 import { logger } from "./log";
 import { noopNext } from "@/common/utils";
+import {
+	createActorInspectorRouter,
+	type ActorInspectorRouterEnv,
+} from "@/inspector/actor";
+import type { AnyActorInstance } from "@/actor/instance";
+import invariant from "invariant";
 
 export type {
 	ConnectWebSocketOpts,
@@ -41,11 +47,10 @@ export type {
 
 export interface ActorRouterHandler {
 	getActorId: () => Promise<string>;
+	getActor: () => Promise<AnyActorInstance>;
 
 	// Connection handlers as a required subobject
 	connectionHandlers: ConnectionHandlers;
-
-	// onConnectInspector?: ActorInspectorConnHandler;
 }
 
 /**
@@ -174,16 +179,19 @@ export function createActorRouter(
 		);
 	});
 
-	// if (registryConfig.inspector.enabled) {
-	// 	router.route(
-	// 		"/inspect",
-	// 		createActorInspectorRouter(
-	// 			upgradeWebSocket,
-	// 			handler.onConnectInspector,
-	// 			registryConfig.inspector,
-	// 		),
-	// 	);
-	// }
+	if (registryConfig.inspector.enabled) {
+		router.route(
+			"/inspect",
+			new Hono<ActorInspectorRouterEnv>()
+				.use(async (c, next) => {
+					const inspector = (await handler.getActor()).inspector;
+					invariant(inspector, "inspector not supported on this platform");
+					c.set("inspector", inspector);
+					await next();
+				})
+				.route("/", createActorInspectorRouter()),
+		);
+	}
 
 	router.notFound(handleRouteNotFound);
 	router.onError(

@@ -38,7 +38,11 @@ import { VERSION } from "@/utils";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { createRoute } from "@hono/zod-openapi";
 import * as cbor from "cbor-x";
-import { Hono, type Context as HonoContext } from "hono";
+import {
+	Hono,
+	type MiddlewareHandler,
+	type Context as HonoContext,
+} from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
 import type { WSContext } from "hono/ws";
@@ -49,6 +53,7 @@ import { authenticateEndpoint } from "./auth";
 import type { ManagerDriver } from "./driver";
 import { logger } from "./log";
 import {
+	ActorQuerySchema,
 	ConnMessageRequestSchema,
 	ConnectRequestSchema,
 	ConnectWebSocketRequestSchema,
@@ -56,9 +61,16 @@ import {
 } from "./protocol/query";
 import type { ActorQuery } from "./protocol/query";
 import { noopNext } from "@/common/utils";
+import { createManagerInspectorRouter } from "@/inspector/manager";
+import { createActorInspectorRouter } from "@/inspector/actor";
+import type { AnyActorInstance } from "@/actor/instance";
 
 type ManagerRouterHandler = {
-	// onConnectInspector?: ManagerInspectorConnHandler;
+	/**
+	 * Required only when RivetKit is running in a standalone mode.
+	 * otherwise, this is delegated.
+	 */
+	getActor?: (actorId: string) => Promise<AnyActorInstance | null>;
 	routingHandler: ConnRoutingHandler;
 };
 
@@ -126,10 +138,12 @@ export function createManagerRouter(
 			// Don't apply to WebSocket routes
 			// HACK: This could be insecure if we had a varargs path. We have to check the path suffix for WS since we don't know the path that this router was mounted.
 			const path = c.req.path;
-			if (
-				path.endsWith("/actors/connect/websocket") ||
-				path.endsWith("/inspect")
-			) {
+			if (path.endsWith("/actors/connect/websocket")) {
+				return next();
+			}
+
+			// FIXME:
+			if (path.startsWith("/inspect") || path.startsWith("/actors/inspect")) {
 				return next();
 			}
 
@@ -350,16 +364,38 @@ export function createManagerRouter(
 		);
 	}
 
-	// if (registryConfig.inspector.enabled) {
-	// 	router.route(
-	// 		"/inspect",
-	// 		createManagerInspectorRouter(
-	// 			upgradeWebSocket,
-	// 			handler.onConnectInspector,
-	// 			registryConfig.inspector,
-	// 		),
-	// 	);
-	// }
+	router.route(
+		"/actors/inspect",
+		new Hono()
+			.use(
+				// FIXME
+				cors({
+					origin: (origin) => {
+						return origin || "*"; // Allow all origins by default
+					},
+				}),
+			)
+			.use(actorInspectorProxy({ runConfig, handler }))
+			.use(provideActorInspector({ handler }))
+			.route("/", createActorInspectorRouter()),
+	);
+
+	if (registryConfig.inspector?.enabled) {
+		router.route(
+			"/inspect",
+			new Hono()
+				.use(
+					// FIXME
+					cors({
+						origin: (origin) => {
+							return origin || "*"; // Allow all origins by default
+						},
+					}),
+				)
+				.use(provideManagerInspector({ runConfig }))
+				.route("/", createManagerInspectorRouter()),
+		);
+	}
 
 	if (registryConfig.test.enabled) {
 		// Add HTTP endpoint to test the inline client
@@ -1206,4 +1242,92 @@ async function handleResolveRequest(
 	};
 	const serialized = serialize(response, encoding);
 	return c.body(serialized);
+}
+
+/**
+ * Proxy is used when the RivetKit registry is running in a different server than the RivetKit actors.
+ * So, we proxy the requests to the actor servers / durable objects.
+ * When the RivetKit registry is running in the same server as the actors, we use the inline client driver instead - i.e. we don't proxy the requests, we handle them directly in manager's router.
+ */
+function actorInspectorProxy({
+	runConfig,
+	handler,
+}: {
+	runConfig: RunConfig;
+	handler: ManagerRouterHandler;
+}): MiddlewareHandler {
+	return async (c, next) => {
+		const query = ActorQuerySchema.parse(getRequestQuery(c));
+		const { actorId } = await queryActor(c, query, runConfig.driver.manager);
+
+		c.set("actorId", actorId);
+
+		// skip if not a WebSocket upgrade request
+		if (c.req.header("upgrade") !== "websocket") {
+			const upgradeWebSocket = runConfig.getUpgradeWebSocket?.();
+			if (!upgradeWebSocket) {
+				return c.text("WebSockets are not enabled for this driver.", 400);
+			}
+
+			if ("inline" in handler.routingHandler) {
+				await next();
+			} else if ("custom" in handler.routingHandler) {
+				const proxyWebSocket = handler.routingHandler.custom.proxyWebSocket;
+				const middleware = upgradeWebSocket(
+					async (c) =>
+						await proxyWebSocket(
+							c,
+							c.req.path,
+							actorId,
+							// those parameters are not used in the inspector
+							(c.req.header(HEADER_ENCODING) || "json") as "json",
+							undefined,
+							undefined,
+							upgradeWebSocket,
+						),
+				);
+
+				return middleware(c, next);
+			}
+		} else {
+			if ("inline" in handler.routingHandler) {
+				await next();
+			} else if ("custom" in handler.routingHandler) {
+				return handler.routingHandler.custom.proxyRequest(c, c.req, actorId);
+			} else {
+				assertUnreachable(handler.routingHandler);
+			}
+		}
+	};
+}
+
+function provideActorInspector({
+	handler,
+}: { handler: ManagerRouterHandler }): MiddlewareHandler {
+	return async (c, next) => {
+		const actorId = c.var.actorId;
+		invariant(actorId, "Missing actor ID in context");
+
+		// Get the actor from the handler
+		const actor = await handler.getActor?.(actorId);
+		invariant(actor, "Actor not found");
+
+		c.set("inspector", actor.inspector);
+
+		await next();
+	};
+}
+
+function provideManagerInspector({
+	runConfig,
+}: {
+	runConfig: RunConfig;
+}): MiddlewareHandler {
+	return async (c, next) => {
+		const inspector = runConfig.driver.manager.inspector;
+		invariant(inspector, "inspector not supported on this platform");
+
+		c.set("inspector", inspector);
+		await next();
+	};
 }

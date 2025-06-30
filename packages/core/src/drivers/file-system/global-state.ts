@@ -10,7 +10,6 @@ import {
 	ensureDirectoryExistsSync,
 	getActorsDir,
 } from "./utils";
-import invariant from "invariant";
 import { serializeEmptyPersistData } from "@/driver-helpers/mod";
 import * as cbor from "cbor-x";
 
@@ -21,6 +20,7 @@ export interface ActorState {
 	id: string;
 	name: string;
 	key: ActorKey;
+	createdAt?: Date;
 	persistedData: Uint8Array;
 }
 
@@ -38,11 +38,10 @@ export class FileSystemGlobalState {
 		// Ensure storage directories exist synchronously during initialization
 		ensureDirectoryExistsSync(getActorsDir(this.#storagePath));
 
-		const actorsDir = getActorsDir(this.#storagePath);
 		let actorCount = 0;
-		
+
 		try {
-			const actorIds = fsSync.readdirSync(actorsDir);
+			const actorIds = fsSync.readdirSync(this.actorsDir);
 			actorCount = actorIds.length;
 		} catch (error) {
 			logger().error("failed to count actors", { error });
@@ -54,12 +53,36 @@ export class FileSystemGlobalState {
 		});
 	}
 
+	private get actorsDir(): string {
+		return getActorsDir(this.#storagePath);
+	}
 
 	/**
 	 * Get the current storage directory path
 	 */
 	get storagePath(): string {
 		return this.#storagePath;
+	}
+
+	*getActorsIterator(params: {
+		cursor?: string;
+	}): Generator<ActorState> {
+		const actorIds = fsSync.readdirSync(this.actorsDir).sort();
+		const startIndex = params.cursor ? actorIds.indexOf(params.cursor) + 1 : 0;
+
+		for (let i = startIndex; i < actorIds.length; i++) {
+			const actorId = actorIds[i];
+			if (!actorId) {
+				continue;
+			}
+
+			try {
+				const state = this.loadActorState(actorId);
+				yield state;
+			} catch (error) {
+				logger().error("failed to load actor state", { actorId, error });
+			}
+		}
 	}
 
 	/**
@@ -74,7 +97,7 @@ export class FileSystemGlobalState {
 
 		// Try to load from disk
 		const stateFilePath = getActorDataPath(this.#storagePath, actorId);
-		
+
 		if (!fsSync.existsSync(stateFilePath)) {
 			throw new Error(`Actor does not exist for ID: ${actorId}`);
 		}
@@ -82,10 +105,10 @@ export class FileSystemGlobalState {
 		try {
 			const stateData = fsSync.readFileSync(stateFilePath);
 			const state = cbor.decode(stateData) as ActorState;
-			
+
 			// Cache the loaded state
 			this.#stateCache.set(actorId, state);
-			
+
 			return state;
 		} catch (error) {
 			logger().error("failed to load actor state", { actorId, error });
@@ -142,12 +165,11 @@ export class FileSystemGlobalState {
 		if (this.#stateCache.has(actorId)) {
 			return true;
 		}
-		
+
 		// Check if file exists on disk
 		const stateFilePath = getActorDataPath(this.#storagePath, actorId);
 		return fsSync.existsSync(stateFilePath);
 	}
-
 
 	/**
 	 * Create a actor
@@ -168,6 +190,7 @@ export class FileSystemGlobalState {
 			id: actorId,
 			name,
 			key,
+			createdAt: new Date(),
 			persistedData: serializeEmptyPersistData(input),
 		};
 
