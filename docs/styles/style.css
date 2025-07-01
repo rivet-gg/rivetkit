@@ -20,9 +20,8 @@
 
 .landing-section-heading {
   font-size: clamp(32px, 4vw, 48px);
-  line-height: 1.2;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  line-height: 60px;
+  font-weight: 400;
   margin: 0 0 24px 0;
   color: white;
 }
@@ -51,7 +50,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: calc(100vh - 200px);
+  min-height: 100vh;
+  padding: 22px;
 }
 
 @media (max-width: 768px) {
@@ -69,28 +69,29 @@
 }
 
 .landing-title {
-  font-size: clamp(40px, 6vw, 64px);
-  line-height: 1;
-  font-weight: 800;
+  font-size: 3.75rem;
+  line-height: 60px;
+  font-weight: 400;
   letter-spacing: -0.03em;
   margin: 0 0 32px 0;
   width: 100%;
   padding-bottom: 0.1em;
-  background: linear-gradient(to bottom, 
-    rgba(255, 255, 255, 1) 0%,
-    rgba(255, 255, 255, 0.7) 100%
-  );
-  background-clip: text;
-  -webkit-background-clip: text;
-  color: transparent;
+  color: white;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .landing-title {
     font-size: clamp(32px, 5vw, 40px);
     line-height: 1.2;
     letter-spacing: -0.02em;
     margin-bottom: 24px;
+  }
+  
+  .landing-subtitle {
+    font-size: clamp(17px, 2vw, 22px);
+    line-height: 1.55;
+    margin-bottom: 44px;
+    max-width: 800px;
   }
 }
 
@@ -100,17 +101,26 @@
     line-height: 1.3;
     padding: 0 16px;
   }
+  
+  .landing-subtitle {
+    font-size: clamp(16px, 1.8vw, 20px);
+    line-height: 1.65;
+    margin-bottom: 40px;
+    padding: 0 16px;
+  }
 }
 
 .landing-subtitle {
-  font-size: clamp(19.2px, 2vw, 24px);
-  line-height: 1.5;
-  color: #888;
+  font-size: 1.25rem;
+  line-height: 28px;
+  color: rgba(255,255,255,0.4);
+  font-weight: 400;
   width: 100%;
-  max-width: 1000px;
-  margin: 0 auto 48px auto;
-  padding: 0 16px;
+  max-width: 900px;
+  margin: 0 auto 40px auto;
+  padding: 0 24px;
   transition: color 0.2s ease;
+  letter-spacing: -0.025em;
 }
 
 .landing-subtitle-highlight {
@@ -223,7 +233,7 @@
 }
 
 /* Responsive button styles */
-@media (max-width: 600px) {
+@media (max-width: 1024px) {
   .buttons-container {
     flex-direction: column;
     width: 100%;
@@ -427,13 +437,7 @@
   }
 }
 
-@media (max-width: 767px) {
-  .libraries-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 600px) {
+@media (max-width: 1024px) {
   .libraries-grid {
     grid-template-columns: 1fr;
   }
@@ -517,7 +521,7 @@
   opacity: 1;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 1024px) {
   .copy-command-container {
     width: 100%;
     max-width: 400px;
@@ -650,14 +654,14 @@
   display: none;
 }
 
-@media (min-width: 801px) {
+@media (min-width: 1024px) {
   .mobile-only {
     display: none !important;
   }
 }
 
 /* Responsive table styles */
-@media (max-width: 800px) {
+@media (max-width: 1024px) {
   .mobile-only {
     display: block;
     padding: 0 !important;
@@ -782,6 +786,7 @@
 .platform-icons-container {
   margin: 24px 0;
   text-align: center;
+  max-width: 500px;
 }
 
 .platform-icons-label {
@@ -906,7 +911,7 @@
   margin: 0;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .features-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -1008,7 +1013,7 @@
   background: transparent !important;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1500px) {
   .code-split {
     grid-template-columns: 1fr;
   }
@@ -1029,9 +1034,25 @@
 }
 
 .code-group-tab-row {
+  position: relative;
+  height: 55.6px;  /* Match exact height of primary tab bar */
+}
+
+.code-group-tab-row-inner {
+  position: absolute;
+  width: 100%;
+  height: 100%;
   display: flex;
   gap: 4px;
   padding: 0.5rem;
+  overflow-x: auto;
+  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;  /* IE and Edge */
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.code-group-tab-row-inner.primary-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .code-group-tab-label {
@@ -1043,19 +1064,6 @@
   padding: 0.5rem 1rem;
   width: 90px;
   flex-shrink: 0;
-}
-
-.code-group-tab-row.primary-tabs {
-  overflow-x: auto;
-  scrollbar-width: none;  /* Firefox */
-  -ms-overflow-style: none;  /* IE and Edge */
-  padding: 0.5rem;
-  position: relative;
-}
-
-/* Hide scrollbar for Chrome, Safari and Opera */
-.code-group-tab-row.primary-tabs::-webkit-scrollbar {
-  display: none;
 }
 
 .scroll-indicators-overlay {
@@ -1207,9 +1215,8 @@
 
 .tech-section-heading {
   font-size: clamp(32px, 4vw, 48px);
-  line-height: 1.2;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  line-height: 60px;
+  font-weight: 400;
   margin: 0 0 24px 0;
   color: white;
   text-align: left;
@@ -1362,7 +1369,7 @@
   border-radius: 4px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1500px) {
   .tech-section-row {
     flex-direction: column;
     gap: 24px;
@@ -1490,7 +1497,7 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .quotes-container {
     padding: 32px 24px;
   }
@@ -1514,8 +1521,8 @@
 
 .cta-title {
   font-size: clamp(32px, 4vw, 48px);
-  line-height: 1.2;
-  font-weight: 700;
+  line-height: 60px;
+  font-weight: 400;
   letter-spacing: -0.02em;
   margin: 0 0 16px 0;
   color: white;
@@ -1651,8 +1658,8 @@
 
 .manifesto-section .landing-section-heading {
   font-size: clamp(36px, 5vw, 52px);
-  font-weight: 800;
-  letter-spacing: -0.03em;
+  line-height: 60px;
+  font-weight: 400;
   color: rgba(255, 255, 255, 0.9);
   margin-bottom: 40px;
   font-family: inherit;
@@ -1706,7 +1713,7 @@
   font-weight: 600;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .manifesto-section {
     padding: 32px 24px;
     margin: 0 16px;
@@ -1810,7 +1817,7 @@
   color: #ff6626;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 1024px) {
   .faq-section {
     padding: 0;
     margin: 0 16px;
@@ -1827,7 +1834,7 @@
 }
 
 /* Optimize particle animation for mobile */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .particle-container {
     height: 800px; /* Reduce height on mobile */
   }
@@ -1839,7 +1846,7 @@
 }
 
 /* Additional responsive improvements */
-@media (max-width: 480px) {
+@media (max-width: 1024px) {
   .landing-hero {
     padding-top: 80px;
     padding-bottom: 60px;

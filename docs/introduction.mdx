@@ -14,23 +14,22 @@ import FAQ from "/snippets/landing-faq.mdx";
 
 <div className="landing-root">
 	<div className="landing-hero landing-section">
-        {/*<h1 className="landing-title">
-            Open-source libraries for<br/>modern backend primitives
-		</h1>*/}
+
+		<div style={{ height: '150px' }} />
+
+		<div style={{ flexGrow: '1' }} />
 
 		<h1 className="landing-title">
             Lightweight Libraries for Backends
 		</h1>
 
     	<p className="landing-subtitle">
-			Install one package to get up and running.<br/>
-            Scale seamlessly to production.<br/>
-            **Just a library, no SaaS.**
+			Install one package, scale to production.<br/><span className="landing-subtitle-highlight">Just a library, no SaaS.</span>
     	</p>
 
-        {/* <div className="landing-buttons">
-    		<a href="/actors/overview" className="landing-button landing-button-primary">
-    			Get Started
+        <div className="landing-buttons">
+    		<a href="/actors/quickstart-backend" className="landing-button landing-button-primary">
+    			Quickstart
     		</a>
     		<a
     			href="https://github.com/rivet-gg/rivetkit"
@@ -40,18 +39,18 @@ import FAQ from "/snippets/landing-faq.mdx";
     		>
     			View on GitHub
     		</a>
-    	</div> */}
+    	</div>
 
-		<div style={{ height: '20px' }} />
-
-        {/*<div className="copy-command-container" onClick={(e) => window.copyCommand && window.copyCommand(e.currentTarget)}>
+        <div className="copy-command-container" onClick={(e) => window.copyCommand && window.copyCommand(e.currentTarget)}>
     		<div className="copy-command-icon"><Icon icon="arrow-right" iconType="solid" color="white" /></div>
-    		<div className="copy-command-text">npx create-actor@latest</div>
+    		<div className="copy-command-text">npm i @rivetkit/actor</div>
     		<div className="icon-container">
     			<div className="copy-icon"><Icon icon="copy" /></div>
     			<div className="check-icon"><Icon icon="check" /></div>
     		</div>
-    	</div>*/}
+    	</div>
+
+		<div style={{ flexGrow: '1' }} />
 
 		<div className="libraries-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)", maxWidth: "800px", display: "none" }}>
 			<a href="/actors/overview" className="library-box library-box-orange">
@@ -235,6 +234,8 @@ import FAQ from "/snippets/landing-faq.mdx";
         </div>
 
     </div>
+
+    <div style={{ height: '250px' }} />
 
 	<div className="landing-section-xl">
 		<h2 className="landing-section-heading">Reconsider What Your Backend Can Do</h2>
