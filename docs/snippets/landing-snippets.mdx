@@ -46,33 +46,25 @@ import RateReact from "/snippets/examples/rate-react.mdx";
     <div class="code-group-tab-row primary-tabs">
       <div class="code-group-tab-row-inner">
         <div class="code-group-tab-label">Example</div>
-        <div class="code-group-tab active" data-tab="chat">
-          <Icon icon="message" color="white" size={14} />
-          Chat Room
-        </div>
-        <div class="code-group-tab" data-tab="ai">
+        <div class="code-group-tab active" data-tab="ai">
           <Icon icon="robot" color="white" size={14} />
           AI Agent
         </div>
-        <div class="code-group-tab" data-tab="sync">
-          <Icon icon="rotate" color="white" size={14} />
-          Local-First Sync
+        <div class="code-group-tab" data-tab="crdt">
+          <Icon icon="file-pen" color="white" size={14} />
+          Collaborative Document (CRDT)
         </div>
-        <div class="code-group-tab" data-tab="tenant">
-          <Icon icon="building" color="white" size={14} />
-          Per-Tenant Saas
+        <div class="code-group-tab" data-tab="chat">
+          <Icon icon="message" color="white" size={14} />
+          Chat Room
         </div>
         <div class="code-group-tab" data-tab="database">
           <Icon icon="database" color="white" size={14} />
           Per-User Databases
         </div>
-        <div class="code-group-tab" data-tab="crdt">
-          <Icon icon="code-merge" color="white" size={14} />
-          Yjs CRDT
-        </div>
-        <div class="code-group-tab" data-tab="doc">
-          <Icon icon="file-pen" color="white" size={14} />
-          Collaborative Document
+        <div class="code-group-tab" data-tab="rate">
+          <Icon icon="gauge-high" color="white" size={14} />
+          Rate Limiter
         </div>
         <div class="code-group-tab" data-tab="stream">
           <Icon icon="wave-sine" color="white" size={14} />
@@ -82,9 +74,9 @@ import RateReact from "/snippets/examples/rate-react.mdx";
           <Icon icon="gamepad" color="white" size={14} />
           Multiplayer Game
         </div>
-        <div class="code-group-tab" data-tab="rate">
-          <Icon icon="gauge-high" color="white" size={14} />
-          Rate Limiter
+        <div class="code-group-tab" data-tab="sync">
+          <Icon icon="rotate" color="white" size={14} />
+          Local-First Sync
         </div>
       </div>
     </div>
@@ -99,57 +91,8 @@ import RateReact from "/snippets/examples/rate-react.mdx";
 
   {/* Code */}
   <div class="code-group-panels">
-    {/* Chat Room */}
-    <div class="code-panel active" data-panel="chat-memory">
-      <div class="code-split">
-        <div class="code-split-panel">
-          <div class="code-panel-title">
-            <span class="file-name">actor.ts</span>
-            <span class="file-description">Runs on the server</span>
-          </div>
-          <div class="code-block">
-            <ChatRoomJs />
-          </div>
-        </div>
-
-        <div class="code-split-panel">
-          <div class="code-panel-title">
-            <span class="file-name">App.tsx</span>
-            <span class="file-description">Runs in the browser</span>
-          </div>
-          <div class="code-block">
-            <ChatRoomReact />
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="code-panel" data-panel="chat-sqlite">
-      <div class="code-split">
-        <div class="code-split-panel">
-          <div class="code-panel-title">
-            <span class="file-name">actor.ts</span>
-            <span class="file-description">Runs on the server</span>
-          </div>
-          <div class="code-block">
-            <ChatRoomSqlite />
-          </div>
-        </div>
-
-        <div class="code-split-panel">
-          <div class="code-panel-title">
-            <span class="file-name">App.tsx</span>
-            <span class="file-description">Runs in the browser</span>
-          </div>
-          <div class="code-block">
-            <ChatRoomReact />
-          </div>
-        </div>
-      </div>
-    </div>
-
     {/* AI Agent */}
-    <div class="code-panel" data-panel="ai-memory">
+    <div class="code-panel active" data-panel="ai-memory">
       <div class="code-split">
         <div class="code-split-panel">
           <div class="code-panel-title">
@@ -197,8 +140,8 @@ import RateReact from "/snippets/examples/rate-react.mdx";
       </div>
     </div>
 
-    {/* Local-First Sync */}
-    <div class="code-panel" data-panel="sync-memory">
+    {/* Collaborative Document (CRDT) */}
+    <div class="code-panel" data-panel="crdt-memory">
       <div class="code-split">
         <div class="code-split-panel">
           <div class="code-panel-title">
@@ -206,7 +149,7 @@ import RateReact from "/snippets/examples/rate-react.mdx";
             <span class="file-description">Runs on the server</span>
           </div>
           <div class="code-block">
-            <SyncJs />
+            <CrdtJs />
           </div>
         </div>
 
@@ -216,13 +159,13 @@ import RateReact from "/snippets/examples/rate-react.mdx";
             <span class="file-description">Runs in the browser</span>
           </div>
           <div class="code-block">
-            <SyncReact />
+            <CrdtReact />
           </div>
         </div>
       </div>
     </div>
     
-    <div class="code-panel" data-panel="sync-sqlite">
+    <div class="code-panel" data-panel="crdt-sqlite">
       <div class="code-split">
         <div class="code-split-panel">
           <div class="code-panel-title">
@@ -230,7 +173,7 @@ import RateReact from "/snippets/examples/rate-react.mdx";
             <span class="file-description">Runs on the server</span>
           </div>
           <div class="code-block">
-            <SyncSqlite />
+            <CrdtSqlite />
           </div>
         </div>
 
@@ -240,14 +183,14 @@ import RateReact from "/snippets/examples/rate-react.mdx";
             <span class="file-description">Runs in the browser</span>
           </div>
           <div class="code-block">
-            <SyncReact />
+            <CrdtReact />
           </div>
         </div>
       </div>
     </div>
 
-    {/* Per-Tenant SaaS */}
-    <div class="code-panel" data-panel="tenant-memory">
+    {/* Chat Room */}
+    <div class="code-panel" data-panel="chat-memory">
       <div class="code-split">
         <div class="code-split-panel">
           <div class="code-panel-title">
@@ -255,7 +198,7 @@ import RateReact from "/snippets/examples/rate-react.mdx";
             <span class="file-description">Runs on the server</span>
           </div>
           <div class="code-block">
-            <TenantJs />
+            <ChatRoomJs />
           </div>
         </div>
 
@@ -265,13 +208,13 @@ import RateReact from "/snippets/examples/rate-react.mdx";
             <span class="file-description">Runs in the browser</span>
           </div>
           <div class="code-block">
-            <TenantReact />
+            <ChatRoomReact />
           </div>
         </div>
       </div>
     </div>
-    
-    <div class="code-panel" data-panel="tenant-sqlite">
+
+    <div class="code-panel" data-panel="chat-sqlite">
       <div class="code-split">
         <div class="code-split-panel">
           <div class="code-panel-title">
@@ -279,7 +222,7 @@ import RateReact from "/snippets/examples/rate-react.mdx";
             <span class="file-description">Runs on the server</span>
           </div>
           <div class="code-block">
-            <TenantSqlite />
+            <ChatRoomSqlite />
           </div>
         </div>
 
@@ -289,7 +232,7 @@ import RateReact from "/snippets/examples/rate-react.mdx";
             <span class="file-description">Runs in the browser</span>
           </div>
           <div class="code-block">
-            <TenantReact />
+            <ChatRoomReact />
           </div>
         </div>
       </div>
@@ -344,8 +287,8 @@ import RateReact from "/snippets/examples/rate-react.mdx";
       </div>
     </div>
 
-    {/* Yjs CRDT */}
-    <div class="code-panel" data-panel="crdt-memory">
+    {/* Rate Limiter */}
+    <div class="code-panel" data-panel="rate-memory">
       <div class="code-split">
         <div class="code-split-panel">
           <div class="code-panel-title">
@@ -353,7 +296,7 @@ import RateReact from "/snippets/examples/rate-react.mdx";
             <span class="file-description">Runs on the server</span>
           </div>
           <div class="code-block">
-            <CrdtJs />
+            <RateJs />
           </div>
         </div>
 
@@ -363,13 +306,13 @@ import RateReact from "/snippets/examples/rate-react.mdx";
             <span class="file-description">Runs in the browser</span>
           </div>
           <div class="code-block">
-            <CrdtReact />
+            <RateReact />
           </div>
         </div>
       </div>
     </div>
     
-    <div class="code-panel" data-panel="crdt-sqlite">
+    <div class="code-panel" data-panel="rate-sqlite">
       <div class="code-split">
         <div class="code-split-panel">
           <div class="code-panel-title">
@@ -377,7 +320,7 @@ import RateReact from "/snippets/examples/rate-react.mdx";
             <span class="file-description">Runs on the server</span>
           </div>
           <div class="code-block">
-            <CrdtSqlite />
+            <RateSqlite />
           </div>
         </div>
 
@@ -387,56 +330,7 @@ import RateReact from "/snippets/examples/rate-react.mdx";
             <span class="file-description">Runs in the browser</span>
           </div>
           <div class="code-block">
-            <CrdtReact />
-          </div>
-        </div>
-      </div>
-    </div>
-
-    {/* Collaborative Document */}
-    <div class="code-panel" data-panel="doc-memory">
-      <div class="code-split">
-        <div class="code-split-panel">
-          <div class="code-panel-title">
-            <span class="file-name">actor.ts</span>
-            <span class="file-description">Runs on the server</span>
-          </div>
-          <div class="code-block">
-            <DocumentJs />
-          </div>
-        </div>
-
-        <div class="code-split-panel">
-          <div class="code-panel-title">
-            <span class="file-name">App.tsx</span>
-            <span class="file-description">Runs in the browser</span>
-          </div>
-          <div class="code-block">
-            <DocumentReact />
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <div class="code-panel" data-panel="doc-sqlite">
-      <div class="code-split">
-        <div class="code-split-panel">
-          <div class="code-panel-title">
-            <span class="file-name">actor.ts</span>
-            <span class="file-description">Runs on the server</span>
-          </div>
-          <div class="code-block">
-            <DocumentSqlite />
-          </div>
-        </div>
-
-        <div class="code-split-panel">
-          <div class="code-panel-title">
-            <span class="file-name">App.tsx</span>
-            <span class="file-description">Runs in the browser</span>
-          </div>
-          <div class="code-block">
-            <DocumentReact />
+            <RateReact />
           </div>
         </div>
       </div>
@@ -491,6 +385,7 @@ import RateReact from "/snippets/examples/rate-react.mdx";
       </div>
     </div>
 
+
     {/* Multiplayer Game */}
     <div class="code-panel" data-panel="game-memory">
       <div class="code-split">
@@ -540,8 +435,8 @@ import RateReact from "/snippets/examples/rate-react.mdx";
       </div>
     </div>
 
-    {/* Rate Limiter */}
-    <div class="code-panel" data-panel="rate-memory">
+    {/* Local-First Sync */}
+    <div class="code-panel" data-panel="sync-memory">
       <div class="code-split">
         <div class="code-split-panel">
           <div class="code-panel-title">
@@ -549,7 +444,7 @@ import RateReact from "/snippets/examples/rate-react.mdx";
             <span class="file-description">Runs on the server</span>
           </div>
           <div class="code-block">
-            <RateJs />
+            <SyncJs />
           </div>
         </div>
 
@@ -559,13 +454,13 @@ import RateReact from "/snippets/examples/rate-react.mdx";
             <span class="file-description">Runs in the browser</span>
           </div>
           <div class="code-block">
-            <RateReact />
+            <SyncReact />
           </div>
         </div>
       </div>
     </div>
     
-    <div class="code-panel" data-panel="rate-sqlite">
+    <div class="code-panel" data-panel="sync-sqlite">
       <div class="code-split">
         <div class="code-split-panel">
           <div class="code-panel-title">
@@ -573,7 +468,7 @@ import RateReact from "/snippets/examples/rate-react.mdx";
             <span class="file-description">Runs on the server</span>
           </div>
           <div class="code-block">
-            <RateSqlite />
+            <SyncSqlite />
           </div>
         </div>
 
@@ -583,7 +478,7 @@ import RateReact from "/snippets/examples/rate-react.mdx";
             <span class="file-description">Runs in the browser</span>
           </div>
           <div class="code-block">
-            <RateReact />
+            <SyncReact />
           </div>
         </div>
       </div>
