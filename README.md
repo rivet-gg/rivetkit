@@ -5,19 +5,26 @@
       <img src="./.github/media/icon-text-white.svg" alt="RivetKit" width="400">
     </picture>
   </a>
-  <h2>Lightweight Libraries for Backends</h2>
+  <br/>
+  <br/>
+  <p><b>Lightweight Libraries for Backends</b></p>
   <p>
     Install one package, scale to production.<br/>
-    <string>Just a library, no SaaS.</strong><br/>
-    Supports Rivet, Cloudflare, Node, Bun, Redis, memory, file system, TypeScript, Rust, React, Hono, Express, Elysia, tRPC, and Vitest.
+    <u>Just a library, no SaaS.</u><br/>
   </p>
-
+  <p>
+    <i>
+      Supports Rivet, Cloudflare, Node, Bun, Redis, memory, file system, TypeScript,<br/>
+      Rust, React, Hono, Express, Elysia, tRPC, and Vitest.
+    </i>
+  </p>
   <p>
     <a href="https://rivetkit.org/">Documentation</a> •
     <a href="https://discord.gg/rivet">Discord</a> •
     <a href="https://x.com/RivetKit_org">X</a> •
     <a href="https://bsky.app/">Bluesky</a>
   </p>
+
 </div>
 
 ## Quickstart
