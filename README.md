@@ -1,8 +1,8 @@
 <div align="center">
   <a href="https://rivetkit.org">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="./.github/media/icon-text-white.svg" alt="RivetKit" width="250">
-      <img src="./.github/media/icon-text-white.svg" alt="RivetKit" width="400">
+      <source media="(prefers-color-scheme: dark)" srcset="./docs/images/logo/dark.svg" alt="RivetKit">
+      <img src="./docs/images/logo/light.svg" alt="RivetKit" width="400">
     </picture>
   </a>
   <br/>
@@ -30,7 +30,7 @@
 ## Quickstart
 
 - <img src="docs/images/clients/javascript.svg" height="16" alt="Node.js" />&nbsp;&nbsp;[Node.js & Bun](https://rivetkit.org/actors/quickstart-backend)
-- <img src="docs/images/clients/react.svg" height="16" alt="React" />&nbsp;&nbsp;[React](https://rivetkit.org/actors/quickstart-frontend)
+- <img src="docs/images/clients/react.svg" height="16" alt="React" />&nbsp;&nbsp;[React](https://rivetkit.org/actors/quickstart-react)
 
 ## Examples
 
@@ -54,15 +54,15 @@ _SQLite will be available in July._
 Deploy RivetKit anywhere - from serverless platforms to your own infrastructure. Don't see the runtime you want? [Add your own](http://localhost:3000/drivers/build).
 
 ### All-In-One
-- <img src="docs/images/platforms/rivet-white.svg" height="16" alt="Rivet" />&nbsp;&nbsp;[Rivet](/platforms/rivet)
-- <img src="docs/images/platforms/cloudflare-workers.svg" height="16" alt="Cloudflare Workers" />&nbsp;&nbsp;[Cloudflare Workers](/platforms/cloudflare-workers)
+- <img src="docs/images/platforms/rivet-white.svg" height="16" alt="Rivet" />&nbsp;&nbsp;[Rivet](/drivers/rivet)
+- <img src="docs/images/platforms/cloudflare-workers.svg" height="16" alt="Cloudflare Workers" />&nbsp;&nbsp;[Cloudflare Workers](/drivers/cloudflare-workers)
 
 ### Compute
 - <img src="docs/images/platforms/vercel.svg" height="16" alt="Vercel" />&nbsp;&nbsp;[Vercel](https://github.com/rivet-gg/rivetkit/issues/897) *(On The Roadmap)*
 - <img src="docs/images/platforms/aws-lambda.svg" height="16" alt="AWS Lambda" />&nbsp;&nbsp;[AWS Lambda](https://github.com/rivet-gg/rivetkit/issues/898) *(On The Roadmap)*
 - <img src="docs/images/platforms/supabase.svg" height="16" alt="Supabase" />&nbsp;&nbsp;[Supabase](https://github.com/rivet-gg/rivetkit/issues/905) *(Help Wanted)*
-- <img src="docs/images/platforms/bun.svg" height="16" alt="Bun" />&nbsp;&nbsp;[Bun](/platforms/bun)
-- <img src="docs/images/platforms/nodejs.svg" height="16" alt="Node.js" />&nbsp;&nbsp;[Node.js](/platforms/nodejs)
+- <img src="docs/images/platforms/bun.svg" height="16" alt="Bun" />&nbsp;&nbsp;[Bun](/actors/quickstart-backend)
+- <img src="docs/images/platforms/nodejs.svg" height="16" alt="Node.js" />&nbsp;&nbsp;[Node.js](/actors/quickstart-backend)
 
 ### Storage
 - <img src="docs/images/platforms/redis.svg" height="16" alt="Redis" />&nbsp;&nbsp;[Redis](/drivers/redis)
@@ -75,20 +75,20 @@ Deploy RivetKit anywhere - from serverless platforms to your own infrastructure.
 Seamlessly integrate RivetKit with your favorite frameworks, languages, and tools. Don't see what you need? [Request an integration](https://github.com/rivet-gg/rivetkit/issues/new).
 
 ### Frameworks
-- <img src="docs/images/clients/react.svg" height="16" alt="React" />&nbsp;&nbsp;[React](/frameworks/react)
+- <img src="docs/images/clients/react.svg" height="16" alt="React" />&nbsp;&nbsp;[React](/clients/react)
 - <img src="docs/images/clients/nextjs.svg" height="16" alt="Next.js" />&nbsp;&nbsp;[Next.js](https://github.com/rivet-gg/rivetkit/issues/904) *(Help Wanted)*
 - <img src="docs/images/clients/vue.svg" height="16" alt="Vue" />&nbsp;&nbsp;[Vue](https://github.com/rivet-gg/rivetkit/issues/903) *(Help Wanted)*
 
 ### Clients
 - <img src="docs/images/clients/javascript.svg" height="16" alt="JavaScript" />&nbsp;&nbsp;[JavaScript](/clients/javascript)
 - <img src="docs/images/clients/typescript.svg" height="16" alt="TypeScript" />&nbsp;&nbsp;[TypeScript](/clients/javascript)
-- <img src="docs/images/clients/python.svg" height="16" alt="Python" />&nbsp;&nbsp;[Python](/clients/python)
-- <img src="docs/images/clients/rust.svg" height="16" alt="Rust" />&nbsp;&nbsp;[Rust](/clients/rust)
+- <img src="docs/images/clients/python.svg" height="16" alt="Python" />&nbsp;&nbsp;[Python](https://github.com/rivet-gg/rivetkit/issues/902) *(Help Wanted)*
+- <img src="docs/images/clients/rust.svg" height="16" alt="Rust" />&nbsp;&nbsp;[Rust](https://github.com/rivet-gg/rivetkit/issues/901) *(Help Wanted)*
 
 ### Integrations
 - <img src="docs/images/integrations/hono.svg" height="16" alt="Hono" />&nbsp;&nbsp;[Hono](/integrations/hono)
-- <img src="docs/images/integrations/vitest.svg" height="16" alt="Vitest" />&nbsp;&nbsp;[Vitest](/concepts/testing)
-- <img src="docs/images/integrations/resend.svg" height="16" alt="Resend" />&nbsp;&nbsp;[Resend](/integrations/resend)
+- <img src="docs/images/integrations/vitest.svg" height="16" alt="Vitest" />&nbsp;&nbsp;[Vitest](/general/testing)
+- <img src="docs/images/integrations/resend.svg" height="16" alt="Resend" />&nbsp;&nbsp;[Resend](https://github.com/rivet-gg/rivetkit/issues/912) *(Help Wanted)*
 - <img src="docs/images/integrations/better-auth.svg" height="16" alt="Better Auth" />&nbsp;&nbsp;[Better Auth](https://github.com/rivet-gg/rivetkit/issues/906) *(On The Roadmap)*
 - <img src="docs/images/platforms/vercel.svg" height="16" alt="AI SDK" />&nbsp;&nbsp;[AI SDK](https://github.com/rivet-gg/rivetkit/issues/907) *(On The Roadmap)*
 
