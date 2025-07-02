@@ -1,6 +1,7 @@
 /* RivetKit custom styles */
 
 .landing-root {
+  position: relative;
   text-align: center;
   min-height: 100vh;
   padding: 0 56px;
