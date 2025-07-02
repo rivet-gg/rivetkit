@@ -1,35 +1,12 @@
 // Configuration object for all particle behavior constants
 const PARTICLE_CONFIG = {
  // Particle appearance
- CANVAS_SIZE: 40,
- CONTAINER_HEIGHT: 1400,
- BASE_OPACITY: 0.08,
- ORANGE_COLOR: '#ff4f00',
+ CIRCLE_RADIUS: 3,
+ BASE_OPACITY: 0.3,
+ MAX_OPACITY: 0.8,
 
- // Velocity thresholds
- MIN_VELOCITY_THRESHOLD: 2,
- MAX_VELOCITY_THRESHOLD: 10,
- MAX_VELOCITY: 100,
-
- // Particle physics
- DAMPING: 0.975,
- MASS: 0.25,
- SPRING_STRENGTH: 0.05,
- ROTATION_SPEED: 0.01,
- MAX_ROTATIONAL_VELOCITY: 0.5,
-
- // Distribution
- PARTICLE_COUNT: 1000,
- BASE_RADIUS: 900,
- RADIUS_STD_DEV: 200,
-
- // Mouse interaction
- FORCE_RADIUS: 300,
- BASE_PUSH_FORCE: 0.001,
- MOVEMENT_FORCE_MULTIPLIER: 1.2,
- REPEL_FORCE_RATIO: 0.3,
- MOVEMENT_FORCE_RATIO: 1.2,
- MAX_MOUSE_VELOCITY: 5000,
+ // Grid layout
+ GRID_SPACING: 40,
 
  // Animation
  TARGET_FPS: 60,
@@ -38,9 +15,6 @@ const PARTICLE_CONFIG = {
 
 // Global particle state
 const GLOBAL_STATE = {
- // Particle canvases
- particleCanvases: {},
-
  // Particles array
  particles: [],
 
@@ -52,15 +26,6 @@ const GLOBAL_STATE = {
 
  // Time tracking
  lastFrameTime: 0,
-
- // Mouse tracking variables
- mouseX: 0,
- mouseY: 0,
- lastMouseX: 0,
- lastMouseY: 0,
- mouseVX: 0,
- mouseVY: 0,
- lastMouseTime: 0
 };
 
 // Canvas and context references
@@ -69,244 +34,26 @@ let ctx = null;
 
 // Global DOM elements
 let wrapper = null;
-let mouseMoveListener = null;
 let resizeListener = null;
 
-// Private Particle class
+// Simple Particle class for grid-based circles
 class Particle {
- static CANVAS_SIZE = PARTICLE_CONFIG.CANVAS_SIZE;
- static CONTAINER_HEIGHT = PARTICLE_CONFIG.CONTAINER_HEIGHT;
- static PARTICLE_RADIUS = PARTICLE_CONFIG.CANVAS_SIZE / 6;
- static SHAPES = ['circle', 'square', 'triangle'];
- static BASE_OPACITY = PARTICLE_CONFIG.BASE_OPACITY;
- static ORANGE_COLOR = PARTICLE_CONFIG.ORANGE_COLOR;
- static MIN_VELOCITY_THRESHOLD = PARTICLE_CONFIG.MIN_VELOCITY_THRESHOLD;
- static MAX_VELOCITY_THRESHOLD = PARTICLE_CONFIG.MAX_VELOCITY_THRESHOLD;
-
- static initParticleCanvases() {
-   // Create offscreen canvases for each particle shape
-   Particle.SHAPES.forEach(shape => {
-     // Create white version
-     const whiteCanvas = document.createElement('canvas');
-     whiteCanvas.width = Particle.CANVAS_SIZE;
-     whiteCanvas.height = Particle.CANVAS_SIZE;
-     const whiteCtx = whiteCanvas.getContext('2d');
-     whiteCtx.fillStyle = 'white';
-     whiteCtx.globalAlpha = 1.0;
-
-     // Create orange version
-     const orangeCanvas = document.createElement('canvas');
-     orangeCanvas.width = Particle.CANVAS_SIZE;
-     orangeCanvas.height = Particle.CANVAS_SIZE;
-     const orangeCtx = orangeCanvas.getContext('2d');
-     orangeCtx.fillStyle = Particle.ORANGE_COLOR;
-     orangeCtx.globalAlpha = 1.0;
-
-     // Draw the shape on both canvases
-     [whiteCtx, orangeCtx].forEach(ctx => {
-       switch (shape) {
-         case 'circle':
-           ctx.beginPath();
-           ctx.arc(Particle.CANVAS_SIZE/2, Particle.CANVAS_SIZE/2, Particle.PARTICLE_RADIUS, 0, Math.PI * 2);
-           ctx.fill();
-           break;
-
-         case 'square':
-           const size = Particle.PARTICLE_RADIUS * 2;
-           ctx.fillRect(
-             Particle.CANVAS_SIZE/2 - Particle.PARTICLE_RADIUS,
-             Particle.CANVAS_SIZE/2 - Particle.PARTICLE_RADIUS,
-             size,
-             size
-           );
-           break;
-
-         case 'triangle':
-           const height = Particle.PARTICLE_RADIUS * 2;
-           const halfWidth = Particle.PARTICLE_RADIUS;
-           ctx.beginPath();
-           ctx.moveTo(Particle.CANVAS_SIZE/2, Particle.CANVAS_SIZE/2 - height/2);
-           ctx.lineTo(Particle.CANVAS_SIZE/2 - halfWidth, Particle.CANVAS_SIZE/2 + height/2);
-           ctx.lineTo(Particle.CANVAS_SIZE/2 + halfWidth, Particle.CANVAS_SIZE/2 + height/2);
-           ctx.closePath();
-           ctx.fill();
-           break;
-       }
-     });
-
-     if (!GLOBAL_STATE.particleCanvases[shape]) {
-       GLOBAL_STATE.particleCanvases[shape] = {};
-     }
-     GLOBAL_STATE.particleCanvases[shape].white = whiteCanvas;
-     GLOBAL_STATE.particleCanvases[shape].orange = orangeCanvas;
-   });
- }
-
- constructor() {    
-   this.shape = Particle.SHAPES[Math.floor(Math.random() * Particle.SHAPES.length)];
-   this.angle = Math.random() * Math.PI * 2; // Initial random angle
-   this.rotationSpeed = PARTICLE_CONFIG.ROTATION_SPEED;
-
-   // Add random rotation and rotational velocity
-   this.rotation = Math.random() * Math.PI * 2; // Random initial rotation
-   this.rotationalVelocity = (Math.random() - 0.5) * PARTICLE_CONFIG.MAX_ROTATIONAL_VELOCITY;
-
-   this.reset();
- }
-
- // Generate a normally distributed random number using Box-Muller transform
- gaussianRandom(mean = 0, stdDev = 1) {
-   const u1 = Math.random();
-   const u2 = Math.random();
-   const z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
-   return z0 * stdDev + mean;
- }
-
- reset() {
-   // Circle parameters
-   const baseRadius = PARTICLE_CONFIG.BASE_RADIUS;
-   const stdDev = PARTICLE_CONFIG.RADIUS_STD_DEV;
-
-   // Generate random distance (but keep angle from constructor)
-   const randomDistance = this.gaussianRandom(0, stdDev);
-   this.radius = baseRadius + randomDistance;
-
-   // Convert polar to cartesian coordinates
-   this.updateOriginPosition();
-
-   // Current position
-   this.x = this.originX;
-   this.y = this.originY;
-
-   // Velocity (starts at 0)
-   this.vx = 0;
-   this.vy = 0;
-
-   // Physics constants
-   this.damping = PARTICLE_CONFIG.DAMPING;
-   this.mass = PARTICLE_CONFIG.MASS;
-   this.springStrength = PARTICLE_CONFIG.SPRING_STRENGTH;
-
-   // Size and opacity
-   this.size = Particle.PARTICLE_RADIUS * 2;
-   this.opacity = 1;
-   this.opacityFactor = Math.random();
-   this.opacityBase = Math.min(0, Math.random() - 0.5);
- }
-
- updateOriginPosition() {
-   // Use canvas width instead of window width for proper centering
-   const centerX = canvas ? canvas.width / 2 : window.innerWidth / 2;
-   const centerY = 180;
-   this.originX = centerX + this.radius * Math.cos(this.angle);
-   this.originY = centerY + this.radius * Math.sin(this.angle);
+ constructor(x, y) {
+   this.x = x;
+   this.y = y;
+   this.opacity = 0;
  }
 
  draw(ctx) {
-   // Skip rendering if particle is outside canvas bounds
-   if (this.x + Particle.CANVAS_SIZE/2 < 0 || 
-       this.x - Particle.CANVAS_SIZE/2 > ctx.canvas.width ||
-       this.y + Particle.CANVAS_SIZE/2 < 0 || 
-       this.y - Particle.CANVAS_SIZE/2 > ctx.canvas.height) {
-     return;
-   }
-
-   // Calculate opacity based on distance from center
-   const centerX = ctx.canvas.width / 2;
-   const centerY = 180;
-   const dx = this.x - centerX;
-   const dy = this.y - centerY;
-   const distance = Math.sqrt(dx * dx + dy * dy);
-
-   // Fade out between 600px and 1200px from center
-   const minDistance = 600;
-   const maxDistance = 1200;
-   this.opacity = this.opacityBase + Math.max(0, Math.min(1, 1 - (distance - minDistance) / (maxDistance - minDistance))) * this.opacityFactor;
-
-   // Calculate velocity magnitude directly - simpler and more accurate
-   const velocityMagnitude = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-
-   // Calculate color mix based on velocity - lowered threshold for more visible effect
-   const colorMix = Math.min(1, (velocityMagnitude - Particle.MIN_VELOCITY_THRESHOLD) / (Particle.MAX_VELOCITY_THRESHOLD - Particle.MIN_VELOCITY_THRESHOLD) * 0.5);
-
-   // Save the current context state
+   if (this.opacity <= 0) return;
+   
    ctx.save();
-
-   // Translate to particle position and rotate
-   ctx.translate(this.x, this.y);
-   ctx.rotate(this.rotation);
-
-   // Draw white (base) particle
-   if (this.opacity > 0) {
-     ctx.globalAlpha = this.opacity * Particle.BASE_OPACITY * (1 - colorMix);
-     ctx.drawImage(
-       GLOBAL_STATE.particleCanvases[this.shape].white,
-       -Particle.CANVAS_SIZE/2,
-       -Particle.CANVAS_SIZE/2
-     );
-   }
-
-   // Draw orange (active) particle
-   if (colorMix > 0) {
-     // Ignore this.opacity since any fast particle will turn orange
-     ctx.globalAlpha = colorMix;
-     ctx.drawImage(
-       GLOBAL_STATE.particleCanvases[this.shape].orange,
-       -Particle.CANVAS_SIZE/2,
-       -Particle.CANVAS_SIZE/2
-     );
-   }
-
-   // Restore the context state
+   ctx.globalAlpha = this.opacity;
+   ctx.fillStyle = 'white';
+   ctx.beginPath();
+   ctx.arc(this.x, this.y, PARTICLE_CONFIG.CIRCLE_RADIUS, 0, Math.PI * 2);
+   ctx.fill();
    ctx.restore();
-   ctx.globalAlpha = 1;
- }
-
- update(deltaTime) {
-   // Update the angle
-   this.angle += this.rotationSpeed * deltaTime;
-   if (this.angle > Math.PI * 2) {
-     this.angle -= Math.PI * 2;
-   }
-
-   // Update rotation
-   this.rotation += this.rotationalVelocity * deltaTime;
-   if (this.rotation > Math.PI * 2) {
-     this.rotation -= Math.PI * 2;
-   }
-
-   // Update origin position based on new angle
-   this.updateOriginPosition();
-
-   // Calculate spring force back to origin
-   const dx = this.originX - this.x;
-   const dy = this.originY - this.y;
-   const springForceX = dx * this.springStrength;
-   const springForceY = dy * this.springStrength;
-
-   // Apply spring force (scaled by deltaTime)
-   this.vx += springForceX * deltaTime;
-   this.vy += springForceY * deltaTime;
-
-   // Apply damping
-   this.vx *= Math.pow(this.damping, deltaTime * 60);
-   this.vy *= Math.pow(this.damping, deltaTime * 60);
-
-   // Clamp velocity to prevent extreme speeds
-   const currentSpeed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-   if (currentSpeed > 1000) {
-     this.vx = (this.vx / currentSpeed) * 1000;
-     this.vy = (this.vy / currentSpeed) * 1000;
-   }
-
-   // Update position
-   this.x += this.vx;
-   this.y += this.vy;
- }
-
- applyForce(fx, fy) {
-   this.vx += fx;
-   this.vy += fy;
  }
 }
 
@@ -317,17 +64,6 @@ function createParticleSystem() {
  if (GLOBAL_STATE.active) {
    console.log("[Particles] System already active, skipping creation");
    return; // Already active
- }
-
- // Initialize particle canvases if needed
- if (Object.keys(GLOBAL_STATE.particleCanvases).length === 0) {
-   Particle.initParticleCanvases();
- }
-
- // Create particles if needed
- if (GLOBAL_STATE.particles.length === 0) {
-   console.log("[Particles] Creating particles");
-   GLOBAL_STATE.particles = Array.from({ length: PARTICLE_CONFIG.PARTICLE_COUNT }, () => new Particle());
  }
 
  // Get landing-root element for positioning
@@ -393,37 +129,8 @@ function createParticleSystem() {
    document.body.appendChild(wrapper);
  }
 
-  // Set up mouse tracking
-  mouseMoveListener = (e) => {
-    const currentTime = performance.now();
-    const deltaTime = (currentTime - GLOBAL_STATE.lastMouseTime) / 1000;
-
-    // Calculate mouse position relative to the canvas
-    if (wrapper) {
-      const wrapperRect = wrapper.getBoundingClientRect();
-      GLOBAL_STATE.mouseX = e.clientX - wrapperRect.left;
-      GLOBAL_STATE.mouseY = e.clientY - wrapperRect.top;
-    } else {
-      // Fallback to page coordinates
-      GLOBAL_STATE.mouseX = e.pageX;
-      GLOBAL_STATE.mouseY = e.pageY;
-    }
-
-    if (deltaTime > 0) {
-      GLOBAL_STATE.mouseVX = (GLOBAL_STATE.mouseX - GLOBAL_STATE.lastMouseX) / deltaTime;
-      GLOBAL_STATE.mouseVY = (GLOBAL_STATE.mouseY - GLOBAL_STATE.lastMouseY) / deltaTime;
-
-      const maxVelocity = PARTICLE_CONFIG.MAX_MOUSE_VELOCITY;
-      GLOBAL_STATE.mouseVX = Math.max(Math.min(GLOBAL_STATE.mouseVX, maxVelocity), -maxVelocity);
-      GLOBAL_STATE.mouseVY = Math.max(Math.min(GLOBAL_STATE.mouseVY, maxVelocity), -maxVelocity);
-    }
-
-    GLOBAL_STATE.lastMouseX = GLOBAL_STATE.mouseX;
-    GLOBAL_STATE.lastMouseY = GLOBAL_STATE.mouseY;
-    GLOBAL_STATE.lastMouseTime = currentTime;
-  };
-
-  document.addEventListener('mousemove', mouseMoveListener);
+ // Create grid-based particles
+ createGridParticles();
 
  // Handle resize
   resizeListener = () => {
@@ -431,7 +138,7 @@ function createParticleSystem() {
       // Recalculate dimensions
       const landingRoot = document.querySelector('.landing-root');
       const landingHero = document.querySelector('.landing-hero');
-      const rootRect =landingRoot.getBoundingClientRect();
+      const rootRect = landingRoot.getBoundingClientRect();
       const heroRect = landingHero.getBoundingClientRect();
       const canvasWidth = rootRect.width;
       const canvasHeight = heroRect.height;
@@ -445,10 +152,11 @@ function createParticleSystem() {
       });
 
       // Update canvas size
-      canvas.width = canvasWidth
-      canvas.height = canvasHeight
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
 
-      GLOBAL_STATE.particles.forEach(particle => particle.reset());
+      // Recreate grid particles for new dimensions
+      createGridParticles();
     }
   };
 
@@ -458,13 +166,127 @@ function createParticleSystem() {
 
  // Initialize timing
  GLOBAL_STATE.lastFrameTime = performance.now();
- GLOBAL_STATE.lastMouseTime = performance.now();
 
  // Start animation
  startAnimation();
 
  // Mark as active
  GLOBAL_STATE.active = true;
+}
+
+// Create particles in a grid layout
+function createGridParticles() {
+  if (!canvas) return;
+  
+  GLOBAL_STATE.particles = [];
+  const baseSpacing = PARTICLE_CONFIG.GRID_SPACING;
+  const edgeMargin = 40; // Constant distance from edges
+  
+  // Get exclusion zones from landing-hero direct children
+  const exclusionZones = getExclusionZones();
+  
+  // Calculate available space after accounting for edge margins
+  const availableWidth = canvas.width - (2 * edgeMargin);
+  const availableHeight = canvas.height - (2 * edgeMargin);
+  
+  // Calculate maximum number of particles that fit with base spacing
+  const maxCols = Math.floor(availableWidth / baseSpacing);
+  const maxRows = Math.floor(availableHeight / baseSpacing);
+  
+  // Adjust spacing to distribute particles evenly with exact edge margins
+  const actualSpacingX = maxCols > 0 ? availableWidth / maxCols : baseSpacing;
+  const actualSpacingY = maxRows > 0 ? availableHeight / maxRows : baseSpacing;
+  
+  // Calculate center for opacity calculations
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  
+  for (let row = 0; row <= maxRows; row++) {
+    for (let col = 0; col <= maxCols; col++) {
+      const x = edgeMargin + col * actualSpacingX;
+      const y = edgeMargin + row * actualSpacingY;
+      
+      // Skip if particle overlaps with any exclusion zone
+      if (isPointInExclusionZones(x, y, exclusionZones)) continue;
+      
+      const particle = new Particle(x, y);
+      
+      // Calculate distance from center for opacity
+      const dx = x - centerX;
+      const dy = y - centerY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const maxDistance = Math.sqrt(centerX * centerX + centerY * centerY);
+      
+      // Opacity increases from center (0) to border (max)
+      particle.opacity = Math.min(PARTICLE_CONFIG.MAX_OPACITY, 
+        (distance / maxDistance) * PARTICLE_CONFIG.MAX_OPACITY + PARTICLE_CONFIG.BASE_OPACITY);
+      
+      GLOBAL_STATE.particles.push(particle);
+    }
+  }
+}
+
+// Get bounding rectangles of specific landing page elements
+function getExclusionZones() {
+  if (!wrapper) return [];
+  
+  const wrapperRect = wrapper.getBoundingClientRect();
+  const exclusionZones = [];
+  const margin = 25; // 25px margin around bounding boxes
+  
+  // Specific selectors to avoid overlap with
+  const selectors = [
+    '.landing-title',
+    '.landing-subtitle', 
+    '.libraries-grid',
+    '.landing-buttons',
+    '.platform-icons-label',
+    '.platform-icons-row'
+  ];
+  
+  selectors.forEach(selector => {
+    const element = document.querySelector(selector);
+    if (!element) return;
+    
+    const rect = element.getBoundingClientRect();
+    
+    // Convert to canvas coordinates (relative to wrapper) and add margin
+    const canvasRect = {
+      left: rect.left - wrapperRect.left - margin,
+      top: rect.top - wrapperRect.top - margin,
+      right: rect.right - wrapperRect.left + margin,
+      bottom: rect.bottom - wrapperRect.top + margin
+    };
+    
+    // Only add if the rect intersects with canvas bounds
+    if (canvasRect.right > 0 && canvasRect.left < canvas.width &&
+        canvasRect.bottom > 0 && canvasRect.top < canvas.height) {
+      exclusionZones.push(canvasRect);
+    }
+  });
+  
+  return exclusionZones;
+}
+
+// Check if a point (with circle radius) overlaps with any exclusion zone
+function isPointInExclusionZones(x, y, exclusionZones) {
+  const radius = PARTICLE_CONFIG.CIRCLE_RADIUS;
+  
+  for (const zone of exclusionZones) {
+    // Check if circle centered at (x, y) with given radius overlaps with rectangle
+    const closestX = Math.max(zone.left, Math.min(x, zone.right));
+    const closestY = Math.max(zone.top, Math.min(y, zone.bottom));
+    
+    const distanceX = x - closestX;
+    const distanceY = y - closestY;
+    const distanceSq = distanceX * distanceX + distanceY * distanceY;
+    
+    if (distanceSq <= radius * radius) {
+      return true;
+    }
+  }
+  
+  return false;
 }
 
 // Start the animation loop
@@ -478,7 +300,6 @@ function startAnimation() {
 
  const TARGET_FPS = PARTICLE_CONFIG.TARGET_FPS;
  const FRAME_TIME = 1000 / TARGET_FPS;
- const FORCE_RADIUS = PARTICLE_CONFIG.FORCE_RADIUS;
 
  function animate() {
    const currentTime = performance.now();
@@ -486,52 +307,7 @@ function startAnimation() {
 
    // Only render if enough time has passed for next frame
    if (timeSinceLastFrame >= FRAME_TIME) {
-     const deltaTime = Math.min(timeSinceLastFrame / 1000, PARTICLE_CONFIG.MAX_FRAME_TIME);
      GLOBAL_STATE.lastFrameTime = currentTime;
-
-     // Update all particles
-     GLOBAL_STATE.particles.forEach(particle => {
-       const dx = particle.x - GLOBAL_STATE.mouseX;
-       const dy = particle.y - GLOBAL_STATE.mouseY;
-       const distance = Math.sqrt(dx * dx + dy * dy);
-
-       if (distance < FORCE_RADIUS) {
-         // Calculate mouse velocity magnitude
-         const mouseSpeed = Math.sqrt(GLOBAL_STATE.mouseVX * GLOBAL_STATE.mouseVX + GLOBAL_STATE.mouseVY * GLOBAL_STATE.mouseVY);
-         // Normalize mouse velocity to 0-1 range
-         const normalizedSpeed = Math.min(mouseSpeed / PARTICLE_CONFIG.MAX_VELOCITY, 1);
-
-         // Calculate base force factor with smoother distance falloff
-         const forceFactor = Math.pow(1 - distance / FORCE_RADIUS, 1.5) *
-                         normalizedSpeed * 
-                         PARTICLE_CONFIG.BASE_PUSH_FORCE * 
-                         PARTICLE_CONFIG.MOVEMENT_FORCE_MULTIPLIER * 
-                         deltaTime * 60;
-
-         // Calculate repulsion direction (away from mouse)
-         const repelDirX = dx / distance;
-         const repelDirY = dy / distance;
-
-         // Get normalized mouse movement direction
-         const mvx = GLOBAL_STATE.mouseVX / (mouseSpeed || 1);
-         const mvy = GLOBAL_STATE.mouseVY / (mouseSpeed || 1);
-
-         // Calculate movement influence based on distance
-         const movementInfluence = Math.pow(1 - distance / FORCE_RADIUS, 1.2);
-
-         // Combine forces with reduced repulsion and increased movement
-         const repelForce = PARTICLE_CONFIG.REPEL_FORCE_RATIO * mouseSpeed;
-         const moveForce = mouseSpeed * PARTICLE_CONFIG.MOVEMENT_FORCE_RATIO;
-
-         // More emphasis on movement direction, less on repulsion
-         const fx = (repelDirX * repelForce * 0.5 + mvx * moveForce) * forceFactor * movementInfluence;
-         const fy = (repelDirY * repelForce * 0.5 + mvy * moveForce) * forceFactor * movementInfluence;
-
-         particle.applyForce(fx, fy);
-       }
-
-       particle.update(deltaTime);
-     });
 
      // Make sure canvas and context exist before drawing
      if (canvas && ctx) {
@@ -563,11 +339,6 @@ function destroyParticleSystem() {
  }
 
  // Remove event listeners
- if (mouseMoveListener) {
-   document.removeEventListener('mousemove', mouseMoveListener);
-   mouseMoveListener = null;
- }
-
  if (resizeListener) {
    window.removeEventListener('resize', resizeListener);
    resizeListener = null;
