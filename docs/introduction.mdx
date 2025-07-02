@@ -27,7 +27,86 @@ import FAQ from "/snippets/landing-faq.mdx";
 			Install one package, scale to production.<br/><span className="landing-subtitle-highlight">Just a library, no SaaS.</span>
     	</p>
 
+		<div className="libraries-grid">
+			<a href="/actors/overview" className="library-box">
+				<div className="library-content">
+					<div className="library-title">
+						<div className="library-icon"><Icon icon="shapes" color="white" size={16} /></div>
+						<h3 className="not-prose">Actors</h3>
+                        <div className="library-arrow"><Icon icon="arrow-right" color="rgba(255, 255, 255, 0.8)" size={20} /></div>
+					</div>
+					<div className="library-description">
+						<p>Long running tasks with state persistence, hibernation, and realtime</p>
+						<p className="library-replaces">Replaces <span className="highlight">Durable Objects</span>, <span className="highlight">Orleans</span>, or <span className="highlight">Akka</span></p>
+					</div>
+				</div>
+			</a>
+            <div className="library-box library-box-coming-soon">
+				<div className="library-content">
+					<div className="library-title">
+						<div className="library-icon"><Icon icon="square-question" color="white" size={16} /></div>
+						<h3 className="not-prose">Coming Soon</h3>
+					</div>
+					<div className="library-description">
+						<p>Stay tuned for more</p>
+					</div>
+				</div>
+			</div>
+			{/*<a href="/" className="library-box">
+				<div className="library-content">
+					<div className="library-title">
+						<div className="library-icon"><Icon icon="tower-broadcast" color="#10b981" size={28} /></div>
+						<h3 className="not-prose">Realtime</h3>
+					</div>
+					<div className="library-description">
+						<p>Low-latency realtime collaboration for multiplayer experiences and collaborative apps powered by CRDT</p>
+						<p className="library-replaces">Replaces <span className="highlight">Firebase Realtime</span>, <span className="highlight">PartyKit</span>, or <span className="highlight">Liveblocks</span></p>
+					</div>
+				</div>
+				<div className="library-arrow"><Icon icon="arrow-right" color="rgba(255, 255, 255, 0.8)" size={20} /></div>
+			</a>
+			<a href="/" className="library-box">
+				<div className="library-content">
+					<div className="library-title">
+						<div className="library-icon"><Icon icon="diagram-project" color="#a855f7" size={28} /></div>
+						<h3 className="not-prose">Workflows</h3>
+					</div>
+					<div className="library-description">
+						<p>Workflow library for durable, multi-step execution</p>
+						<p className="library-replaces">Replaces <span className="highlight">Cloudflare Workflows</span>, <span className="highlight">Temporal</span>, or <span className="highlight">AWS Step Functions</span></p>
+					</div>
+				</div>
+				<div className="library-arrow"><Icon icon="arrow-right" color="rgba(255, 255, 255, 0.8)" size={20} /></div>
+			</a> */}
+			{/* <a href="/" className="library-box">
+				<div className="library-content">
+					<div className="library-title">
+						<div className="library-icon"><Icon icon="robot" color="#3b82f6" size={28} /></div>
+						<h3 className="not-prose">Agents</h3>
+					</div>
+					<div className="library-description">
+						<p>Framework for building, deploying, and orchestrating AI agents in production.</p>
+						<p className="library-replaces">Replaces <span className="highlight">LangChain</span>, <span className="highlight">LlamaIndex</span>, or <span className="highlight">AutoGen</span></p>
+					</div>
+				</div>
+				<div className="library-arrow"><Icon icon="arrow-right" color="rgba(255, 255, 255, 0.8)" size={20} /></div>
+			</a> */}
+		</div>
+
+        <div style={{ height: "40px" }} />
+
         <div className="landing-buttons">
+    		<a
+    			href="https://github.com/rivet-gg/rivetkit"
+    			className="landing-button landing-button-secondary"
+    			target="_blank"
+    			rel="noopener noreferrer"
+    		>
+    			View on GitHub
+    		</a>
+    	</div>
+
+        {/*<div className="landing-buttons">
     		<a href="/actors/quickstart-backend" className="landing-button landing-button-primary">
     			Quickstart
     		</a>
@@ -48,64 +127,10 @@ import FAQ from "/snippets/landing-faq.mdx";
     			<div className="copy-icon"><Icon icon="copy" /></div>
     			<div className="check-icon"><Icon icon="check" /></div>
     		</div>
-    	</div>
+    	</div>*/}
+
 
 		<div style={{ flexGrow: '1' }} />
-
-		<div className="libraries-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)", maxWidth: "800px", display: "none" }}>
-			<a href="/actors/overview" className="library-box library-box-orange">
-				<div className="library-content">
-					<div className="library-title">
-						<div className="library-icon"><Icon icon="shapes" color="#ff4f00" size={28} /></div>
-						<h3 className="not-prose">Actors</h3>
-					</div>
-					<div className="library-description">
-						<p>Long running tasks with state persistence, hibernation, and realtime</p>
-						<p className="library-replaces">Replaces <span className="highlight">Durable Objects</span>, <span className="highlight">Orleans</span>, or <span className="highlight">Akka</span></p>
-					</div>
-				</div>
-				<div className="library-arrow"><Icon icon="arrow-right" color="rgba(255, 255, 255, 0.8)" size={20} /></div>
-			</a>
-			<a href="/" className="library-box library-box-green">
-				<div className="library-content">
-					<div className="library-title">
-						<div className="library-icon"><Icon icon="tower-broadcast" color="#10b981" size={28} /></div>
-						<h3 className="not-prose">Realtime</h3>
-					</div>
-					<div className="library-description">
-						<p>Low-latency realtime collaboration for multiplayer experiences and collaborative apps powered by CRDT</p>
-						<p className="library-replaces">Replaces <span className="highlight">Firebase Realtime</span>, <span className="highlight">PartyKit</span>, or <span className="highlight">Liveblocks</span></p>
-					</div>
-				</div>
-				<div className="library-arrow"><Icon icon="arrow-right" color="rgba(255, 255, 255, 0.8)" size={20} /></div>
-			</a>
-			<a href="/" className="library-box library-box-purple">
-				<div className="library-content">
-					<div className="library-title">
-						<div className="library-icon"><Icon icon="diagram-project" color="#a855f7" size={28} /></div>
-						<h3 className="not-prose">Workflows</h3>
-					</div>
-					<div className="library-description">
-						<p>Workflow library for durable, multi-step execution</p>
-						<p className="library-replaces">Replaces <span className="highlight">Cloudflare Workflows</span>, <span className="highlight">Temporal</span>, or <span className="highlight">AWS Step Functions</span></p>
-					</div>
-				</div>
-				<div className="library-arrow"><Icon icon="arrow-right" color="rgba(255, 255, 255, 0.8)" size={20} /></div>
-			</a>
-			{/* <a href="/" className="library-box library-box-blue">
-				<div className="library-content">
-					<div className="library-title">
-						<div className="library-icon"><Icon icon="robot" color="#3b82f6" size={28} /></div>
-						<h3 className="not-prose">Agents</h3>
-					</div>
-					<div className="library-description">
-						<p>Framework for building, deploying, and orchestrating AI agents in production.</p>
-						<p className="library-replaces">Replaces <span className="highlight">LangChain</span>, <span className="highlight">LlamaIndex</span>, or <span className="highlight">AutoGen</span></p>
-					</div>
-				</div>
-				<div className="library-arrow"><Icon icon="arrow-right" color="rgba(255, 255, 255, 0.8)" size={20} /></div>
-			</a> */}
-		</div>
 
         {/*<div className="features-grid">
     		<div className="feature-box group">

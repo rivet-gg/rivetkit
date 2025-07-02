@@ -1,8 +1,8 @@
 ---
-title: Actors Overview
+title: Rivet Actors Overview
 icon: square-info
 sidebarTitle: "Overview"
-description: Stateful serverless functions with persistence, real-time communication, and automatic scaling
+description: Long-running functions with persistence, real-time communication, and hibernation
 ---
 
 Actors are lightweight, stateful serverless functions that maintain persistent state and provide real-time communication. They're the core building blocks of RivetKit applications.
@@ -28,7 +28,7 @@ Actors are lightweight, stateful serverless functions that maintain persistent s
   State is stored on the same machine as your compute, so reads and writes are ultra-fast. No database round trips, no latency spikes.
 </Card>
 <Card title="Realtime, Made Simple" icon="tower-broadcast">
-  Update state and broadcast changes in realtime. No external pub/sub systems, no polling – just built-in low-latency events.
+  Update state and broadcast changes in realtime with WebSockets or SSE. No external pub/sub systems, no polling – just built-in low-latency events.
 </Card>
 <Card title="Store Data Near Your Users" icon="globe">
   Your state lives close to your users on the edge – not in a faraway data center – so every interaction feels instant.
@@ -40,25 +40,23 @@ Actors are lightweight, stateful serverless functions that maintain persistent s
 
 Actors are perfect for applications that need persistent state and real-time updates:
 
-### Real-time Communication
-- **Chat rooms**: Real-time messaging with message history and user presence
-- **Collaborative documents**: Multiple users editing documents simultaneously
-- **Live events**: Broadcasting updates to many participants
-
 ### AI & Automation
 - **AI agents**: Stateful AI assistants with conversation history
 - **Workflow automation**: Long-running business processes with state persistence
-- **Stream processing**: Real-time data processing with persistent state
+
+### Real-time Communication
+- **Collaborative documents**: Multiple users editing documents simultaneously
+- **Multiplayer games**: Game state management with real-time updates
+- **Chat rooms**: Real-time messaging with message history and user presence
+- **Live events**: Broadcasting updates to many participants
 
 ### Data & Synchronization
 - **Local-first sync**: Offline-first applications with server synchronization
 - **Per-user databases**: Isolated data stores for each user or tenant
-- **Per-tenant SaaS**: Multi-tenant applications with isolated state
-- **CRDT collaboration**: Conflict-free replicated data types for real-time editing
 
-### Gaming & Interactive Applications
-- **Multiplayer games**: Game state management with real-time updates
+### Infrastructure
 - **Rate limiting**: Distributed rate limiting with persistent counters
+- **Stream processing**: Real-time data processing with persistent state
 
 ## State Management
 
