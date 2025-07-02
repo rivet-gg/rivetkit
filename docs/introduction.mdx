@@ -5,10 +5,9 @@ sidebarTitle: Welcome
 mode: custom
 ---
 
-import Snippets from "/snippets/landing-snippets.mdx";
-import Tech from "/snippets/landing-tech.mdx";
-import Quotes from "/snippets/landing-quotes.mdx";
-import FAQ from "/snippets/landing-faq.mdx";
+import LandingSnippets from "/snippets/landing-snippets.mdx";
+import { LandingTech } from "/snippets/landing-tech.jsx";
+import { LandingQuotes } from "/snippets/landing-quotes.jsx";
 
 {/*<div className="particle-container"></div>*/}
 
@@ -174,10 +173,6 @@ import FAQ from "/snippets/landing-faq.mdx";
     		</div>
     	</div>*/}
 
-        {/*<div className="subtle-link-container">
-    		<a href="#faq" className="subtle-link">Have more questions? Jump to our FAQ <Icon icon="arrow-right" color="white" /></a>
-    	</div>*/}
-
 		<div style={{ height: '60px' }} />
 
         <div className="platform-icons-container">
@@ -264,13 +259,13 @@ import FAQ from "/snippets/landing-faq.mdx";
 		<p className="landing-section-text">Build powerful applications with RivetKit's libraries</p>
 
 		<div style={{ height: '20px' }} />
-		<Snippets />
+		<LandingSnippets />
 	</div>
 
     <div style={{ height: '260px' }} />
 
     <div className="landing-section">
-        <Tech />
+        <LandingTech />
     </div>
 
     {/* <div style={{ height: '260px' }} />
@@ -303,10 +298,10 @@ import FAQ from "/snippets/landing-faq.mdx";
     <div style={{ height: '220px' }} />
 
     <div className="landing-section">
-        <Quotes />
+        <LandingQuotes />
     </div>
 
-    <div style={{ height: '260px' }} />
+    <div style={{ height: '200px' }} />
 
     <div className="text-center landing-section">
         <h2 className="landing-section-heading">Join the Community</h2>
@@ -338,10 +333,10 @@ import FAQ from "/snippets/landing-faq.mdx";
         </div>
     </div>
 
-    {/* <div style={{ height: '260px' }} />
+    {/* <div style={{ height: '200px' }} />
 
     <div className="landing-section">
-        <FAQ />
+        <LandingFaq />
     </div> */}
 
     <div style={{ height: '260px' }} />

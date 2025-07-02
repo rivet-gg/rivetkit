@@ -1186,6 +1186,8 @@
   display: flex;
   flex-direction: column;
   gap: 80px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .tech-section-heading {

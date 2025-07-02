@@ -16,9 +16,7 @@ function observerManagerRunAllInitializers() {
   // Schedule throttled execution for other components
   observerManagerThrottleTimer = setTimeout(() => {
     // Run each component's init function directly
-    if (typeof initializeFAQ === 'function') initializeFAQ();
     if (typeof initializeAllCodeGroups === 'function') initializeAllCodeGroups();
-    if (typeof initializeAllCTAs === 'function') initializeAllCTAs();
     if (typeof initializeAllCopyCommands === 'function') initializeAllCopyCommands();
     
     // Run particles again to catch any late additions
