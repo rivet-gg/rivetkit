@@ -175,6 +175,7 @@ export const HeroBackground = () => {
   const [activePulses, setActivePulses] = useState([]);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [systemStartTime, setSystemStartTime] = useState(0);
+  const [isVisible, setIsVisible] = useState(window.innerWidth >= 750);
   const animationFrameRef = useRef(null);
   const lastFrameTimeRef = useRef(0);
 
@@ -501,6 +502,10 @@ export const HeroBackground = () => {
     const handleResize = () => {
       const canvas = canvasRef.current;
       const wrapper = wrapperRef.current;
+      
+      // Update visibility based on window width
+      setIsVisible(window.innerWidth >= 750);
+      
       if (!canvas || !wrapper) return;
 
       // Recalculate dimensions
@@ -543,7 +548,8 @@ export const HeroBackground = () => {
         height: '100vh',
         overflow: 'hidden',
         pointerEvents: 'none',
-        zIndex: -1
+        zIndex: -1,
+        display: isVisible ? 'block' : 'none'
       }}
     >
       <canvas
