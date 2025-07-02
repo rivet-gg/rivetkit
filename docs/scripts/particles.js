@@ -2,8 +2,7 @@
 const PARTICLE_CONFIG = {
  // Particle appearance
  CIRCLE_RADIUS: 3,
- BASE_OPACITY: 0.04,
- MAX_OPACITY: 0.12,
+ MAX_OPACITY: 0.05,
  ORANGE_COLOR: '#ff6b35', // Brighter orange
 
  // Grid layout
@@ -105,25 +104,13 @@ function pointToLineSegmentDistance(px, py, x1, y1, x2, y2) {
 // Simple Particle class for grid-based circles
 class Particle {
  constructor(x, y) {
-   // Grid position (original/rest position)
-   this.originX = x;
-   this.originY = y;
-   
-   // Current position
+   // Fixed position
    this.x = x;
    this.y = y;
-   
-   // Velocity
-   this.vx = 0;
-   this.vy = 0;
    
    // Visual properties
    this.baseOpacity = 0;
    this.activation = 0; // 0 = white, 1 = orange
-   
-   // Physics properties
-   this.damping = PARTICLE_CONFIG.DAMPING;
-   this.springStrength = PARTICLE_CONFIG.SPRING_STRENGTH;
  }
 
  draw(ctx) {
@@ -131,10 +118,8 @@ class Particle {
    
    ctx.save();
    
-   // Calculate velocity magnitude for activation intensity
-   const velocityMagnitude = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-   const velocityActivation = Math.min(1, velocityMagnitude / 3); // Lower threshold for activation
-   const totalActivation = Math.max(this.activation, velocityActivation);
+   // Use only proximity-based activation, no velocity effects
+   const totalActivation = this.activation;
    
    // Draw white base particle
    if (totalActivation < 1) {
@@ -158,32 +143,17 @@ class Particle {
    ctx.restore();
  }
 
- update(deltaTime) {
-   // Calculate spring force back to origin
-   const dx = this.originX - this.x;
-   const dy = this.originY - this.y;
-   const springForceX = dx * this.springStrength;
-   const springForceY = dy * this.springStrength;
-
-   // Apply spring force
-   this.vx += springForceX * deltaTime;
-   this.vy += springForceY * deltaTime;
-
-   // Apply damping
-   this.vx *= Math.pow(this.damping, deltaTime * 60);
-   this.vy *= Math.pow(this.damping, deltaTime * 60);
-
-   // Update position
-   this.x += this.vx;
-   this.y += this.vy;
-
-   // Update activation based only on velocity, not mouse proximity
-   this.activation *= 0.95; // Always fade out gradually
- }
-
- applyForce(fx, fy) {
-   this.vx += fx;
-   this.vy += fy;
+ update() {
+   // Calculate distance from mouse for proximity activation
+   const mouseDistance = Math.sqrt((this.x - GLOBAL_STATE.mouseX) ** 2 + (this.y - GLOBAL_STATE.mouseY) ** 2);
+   
+   // Update activation based on mouse proximity only
+   if (mouseDistance < PARTICLE_CONFIG.PATH_FORCE_RADIUS) {
+     const proximityFactor = 1 - (mouseDistance / PARTICLE_CONFIG.PATH_FORCE_RADIUS);
+     this.activation = Math.min(1, proximityFactor * 2);
+   } else {
+     this.activation *= 0.95; // Fade out gradually
+   }
  }
 }
 
@@ -292,47 +262,7 @@ function createParticleSystem() {
    GLOBAL_STATE.mouseVX = Math.max(Math.min(GLOBAL_STATE.mouseVX, maxVelocity), -maxVelocity);
    GLOBAL_STATE.mouseVY = Math.max(Math.min(GLOBAL_STATE.mouseVY, maxVelocity), -maxVelocity);
 
-   // Apply forces to particles along the mouse movement path
-   const mouseSpeed = Math.sqrt(GLOBAL_STATE.mouseVX * GLOBAL_STATE.mouseVX + GLOBAL_STATE.mouseVY * GLOBAL_STATE.mouseVY);
-   
-   if (mouseSpeed > 0) {
-     // Get normalized mouse movement direction
-     const mvx = GLOBAL_STATE.mouseVX / mouseSpeed;
-     const mvy = GLOBAL_STATE.mouseVY / mouseSpeed;
-     const normalizedSpeed = Math.min(mouseSpeed / 1000, 1);
-
-     // Line segment from previous to current mouse position
-     const x1 = GLOBAL_STATE.lastMouseX;
-     const y1 = GLOBAL_STATE.lastMouseY;
-     const x2 = GLOBAL_STATE.mouseX;
-     const y2 = GLOBAL_STATE.mouseY;
-     
-     // Line segment vector
-     const lineVecX = x2 - x1;
-     const lineVecY = y2 - y1;
-     const lineLength = Math.sqrt(lineVecX * lineVecX + lineVecY * lineVecY);
-
-     if (lineLength > 0) {
-       GLOBAL_STATE.particles.forEach(particle => {
-         // Calculate distance from particle to line segment
-         const { distance, closestPoint } = pointToLineSegmentDistance(
-           particle.x, particle.y, x1, y1, x2, y2
-         );
-
-         if (distance < PARTICLE_CONFIG.PATH_FORCE_RADIUS) {
-           // Calculate force factor based on distance from path
-           const distanceFactor = Math.pow(1 - distance / PARTICLE_CONFIG.PATH_FORCE_RADIUS, 1.5);
-           
-           // Apply force in mouse movement direction
-           const forceStrength = distanceFactor * normalizedSpeed * PARTICLE_CONFIG.MOVEMENT_FORCE_MULTIPLIER * PARTICLE_CONFIG.BASE_PUSH_FORCE;
-           const fx = mvx * forceStrength;
-           const fy = mvy * forceStrength;
-           
-           particle.applyForce(fx, fy);
-         }
-       });
-     }
-   }
+   // No force application - particles are static
 
    // Add debug mouse position tracking
    if (PARTICLE_CONFIG.DEBUG_MOUSE_TRACKING) {
@@ -533,9 +463,9 @@ function startAnimation() {
      const deltaTime = Math.min(timeSinceLastFrame / 1000, PARTICLE_CONFIG.MAX_FRAME_TIME);
      GLOBAL_STATE.lastFrameTime = currentTime;
 
-     // Update particles (just physics, no mouse forces)
+     // Update particles (just activation, no physics)
      GLOBAL_STATE.particles.forEach(particle => {
-       particle.update(deltaTime);
+       particle.update();
      });
 
      // Make sure canvas and context exist before drawing
