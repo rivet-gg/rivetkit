@@ -377,6 +377,12 @@ function createParticleSystem() {
 
  // Handle resize
   resizeListener = () => {
+    // Check if particles should still be shown after resize
+    if (!shouldShowParticles()) {
+      destroyParticleSystem();
+      return;
+    }
+
     if (canvas && wrapper) {
       // Recalculate dimensions
       const landingRoot = document.querySelector('.landing-root');
@@ -694,9 +700,9 @@ function destroyParticleSystem() {
  GLOBAL_STATE.active = false;
 }
 
-// Check if the page should show particles (.landing-root exists)
+// Check if the page should show particles (.landing-root exists and screen width >= 730px)
 function shouldShowParticles() {
- return document.querySelector('.landing-root') !== null;
+ return document.querySelector('.landing-root') !== null && window.innerWidth >= 730;
 }
 
 // Handle mutation observer updates

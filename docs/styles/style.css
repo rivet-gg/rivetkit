@@ -90,7 +90,7 @@
   font-weight: 400;
   letter-spacing: -0.03em;
   margin: 0 0 32px 0;
-  width: max-content;
+  display: inline-block;
   max-width: 100%;
   padding-bottom: 0.1em;
   color: white;
@@ -134,7 +134,6 @@
   font-weight: 400;
   width: max-content;
   max-width: 100%;
-  max-width: 900px;
   margin: 0 auto 40px auto;
   padding: 0 24px;
   transition: color 0.2s ease;
