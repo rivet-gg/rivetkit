@@ -2,15 +2,31 @@
 const PARTICLE_CONFIG = {
  // Particle appearance
  CIRCLE_RADIUS: 3,
- BASE_OPACITY: 0.3,
- MAX_OPACITY: 0.8,
+ BASE_OPACITY: 0.04,
+ MAX_OPACITY: 0.12,
+ ORANGE_COLOR: '#ff6b35', // Brighter orange
 
  // Grid layout
  GRID_SPACING: 40,
 
+ // Mouse interaction
+ PATH_FORCE_RADIUS: 200, // Radius for path-based forces
+ BASE_PUSH_FORCE: 0.3,
+ MOVEMENT_FORCE_MULTIPLIER: 4.0,
+ MAX_MOUSE_VELOCITY: 5000,
+
+ // Physics
+ DAMPING: 0.975,
+ SPRING_STRENGTH: 0.05,
+
  // Animation
  TARGET_FPS: 60,
  MAX_FRAME_TIME: 0.1, // seconds
+
+ // Debug
+ DEBUG_MOUSE_TRACKING: false,
+ DEBUG_DOT_RADIUS: 2,
+ DEBUG_MAX_DOTS: 100,
 };
 
 // Global particle state
@@ -26,6 +42,18 @@ const GLOBAL_STATE = {
 
  // Time tracking
  lastFrameTime: 0,
+
+ // Mouse tracking
+ mouseX: 0,
+ mouseY: 0,
+ lastMouseX: 0,
+ lastMouseY: 0,
+ mouseVX: 0,
+ mouseVY: 0,
+ lastMouseTime: 0,
+
+ // Debug tracking
+ debugMousePositions: [],
 };
 
 // Canvas and context references
@@ -35,25 +63,127 @@ let ctx = null;
 // Global DOM elements
 let wrapper = null;
 let resizeListener = null;
+let mouseMoveListener = null;
+
+// Helper function to calculate distance from point to line segment
+function pointToLineSegmentDistance(px, py, x1, y1, x2, y2) {
+  // Vector from line start to point
+  const dx = px - x1;
+  const dy = py - y1;
+  
+  // Line segment vector
+  const lineVecX = x2 - x1;
+  const lineVecY = y2 - y1;
+  const lineLengthSq = lineVecX * lineVecX + lineVecY * lineVecY;
+  
+  // If line segment has zero length, return distance to start point
+  if (lineLengthSq === 0) {
+    return {
+      distance: Math.sqrt(dx * dx + dy * dy),
+      closestPoint: { x: x1, y: y1 }
+    };
+  }
+  
+  // Parameter t represents position along line segment (0 = start, 1 = end)
+  const t = Math.max(0, Math.min(1, (dx * lineVecX + dy * lineVecY) / lineLengthSq));
+  
+  // Closest point on line segment
+  const closestX = x1 + t * lineVecX;
+  const closestY = y1 + t * lineVecY;
+  
+  // Distance from point to closest point on line segment
+  const distX = px - closestX;
+  const distY = py - closestY;
+  const distance = Math.sqrt(distX * distX + distY * distY);
+  
+  return {
+    distance: distance,
+    closestPoint: { x: closestX, y: closestY }
+  };
+}
 
 // Simple Particle class for grid-based circles
 class Particle {
  constructor(x, y) {
+   // Grid position (original/rest position)
+   this.originX = x;
+   this.originY = y;
+   
+   // Current position
    this.x = x;
    this.y = y;
-   this.opacity = 0;
+   
+   // Velocity
+   this.vx = 0;
+   this.vy = 0;
+   
+   // Visual properties
+   this.baseOpacity = 0;
+   this.activation = 0; // 0 = white, 1 = orange
+   
+   // Physics properties
+   this.damping = PARTICLE_CONFIG.DAMPING;
+   this.springStrength = PARTICLE_CONFIG.SPRING_STRENGTH;
  }
 
  draw(ctx) {
-   if (this.opacity <= 0) return;
+   if (this.baseOpacity <= 0) return;
    
    ctx.save();
-   ctx.globalAlpha = this.opacity;
-   ctx.fillStyle = 'white';
-   ctx.beginPath();
-   ctx.arc(this.x, this.y, PARTICLE_CONFIG.CIRCLE_RADIUS, 0, Math.PI * 2);
-   ctx.fill();
+   
+   // Calculate velocity magnitude for activation intensity
+   const velocityMagnitude = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+   const velocityActivation = Math.min(1, velocityMagnitude / 3); // Lower threshold for activation
+   const totalActivation = Math.max(this.activation, velocityActivation);
+   
+   // Draw white base particle
+   if (totalActivation < 1) {
+     ctx.globalAlpha = this.baseOpacity * (1 - totalActivation);
+     ctx.fillStyle = 'white';
+     ctx.beginPath();
+     ctx.arc(this.x, this.y, PARTICLE_CONFIG.CIRCLE_RADIUS, 0, Math.PI * 2);
+     ctx.fill();
+   }
+   
+   // Draw orange activated particle with moderate intensity
+   if (totalActivation > 0) {
+     // Moderate orange activation - visible but not overwhelming
+     ctx.globalAlpha = Math.min(1, totalActivation * 0.35); // Moderate opacity control
+     ctx.fillStyle = PARTICLE_CONFIG.ORANGE_COLOR;
+     ctx.beginPath();
+     ctx.arc(this.x, this.y, PARTICLE_CONFIG.CIRCLE_RADIUS, 0, Math.PI * 2);
+     ctx.fill();
+   }
+   
    ctx.restore();
+ }
+
+ update(deltaTime) {
+   // Calculate spring force back to origin
+   const dx = this.originX - this.x;
+   const dy = this.originY - this.y;
+   const springForceX = dx * this.springStrength;
+   const springForceY = dy * this.springStrength;
+
+   // Apply spring force
+   this.vx += springForceX * deltaTime;
+   this.vy += springForceY * deltaTime;
+
+   // Apply damping
+   this.vx *= Math.pow(this.damping, deltaTime * 60);
+   this.vy *= Math.pow(this.damping, deltaTime * 60);
+
+   // Update position
+   this.x += this.vx;
+   this.y += this.vy;
+
+   // Update activation based only on velocity, not mouse proximity
+   this.activation *= 0.95; // Always fade out gradually
+ }
+
+ applyForce(fx, fy) {
+   this.vx += fx;
+   this.vy += fy;
  }
 }
 
@@ -132,6 +262,99 @@ function createParticleSystem() {
  // Create grid-based particles
  createGridParticles();
 
+ // Set up mouse tracking
+ mouseMoveListener = (e) => {
+   const currentTime = performance.now();
+   const deltaTime = (currentTime - GLOBAL_STATE.lastMouseTime) / 1000;
+
+   // Ignore events that are too close together (< 16ms) or too far apart (> 50ms)
+   if (deltaTime < 0.016 || deltaTime > 0.05) {
+     GLOBAL_STATE.lastMouseTime = currentTime;
+     return;
+   }
+
+   // Calculate mouse position relative to the canvas
+   if (wrapper) {
+     const wrapperRect = wrapper.getBoundingClientRect();
+     GLOBAL_STATE.mouseX = e.clientX - wrapperRect.left;
+     GLOBAL_STATE.mouseY = e.clientY - wrapperRect.top;
+   } else {
+     // Fallback to page coordinates
+     GLOBAL_STATE.mouseX = e.pageX;
+     GLOBAL_STATE.mouseY = e.pageY;
+   }
+
+   // Calculate mouse velocity
+   GLOBAL_STATE.mouseVX = (GLOBAL_STATE.mouseX - GLOBAL_STATE.lastMouseX) / deltaTime;
+   GLOBAL_STATE.mouseVY = (GLOBAL_STATE.mouseY - GLOBAL_STATE.lastMouseY) / deltaTime;
+
+   const maxVelocity = PARTICLE_CONFIG.MAX_MOUSE_VELOCITY;
+   GLOBAL_STATE.mouseVX = Math.max(Math.min(GLOBAL_STATE.mouseVX, maxVelocity), -maxVelocity);
+   GLOBAL_STATE.mouseVY = Math.max(Math.min(GLOBAL_STATE.mouseVY, maxVelocity), -maxVelocity);
+
+   // Apply forces to particles along the mouse movement path
+   const mouseSpeed = Math.sqrt(GLOBAL_STATE.mouseVX * GLOBAL_STATE.mouseVX + GLOBAL_STATE.mouseVY * GLOBAL_STATE.mouseVY);
+   
+   if (mouseSpeed > 0) {
+     // Get normalized mouse movement direction
+     const mvx = GLOBAL_STATE.mouseVX / mouseSpeed;
+     const mvy = GLOBAL_STATE.mouseVY / mouseSpeed;
+     const normalizedSpeed = Math.min(mouseSpeed / 1000, 1);
+
+     // Line segment from previous to current mouse position
+     const x1 = GLOBAL_STATE.lastMouseX;
+     const y1 = GLOBAL_STATE.lastMouseY;
+     const x2 = GLOBAL_STATE.mouseX;
+     const y2 = GLOBAL_STATE.mouseY;
+     
+     // Line segment vector
+     const lineVecX = x2 - x1;
+     const lineVecY = y2 - y1;
+     const lineLength = Math.sqrt(lineVecX * lineVecX + lineVecY * lineVecY);
+
+     if (lineLength > 0) {
+       GLOBAL_STATE.particles.forEach(particle => {
+         // Calculate distance from particle to line segment
+         const { distance, closestPoint } = pointToLineSegmentDistance(
+           particle.x, particle.y, x1, y1, x2, y2
+         );
+
+         if (distance < PARTICLE_CONFIG.PATH_FORCE_RADIUS) {
+           // Calculate force factor based on distance from path
+           const distanceFactor = Math.pow(1 - distance / PARTICLE_CONFIG.PATH_FORCE_RADIUS, 1.5);
+           
+           // Apply force in mouse movement direction
+           const forceStrength = distanceFactor * normalizedSpeed * PARTICLE_CONFIG.MOVEMENT_FORCE_MULTIPLIER * PARTICLE_CONFIG.BASE_PUSH_FORCE;
+           const fx = mvx * forceStrength;
+           const fy = mvy * forceStrength;
+           
+           particle.applyForce(fx, fy);
+         }
+       });
+     }
+   }
+
+   // Add debug mouse position tracking
+   if (PARTICLE_CONFIG.DEBUG_MOUSE_TRACKING) {
+     GLOBAL_STATE.debugMousePositions.push({
+       x: GLOBAL_STATE.mouseX,
+       y: GLOBAL_STATE.mouseY,
+       time: currentTime
+     });
+     
+     // Limit the number of debug dots
+     if (GLOBAL_STATE.debugMousePositions.length > PARTICLE_CONFIG.DEBUG_MAX_DOTS) {
+       GLOBAL_STATE.debugMousePositions.shift();
+     }
+   }
+
+   GLOBAL_STATE.lastMouseX = GLOBAL_STATE.mouseX;
+   GLOBAL_STATE.lastMouseY = GLOBAL_STATE.mouseY;
+   GLOBAL_STATE.lastMouseTime = currentTime;
+ };
+
+ document.addEventListener('mousemove', mouseMoveListener, { passive: true });
+
  // Handle resize
   resizeListener = () => {
     if (canvas && wrapper) {
@@ -166,6 +389,13 @@ function createParticleSystem() {
 
  // Initialize timing
  GLOBAL_STATE.lastFrameTime = performance.now();
+ GLOBAL_STATE.lastMouseTime = performance.now();
+ 
+ // Initialize mouse position to center of canvas
+ GLOBAL_STATE.mouseX = canvas.width / 2;
+ GLOBAL_STATE.mouseY = canvas.height / 2;
+ GLOBAL_STATE.lastMouseX = GLOBAL_STATE.mouseX;
+ GLOBAL_STATE.lastMouseY = GLOBAL_STATE.mouseY;
 
  // Start animation
  startAnimation();
@@ -211,15 +441,8 @@ function createGridParticles() {
       
       const particle = new Particle(x, y);
       
-      // Calculate distance from center for opacity
-      const dx = x - centerX;
-      const dy = y - centerY;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      const maxDistance = Math.sqrt(centerX * centerX + centerY * centerY);
-      
-      // Opacity increases from center (0) to border (max)
-      particle.opacity = Math.min(PARTICLE_CONFIG.MAX_OPACITY, 
-        (distance / maxDistance) * PARTICLE_CONFIG.MAX_OPACITY + PARTICLE_CONFIG.BASE_OPACITY);
+      // Fixed opacity for all particles
+      particle.baseOpacity = PARTICLE_CONFIG.MAX_OPACITY;
       
       GLOBAL_STATE.particles.push(particle);
     }
@@ -307,7 +530,13 @@ function startAnimation() {
 
    // Only render if enough time has passed for next frame
    if (timeSinceLastFrame >= FRAME_TIME) {
+     const deltaTime = Math.min(timeSinceLastFrame / 1000, PARTICLE_CONFIG.MAX_FRAME_TIME);
      GLOBAL_STATE.lastFrameTime = currentTime;
+
+     // Update particles (just physics, no mouse forces)
+     GLOBAL_STATE.particles.forEach(particle => {
+       particle.update(deltaTime);
+     });
 
      // Make sure canvas and context exist before drawing
      if (canvas && ctx) {
@@ -318,6 +547,26 @@ function startAnimation() {
        GLOBAL_STATE.particles.forEach(particle => {
          particle.draw(ctx);
        });
+
+       // Draw debug mouse positions
+       if (PARTICLE_CONFIG.DEBUG_MOUSE_TRACKING && GLOBAL_STATE.debugMousePositions.length > 0) {
+         ctx.save();
+         ctx.fillStyle = 'red';
+         ctx.globalAlpha = 1;
+         
+         GLOBAL_STATE.debugMousePositions.forEach((pos, index) => {
+           // Fade older positions
+           const age = GLOBAL_STATE.debugMousePositions.length - index;
+           const alpha = Math.max(0.3, 1 - (age / PARTICLE_CONFIG.DEBUG_MAX_DOTS));
+           ctx.globalAlpha = alpha;
+           
+           ctx.beginPath();
+           ctx.arc(pos.x, pos.y, PARTICLE_CONFIG.DEBUG_DOT_RADIUS, 0, Math.PI * 2);
+           ctx.fill();
+         });
+         
+         ctx.restore();
+       }
      }
    }
 
@@ -339,6 +588,11 @@ function destroyParticleSystem() {
  }
 
  // Remove event listeners
+ if (mouseMoveListener) {
+   document.removeEventListener('mousemove', mouseMoveListener);
+   mouseMoveListener = null;
+ }
+
  if (resizeListener) {
    window.removeEventListener('resize', resizeListener);
    resizeListener = null;
