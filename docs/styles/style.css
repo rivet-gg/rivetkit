@@ -6,6 +6,12 @@
   padding: 0 56px;
 }
 
+@media (max-width: 768px) {
+  .landing-root {
+    padding: 0 12px;;
+  }
+}
+
 .landing-section {
   width: 100%;
   max-width: 1346px;
@@ -52,19 +58,28 @@
   justify-content: center;
   min-height: 100vh;
   padding: 22px;
+  padding-top: 250px;
+  padding-bottom: 60px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1400px) {
   .landing-hero {
-    padding-top: 100px;
+    padding-top: 120px;
+    padding-bottom: 60px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .landing-hero {
+    padding-top: 80px;
     padding-bottom: 60px;
   }
 }
 
 @media (max-width: 480px) {
   .landing-hero {
+    padding: 0;
     padding-top: 80px;
-    padding-bottom: 40px;
   }
 }
 
@@ -1329,25 +1344,29 @@
   border-radius: 4px;
 }
 
-@media (max-width: 1500px) {
+@media (max-width: 1200px) {
   .tech-section-row {
     flex-direction: column;
-    gap: 24px;
+    gap: 30px;
   }
   
   .tech-header {
     flex: none;
   }
-  
+
   .tech-content {
     flex: none;
     margin: 0 auto;
     width: 100%;
-    max-width: 600px;
+    width: 100%;
+    max-width: unset;
+    gap: 20px;
   }
   
   .tech-buttons-grid {
+    grid-template-columns: repeat(4, 1fr);
     margin: 0 auto;
+    width: 100%;
   }
 
   .tech-section-text {
@@ -1356,7 +1375,19 @@
   }
 
   .tech-category-title {
-    text-align: center;
+    text-align: left;
+  }
+}
+
+@media (max-width: 900px) {
+  .tech-buttons-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 580px) {
+  .tech-buttons-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -1508,7 +1539,6 @@
 @media (max-width: 600px) {
   .cta-section {
     padding: 120px 24px;
-    margin: 0 16px;
   }
 }
 
@@ -1807,11 +1837,6 @@
 
 /* Additional responsive improvements */
 @media (max-width: 1024px) {
-  .landing-hero {
-    padding-top: 80px;
-    padding-bottom: 60px;
-  }
-  
   .landing-buttons {
     gap: 12px;
   }
