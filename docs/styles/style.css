@@ -60,6 +60,7 @@
   padding: 22px;
   padding-top: 250px;
   padding-bottom: 60px;
+  position: relative;
 }
 
 @media (max-width: 1400px) {
@@ -1549,8 +1550,6 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 1300px;
   overflow: hidden;
   pointer-events: none;
   z-index: -1;
