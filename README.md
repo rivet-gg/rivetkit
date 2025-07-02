@@ -14,8 +14,8 @@
   </p>
   <p>
     <i>
-      Supports Rivet, Cloudflare, Node, Bun, Redis, memory, file system, TypeScript,<br/>
-      Rust, React, Hono, Express, Elysia, tRPC, and Vitest.
+      Supports <a href="https://rivetkit.org/drivers/rivet">Rivet</a>, <a href="https://rivetkit.org/drivers/cloudflare-workers">Cloudflare</a>, <a href="https://rivetkit.org/actors/quickstart-backend">Node</a>, <a href="https://rivetkit.org/actors/quickstart-backend">Bun</a>, <a href="https://rivetkit.org/drivers/redis">Redis</a>, <a href="https://rivetkit.org/drivers/memory">memory</a>, <a href="https://rivetkit.org/drivers/file-system">file system</a>, <a href="https://rivetkit.org/clients/javascript">TypeScript</a>,<br/>
+      Rust, <a href="https://rivetkit.org/clients/react">React</a>, <a href="https://rivetkit.org/integrations/hono">Hono</a>, <a href="https://rivetkit.org/integrations/express">Express</a>, <a href="https://rivetkit.org/integrations/elysia">Elysia</a>, <a href="https://rivetkit.org/integrations/trpc">tRPC</a>, <a href="https://rivetkit.org/integrations/better-auth">Better Auth</a>, and <a href="https://rivetkit.org/general/testing">Vitest</a>.
     </i>
   </p>
   <p>
@@ -47,49 +47,48 @@ Browse snippets for how to use RivetKit with different use cases.
 | Multiplayer Game | [actor.ts](/examples/snippets/game/actor-json.ts) | [actor.ts](/examples/snippets/game/actor-sqlite.ts) | [App.tsx](/examples/snippets/game/App.tsx) |
 | Local-First Sync | [actor.ts](/examples/snippets/sync/actor-json.ts) | [actor.ts](/examples/snippets/sync/actor-sqlite.ts) | [App.tsx](/examples/snippets/sync/App.tsx) |
 
-_SQLite will be available in July._
+_SQLite available in July._
 
 ## Runs On Your Stack
 
-Deploy RivetKit anywhere - from serverless platforms to your own infrastructure. Don't see the runtime you want? [Add your own](http://localhost:3000/drivers/build).
+Deploy RivetKit anywhere - from serverless platforms to your own infrastructure. Don't see the runtime you want? [Add your own](https://rivetkit.org/drivers/build).
 
 ### All-In-One
-- <img src="docs/images/platforms/rivet-white.svg" height="16" alt="Rivet" />&nbsp;&nbsp;[Rivet](/drivers/rivet)
-- <img src="docs/images/platforms/cloudflare-workers.svg" height="16" alt="Cloudflare Workers" />&nbsp;&nbsp;[Cloudflare Workers](/drivers/cloudflare-workers)
+- <img src="docs/images/platforms/rivet-white.svg" height="16" alt="Rivet" />&nbsp;&nbsp;[Rivet](https://rivetkit.org/drivers/rivet)
+- <img src="docs/images/platforms/cloudflare-workers.svg" height="16" alt="Cloudflare Workers" />&nbsp;&nbsp;[Cloudflare Workers](https://rivetkit.org/drivers/cloudflare-workers)
 
 ### Compute
 - <img src="docs/images/platforms/vercel.svg" height="16" alt="Vercel" />&nbsp;&nbsp;[Vercel](https://github.com/rivet-gg/rivetkit/issues/897) *(On The Roadmap)*
 - <img src="docs/images/platforms/aws-lambda.svg" height="16" alt="AWS Lambda" />&nbsp;&nbsp;[AWS Lambda](https://github.com/rivet-gg/rivetkit/issues/898) *(On The Roadmap)*
 - <img src="docs/images/platforms/supabase.svg" height="16" alt="Supabase" />&nbsp;&nbsp;[Supabase](https://github.com/rivet-gg/rivetkit/issues/905) *(Help Wanted)*
-- <img src="docs/images/platforms/bun.svg" height="16" alt="Bun" />&nbsp;&nbsp;[Bun](/actors/quickstart-backend)
-- <img src="docs/images/platforms/nodejs.svg" height="16" alt="Node.js" />&nbsp;&nbsp;[Node.js](/actors/quickstart-backend)
+- <img src="docs/images/platforms/bun.svg" height="16" alt="Bun" />&nbsp;&nbsp;[Bun](https://rivetkit.org/actors/quickstart-backend)
+- <img src="docs/images/platforms/nodejs.svg" height="16" alt="Node.js" />&nbsp;&nbsp;[Node.js](https://rivetkit.org/actors/quickstart-backend)
 
 ### Storage
-- <img src="docs/images/platforms/redis.svg" height="16" alt="Redis" />&nbsp;&nbsp;[Redis](/drivers/redis)
+- <img src="docs/images/platforms/redis.svg" height="16" alt="Redis" />&nbsp;&nbsp;[Redis](https://rivetkit.org/drivers/redis)
 - <img src="docs/images/platforms/postgres.svg" height="16" alt="Postgres" />&nbsp;&nbsp;[Postgres](https://github.com/rivet-gg/rivetkit/issues/899) *(Help Wanted)*
-- <img src="docs/images/platforms/file-system.svg" height="16" alt="File System" />&nbsp;&nbsp;[File System](/drivers/file-system)
-- <img src="docs/images/platforms/memory.svg" height="16" alt="Memory" />&nbsp;&nbsp;[Memory](/drivers/memory)
+- <img src="docs/images/platforms/file-system.svg" height="16" alt="File System" />&nbsp;&nbsp;[File System](https://rivetkit.org/drivers/file-system)
+- <img src="docs/images/platforms/memory.svg" height="16" alt="Memory" />&nbsp;&nbsp;[Memory](https://rivetkit.org/drivers/memory)
 
 ## Works With Your Tools
 
 Seamlessly integrate RivetKit with your favorite frameworks, languages, and tools. Don't see what you need? [Request an integration](https://github.com/rivet-gg/rivetkit/issues/new).
 
 ### Frameworks
-- <img src="docs/images/clients/react.svg" height="16" alt="React" />&nbsp;&nbsp;[React](/clients/react)
+- <img src="docs/images/clients/react.svg" height="16" alt="React" />&nbsp;&nbsp;[React](https://rivetkit.org/clients/react)
 - <img src="docs/images/clients/nextjs.svg" height="16" alt="Next.js" />&nbsp;&nbsp;[Next.js](https://github.com/rivet-gg/rivetkit/issues/904) *(Help Wanted)*
 - <img src="docs/images/clients/vue.svg" height="16" alt="Vue" />&nbsp;&nbsp;[Vue](https://github.com/rivet-gg/rivetkit/issues/903) *(Help Wanted)*
 
 ### Clients
-- <img src="docs/images/clients/javascript.svg" height="16" alt="JavaScript" />&nbsp;&nbsp;[JavaScript](/clients/javascript)
-- <img src="docs/images/clients/typescript.svg" height="16" alt="TypeScript" />&nbsp;&nbsp;[TypeScript](/clients/javascript)
+- <img src="docs/images/clients/javascript.svg" height="16" alt="JavaScript" />&nbsp;&nbsp;[JavaScript](https://rivetkit.org/clients/javascript)
+- <img src="docs/images/clients/typescript.svg" height="16" alt="TypeScript" />&nbsp;&nbsp;[TypeScript](https://rivetkit.org/clients/javascript)
 - <img src="docs/images/clients/python.svg" height="16" alt="Python" />&nbsp;&nbsp;[Python](https://github.com/rivet-gg/rivetkit/issues/902) *(Help Wanted)*
 - <img src="docs/images/clients/rust.svg" height="16" alt="Rust" />&nbsp;&nbsp;[Rust](https://github.com/rivet-gg/rivetkit/issues/901) *(Help Wanted)*
 
 ### Integrations
-- <img src="docs/images/integrations/hono.svg" height="16" alt="Hono" />&nbsp;&nbsp;[Hono](/integrations/hono)
-- <img src="docs/images/integrations/vitest.svg" height="16" alt="Vitest" />&nbsp;&nbsp;[Vitest](/general/testing)
-- <img src="docs/images/integrations/resend.svg" height="16" alt="Resend" />&nbsp;&nbsp;[Resend](https://github.com/rivet-gg/rivetkit/issues/912) *(Help Wanted)*
-- <img src="docs/images/integrations/better-auth.svg" height="16" alt="Better Auth" />&nbsp;&nbsp;[Better Auth](https://github.com/rivet-gg/rivetkit/issues/906) *(On The Roadmap)*
+- <img src="docs/images/integrations/hono.svg" height="16" alt="Hono" />&nbsp;&nbsp;[Hono](https://rivetkit.org/integrations/hono)
+- <img src="docs/images/integrations/vitest.svg" height="16" alt="Vitest" />&nbsp;&nbsp;[Vitest](https://rivetkit.org/general/testing)
+- <img src="docs/images/integrations/better-auth.svg" height="16" alt="Better Auth" />&nbsp;&nbsp;[Better Auth](https://rivetkit.org/integrations/better-auth)
 - <img src="docs/images/platforms/vercel.svg" height="16" alt="AI SDK" />&nbsp;&nbsp;[AI SDK](https://github.com/rivet-gg/rivetkit/issues/907) *(On The Roadmap)*
 
 ### Local-First Sync
@@ -112,5 +111,5 @@ Help make RivetKit the universal way to build & scale stateful serverless applic
 
 Apache 2.0
 
-_Scale without drama – only with Rivet Actors._
+_Performance in every act - thanks to Rivet Actors._
 

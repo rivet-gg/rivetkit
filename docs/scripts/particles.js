@@ -22,6 +22,20 @@ const PARTICLE_CONFIG = {
  TARGET_FPS: 60,
  MAX_FRAME_TIME: 0.1, // seconds
 
+ // Pulse effect
+ PULSE_SPEED: 150, // pixels per second - faster wave
+ PULSE_PEAK_OPACITY: 0.15, // less opaque
+ PULSE_LOOP_INTERVAL: 8000, // milliseconds between pulses - less frequent
+ PULSE_DURATION: 1500, // how long each pulse lasts at a particle
+ 
+ // Intro pulse effect
+ INTRO_PULSE_SPEED: 1200, // pixels per second - extremely fast
+ 
+ // Click pulse effect
+ CLICK_PULSE_SPEED: 1600, // pixels per second - 2x faster
+ CLICK_PULSE_PEAK_OPACITY: 0.2, // slightly more visible than regular pulses
+ CLICK_PULSE_DURATION: 800, // shorter duration for snappy effect
+
  // Debug
  DEBUG_MOUSE_TRACKING: false,
  DEBUG_DOT_RADIUS: 2,
@@ -51,6 +65,12 @@ const GLOBAL_STATE = {
  mouseVY: 0,
  lastMouseTime: 0,
 
+ // Pulse effect tracking
+ activePulses: [], // Array of { startTime, centerX, centerY }
+ 
+ // System timing
+ systemStartTime: 0,
+
  // Debug tracking
  debugMousePositions: [],
 };
@@ -63,6 +83,7 @@ let ctx = null;
 let wrapper = null;
 let resizeListener = null;
 let mouseMoveListener = null;
+let mouseDownListener = null;
 
 // Helper function to calculate distance from point to line segment
 function pointToLineSegmentDistance(px, py, x1, y1, x2, y2) {
@@ -109,51 +130,120 @@ class Particle {
    this.y = y;
    
    // Visual properties
-   this.baseOpacity = 0;
-   this.activation = 0; // 0 = white, 1 = orange
+   this.baseOpacity = 0; // Start at 0, will be set by intro pulse
+   this.hasBeenRevealed = false; // Track if intro pulse has reached this particle
+   
+   // Pulse effect properties
+   this.distanceFromCenter = 0;
+   this.pulseOpacity = 0;
+   
  }
 
  draw(ctx) {
-   if (this.baseOpacity <= 0) return;
+   // Calculate total opacity: base + pulse
+   let totalOpacity = this.baseOpacity + this.pulseOpacity;
+   
+   // Add subtle mouse proximity highlighting
+   const mouseDistance = Math.sqrt((this.x - GLOBAL_STATE.mouseX) ** 2 + (this.y - GLOBAL_STATE.mouseY) ** 2);
+   if (mouseDistance < PARTICLE_CONFIG.PATH_FORCE_RADIUS) {
+     const proximityFactor = 1 - (mouseDistance / PARTICLE_CONFIG.PATH_FORCE_RADIUS);
+     totalOpacity += proximityFactor * 0.07; // Slightly less intense highlight
+   }
+   
+   if (totalOpacity <= 0) return;
    
    ctx.save();
-   
-   // Use only proximity-based activation, no velocity effects
-   const totalActivation = this.activation;
-   
-   // Draw white base particle
-   if (totalActivation < 1) {
-     ctx.globalAlpha = this.baseOpacity * (1 - totalActivation);
-     ctx.fillStyle = 'white';
-     ctx.beginPath();
-     ctx.arc(this.x, this.y, PARTICLE_CONFIG.CIRCLE_RADIUS, 0, Math.PI * 2);
-     ctx.fill();
-   }
-   
-   // Draw orange activated particle with moderate intensity
-   if (totalActivation > 0) {
-     // Moderate orange activation - visible but not overwhelming
-     ctx.globalAlpha = Math.min(1, totalActivation * 0.35); // Moderate opacity control
-     ctx.fillStyle = PARTICLE_CONFIG.ORANGE_COLOR;
-     ctx.beginPath();
-     ctx.arc(this.x, this.y, PARTICLE_CONFIG.CIRCLE_RADIUS, 0, Math.PI * 2);
-     ctx.fill();
-   }
-   
+   ctx.globalAlpha = Math.min(1, totalOpacity);
+   ctx.fillStyle = 'white';
+   ctx.beginPath();
+   ctx.arc(this.x, this.y, PARTICLE_CONFIG.CIRCLE_RADIUS, 0, Math.PI * 2);
+   ctx.fill();
    ctx.restore();
  }
 
  update() {
-   // Calculate distance from mouse for proximity activation
-   const mouseDistance = Math.sqrt((this.x - GLOBAL_STATE.mouseX) ** 2 + (this.y - GLOBAL_STATE.mouseY) ** 2);
+   // Update pulse effects
+   this.updatePulse();
+ }
+ 
+ 
+ updatePulse() {
+   const currentTime = performance.now();
+   this.pulseOpacity = 0;
    
-   // Update activation based on mouse proximity only
-   if (mouseDistance < PARTICLE_CONFIG.PATH_FORCE_RADIUS) {
-     const proximityFactor = 1 - (mouseDistance / PARTICLE_CONFIG.PATH_FORCE_RADIUS);
-     this.activation = Math.min(1, proximityFactor * 2);
-   } else {
-     this.activation *= 0.95; // Fade out gradually
-   }
+   // Check all active pulses
+   GLOBAL_STATE.activePulses.forEach(pulse => {
+     const timeSincePulseStart = currentTime - pulse.startTime;
+     
+     // Use different speed for different pulse types
+     let pulseSpeed, pulseDuration, peakOpacity;
+     if (pulse.isIntro) {
+       pulseSpeed = PARTICLE_CONFIG.INTRO_PULSE_SPEED;
+       pulseDuration = PARTICLE_CONFIG.PULSE_DURATION;
+       peakOpacity = PARTICLE_CONFIG.PULSE_PEAK_OPACITY;
+     } else if (pulse.isClick) {
+       pulseSpeed = PARTICLE_CONFIG.CLICK_PULSE_SPEED;
+       pulseDuration = PARTICLE_CONFIG.CLICK_PULSE_DURATION;
+       peakOpacity = PARTICLE_CONFIG.CLICK_PULSE_PEAK_OPACITY;
+     } else {
+       pulseSpeed = PARTICLE_CONFIG.PULSE_SPEED;
+       pulseDuration = PARTICLE_CONFIG.PULSE_DURATION;
+       peakOpacity = PARTICLE_CONFIG.PULSE_PEAK_OPACITY;
+     }
+     
+     // Calculate when this pulse wave should reach this particle
+     const waveRadius = (timeSincePulseStart / 1000) * pulseSpeed;
+     
+     // Calculate distance from this pulse's center (not always canvas center)
+     const particleDistance = Math.sqrt((this.x - pulse.centerX) ** 2 + (this.y - pulse.centerY) ** 2);
+     
+     // Check if the wave has reached this particle
+     if (waveRadius >= particleDistance) {
+       // For intro pulse, permanently set base opacity when wave reaches particle
+       if (pulse.isIntro && !this.hasBeenRevealed) {
+         this.baseOpacity = PARTICLE_CONFIG.MAX_OPACITY;
+         this.hasBeenRevealed = true;
+       }
+       
+       // Calculate how long the wave has been at this particle
+       const timeAtParticle = timeSincePulseStart - (particleDistance / pulseSpeed * 1000);
+       
+       if (timeAtParticle >= 0 && timeAtParticle < pulseDuration) {
+         const pulsePhase = timeAtParticle / pulseDuration;
+         
+         let pulseContribution = 0;
+         
+         if (pulse.isIntro) {
+           // Intro pulse: starts at 0, peaks, then settles at base opacity
+           if (pulsePhase < 0.3) {
+             // Rising phase: 0 to peak
+             const riseProgress = pulsePhase / 0.3;
+             pulseContribution = riseProgress * peakOpacity;
+           } else {
+             // Falling phase: peak to 0 (base opacity already set above)
+             const fallProgress = (pulsePhase - 0.3) / 0.7;
+             pulseContribution = peakOpacity * (1 - fallProgress);
+           }
+         } else {
+           // Regular and click pulses: normal pulse behavior
+           if (pulsePhase < 0.3) {
+             // Rising phase: 0 to peak
+             pulseContribution = (pulsePhase / 0.3) * peakOpacity;
+           } else if (pulsePhase < 1) {
+             // Falling phase: peak to 0
+             const fallProgress = (pulsePhase - 0.3) / 0.7;
+             pulseContribution = peakOpacity * (1 - fallProgress);
+           }
+         }
+         
+         // Add this pulse's contribution (multiple pulses can stack)
+         this.pulseOpacity += pulseContribution;
+       }
+     }
+   });
+   
+   // Clamp to maximum opacity
+   this.pulseOpacity = Math.min(this.pulseOpacity, PARTICLE_CONFIG.PULSE_PEAK_OPACITY * 2);
  }
 }
 
@@ -232,17 +322,20 @@ function createParticleSystem() {
  // Create grid-based particles
  createGridParticles();
 
- // Set up mouse tracking
+ // Initialize animations
+ GLOBAL_STATE.systemStartTime = performance.now();
+ GLOBAL_STATE.activePulses = [];
+ 
+ // Add immediate intro pulse that moves very fast
+ GLOBAL_STATE.activePulses.push({
+   startTime: performance.now(),
+   centerX: canvas.width / 2,
+   centerY: canvas.height / 2,
+   isIntro: true // Mark as intro pulse for different speed
+ });
+
+ // Set up simple mouse tracking
  mouseMoveListener = (e) => {
-   const currentTime = performance.now();
-   const deltaTime = (currentTime - GLOBAL_STATE.lastMouseTime) / 1000;
-
-   // Ignore events that are too close together (< 16ms) or too far apart (> 50ms)
-   if (deltaTime < 0.016 || deltaTime > 0.05) {
-     GLOBAL_STATE.lastMouseTime = currentTime;
-     return;
-   }
-
    // Calculate mouse position relative to the canvas
    if (wrapper) {
      const wrapperRect = wrapper.getBoundingClientRect();
@@ -253,37 +346,34 @@ function createParticleSystem() {
      GLOBAL_STATE.mouseX = e.pageX;
      GLOBAL_STATE.mouseY = e.pageY;
    }
-
-   // Calculate mouse velocity
-   GLOBAL_STATE.mouseVX = (GLOBAL_STATE.mouseX - GLOBAL_STATE.lastMouseX) / deltaTime;
-   GLOBAL_STATE.mouseVY = (GLOBAL_STATE.mouseY - GLOBAL_STATE.lastMouseY) / deltaTime;
-
-   const maxVelocity = PARTICLE_CONFIG.MAX_MOUSE_VELOCITY;
-   GLOBAL_STATE.mouseVX = Math.max(Math.min(GLOBAL_STATE.mouseVX, maxVelocity), -maxVelocity);
-   GLOBAL_STATE.mouseVY = Math.max(Math.min(GLOBAL_STATE.mouseVY, maxVelocity), -maxVelocity);
-
-   // No force application - particles are static
-
-   // Add debug mouse position tracking
-   if (PARTICLE_CONFIG.DEBUG_MOUSE_TRACKING) {
-     GLOBAL_STATE.debugMousePositions.push({
-       x: GLOBAL_STATE.mouseX,
-       y: GLOBAL_STATE.mouseY,
-       time: currentTime
-     });
-     
-     // Limit the number of debug dots
-     if (GLOBAL_STATE.debugMousePositions.length > PARTICLE_CONFIG.DEBUG_MAX_DOTS) {
-       GLOBAL_STATE.debugMousePositions.shift();
-     }
-   }
-
-   GLOBAL_STATE.lastMouseX = GLOBAL_STATE.mouseX;
-   GLOBAL_STATE.lastMouseY = GLOBAL_STATE.mouseY;
-   GLOBAL_STATE.lastMouseTime = currentTime;
  };
 
  document.addEventListener('mousemove', mouseMoveListener, { passive: true });
+ 
+ // Set up mousedown listener for spawning pulses
+ mouseDownListener = (e) => {
+   // Calculate mousedown position relative to the canvas
+   let clickX, clickY;
+   if (wrapper) {
+     const wrapperRect = wrapper.getBoundingClientRect();
+     clickX = e.clientX - wrapperRect.left;
+     clickY = e.clientY - wrapperRect.top;
+   } else {
+     // Fallback to page coordinates
+     clickX = e.pageX;
+     clickY = e.pageY;
+   }
+   
+   // Create a new click pulse at the mousedown position
+   GLOBAL_STATE.activePulses.push({
+     startTime: performance.now(),
+     centerX: clickX,
+     centerY: clickY,
+     isClick: true // Mark as click pulse for different behavior
+   });
+ };
+ 
+ document.addEventListener('mousedown', mouseDownListener);
 
  // Handle resize
   resizeListener = () => {
@@ -371,8 +461,11 @@ function createGridParticles() {
       
       const particle = new Particle(x, y);
       
-      // Fixed opacity for all particles
-      particle.baseOpacity = PARTICLE_CONFIG.MAX_OPACITY;
+      // Calculate distance from center for pulse effect
+      particle.distanceFromCenter = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
+      
+      // Start with zero opacity - intro pulse will reveal them
+      particle.baseOpacity = 0;
       
       GLOBAL_STATE.particles.push(particle);
     }
@@ -442,6 +535,57 @@ function isPointInExclusionZones(x, y, exclusionZones) {
   return false;
 }
 
+// Manage pulse creation and cleanup
+function managePulses() {
+  const currentTime = performance.now();
+  const timeSinceSystemStart = currentTime - GLOBAL_STATE.systemStartTime;
+  
+  // Calculate how many regular pulses we should have (excluding the intro pulse)
+  // Start regular pulses after a delay to let the intro pulse finish
+  const regularPulseStartDelay = 2000; // 2 seconds after system start
+  if (timeSinceSystemStart < regularPulseStartDelay) {
+    return;
+  }
+  
+  const adjustedTime = timeSinceSystemStart - regularPulseStartDelay;
+  const shouldHaveRegularPulseCount = Math.floor(adjustedTime / PARTICLE_CONFIG.PULSE_LOOP_INTERVAL) + 1;
+  const currentRegularPulseCount = GLOBAL_STATE.activePulses.filter(p => !p.isIntro).length;
+  
+  // Create new regular pulses if needed
+  while (currentRegularPulseCount < shouldHaveRegularPulseCount) {
+    const regularPulseIndex = currentRegularPulseCount;
+    const pulseStartTime = GLOBAL_STATE.systemStartTime + regularPulseStartDelay + (regularPulseIndex * PARTICLE_CONFIG.PULSE_LOOP_INTERVAL);
+    
+    GLOBAL_STATE.activePulses.push({
+      startTime: pulseStartTime,
+      centerX: canvas ? canvas.width / 2 : 0,
+      centerY: canvas ? canvas.height / 2 : 0,
+      isIntro: false
+    });
+    break; // Only add one pulse per frame
+  }
+  
+  // Clean up pulses that are too old (beyond their effective range)
+  const maxCanvasDiagonal = canvas ? Math.sqrt(canvas.width ** 2 + canvas.height ** 2) : 1000;
+  
+  GLOBAL_STATE.activePulses = GLOBAL_STATE.activePulses.filter(pulse => {
+    let pulseSpeed, pulseDuration;
+    if (pulse.isIntro) {
+      pulseSpeed = PARTICLE_CONFIG.INTRO_PULSE_SPEED;
+      pulseDuration = PARTICLE_CONFIG.PULSE_DURATION;
+    } else if (pulse.isClick) {
+      pulseSpeed = PARTICLE_CONFIG.CLICK_PULSE_SPEED;
+      pulseDuration = PARTICLE_CONFIG.CLICK_PULSE_DURATION;
+    } else {
+      pulseSpeed = PARTICLE_CONFIG.PULSE_SPEED;
+      pulseDuration = PARTICLE_CONFIG.PULSE_DURATION;
+    }
+    
+    const maxPulseLifetime = (maxCanvasDiagonal / pulseSpeed * 1000) + pulseDuration;
+    return (currentTime - pulse.startTime) < maxPulseLifetime;
+  });
+}
+
 // Start the animation loop
 function startAnimation() {
  if (GLOBAL_STATE.animationFrameId !== null) {
@@ -463,6 +607,9 @@ function startAnimation() {
      const deltaTime = Math.min(timeSinceLastFrame / 1000, PARTICLE_CONFIG.MAX_FRAME_TIME);
      GLOBAL_STATE.lastFrameTime = currentTime;
 
+     // Manage pulse creation and cleanup
+     managePulses();
+     
      // Update particles (just activation, no physics)
      GLOBAL_STATE.particles.forEach(particle => {
        particle.update();
@@ -521,6 +668,11 @@ function destroyParticleSystem() {
  if (mouseMoveListener) {
    document.removeEventListener('mousemove', mouseMoveListener);
    mouseMoveListener = null;
+ }
+ 
+ if (mouseDownListener) {
+   document.removeEventListener('mousedown', mouseDownListener);
+   mouseDownListener = null;
  }
 
  if (resizeListener) {
