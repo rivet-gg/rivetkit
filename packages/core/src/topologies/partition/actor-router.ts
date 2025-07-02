@@ -76,7 +76,7 @@ export function createActorRouter(
 	router.get("/connect/websocket", async (c) => {
 		let upgradeWebSocket = runConfig.getUpgradeWebSocket?.();
 		if (upgradeWebSocket) {
-			upgradeWebSocket(async (c) => {
+			return upgradeWebSocket(async (c) => {
 				const actorId = await handler.getActorId();
 				const encodingRaw = c.req.header(HEADER_ENCODING);
 				const connParamsRaw = c.req.header(HEADER_CONN_PARAMS);
