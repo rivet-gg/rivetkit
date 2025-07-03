@@ -36,7 +36,7 @@
   },
   "peerDependencies": {
     "@rivetkit/core": "*",
-    "hono": "^4.7.0"
+    "hono": "4.8.3"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250129.0",

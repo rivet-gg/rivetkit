@@ -23,8 +23,16 @@ import type { Registry } from "@/registry/mod";
 import type { RunConfig } from "@/registry/run-config";
 import { Hono } from "hono";
 import invariant from "invariant";
-import type { ActorPeer } from "./actor-peer";
+import { ActionContext } from "@/actor/action";
+import type { AnyConn } from "@/actor/connection";
+import { generateConnId, generateConnToken } from "@/actor/connection";
+import {
+	CONN_DRIVER_GENERIC_HTTP,
+	type GenericHttpDriverState,
+} from "@/topologies/common/generic-conn-driver";
+import { ActorPeer } from "./actor-peer";
 import type { RelayConn } from "./conn/mod";
+import { publishActionToLeader } from "./node/action";
 import { publishMessageToLeader } from "./node/message";
 import { Node } from "./node/mod";
 import { serveSse } from "./router/sse";
@@ -38,6 +46,8 @@ export interface GlobalState {
 	relayConns: Map<string, RelayConn>;
 	/** Resolvers for when a message is acknowledged by the peer. */
 	messageAckResolvers: Map<string, () => void>;
+	/** Resolvers for when an action response is received. */
+	actionResponseResolvers: Map<string, (result: { success: boolean; output?: unknown; error?: string }) => void>;
 }
 
 export class CoordinateTopology {
@@ -60,6 +70,7 @@ export class CoordinateTopology {
 			actorPeers: new Map(),
 			relayConns: new Map(),
 			messageAckResolvers: new Map(),
+			actionResponseResolvers: new Map(),
 		};
 
 		const node = new Node(CoordinateDriver, globalState);
@@ -97,8 +108,15 @@ export class CoordinateTopology {
 				);
 			},
 			onAction: async (opts: ActionOpts): Promise<ActionOutput> => {
-				// TODO:
-				throw new errors.InternalError("UNIMPLEMENTED");
+				return await publishActionToLeader(
+					registryConfig,
+					runConfig,
+					CoordinateDriver,
+					actorDriver,
+					this.inlineClient,
+					globalState,
+					opts,
+				);
 			},
 			onConnMessage: async (opts: ConnsMessageOpts): Promise<void> => {
 				await publishMessageToLeader(

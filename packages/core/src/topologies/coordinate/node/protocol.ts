@@ -50,6 +50,36 @@ export const ToLeaderMessageSchema = z.object({
 
 export type ToLeaderMessage = z.infer<typeof ToLeaderMessageSchema>;
 
+export const ToLeaderActionSchema = z.object({
+	// Request ID (to match with the response)
+	ri: z.string(),
+	// Actor ID
+	ai: z.string(),
+	// Action name
+	an: z.string(),
+	// Action arguments
+	aa: z.array(z.unknown()),
+	// Parameters
+	p: z.unknown(),
+	// Auth data
+	ad: z.unknown(),
+});
+
+export type ToLeaderAction = z.infer<typeof ToLeaderActionSchema>;
+
+export const ToFollowerActionResponseSchema = z.object({
+	// Request ID (to match with the request)
+	ri: z.string(),
+	// Success flag
+	s: z.boolean(),
+	// Output (if successful)
+	o: z.unknown().optional(),
+	// Error message (if failed)
+	e: z.string().optional(),
+});
+
+export type ToFollowerActionResponse = z.infer<typeof ToFollowerActionResponseSchema>;
+
 export const ToFollowerConnectionCloseSchema = z.object({
 	// Connection ID
 	ci: z.string(),
@@ -85,10 +115,12 @@ export const NodeMessageSchema = z.object({
 		z.object({ lco: ToLeaderConnectionOpenSchema }),
 		z.object({ lcc: ToLeaderConnectionCloseSchema }),
 		z.object({ lm: ToLeaderMessageSchema }),
+		z.object({ la: ToLeaderActionSchema }),
 
 		// Follower
 		z.object({ fcc: ToFollowerConnectionCloseSchema }),
 		z.object({ fm: ToFollowerMessageSchema }),
+		z.object({ far: ToFollowerActionResponseSchema }),
 	]),
 });
 

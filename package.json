@@ -29,7 +29,7 @@
     "react@^19": "^19.0.0",
     "react-dom@^19": "^19.0.0",
     "react@^18": "^18.3",
-    "hono": "^4.7.0"
+    "hono": "4.8.3"
   },
   "dependencies": {
     "@hono/node-server": "^1.14.4",

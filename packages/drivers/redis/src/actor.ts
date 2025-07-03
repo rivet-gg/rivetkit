@@ -29,7 +29,7 @@ export class RedisActorDriver implements ActorDriver {
 	async writePersistedData(actorId: string, data: Uint8Array): Promise<void> {
 		await this.#redis.set(
 			KEYS.ACTOR.persistedData(actorId),
-			JSON.stringify(data),
+			Buffer.from(data),
 		);
 	}
 

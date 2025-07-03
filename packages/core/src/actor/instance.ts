@@ -895,6 +895,13 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 	}
 
 	/**
+	 * Check if the actor is ready to handle requests.
+	 */
+	isReady(): boolean {
+		return this.#ready;
+	}
+
+	/**
 	 * Execute an action call from a client.
 	 *
 	 * This method handles:

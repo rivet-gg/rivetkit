@@ -1,4 +1,5 @@
 import { assertUnreachable } from "@/common/utils";
+import { ActionContext } from "@/actor/action";
 import { ActorPeer } from "../actor-peer";
 import {
 	CONN_DRIVER_COORDINATE_RELAY,
@@ -7,12 +8,15 @@ import {
 import type { CoordinateDriver } from "../driver";
 import { logger } from "../log";
 import type { GlobalState } from "../topology";
+import { CONN_DRIVER_GENERIC_HTTP, type GenericHttpDriverState } from "@/topologies/common/generic-conn-driver";
 import {
 	type Ack,
 	type NodeMessage,
 	NodeMessageSchema,
+	type ToFollowerActionResponse,
 	type ToFollowerConnectionClose,
 	type ToFollowerMessage,
+	type ToLeaderAction,
 	type ToLeaderConnectionClose,
 	type ToLeaderConnectionOpen,
 	type ToLeaderMessage,
@@ -82,10 +86,14 @@ export class Node {
 			await this.#onLeaderConnectionClose(data.b.lcc);
 		} else if ("lm" in data.b) {
 			await this.#onLeaderMessage(data.b.lm);
+		} else if ("la" in data.b) {
+			await this.#onLeaderAction(data.n, data.b.la);
 		} else if ("fcc" in data.b) {
 			await this.#onFollowerConnectionClose(data.b.fcc);
 		} else if ("fm" in data.b) {
 			await this.#onFollowerMessage(data.b.fm);
+		} else if ("far" in data.b) {
+			await this.#onFollowerActionResponse(data.b.far);
 		} else {
 			assertUnreachable(data.b);
 		}
@@ -240,5 +248,126 @@ export class Node {
 		}
 
 		conn.onMessage(message);
+	}
+
+	async #onLeaderAction(
+		nodeId: string | undefined,
+		{
+			ri: requestId,
+			ai: actorId,
+			an: actionName,
+			aa: actionArgs,
+			p: params,
+			ad: authData,
+		}: ToLeaderAction,
+	) {
+		if (!nodeId) {
+			logger().error("node id not provided for leader action");
+			return;
+		}
+
+		logger().debug("received action request", { actorId, actionName, requestId });
+
+		try {
+			const actor = ActorPeer.getLeaderActor(this.#globalState, actorId);
+			if (!actor) {
+				logger().warn("received action for nonexistent actor leader", {
+					actorId,
+				});
+				
+				// Send error response
+				const errorMessage: NodeMessage = {
+					b: {
+						far: {
+							ri: requestId,
+							s: false,
+							e: "Actor not found",
+						},
+					},
+				};
+				await this.#CoordinateDriver.publishToNode(nodeId, JSON.stringify(errorMessage));
+				return;
+			}
+
+			// Ensure the actor is ready before proceeding
+			if (!actor.isReady()) {
+				// Send error response
+				const errorMessage: NodeMessage = {
+					b: {
+						far: {
+							ri: requestId,
+							s: false,
+							e: "Actor not ready",
+						},
+					},
+				};
+				await this.#CoordinateDriver.publishToNode(nodeId, JSON.stringify(errorMessage));
+				return;
+			}
+
+			// Create temporary connection for the action (similar to other topologies)
+			const connState = await actor.prepareConn(params);
+			const conn = await actor.createConn(
+				crypto.randomUUID(), // temporary conn ID
+				crypto.randomUUID(), // temporary conn token
+				params,
+				connState,
+				CONN_DRIVER_GENERIC_HTTP,
+				{} satisfies GenericHttpDriverState,
+				authData,
+			);
+
+			try {
+				// Execute the action
+				const ctx = new ActionContext(actor.actorContext!, conn);
+				const output = await actor.executeAction(ctx, actionName, actionArgs);
+
+				// Send success response
+				const successMessage: NodeMessage = {
+					b: {
+						far: {
+							ri: requestId,
+							s: true,
+							o: output,
+						},
+					},
+				};
+				await this.#CoordinateDriver.publishToNode(nodeId, JSON.stringify(successMessage));
+			} finally {
+				// Clean up temporary connection
+				actor.__removeConn(conn);
+			}
+		} catch (error) {
+			logger().warn("failed to execute action", { error: `${error}` });
+
+			// Send error response
+			const errorMessage: NodeMessage = {
+				b: {
+					far: {
+						ri: requestId,
+						s: false,
+						e: error instanceof Error ? error.message : "Unknown error",
+					},
+				},
+			};
+			await this.#CoordinateDriver.publishToNode(nodeId, JSON.stringify(errorMessage));
+		}
+	}
+
+	async #onFollowerActionResponse({
+		ri: requestId,
+		s: success,
+		o: output,
+		e: error,
+	}: ToFollowerActionResponse) {
+		logger().debug("received action response", { requestId, success });
+
+		const resolver = this.#globalState.actionResponseResolvers.get(requestId);
+		if (resolver) {
+			resolver({ success, output, error });
+			this.#globalState.actionResponseResolvers.delete(requestId);
+		} else {
+			logger().warn("missing action response resolver", { requestId });
+		}
 	}
 }

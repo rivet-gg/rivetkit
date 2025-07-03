@@ -6,6 +6,7 @@ import type {
 	GetWithKeyInput,
 	ManagerDriver,
 } from "@rivetkit/core/driver-helpers";
+import { serializeEmptyPersistData } from "@rivetkit/core/driver-helpers";
 import { ActorAlreadyExists } from "@rivetkit/core/errors";
 import type Redis from "ioredis";
 import * as crypto from "node:crypto";
@@ -108,6 +109,12 @@ export class RedisManagerDriver implements ManagerDriver {
 		// Store basic actor information
 		pipeline.set(KEYS.ACTOR.initialized(actorId), "1");
 		pipeline.set(KEYS.ACTOR.metadata(actorId), JSON.stringify({ name, key }));
+
+		// Create initial persisted data with input
+		pipeline.set(
+			KEYS.ACTOR.persistedData(actorId),
+			Buffer.from(serializeEmptyPersistData(input)),
+		);
 
 		// Create direct lookup by name+key -> actorId
 		pipeline.set(actorKeyRedisKey, actorId);
