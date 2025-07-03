@@ -143,6 +143,7 @@ export async function createTestRuntime(
 	// Inject WebSocket
 	const nodeWebSocket = createNodeWebSocket({ app: topology.router });
 	upgradeWebSocket = nodeWebSocket.upgradeWebSocket;
+	injectWebSocket = nodeWebSocket.injectWebSocket;
 
 	// Start server
 	const port = await getPort();
@@ -152,7 +153,7 @@ export async function createTestRuntime(
 		port,
 	});
 	invariant(injectWebSocket !== undefined, "should have injectWebSocket");
-	nodeWebSocket.injectWebSocket(server);
+	injectWebSocket(server);
 	const endpoint = `http://127.0.0.1:${port}`;
 
 	// Cleanup
