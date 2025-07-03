@@ -19,7 +19,7 @@
 		"@cloudflare/vitest-pool-workers": "^0.6.4",
 		"typescript": "^5.5.2",
 		"vitest": "^3.1.1",
-		"wrangler": "^3.101.0"
+    "wrangler": "^4.22.0"
 	},
 	"dependencies": {
 		"content-security-policy-builder": "^2.3.0",

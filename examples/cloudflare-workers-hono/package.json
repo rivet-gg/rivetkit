@@ -15,7 +15,7 @@
     "@types/node": "^22.13.9",
     "tsx": "^3.12.7",
     "typescript": "^5.5.2",
-    "wrangler": "^3.0.0"
+    "wrangler": "^4.22.0"
   },
   "dependencies": {
     "@rivetkit/cloudflare-workers": "workspace:*",

@@ -108,6 +108,7 @@ async function setupProject(projectPath: string) {
 	await fs.mkdir(tmpDir, { recursive: true });
 
 	// Create package.json with workspace dependencies
+	const wranglerVersion = "^4.22.0";
 	const packageJson = {
 		name: "rivetkit-test",
 		private: true,
@@ -117,7 +118,7 @@ async function setupProject(projectPath: string) {
 			start: "wrangler dev",
 		},
 		dependencies: {
-			wrangler: "4.8.0",
+			wrangler: wranglerVersion,
 		},
 		packageManager:
 			"pnpm@10.7.1+sha512.2d92c86b7928dc8284f53494fb4201f983da65f0fb4f0d40baafa5cf628fa31dae3e5968f12466f17df7e97310e30f343a648baea1b9b350685dafafffdf5808",
@@ -130,29 +131,34 @@ async function setupProject(projectPath: string) {
 	// Create node_modules directory and copy necessary packages
 	const nodeModulesDir = path.join(tmpDir, "node_modules");
 	await fs.mkdir(nodeModulesDir, { recursive: true });
-	
+
 	// Copy the built packages from workspace
 	const workspaceRoot = path.resolve(__dirname, "../../../..");
 	const rivetKitDir = path.join(nodeModulesDir, "@rivetkit");
 	await fs.mkdir(rivetKitDir, { recursive: true });
-	
+
 	// Copy core package
 	const corePackagePath = path.join(workspaceRoot, "packages/core");
 	const targetCorePath = path.join(rivetKitDir, "core");
 	await fs.cp(corePackagePath, targetCorePath, { recursive: true });
-	
+
 	// Copy cloudflare-workers package
-	const cfPackagePath = path.join(workspaceRoot, "packages/platforms/cloudflare-workers");
+	const cfPackagePath = path.join(
+		workspaceRoot,
+		"packages/platforms/cloudflare-workers",
+	);
 	const targetCfPath = path.join(rivetKitDir, "cloudflare-workers");
 	await fs.cp(cfPackagePath, targetCfPath, { recursive: true });
-	
+
 	// Copy main rivetkit package
 	const mainPackagePath = path.join(workspaceRoot, "packages/rivetkit");
 	const targetMainPath = path.join(nodeModulesDir, "rivetkit");
 	await fs.cp(mainPackagePath, targetMainPath, { recursive: true });
-	
+
 	// Install wrangler only
-	await execPromise("pnpm install wrangler@4.8.0", { cwd: tmpDir });
+	await execPromise(`pnpm install wrangler@${wranglerVersion}`, {
+		cwd: tmpDir,
+	});
 
 	// Create a wrangler.json file
 	const wranglerConfig = {
