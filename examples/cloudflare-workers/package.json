@@ -12,12 +12,12 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250129.0",
     "@types/node": "^22.13.9",
-    "@rivetkit/actor": "workspace:*",
     "tsx": "^3.12.7",
     "typescript": "^5.5.2",
     "wrangler": "^3.0.0"
   },
   "dependencies": {
+    "@rivetkit/actor": "workspace:*",
     "@rivetkit/cloudflare-workers": "workspace:*"
   },
   "stableVersion": "0.8.0"

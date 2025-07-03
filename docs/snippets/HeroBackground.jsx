@@ -1,6 +1,27 @@
 import React, { useEffect, useRef, useState } from "react";
 
 export const HeroBackground = () => {
+  // Global state object to persist particle state across component mounts/unmounts
+  const getGlobalState = () => {
+    if (typeof window === 'undefined') return null;
+    
+    if (!window.heroBackgroundState) {
+      window.heroBackgroundState = {
+        particles: [],
+        activePulses: [],
+        mousePosition: { x: 0, y: 0 },
+        systemStartTime: 0,
+        isInitialized: false,
+        canvasWidth: 0,
+        canvasHeight: 0
+      };
+    }
+    
+    return window.heroBackgroundState;
+  };
+
+  const globalState = getGlobalState();
+
   // Configuration object for all particle behavior constants
   const PARTICLE_CONFIG = {
     // Particle appearance
@@ -171,13 +192,24 @@ export const HeroBackground = () => {
 
   const canvasRef = useRef(null);
   const wrapperRef = useRef(null);
-  const [particles, setParticles] = useState([]);
-  const [activePulses, setActivePulses] = useState([]);
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [systemStartTime, setSystemStartTime] = useState(0);
-  const [isVisible, setIsVisible] = useState(window.innerWidth >= 750);
+  const [particles, setParticles] = useState(globalState?.particles || []);
+  const [activePulses, setActivePulses] = useState(globalState?.activePulses || []);
+  const [mousePosition, setMousePosition] = useState(globalState?.mousePosition || { x: 0, y: 0 });
+  const [systemStartTime, setSystemStartTime] = useState(globalState?.systemStartTime || 0);
+  const [isVisible, setIsVisible] = useState(typeof window !== 'undefined' ? window.innerWidth >= 750 : true);
   const animationFrameRef = useRef(null);
   const lastFrameTimeRef = useRef(0);
+
+  // Sync component state with global state on mount
+  useEffect(() => {
+    const state = getGlobalState();
+    if (state?.isInitialized) {
+      setParticles(state.particles);
+      setActivePulses(state.activePulses);
+      setMousePosition(state.mousePosition);
+      setSystemStartTime(state.systemStartTime);
+    }
+  }, []);
 
   // Initialize the particle system
   useEffect(() => {
@@ -209,26 +241,45 @@ export const HeroBackground = () => {
     canvas.width = window.innerWidth - leftPadding - rightPadding;
     canvas.height = containerHeight;
 
-    // Create grid-based particles
-    const newParticles = createGridParticles(canvas, leftPadding, rightPadding);
-    setParticles(newParticles);
+    // Check if we need to initialize or if dimensions changed
+    const state = getGlobalState();
+    const dimensionsChanged = state ? (state.canvasWidth !== canvas.width || state.canvasHeight !== canvas.height) : true;
 
-    // Initialize timing
-    const startTime = performance.now();
-    setSystemStartTime(startTime);
+    if (!state?.isInitialized || dimensionsChanged) {
+      // Create grid-based particles
+      const newParticles = createGridParticles(canvas, leftPadding, rightPadding);
+      setParticles(newParticles);
+      if (state) state.particles = newParticles;
 
-    // Add immediate intro pulse that moves very fast
-    setActivePulses([{
-      startTime: startTime,
-      centerX: canvas.width / 2,
-      centerY: canvas.height / 2,
-      isIntro: true // Mark as intro pulse for different speed
-    }]);
+      // Initialize timing
+      const startTime = performance.now();
+      setSystemStartTime(startTime);
+      if (state) state.systemStartTime = startTime;
 
-    // Initialize mouse position to center of canvas
-    setMousePosition({ x: canvas.width / 2, y: canvas.height / 2 });
+      // Add immediate intro pulse that moves very fast
+      const initialPulses = [{
+        startTime: startTime,
+        centerX: canvas.width / 2,
+        centerY: canvas.height / 2,
+        isIntro: true // Mark as intro pulse for different speed
+      }];
+      setActivePulses(initialPulses);
+      if (state) state.activePulses = initialPulses;
 
-    lastFrameTimeRef.current = startTime;
+      // Initialize mouse position to center of canvas
+      const initialMousePos = { x: canvas.width / 2, y: canvas.height / 2 };
+      setMousePosition(initialMousePos);
+      if (state) state.mousePosition = initialMousePos;
+
+      // Update global state
+      if (state) {
+        state.isInitialized = true;
+        state.canvasWidth = canvas.width;
+        state.canvasHeight = canvas.height;
+      }
+    }
+
+    lastFrameTimeRef.current = performance.now();
 
     return () => {
       if (animationFrameRef.current) {
@@ -372,34 +423,45 @@ export const HeroBackground = () => {
       const pulseStartTime = systemStartTime + regularPulseStartDelay + (regularPulseIndex * PARTICLE_CONFIG.PULSE_LOOP_INTERVAL);
       
       const canvas = canvasRef.current;
-      setActivePulses(prev => [...prev, {
+      const newPulse = {
         startTime: pulseStartTime,
         centerX: canvas ? canvas.width / 2 : 0,
         centerY: canvas ? canvas.height / 2 : 0,
         isIntro: false
-      }]);
+      };
+      setActivePulses(prev => {
+        const updated = [...prev, newPulse];
+        const state = getGlobalState();
+        if (state) state.activePulses = updated;
+        return updated;
+      });
     }
     
     // Clean up pulses that are too old (beyond their effective range)
     const canvas = canvasRef.current;
     const maxCanvasDiagonal = canvas ? Math.sqrt(canvas.width ** 2 + canvas.height ** 2) : 1000;
     
-    setActivePulses(prev => prev.filter(pulse => {
-      let pulseSpeed, pulseDuration;
-      if (pulse.isIntro) {
-        pulseSpeed = PARTICLE_CONFIG.INTRO_PULSE_SPEED;
-        pulseDuration = PARTICLE_CONFIG.PULSE_DURATION;
-      } else if (pulse.isClick) {
-        pulseSpeed = PARTICLE_CONFIG.CLICK_PULSE_SPEED;
-        pulseDuration = PARTICLE_CONFIG.CLICK_PULSE_DURATION;
-      } else {
-        pulseSpeed = PARTICLE_CONFIG.PULSE_SPEED;
-        pulseDuration = PARTICLE_CONFIG.PULSE_DURATION;
-      }
-      
-      const maxPulseLifetime = (maxCanvasDiagonal / pulseSpeed * 1000) + pulseDuration;
-      return (currentTime - pulse.startTime) < maxPulseLifetime;
-    }));
+    setActivePulses(prev => {
+      const filtered = prev.filter(pulse => {
+        let pulseSpeed, pulseDuration;
+        if (pulse.isIntro) {
+          pulseSpeed = PARTICLE_CONFIG.INTRO_PULSE_SPEED;
+          pulseDuration = PARTICLE_CONFIG.PULSE_DURATION;
+        } else if (pulse.isClick) {
+          pulseSpeed = PARTICLE_CONFIG.CLICK_PULSE_SPEED;
+          pulseDuration = PARTICLE_CONFIG.CLICK_PULSE_DURATION;
+        } else {
+          pulseSpeed = PARTICLE_CONFIG.PULSE_SPEED;
+          pulseDuration = PARTICLE_CONFIG.PULSE_DURATION;
+        }
+        
+        const maxPulseLifetime = (maxCanvasDiagonal / pulseSpeed * 1000) + pulseDuration;
+        return (currentTime - pulse.startTime) < maxPulseLifetime;
+      });
+      const state = getGlobalState();
+      if (state) state.activePulses = filtered;
+      return filtered;
+    });
   };
 
   // Animation loop
@@ -457,10 +519,13 @@ export const HeroBackground = () => {
   const handleMouseMove = (e) => {
     if (wrapperRef.current) {
       const wrapperRect = wrapperRef.current.getBoundingClientRect();
-      setMousePosition({
+      const newMousePos = {
         x: e.clientX - wrapperRect.left,
         y: e.clientY - wrapperRect.top
-      });
+      };
+      setMousePosition(newMousePos);
+      const state = getGlobalState();
+      if (state) state.mousePosition = newMousePos;
     }
   };
 
@@ -477,12 +542,18 @@ export const HeroBackground = () => {
     }
     
     // Create a new click pulse at the mousedown position
-    setActivePulses(prev => [...prev, {
+    const newClickPulse = {
       startTime: performance.now(),
       centerX: clickX,
       centerY: clickY,
       isClick: true // Mark as click pulse for different behavior
-    }]);
+    };
+    setActivePulses(prev => {
+      const updated = [...prev, newClickPulse];
+      const state = getGlobalState();
+      if (state) state.activePulses = updated;
+      return updated;
+    });
   };
 
   // Set up global mouse event listeners
@@ -525,6 +596,12 @@ export const HeroBackground = () => {
         // Recreate grid particles for new dimensions
         const newParticles = createGridParticles(canvas, rootRect.left, window.innerWidth - rootRect.right);
         setParticles(newParticles);
+        const state = getGlobalState();
+        if (state) {
+          state.particles = newParticles;
+          state.canvasWidth = canvasWidth;
+          state.canvasHeight = canvasHeight;
+        }
       }
     };
 
