@@ -1,0 +1,44 @@
+{
+  "name": "@rivetkit/svelte",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "type": "module",
+  "keywords": [
+    "rivetkit",
+    "svelte",
+    "runes",
+    "frontend",
+    "ui"
+  ],
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "src/lib"
+  ],
+  "svelte": "./dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "svelte": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "svelte-package",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@rivetkit/framework-base": "workspace:*",
+    "@tanstack/store": "^0.7.1",
+    "@tanstack/svelte-store": "^0.7.1"
+  },
+  "peerDependencies": {
+    "svelte": "^5.0.0",
+    "@rivetkit/core": "*"
+  },
+  "devDependencies": {
+    "@rivetkit/core": "workspace:^",
+    "@sveltejs/kit": "^2.0.0",
+    "@sveltejs/package": "^2.0.0",
+    "typescript": "^5.5.2"
+  }
+} 
