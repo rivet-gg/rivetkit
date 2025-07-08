@@ -1,5 +1,9 @@
-import { assertUnreachable } from "@/common/utils";
 import { ActionContext } from "@/actor/action";
+import { assertUnreachable } from "@/common/utils";
+import {
+	CONN_DRIVER_GENERIC_HTTP,
+	type GenericHttpDriverState,
+} from "@/topologies/common/generic-conn-driver";
 import { ActorPeer } from "../actor-peer";
 import {
 	CONN_DRIVER_COORDINATE_RELAY,
@@ -8,7 +12,6 @@ import {
 import type { CoordinateDriver } from "../driver";
 import { logger } from "../log";
 import type { GlobalState } from "../topology";
-import { CONN_DRIVER_GENERIC_HTTP, type GenericHttpDriverState } from "@/topologies/common/generic-conn-driver";
 import {
 	type Ack,
 	type NodeMessage,
@@ -266,7 +269,11 @@ export class Node {
 			return;
 		}
 
-		logger().debug("received action request", { actorId, actionName, requestId });
+		logger().debug("received action request", {
+			actorId,
+			actionName,
+			requestId,
+		});
 
 		try {
 			const actor = ActorPeer.getLeaderActor(this.#globalState, actorId);
@@ -274,7 +281,7 @@ export class Node {
 				logger().warn("received action for nonexistent actor leader", {
 					actorId,
 				});
-				
+
 				// Send error response
 				const errorMessage: NodeMessage = {
 					b: {
@@ -285,7 +292,10 @@ export class Node {
 						},
 					},
 				};
-				await this.#CoordinateDriver.publishToNode(nodeId, JSON.stringify(errorMessage));
+				await this.#CoordinateDriver.publishToNode(
+					nodeId,
+					JSON.stringify(errorMessage),
+				);
 				return;
 			}
 
@@ -301,7 +311,10 @@ export class Node {
 						},
 					},
 				};
-				await this.#CoordinateDriver.publishToNode(nodeId, JSON.stringify(errorMessage));
+				await this.#CoordinateDriver.publishToNode(
+					nodeId,
+					JSON.stringify(errorMessage),
+				);
 				return;
 			}
 
@@ -332,7 +345,10 @@ export class Node {
 						},
 					},
 				};
-				await this.#CoordinateDriver.publishToNode(nodeId, JSON.stringify(successMessage));
+				await this.#CoordinateDriver.publishToNode(
+					nodeId,
+					JSON.stringify(successMessage),
+				);
 			} finally {
 				// Clean up temporary connection
 				actor.__removeConn(conn);
@@ -350,7 +366,10 @@ export class Node {
 					},
 				},
 			};
-			await this.#CoordinateDriver.publishToNode(nodeId, JSON.stringify(errorMessage));
+			await this.#CoordinateDriver.publishToNode(
+				nodeId,
+				JSON.stringify(errorMessage),
+			);
 		}
 	}
 

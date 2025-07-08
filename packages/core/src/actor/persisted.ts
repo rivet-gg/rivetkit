@@ -1,9 +1,9 @@
 /** State object that gets automatically persisted to storage. */
 export interface PersistedActor<S, CP, CS, I> {
 	// Input
-	i?: I,
+	i?: I;
 	// Has initialized
-	hi: boolean,
+	hi: boolean;
 	// State
 	s: S;
 	// Connections

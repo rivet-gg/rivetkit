@@ -1,5 +1,5 @@
-import { RunConfigSchema } from "@/registry/run-config";
 import { z } from "zod";
+import { RunConfigSchema } from "@/registry/run-config";
 
 export const ConfigSchema = RunConfigSchema.removeDefault()
 	.extend({

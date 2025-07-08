@@ -1,9 +1,9 @@
+import type { Context as HonoContext } from "hono";
 import type { AuthIntent } from "@/actor/config";
 import type { AnyActorDefinition } from "@/actor/definition";
 import * as errors from "@/actor/errors";
 import type { RegistryConfig } from "@/registry/config";
 import { stringifyError } from "@/utils";
-import type { Context as HonoContext } from "hono";
 import type { ManagerDriver } from "./driver";
 import { logger } from "./log";
 import type { ActorQuery } from "./protocol/query";

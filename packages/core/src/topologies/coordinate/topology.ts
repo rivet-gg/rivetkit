@@ -1,14 +1,15 @@
 import * as events from "node:events";
+import { Hono } from "hono";
+import invariant from "invariant";
 import type { ConnRoutingHandler } from "@/actor/conn-routing-handler";
-import * as errors from "@/actor/errors";
 import type {
 	ActionOpts,
 	ActionOutput,
+	ConnectionHandlers,
 	ConnectSseOpts,
 	ConnectSseOutput,
 	ConnectWebSocketOpts,
 	ConnectWebSocketOutput,
-	ConnectionHandlers,
 	ConnsMessageOpts,
 } from "@/actor/router-endpoints";
 import {
@@ -21,16 +22,7 @@ import { createManagerRouter } from "@/manager/router";
 import type { RegistryConfig } from "@/registry/config";
 import type { Registry } from "@/registry/mod";
 import type { RunConfig } from "@/registry/run-config";
-import { Hono } from "hono";
-import invariant from "invariant";
-import { ActionContext } from "@/actor/action";
-import type { AnyConn } from "@/actor/connection";
-import { generateConnId, generateConnToken } from "@/actor/connection";
-import {
-	CONN_DRIVER_GENERIC_HTTP,
-	type GenericHttpDriverState,
-} from "@/topologies/common/generic-conn-driver";
-import { ActorPeer } from "./actor-peer";
+import type { ActorPeer } from "./actor-peer";
 import type { RelayConn } from "./conn/mod";
 import { publishActionToLeader } from "./node/action";
 import { publishMessageToLeader } from "./node/message";
@@ -47,7 +39,10 @@ export interface GlobalState {
 	/** Resolvers for when a message is acknowledged by the peer. */
 	messageAckResolvers: Map<string, () => void>;
 	/** Resolvers for when an action response is received. */
-	actionResponseResolvers: Map<string, (result: { success: boolean; output?: unknown; error?: string }) => void>;
+	actionResponseResolvers: Map<
+		string,
+		(result: { success: boolean; output?: unknown; error?: string }) => void
+	>;
 }
 
 export class CoordinateTopology {

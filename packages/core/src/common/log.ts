@@ -5,7 +5,7 @@ import {
 	type LogLevel,
 	LogLevels,
 } from "./log-levels";
-import { type LogEntry, castToLogValue, stringify } from "./logfmt";
+import { castToLogValue, type LogEntry, stringify } from "./logfmt";
 
 interface LogRecord {
 	args: unknown[];

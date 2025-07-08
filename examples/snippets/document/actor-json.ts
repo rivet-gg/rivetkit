@@ -1,43 +1,43 @@
 import { actor } from "@rivetkit/actor";
 
-export type Cursor = { x: number, y: number, userId: string };
+export type Cursor = { x: number; y: number; userId: string };
 
 const document = actor({
-  state: {
-    text: "",
-    cursors: {} as Record<string, Cursor>,
-  },
+	state: {
+		text: "",
+		cursors: {} as Record<string, Cursor>,
+	},
 
-  actions: {
-    getText: (c) => c.state.text,
+	actions: {
+		getText: (c) => c.state.text,
 
-    // Update the document (real use case has better conflict resolution)
-    setText: (c, text: string) => {
-      // Save document state
-      c.state.text = text;
-      
-      // Broadcast update
-      c.broadcast("textUpdated", {
-        text,
-        userId: c.conn.id
-      });
-    },
+		// Update the document (real use case has better conflict resolution)
+		setText: (c, text: string) => {
+			// Save document state
+			c.state.text = text;
 
-    getCursors: (c) => c.state.cursors,
-    
-    updateCursor: (c, x: number, y: number) => {
-      // Update user location
-      const userId = c.conn.id;
-      c.state.cursors[userId] = { x, y, userId };
-      
-      // Broadcast location
-      c.broadcast("cursorUpdated", {
-        userId,
-        x, 
-        y
-      });
-    },
-  }
+			// Broadcast update
+			c.broadcast("textUpdated", {
+				text,
+				userId: c.conn.id,
+			});
+		},
+
+		getCursors: (c) => c.state.cursors,
+
+		updateCursor: (c, x: number, y: number) => {
+			// Update user location
+			const userId = c.conn.id;
+			c.state.cursors[userId] = { x, y, userId };
+
+			// Broadcast location
+			c.broadcast("cursorUpdated", {
+				userId,
+				x,
+				y,
+			});
+		},
+	},
 });
 
 export default document;

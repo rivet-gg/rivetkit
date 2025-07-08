@@ -1,6 +1,8 @@
+import * as crypto from "node:crypto";
+import type { Registry } from "@rivetkit/core";
 import type {
-	CreateInput,
 	ActorOutput,
+	CreateInput,
 	GetForIdInput,
 	GetOrCreateWithKeyInput,
 	GetWithKeyInput,
@@ -9,9 +11,7 @@ import type {
 import { serializeEmptyPersistData } from "@rivetkit/core/driver-helpers";
 import { ActorAlreadyExists } from "@rivetkit/core/errors";
 import type Redis from "ioredis";
-import * as crypto from "node:crypto";
 import { KEYS } from "./keys";
-import type { Registry } from "@rivetkit/core";
 
 interface Actor {
 	id: string;

@@ -1,13 +1,17 @@
-import { registry } from "./registry";
-import { RedisActorDriver, RedisManagerDriver, RedisCoordinateDriver } from "@rivetkit/redis";
+import {
+	RedisActorDriver,
+	RedisCoordinateDriver,
+	RedisManagerDriver,
+} from "@rivetkit/redis";
 import Redis from "ioredis";
+import { registry } from "./registry";
 
 // Configure Redis connection
 const redisClient = new Redis({
 	host: process.env.REDIS_HOST || "localhost",
-	port: parseInt(process.env.REDIS_PORT || "6379"),
+	port: Number.parseInt(process.env.REDIS_PORT || "6379"),
 	password: process.env.REDIS_PASSWORD,
-	db: parseInt(process.env.REDIS_DB || "0"),
+	db: Number.parseInt(process.env.REDIS_DB || "0"),
 });
 
 // Handle Redis connection events
@@ -29,4 +33,6 @@ registry.runServer({
 	},
 });
 
-console.log("RivetKit server with Redis backend started on http://localhost:8088");
+console.log(
+	"RivetKit server with Redis backend started on http://localhost:8088",
+);

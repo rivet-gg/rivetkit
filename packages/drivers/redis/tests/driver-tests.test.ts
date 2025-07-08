@@ -1,17 +1,17 @@
 import { join } from "node:path";
 import {
-	runDriverTests,
 	createTestRuntime,
+	runDriverTests,
 } from "@rivetkit/core/driver-test-suite";
+import { getPort } from "@rivetkit/core/test";
+import Redis from "ioredis";
+import { expect, test } from "vitest";
+import { $ } from "zx";
 import {
 	RedisActorDriver,
 	RedisCoordinateDriver,
 	RedisManagerDriver,
 } from "../src/mod";
-import Redis from "ioredis";
-import { $ } from "zx";
-import { expect, test } from "vitest";
-import { getPort } from "@rivetkit/core/test";
 
 async function startValkeyContainer(): Promise<{
 	port: number;

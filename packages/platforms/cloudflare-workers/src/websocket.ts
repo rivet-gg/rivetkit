@@ -2,8 +2,8 @@
 //
 // This version calls the open event by default
 
-import { WSContext, defineWebSocketHelper } from "hono/ws";
 import type { UpgradeWebSocket, WSEvents, WSReadyState } from "hono/ws";
+import { defineWebSocketHelper, WSContext } from "hono/ws";
 
 // Based on https://github.com/honojs/hono/issues/1153#issuecomment-1767321332
 export const upgradeWebSocket: UpgradeWebSocket<

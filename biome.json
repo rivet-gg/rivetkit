@@ -1,17 +1,12 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.1.1/schema.json",
   "files": {
-    "ignore": [
-      "**/node_modules/**",
-      "**/dist/**",
-      "**/build/**",
-      "**/coverage/**",
-      "**/tmp",
-      "**/.turbo/**",
-      "**/generated/**",
-      "*.gen.*",
-      "**/.next/**",
-      "docs/**"
+    "includes": [
+      "**/*.json",
+      "**/*.ts",
+      "**/*.js",
+      "!docs/**",
+      "!examples/snippets/**"
     ],
     "ignoreUnknown": true
   },
@@ -25,7 +20,6 @@
     "enabled": true,
     "useEditorconfig": true
   },
-  "organizeImports": { "enabled": true },
   "linter": {
     "enabled": true,
     "rules": {
@@ -35,35 +29,10 @@
       },
       "correctness": {
         "noUnusedImports": "warn"
+      },
+      "suspicious": {
+        "noExplicitAny": "off"
       }
     }
-  },
-  "overrides": [
-    {
-      "include": ["site/**/*.css"],
-      "linter": {
-        "rules": {
-          "correctness": {
-            "noInvalidPositionAtImportRule": "off",
-            "noUnknownFunction": "off"
-          }
-        }
-      }
-    },
-    {
-      "include": ["site/**/*.js*"],
-      "linter": {
-        "enabled": false
-      }
-    },
-    {
-      "include": [
-        "sdks/actor/bridge/**/lib/**/*",
-        "sdks/**/bridge_types/**/lib/**/*"
-      ],
-      "linter": {
-        "enabled": false
-      }
-    }
-  ]
+  }
 }

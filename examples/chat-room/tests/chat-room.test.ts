@@ -1,5 +1,5 @@
-import { test, expect } from "vitest";
 import { setupTest } from "@rivetkit/actor/test";
+import { expect, test } from "vitest";
 import { registry } from "../src/registry";
 
 test("chat room should handle messages", async (test) => {

@@ -1,10 +1,10 @@
-import { runDriverTests } from "@rivetkit/core/driver-test-suite";
-import fs from "node:fs/promises";
-import path from "node:path";
-import os from "node:os";
-import { spawn, exec } from "node:child_process";
+import { exec, spawn } from "node:child_process";
 import crypto from "node:crypto";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { promisify } from "node:util";
+import { runDriverTests } from "@rivetkit/core/driver-test-suite";
 import { getPort } from "@rivetkit/core/test";
 
 const execPromise = promisify(exec);
@@ -99,7 +99,7 @@ runDriverTests({
 	},
 });
 
-let setupProjectOnce: Promise<string> | undefined = undefined;
+let setupProjectOnce: Promise<string> | undefined;
 
 async function setupProject(projectPath: string) {
 	// Create a temporary directory for the test

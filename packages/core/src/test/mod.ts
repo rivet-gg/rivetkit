@@ -1,17 +1,15 @@
 import { createServer } from "node:net";
+import { serve as honoServe, type ServerType } from "@hono/node-server";
+import { createNodeWebSocket } from "@hono/node-ws";
+import { type TestContext, vi } from "vitest";
 import { type Client, createClient } from "@/client/mod";
+import { createMemoryDriver } from "@/drivers/memory/mod";
 import { type Registry, StandaloneTopology } from "@/mod";
 import { RunConfigSchema } from "@/registry/run-config";
 import { CoordinateTopology } from "@/topologies/coordinate/mod";
 import { assertUnreachable } from "@/utils";
-import { type ServerType, serve as honoServe } from "@hono/node-server";
-import { type NodeWebSocket, createNodeWebSocket } from "@hono/node-ws";
-import type { Hono } from "hono";
-import { type TestContext, vi } from "vitest";
 import { ConfigSchema, type InputConfig } from "./config";
 import { logger } from "./log";
-import { createMemoryDriver } from "@/drivers/memory/mod";
-import { upgradeWebSocket } from "hono/deno";
 
 function serve(registry: Registry<any>, inputConfig?: InputConfig): ServerType {
 	const config = ConfigSchema.parse(inputConfig);
@@ -21,14 +19,14 @@ function serve(registry: Registry<any>, inputConfig?: InputConfig): ServerType {
 		config.driver = createMemoryDriver();
 	}
 
-	let upgradeWebSocket = undefined;
+	let upgradeWebSocket: any;
 	if (!config.getUpgradeWebSocket) {
 		config.getUpgradeWebSocket = () => upgradeWebSocket!;
 	}
 
 	// Setup topology
 	const runConfig = RunConfigSchema.parse(inputConfig);
-	let topology;
+	let topology: StandaloneTopology | CoordinateTopology;
 	if (config.driver.topology === "standalone") {
 		topology = new StandaloneTopology(registry.config, runConfig);
 	} else if (config.driver.topology === "partition") {

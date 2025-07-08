@@ -1,14 +1,14 @@
 import { DurableObject } from "cloudflare:workers";
-import type { Registry, RunConfig, ActorKey } from "@rivetkit/core";
+import type { ActorKey, Registry, RunConfig } from "@rivetkit/core";
 import { serializeEmptyPersistData } from "@rivetkit/core/driver-helpers";
-import { logger } from "./log";
 import { PartitionTopologyActor } from "@rivetkit/core/topologies/partition";
+import type { ExecutionContext } from "hono";
 import {
-	CloudflareDurableObjectGlobalState,
 	CloudflareActorsActorDriver,
+	CloudflareDurableObjectGlobalState,
 } from "./actor-driver";
-import { Bindings, CF_AMBIENT_ENV } from "./handler";
-import { ExecutionContext } from "hono";
+import { type Bindings, CF_AMBIENT_ENV } from "./handler";
+import { logger } from "./log";
 
 export const KEYS = {
 	NAME: "rivetkit:name",

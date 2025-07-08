@@ -1,5 +1,5 @@
-import { assertUnreachable } from "@/utils";
 import invariant from "invariant";
+import { assertUnreachable } from "@/utils";
 import {
 	type RivetActor,
 	type RivetClientConfig,

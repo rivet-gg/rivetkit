@@ -1,5 +1,5 @@
-import { logger } from "@/client/log";
 import type { EventSource } from "eventsource";
+import { logger } from "@/client/log";
 
 // Global singleton promise that will be reused for subsequent calls
 let eventSourcePromise: Promise<typeof EventSource> | null = null;

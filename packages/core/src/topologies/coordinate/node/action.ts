@@ -1,14 +1,14 @@
-import type { ActionOpts, ActionOutput } from "@/actor/router-endpoints";
-import * as errors from "@/actor/errors";
-import type { RegistryConfig } from "@/registry/config";
-import type { RunConfig } from "@/registry/run-config";
-import type { GlobalState } from "../topology";
-import type { CoordinateDriver } from "../driver";
-import { ActorPeer } from "../actor-peer";
-import { publishMessageToLeader } from "./message";
 import type { ActorDriver } from "@/actor/driver";
+import * as errors from "@/actor/errors";
+import type { ActionOpts, ActionOutput } from "@/actor/router-endpoints";
 import type { Client } from "@/client/client";
+import type { RegistryConfig } from "@/registry/config";
 import type { Registry } from "@/registry/mod";
+import type { RunConfig } from "@/registry/run-config";
+import { ActorPeer } from "../actor-peer";
+import type { CoordinateDriver } from "../driver";
+import type { GlobalState } from "../topology";
+import { publishMessageToLeader } from "./message";
 
 /**
  * Publishes an action to the leader and waits for the response.
@@ -52,8 +52,12 @@ export async function publishActionToLeader(
 		promise: responsePromise,
 		resolve: responseResolve,
 		reject: responseReject,
-	} = Promise.withResolvers<{ success: boolean; output?: unknown; error?: string }>();
-	
+	} = Promise.withResolvers<{
+		success: boolean;
+		output?: unknown;
+		error?: string;
+	}>();
+
 	globalState.actionResponseResolvers.set(requestId, responseResolve);
 
 	// Set up timeout - use a longer timeout for coordinate topology since

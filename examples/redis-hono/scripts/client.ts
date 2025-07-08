@@ -1,6 +1,6 @@
 async function testAPI() {
 	const baseUrl = "http://localhost:8088";
-	
+
 	console.log("Redis + Hono Example Client");
 	console.log("===========================");
 
@@ -13,7 +13,7 @@ async function testAPI() {
 
 		// Test counter API
 		console.log("\n2. Testing counter API...");
-		
+
 		// Increment counter
 		console.log("Incrementing counter 'demo' by 5...");
 		const incrementResponse = await fetch(`${baseUrl}/counter/demo/increment`, {
@@ -32,10 +32,10 @@ async function testAPI() {
 
 		// Test chat API
 		console.log("\n3. Testing chat API...");
-		
+
 		// Send messages
 		console.log("Sending messages to chat room 'general'...");
-		
+
 		const messages = [
 			{ user: "Alice", text: "Hello everyone!" },
 			{ user: "Bob", text: "Hi Alice! How are you?" },
@@ -48,31 +48,36 @@ async function testAPI() {
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify(message),
 			});
-			const messageResult = await messageResponse.json() as { message: any };
+			const messageResult = (await messageResponse.json()) as { message: any };
 			console.log(`Sent message from ${message.user}:`, messageResult.message);
 		}
 
 		// Get messages
 		console.log("\nGetting all messages...");
 		const messagesResponse = await fetch(`${baseUrl}/chat/general/messages`);
-		const messagesResult = await messagesResponse.json() as { messages: any[] };
+		const messagesResult = (await messagesResponse.json()) as {
+			messages: any[];
+		};
 		console.log("Messages:", messagesResult.messages);
 
 		// Test multiple counters
 		console.log("\n4. Testing multiple counters...");
-		
+
 		const counters = ["counter1", "counter2", "counter3"];
 		for (let i = 0; i < counters.length; i++) {
 			const counter = counters[i];
 			const amount = (i + 1) * 10;
-			
+
 			const response = await fetch(`${baseUrl}/counter/${counter}/increment`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ amount }),
 			});
-			const result = await response.json() as { count: number };
-			console.log(`Counter '${counter}' incremented by ${amount}:`, result.count);
+			const result = (await response.json()) as { count: number };
+			console.log(
+				`Counter '${counter}' incremented by ${amount}:`,
+				result.count,
+			);
 		}
 
 		// Reset a counter
@@ -87,9 +92,10 @@ async function testAPI() {
 		console.log("\nTry these curl commands:");
 		console.log(`curl ${baseUrl}`);
 		console.log(`curl ${baseUrl}/health`);
-		console.log(`curl -X POST ${baseUrl}/counter/test/increment -H 'Content-Type: application/json' -d '{"amount": 5}'`);
+		console.log(
+			`curl -X POST ${baseUrl}/counter/test/increment -H 'Content-Type: application/json' -d '{"amount": 5}'`,
+		);
 		console.log(`curl ${baseUrl}/counter/test`);
-
 	} catch (error) {
 		console.error("❌ Error testing API:", error);
 		console.log("\nMake sure the server is running with: npm run dev");

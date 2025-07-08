@@ -1,11 +1,11 @@
-import { Derived, Effect, Store, type Updater } from "@tanstack/store";
 import type { AnyActorDefinition, Registry } from "@rivetkit/core";
 import type {
-	Client,
-	ExtractActorsFromRegistry,
 	ActorConn,
 	ActorHandle,
+	Client,
+	ExtractActorsFromRegistry,
 } from "@rivetkit/core/client";
+import { Derived, Effect, Store, type Updater } from "@tanstack/store";
 
 // biome-ignore lint/suspicious/noExplicitAny: its a generic actor registry
 export type AnyActorRegistry = Registry<any>;

@@ -5,11 +5,11 @@ import type { Client } from "@/client/client";
 import type { Registry } from "@/mod";
 import type { RegistryConfig } from "@/registry/config";
 import type { RunConfig } from "@/registry/run-config";
-import type { GlobalState } from "@/topologies/coordinate/topology";
 import {
-	GenericConnGlobalState,
 	createGenericConnDrivers,
+	GenericConnGlobalState,
 } from "@/topologies/common/generic-conn-driver";
+import type { GlobalState } from "@/topologies/coordinate/topology";
 import {
 	CONN_DRIVER_COORDINATE_RELAY,
 	createCoordinateRelayDriver,

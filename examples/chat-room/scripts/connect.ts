@@ -4,7 +4,9 @@ import type { Registry } from "../actors/registry";
 
 async function main() {
 	// Create type-aware client
-	const client = createClient<Registry>(process.env.ENDPOINT ?? "http://localhost:8080");
+	const client = createClient<Registry>(
+		process.env.ENDPOINT ?? "http://localhost:8080",
+	);
 
 	// connect to chat room - now accessed via property
 	const chatRoom = client.chatRoom.getOrCreate().connect();

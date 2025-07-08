@@ -1,3 +1,5 @@
+import type { Hono } from "hono";
+import invariant from "invariant";
 import {
 	type Client,
 	type ClientDriver,
@@ -6,8 +8,6 @@ import {
 import { PartitionTopologyActor, PartitionTopologyManager } from "@/mod";
 import { StandaloneTopology } from "@/topologies/standalone/mod";
 import { assertUnreachable } from "@/utils";
-import type { Hono } from "hono";
-import invariant from "invariant";
 import {
 	type RegistryActors,
 	type RegistryConfig,
@@ -53,7 +53,7 @@ export class Registry<A extends RegistryActors> {
 		const config = RunConfigSchema.parse(inputConfig);
 
 		// Configure getUpgradeWebSocket lazily so we can assign it in crossPlatformServe
-		let upgradeWebSocket = undefined;
+		let upgradeWebSocket: any;
 		if (!config.getUpgradeWebSocket) {
 			config.getUpgradeWebSocket = () => upgradeWebSocket!;
 		}
@@ -106,7 +106,7 @@ export class Registry<A extends RegistryActors> {
 		const config = RunConfigSchema.parse(inputConfig);
 
 		// Configure getUpgradeWebSocket lazily so we can assign it in crossPlatformServe
-		let upgradeWebSocket = undefined;
+		let upgradeWebSocket: any;
 		if (!config.getUpgradeWebSocket) {
 			config.getUpgradeWebSocket = () => upgradeWebSocket!;
 		}

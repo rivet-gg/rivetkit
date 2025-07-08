@@ -1,3 +1,7 @@
+import * as cbor from "cbor-x";
+import type { EventSource } from "eventsource";
+import type { Context as HonoContext } from "hono";
+import type { WebSocket } from "ws";
 import type * as wsToServer from "@/actor/protocol/message/to-server";
 import type { Encoding } from "@/actor/protocol/serde";
 import { assertUnreachable } from "@/actor/utils";
@@ -10,10 +14,6 @@ import type {
 	TestInlineDriverCallRequest,
 	TestInlineDriverCallResponse,
 } from "@/manager/router";
-import * as cbor from "cbor-x";
-import type { EventSource } from "eventsource";
-import type { Context as HonoContext } from "hono";
-import type { WebSocket } from "ws";
 import { logger } from "./log";
 
 /**

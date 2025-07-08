@@ -1,12 +1,13 @@
+import { Hono, type Context as HonoContext } from "hono";
 import { EncodingSchema } from "@/actor/protocol/serde";
 import {
 	type ActionOpts,
 	type ActionOutput,
+	type ConnectionHandlers,
 	type ConnectSseOpts,
 	type ConnectSseOutput,
 	type ConnectWebSocketOpts,
 	type ConnectWebSocketOutput,
-	type ConnectionHandlers,
 	type ConnsMessageOpts,
 	HEADER_AUTH_DATA,
 	HEADER_CONN_ID,
@@ -23,11 +24,10 @@ import {
 	handleRouteNotFound,
 	loggerMiddleware,
 } from "@/common/router";
+import { noopNext } from "@/common/utils";
 import type { RegistryConfig } from "@/registry/config";
 import type { RunConfig } from "@/registry/run-config";
-import { Hono, type Context as HonoContext } from "hono";
 import { logger } from "./log";
-import { noopNext } from "@/common/utils";
 
 export type {
 	ConnectWebSocketOpts,
@@ -74,7 +74,7 @@ export function createActorRouter(
 	const handlers = handler.connectionHandlers;
 
 	router.get("/connect/websocket", async (c) => {
-		let upgradeWebSocket = runConfig.getUpgradeWebSocket?.();
+		const upgradeWebSocket = runConfig.getUpgradeWebSocket?.();
 		if (upgradeWebSocket) {
 			return upgradeWebSocket(async (c) => {
 				const actorId = await handler.getActorId();
@@ -114,7 +114,7 @@ export function createActorRouter(
 		const actorId = await handler.getActorId();
 
 		const authDataRaw = c.req.header(HEADER_AUTH_DATA);
-		let authData: unknown = undefined;
+		let authData: unknown;
 		if (authDataRaw) {
 			authData = JSON.parse(authDataRaw);
 		}
@@ -137,7 +137,7 @@ export function createActorRouter(
 		const actorId = await handler.getActorId();
 
 		const authDataRaw = c.req.header(HEADER_AUTH_DATA);
-		let authData: unknown = undefined;
+		let authData: unknown;
 		if (authDataRaw) {
 			authData = JSON.parse(authDataRaw);
 		}

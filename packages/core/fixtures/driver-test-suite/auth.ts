@@ -1,4 +1,4 @@
-import { UserError, actor } from "@rivetkit/core";
+import { actor, UserError } from "@rivetkit/core";
 
 // Basic auth actor - requires API key
 export const authActor = actor({

@@ -1,12 +1,13 @@
-export { assertUnreachable } from "./common/utils";
 export { stringifyError } from "@/common/utils";
+export { assertUnreachable } from "./common/utils";
+
 import type { Context as HonoContext, Handler as HonoHandler } from "hono";
 
 import pkgJson from "../package.json" with { type: "json" };
 
 export const VERSION = pkgJson.version;
 
-let _userAgent: string | undefined = undefined;
+let _userAgent: string | undefined;
 
 export function httpUserAgent(): string {
 	// Return cached value if already initialized

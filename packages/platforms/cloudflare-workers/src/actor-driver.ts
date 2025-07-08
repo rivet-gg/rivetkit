@@ -1,6 +1,9 @@
-import type { ActorDriver, AnyActorInstance } from "@rivetkit/core/driver-helpers";
+import type {
+	ActorDriver,
+	AnyActorInstance,
+} from "@rivetkit/core/driver-helpers";
 import invariant from "invariant";
-import { KEYS } from  "./actor-handler-do";
+import { KEYS } from "./actor-handler-do";
 
 interface DurableObjectGlobalState {
 	ctx: DurableObjectState;

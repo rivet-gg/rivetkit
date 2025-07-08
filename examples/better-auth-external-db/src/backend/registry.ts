@@ -1,4 +1,4 @@
-import { actor, setup, type OnAuthOptions } from "@rivetkit/actor";
+import { actor, type OnAuthOptions, setup } from "@rivetkit/actor";
 import { Unauthorized } from "@rivetkit/actor/errors";
 import { auth } from "./auth";
 
@@ -13,15 +13,6 @@ interface Message {
 	message: string;
 	timestamp: number;
 }
-
-
-
-
-
-
-
-
-
 
 export const chatRoom = actor({
 	// onAuth runs on the server & before connecting to the actor
@@ -62,17 +53,6 @@ export const chatRoom = actor({
 		},
 	},
 });
-
-
-
-
-
-
-
-
-
-
-
 
 export const registry = setup({
 	use: { chatRoom },

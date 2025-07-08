@@ -2,12 +2,10 @@ import * as fs from "node:fs/promises";
 import { resolve } from "node:path";
 import type { ConnectionHandlers } from "@/actor/router-endpoints";
 import type { ClientDriver } from "@/client/client";
+import { createMemoryDriver } from "@/drivers/memory/mod";
 import { createManagerRouter } from "@/manager/router";
 import { type RegistryConfig, RegistryConfigSchema, setup } from "@/mod";
 import { type RunConfig, RunConfigSchema } from "@/registry/run-config";
-import {
-    createMemoryDriver,
-} from "@/drivers/memory/mod";
 import { VERSION } from "@/utils";
 
 function main() {

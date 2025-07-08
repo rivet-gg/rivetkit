@@ -1,3 +1,6 @@
+import * as cbor from "cbor-x";
+import type { Hono } from "hono";
+import invariant from "invariant";
 import type { ConnRoutingHandler } from "@/actor/conn-routing-handler";
 import { ActorAlreadyExists, InternalError } from "@/actor/errors";
 import type {
@@ -10,8 +13,6 @@ import type {
 } from "@/driver-helpers/mod";
 import type { RegistryConfig } from "@/registry/mod";
 import { getEnvUniversal } from "@/utils";
-import type { Hono } from "hono";
-import invariant from "invariant";
 import {
 	flushCache,
 	getActorMeta,
@@ -26,7 +27,6 @@ import {
 	rivetRequest,
 } from "./rivet-client";
 import { convertKeyToRivetTags } from "./util";
-import * as cbor from "cbor-x";
 
 export interface ActorState {
 	key: string[];

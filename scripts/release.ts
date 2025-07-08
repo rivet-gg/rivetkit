@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 import * as semver from "semver";
-import { $, chalk, argv } from "zx";
+import { $, argv, chalk } from "zx";
 
 async function main() {
 	// Clean the workspace first

@@ -1,3 +1,6 @@
+import type { EventSource } from "eventsource";
+import type { Context as HonoContext } from "hono";
+import type { WebSocket } from "ws";
 import type { ActionRequest } from "@/actor/protocol/http/action";
 import type * as protoHttpResolve from "@/actor/protocol/http/resolve";
 import type { ActionResponse } from "@/actor/protocol/message/to-client";
@@ -15,9 +18,6 @@ import { importEventSource } from "@/common/eventsource";
 import { importWebSocket } from "@/common/websocket";
 import type { ActorQuery } from "@/manager/protocol/query";
 import { assertUnreachable, httpUserAgent } from "@/utils";
-import type { EventSource } from "eventsource";
-import type { Context as HonoContext } from "hono";
-import type { WebSocket } from "ws";
 import type { ClientDriver } from "./client";
 import * as errors from "./errors";
 import { logger } from "./log";

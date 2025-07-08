@@ -1,7 +1,7 @@
+import type { Env, Hono, Context as HonoContext } from "hono";
 import type { ConnRoutingHandler } from "@/actor/conn-routing-handler";
 import type { ActorKey } from "@/actor/mod";
 import type { RegistryConfig } from "@/registry/config";
-import type { Env, Hono, Context as HonoContext } from "hono";
 
 export interface ManagerDriver {
 	getForId(input: GetForIdInput): Promise<ActorOutput | undefined>;

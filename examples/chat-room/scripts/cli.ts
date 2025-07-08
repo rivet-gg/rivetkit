@@ -1,6 +1,6 @@
 import { createClient } from "@rivetkit/actor/client";
-import type { Registry } from "../actors/registry";
 import prompts from "prompts";
+import type { Registry } from "../actors/registry";
 
 async function main() {
 	const { username, room } = await initPrompt();

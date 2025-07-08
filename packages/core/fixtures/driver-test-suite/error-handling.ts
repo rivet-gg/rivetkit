@@ -1,4 +1,4 @@
-import { UserError, actor } from "@rivetkit/core";
+import { actor, UserError } from "@rivetkit/core";
 
 export const errorHandlingActor = actor({
 	onAuth: () => {},

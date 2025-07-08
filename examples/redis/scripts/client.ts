@@ -1,5 +1,5 @@
 import { createClient } from "@rivetkit/actor/client";
-import { registry } from "../src/registry";
+import type { registry } from "../src/registry";
 
 const client = createClient<typeof registry>("http://localhost:8088");
 

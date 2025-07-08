@@ -1,14 +1,18 @@
-import { registry } from "./registry";
-import { RedisActorDriver, RedisManagerDriver, RedisCoordinateDriver } from "@rivetkit/redis";
+import {
+	RedisActorDriver,
+	RedisCoordinateDriver,
+	RedisManagerDriver,
+} from "@rivetkit/redis";
 import { Hono } from "hono";
 import Redis from "ioredis";
+import { registry } from "./registry";
 
 // Configure Redis connection
 const redisClient = new Redis({
 	host: process.env.REDIS_HOST || "localhost",
-	port: parseInt(process.env.REDIS_PORT || "6379"),
+	port: Number.parseInt(process.env.REDIS_PORT || "6379"),
 	password: process.env.REDIS_PASSWORD,
-	db: parseInt(process.env.REDIS_DB || "0"),
+	db: Number.parseInt(process.env.REDIS_DB || "0"),
 });
 
 // Handle Redis connection events
@@ -42,38 +46,38 @@ app.post("/counter/:name/increment", async (c) => {
 	const counter = client.counter.getOrCreate(name);
 	const newCount = await counter.increment(amount);
 
-	return c.json({ 
-		success: true, 
+	return c.json({
+		success: true,
 		counter: name,
 		count: newCount,
-		message: `Counter '${name}' incremented by ${amount}` 
+		message: `Counter '${name}' incremented by ${amount}`,
 	});
 });
 
 app.get("/counter/:name", async (c) => {
 	const name = c.req.param("name");
-	
+
 	const counter = client.counter.getOrCreate(name);
 	const count = await counter.getCount();
 
-	return c.json({ 
+	return c.json({
 		success: true,
 		counter: name,
-		count 
+		count,
 	});
 });
 
 app.post("/counter/:name/reset", async (c) => {
 	const name = c.req.param("name");
-	
+
 	const counter = client.counter.getOrCreate(name);
 	const count = await counter.reset();
 
-	return c.json({ 
+	return c.json({
 		success: true,
 		counter: name,
 		count,
-		message: `Counter '${name}' reset` 
+		message: `Counter '${name}' reset`,
 	});
 });
 
@@ -81,7 +85,7 @@ app.post("/counter/:name/reset", async (c) => {
 app.post("/chat/:room/message", async (c) => {
 	const room = c.req.param("room");
 	const body = await c.req.json();
-	
+
 	if (!body.user || !body.text) {
 		return c.json({ error: "Missing user or text" }, 400);
 	}
@@ -92,36 +96,36 @@ app.post("/chat/:room/message", async (c) => {
 		text: body.text,
 	});
 
-	return c.json({ 
+	return c.json({
 		success: true,
 		room,
-		message 
+		message,
 	});
 });
 
 app.get("/chat/:room/messages", async (c) => {
 	const room = c.req.param("room");
-	
+
 	const chatRoom = client.chatRoom.getOrCreate(room);
 	const messages = await chatRoom.getMessages();
 
-	return c.json({ 
+	return c.json({
 		success: true,
 		room,
-		messages 
+		messages,
 	});
 });
 
 app.get("/chat/:room/users", async (c) => {
 	const room = c.req.param("room");
-	
+
 	const chatRoom = client.chatRoom.getOrCreate(room);
 	const userCount = await chatRoom.getUserCount();
 
-	return c.json({ 
+	return c.json({
 		success: true,
 		room,
-		userCount 
+		userCount,
 	});
 });
 
@@ -129,18 +133,21 @@ app.get("/chat/:room/users", async (c) => {
 app.get("/health", async (c) => {
 	try {
 		await redisClient.ping();
-		return c.json({ 
+		return c.json({
 			status: "healthy",
 			redis: "connected",
-			timestamp: new Date().toISOString()
+			timestamp: new Date().toISOString(),
 		});
 	} catch (error) {
-		return c.json({ 
-			status: "unhealthy",
-			redis: "disconnected",
-			error: error instanceof Error ? error.message : "Unknown error",
-			timestamp: new Date().toISOString()
-		}, 500);
+		return c.json(
+			{
+				status: "unhealthy",
+				redis: "disconnected",
+				error: error instanceof Error ? error.message : "Unknown error",
+				timestamp: new Date().toISOString(),
+			},
+			500,
+		);
 	}
 });
 
@@ -150,28 +157,34 @@ app.get("/", (c) => {
 		message: "RivetKit Redis + Hono Example API",
 		endpoints: {
 			counter: {
-				"POST /counter/:name/increment": "Increment counter (body: {amount?: number})",
+				"POST /counter/:name/increment":
+					"Increment counter (body: {amount?: number})",
 				"GET /counter/:name": "Get counter value",
 				"POST /counter/:name/reset": "Reset counter to 0",
 			},
 			chat: {
-				"POST /chat/:room/message": "Send message (body: {user: string, text: string})",
+				"POST /chat/:room/message":
+					"Send message (body: {user: string, text: string})",
 				"GET /chat/:room/messages": "Get room messages",
 				"GET /chat/:room/users": "Get user count",
 			},
 			system: {
 				"GET /health": "Health check",
 				"GET /": "This documentation",
-			}
+			},
 		},
 		examples: {
-			"Increment counter": "curl -X POST http://localhost:8088/counter/test/increment -H 'Content-Type: application/json' -d '{\"amount\": 5}'",
-			"Send message": "curl -X POST http://localhost:8088/chat/general/message -H 'Content-Type: application/json' -d '{\"user\": \"Alice\", \"text\": \"Hello world!\"}'",
-		}
+			"Increment counter":
+				"curl -X POST http://localhost:8088/counter/test/increment -H 'Content-Type: application/json' -d '{\"amount\": 5}'",
+			"Send message":
+				'curl -X POST http://localhost:8088/chat/general/message -H \'Content-Type: application/json\' -d \'{"user": "Alice", "text": "Hello world!"}\'',
+		},
 	});
 });
 
 serve(app);
 
-console.log("RivetKit + Hono server with Redis backend started on http://localhost:8088");
+console.log(
+	"RivetKit + Hono server with Redis backend started on http://localhost:8088",
+);
 console.log("Try: curl http://localhost:8088");

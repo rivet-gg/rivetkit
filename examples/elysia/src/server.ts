@@ -1,5 +1,5 @@
-import { registry } from "./registry";
 import { Elysia } from "elysia";
+import { registry } from "./registry";
 
 const { client, handler } = registry.createServer();
 

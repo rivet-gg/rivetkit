@@ -1,5 +1,5 @@
-import parseContentSecurityPolicy from "content-security-policy-parser";
 import cspBuilder from "content-security-policy-builder";
+import parseContentSecurityPolicy from "content-security-policy-parser";
 
 const PROTO = "https:";
 const HOST = "rivet-c4d395ab.mintlify.app";

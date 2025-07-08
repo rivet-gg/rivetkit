@@ -1,9 +1,9 @@
 import { actor, setup } from "@rivetkit/actor";
 
 const chatRoom = actor({
-	state: { 
+	state: {
 		messages: [] as Array<{ user: string; text: string; timestamp: number }>,
-		userCount: 0 
+		userCount: 0,
 	},
 	actions: {
 		sendMessage: (c, message: { user: string; text: string }) => {
@@ -12,12 +12,12 @@ const chatRoom = actor({
 				timestamp: Date.now(),
 			};
 			c.state.messages.push(newMessage);
-			
+
 			// Keep only last 50 messages
 			if (c.state.messages.length > 50) {
 				c.state.messages = c.state.messages.slice(-50);
 			}
-			
+
 			c.broadcast("newMessage", newMessage);
 			return newMessage;
 		},

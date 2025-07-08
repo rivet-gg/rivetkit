@@ -1,6 +1,7 @@
-import { TransportSchema } from "@/actor/protocol/message/mod";
 import { z } from "zod";
+import { TransportSchema } from "@/actor/protocol/message/mod";
 import { ActorQuerySchema } from "./query";
+
 export * from "./query";
 
 export const ActorsRequestSchema = z.object({

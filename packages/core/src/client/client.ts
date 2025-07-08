@@ -1,12 +1,12 @@
+import type { EventSource } from "eventsource";
+import type { Context as HonoContext } from "hono";
+import type { WebSocket } from "ws";
 import type { AnyActorDefinition } from "@/actor/definition";
 import type { Transport } from "@/actor/protocol/message/mod";
 import type * as wsToServer from "@/actor/protocol/message/to-server";
 import type { Encoding } from "@/actor/protocol/serde";
 import type { ActorQuery } from "@/manager/protocol/query";
 import type { Registry } from "@/mod";
-import type { EventSource } from "eventsource";
-import type { Context as HonoContext } from "hono";
-import type { WebSocket } from "ws";
 import type { ActorActionFunction } from "./actor-common";
 import {
 	type ActorConn,

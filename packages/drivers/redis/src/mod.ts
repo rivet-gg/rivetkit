@@ -1,3 +1,3 @@
-export { RedisActorDriver } from  "./actor";
-export { RedisManagerDriver } from "./manager";
+export { RedisActorDriver } from "./actor";
 export { RedisCoordinateDriver } from "./coordinate";
+export { RedisManagerDriver } from "./manager";

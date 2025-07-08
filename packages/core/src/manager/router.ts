@@ -1,3 +1,12 @@
+import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
+import * as cbor from "cbor-x";
+import { Hono, type Context as HonoContext } from "hono";
+import { cors } from "hono/cors";
+import { streamSSE } from "hono/streaming";
+import type { WSContext } from "hono/ws";
+import invariant from "invariant";
+import type { CloseEvent, MessageEvent, WebSocket } from "ws";
+import { z } from "zod";
 import type { ConnRoutingHandler } from "@/actor/conn-routing-handler";
 import * as errors from "@/actor/errors";
 import type * as protoHttpResolve from "@/actor/protocol/http/resolve";
@@ -6,6 +15,8 @@ import type { ToClient } from "@/actor/protocol/message/to-client";
 import { type Encoding, serialize } from "@/actor/protocol/serde";
 import {
 	ALLOWED_PUBLIC_HEADERS,
+	getRequestEncoding,
+	getRequestQuery,
 	HEADER_ACTOR_ID,
 	HEADER_ACTOR_QUERY,
 	HEADER_AUTH_DATA,
@@ -13,8 +24,6 @@ import {
 	HEADER_CONN_PARAMS,
 	HEADER_CONN_TOKEN,
 	HEADER_ENCODING,
-	getRequestEncoding,
-	getRequestQuery,
 	handleAction,
 	handleConnectionMessage,
 	handleSseConnect,
@@ -30,32 +39,22 @@ import {
 import {
 	type DeconstructedError,
 	deconstructError,
+	noopNext,
 	stringifyError,
 } from "@/common/utils";
 import type { RegistryConfig } from "@/registry/config";
 import type { RunConfig } from "@/registry/run-config";
 import { VERSION } from "@/utils";
-import { OpenAPIHono } from "@hono/zod-openapi";
-import { createRoute } from "@hono/zod-openapi";
-import * as cbor from "cbor-x";
-import { Hono, type Context as HonoContext } from "hono";
-import { cors } from "hono/cors";
-import { streamSSE } from "hono/streaming";
-import type { WSContext } from "hono/ws";
-import invariant from "invariant";
-import type { CloseEvent, MessageEvent, WebSocket } from "ws";
-import { z } from "zod";
 import { authenticateEndpoint } from "./auth";
 import type { ManagerDriver } from "./driver";
 import { logger } from "./log";
+import type { ActorQuery } from "./protocol/query";
 import {
-	ConnMessageRequestSchema,
 	ConnectRequestSchema,
 	ConnectWebSocketRequestSchema,
+	ConnMessageRequestSchema,
 	ResolveRequestSchema,
 } from "./protocol/query";
-import type { ActorQuery } from "./protocol/query";
-import { noopNext } from "@/common/utils";
 
 type ManagerRouterHandler = {
 	// onConnectInspector?: ManagerInspectorConnHandler;

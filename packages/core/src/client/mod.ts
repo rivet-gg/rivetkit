@@ -6,40 +6,39 @@ import {
 } from "./client";
 import { createHttpClientDriver } from "./http-client-driver";
 
+export {
+	ActorDefinition,
+	AnyActorDefinition,
+} from "@/actor/definition";
+export type { Transport } from "@/actor/protocol/message/mod";
+export type { Encoding } from "@/actor/protocol/serde";
+export {
+	ActorClientError,
+	ActorError,
+	ConnParamsTooLong,
+	InternalError,
+	MalformedResponseMessage,
+	ManagerError,
+} from "@/client/errors";
+export type { CreateRequest } from "@/manager/protocol/query";
+export type { ActorActionFunction } from "./actor-common";
+export type { ActorConn, EventUnsubscribe } from "./actor-conn";
+export { ActorConnRaw } from "./actor-conn";
+export type { ActorHandle } from "./actor-handle";
+export { ActorHandleRaw } from "./actor-handle";
 export type {
-	Client,
 	ActorAccessor,
+	Client,
 	ClientOptions,
+	ClientRaw,
 	CreateOptions,
+	ExtractActorsFromRegistry,
+	ExtractRegistryFromClient,
 	GetOptions,
 	GetWithIdOptions,
 	QueryOptions,
 	Region,
-	ExtractActorsFromRegistry,
-	ExtractRegistryFromClient,
-	ClientRaw,
 } from "./client";
-export type { ActorConn } from "./actor-conn";
-export { ActorConnRaw } from "./actor-conn";
-export type { EventUnsubscribe } from "./actor-conn";
-export type { ActorHandle } from "./actor-handle";
-export { ActorHandleRaw } from "./actor-handle";
-export type { ActorActionFunction } from "./actor-common";
-export type { Transport } from "@/actor/protocol/message/mod";
-export type { Encoding } from "@/actor/protocol/serde";
-export type { CreateRequest } from "@/manager/protocol/query";
-export {
-	ActorClientError,
-	InternalError,
-	ManagerError,
-	ConnParamsTooLong,
-	MalformedResponseMessage,
-	ActorError,
-} from "@/client/errors";
-export {
-	AnyActorDefinition,
-	ActorDefinition,
-} from "@/actor/definition";
 
 /**
  * Creates a client with the actor accessor proxy.

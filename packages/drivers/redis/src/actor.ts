@@ -27,10 +27,7 @@ export class RedisActorDriver implements ActorDriver {
 	}
 
 	async writePersistedData(actorId: string, data: Uint8Array): Promise<void> {
-		await this.#redis.set(
-			KEYS.ACTOR.persistedData(actorId),
-			Buffer.from(data),
-		);
+		await this.#redis.set(KEYS.ACTOR.persistedData(actorId), Buffer.from(data));
 	}
 
 	async setAlarm(actor: AnyActorInstance, timestamp: number): Promise<void> {

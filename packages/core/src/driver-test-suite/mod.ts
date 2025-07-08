@@ -1,3 +1,8 @@
+import { serve as honoServe } from "@hono/node-server";
+import { createNodeWebSocket, type NodeWebSocket } from "@hono/node-ws";
+import { bundleRequire } from "bundle-require";
+import invariant from "invariant";
+import { describe } from "vitest";
 import type { Transport } from "@/client/mod";
 import {
 	CoordinateTopology,
@@ -8,11 +13,6 @@ import {
 } from "@/mod";
 import { RunConfigSchema } from "@/registry/run-config";
 import { getPort } from "@/test/mod";
-import { serve as honoServe } from "@hono/node-server";
-import { type NodeWebSocket, createNodeWebSocket } from "@hono/node-ws";
-import { bundleRequire } from "bundle-require";
-import invariant from "invariant";
-import { describe } from "vitest";
 import { runActionFeaturesTests } from "./tests/action-features";
 import { runActorAuthTests } from "./tests/actor-auth";
 import { runActorConnTests } from "./tests/actor-conn";
@@ -128,7 +128,7 @@ export async function createTestRuntime(
 
 	// Build driver config
 	let injectWebSocket: NodeWebSocket["injectWebSocket"] | undefined;
-	let upgradeWebSocket = undefined;
+	let upgradeWebSocket: any;
 	const config: RunConfig = RunConfigSchema.parse({
 		driver,
 		getUpgradeWebSocket: () => upgradeWebSocket!,

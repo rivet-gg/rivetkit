@@ -1,7 +1,6 @@
-import { getEnvUniversal } from "@/utils";
 import { Hono } from "hono";
+import { getEnvUniversal } from "@/utils";
 import { logger } from "./log";
-import type { RunConfig } from "./run-config";
 
 export async function crossPlatformServe(
 	rivetKitRouter: Hono,
@@ -10,7 +9,7 @@ export async function crossPlatformServe(
 	const app = userRouter ?? new Hono();
 
 	// Import @hono/node-server
-	let serve;
+	let serve: any;
 	try {
 		const dep = await import("@hono/node-server");
 		serve = dep.serve;
@@ -25,7 +24,7 @@ export async function crossPlatformServe(
 	app.route("/registry", rivetKitRouter);
 
 	// Import @hono/node-ws
-	let createNodeWebSocket;
+	let createNodeWebSocket: any;
 	try {
 		const dep = await import("@hono/node-ws");
 		createNodeWebSocket = dep.createNodeWebSocket;

@@ -1,3 +1,8 @@
+import type { EventSource } from "eventsource";
+import type { Context as HonoContext } from "hono";
+import invariant from "invariant";
+import onChange from "on-change";
+import type { WebSocket } from "ws";
 import type { ConnRoutingHandler } from "@/actor/conn-routing-handler";
 import * as errors from "@/actor/errors";
 import type {
@@ -22,15 +27,9 @@ import { deconstructError } from "@/common/utils";
 import type { ManagerDriver } from "@/manager/driver";
 import type { ActorQuery } from "@/manager/protocol/query";
 import { httpUserAgent } from "@/utils";
-import type { EventSource } from "eventsource";
-import type { Context as HonoContext } from "hono";
-import invariant from "invariant";
-import onChange from "on-change";
-import type { WebSocket } from "ws";
 import { FakeEventSource } from "./fake-event-source";
 import { FakeWebSocket } from "./fake-websocket";
 import { logger } from "./log";
-import * as cbor from "cbor-x";
 
 /**
  * Client driver that calls the manager driver inline.

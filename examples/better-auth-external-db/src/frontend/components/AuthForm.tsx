@@ -42,8 +42,11 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
 	return (
 		<div style={{ maxWidth: "400px", margin: "0 auto", padding: "20px" }}>
 			<h2>{isLogin ? "Sign In" : "Sign Up"}</h2>
-			
-			<form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+
+			<form
+				onSubmit={handleSubmit}
+				style={{ display: "flex", flexDirection: "column", gap: "15px" }}
+			>
 				<div>
 					<label htmlFor="email">Email:</label>
 					<input
@@ -55,7 +58,7 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
 						style={{ width: "100%", padding: "8px", marginTop: "5px" }}
 					/>
 				</div>
-				
+
 				{!isLogin && (
 					<div>
 						<label htmlFor="name">Name:</label>
@@ -69,7 +72,7 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
 						/>
 					</div>
 				)}
-				
+
 				<div>
 					<label htmlFor="password">Password:</label>
 					<input
@@ -81,40 +84,40 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
 						style={{ width: "100%", padding: "8px", marginTop: "5px" }}
 					/>
 				</div>
-				
-				{error && (
-					<div style={{ color: "red", fontSize: "14px" }}>{error}</div>
-				)}
-				
-				<button 
-					type="submit" 
+
+				{error && <div style={{ color: "red", fontSize: "14px" }}>{error}</div>}
+
+				<button
+					type="submit"
 					disabled={loading}
-					style={{ 
-						padding: "10px", 
-						backgroundColor: "#007bff", 
-						color: "white", 
+					style={{
+						padding: "10px",
+						backgroundColor: "#007bff",
+						color: "white",
 						border: "none",
 						borderRadius: "4px",
-						cursor: loading ? "not-allowed" : "pointer"
+						cursor: loading ? "not-allowed" : "pointer",
 					}}
 				>
-					{loading ? "Loading..." : (isLogin ? "Sign In" : "Sign Up")}
+					{loading ? "Loading..." : isLogin ? "Sign In" : "Sign Up"}
 				</button>
 			</form>
-			
+
 			<div style={{ textAlign: "center", marginTop: "15px" }}>
 				<button
 					type="button"
 					onClick={() => setIsLogin(!isLogin)}
-					style={{ 
-						background: "none", 
-						border: "none", 
-						color: "#007bff", 
+					style={{
+						background: "none",
+						border: "none",
+						color: "#007bff",
 						cursor: "pointer",
-						textDecoration: "underline"
+						textDecoration: "underline",
 					}}
 				>
-					{isLogin ? "Need an account? Sign up" : "Already have an account? Sign in"}
+					{isLogin
+						? "Need an account? Sign up"
+						: "Already have an account? Sign in"}
 				</button>
 			</div>
 		</div>

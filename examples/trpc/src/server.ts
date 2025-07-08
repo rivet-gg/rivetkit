@@ -1,7 +1,7 @@
-import { registry } from "./registry.js";
 import { initTRPC } from "@trpc/server";
 import { createHTTPServer } from "@trpc/server/adapters/standalone";
 import { z } from "zod";
+import { registry } from "./registry.js";
 
 // Start RivetKit
 const { client } = registry.createServer();

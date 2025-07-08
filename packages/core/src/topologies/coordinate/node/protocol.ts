@@ -1,6 +1,6 @@
+import { z } from "zod";
 import * as messageToClient from "@/actor/protocol/message/to-client";
 import * as messageToServer from "@/actor/protocol/message/to-server";
-import { z } from "zod";
 
 export const AckSchema = z.object({
 	// Message ID
@@ -78,7 +78,9 @@ export const ToFollowerActionResponseSchema = z.object({
 	e: z.string().optional(),
 });
 
-export type ToFollowerActionResponse = z.infer<typeof ToFollowerActionResponseSchema>;
+export type ToFollowerActionResponse = z.infer<
+	typeof ToFollowerActionResponseSchema
+>;
 
 export const ToFollowerConnectionCloseSchema = z.object({
 	// Connection ID

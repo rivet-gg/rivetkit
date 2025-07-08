@@ -1,13 +1,13 @@
+import * as cbor from "cbor-x";
+import type { EventSource } from "eventsource";
+import pRetry from "p-retry";
+import type { CloseEvent, WebSocket } from "ws";
 import type { AnyActorDefinition } from "@/actor/definition";
 import type * as wsToClient from "@/actor/protocol/message/to-client";
 import type * as wsToServer from "@/actor/protocol/message/to-server";
 import type { Encoding } from "@/actor/protocol/serde";
 import { assertUnreachable, stringifyError } from "@/common/utils";
 import type { ActorQuery } from "@/manager/protocol/query";
-import * as cbor from "cbor-x";
-import type { EventSource } from "eventsource";
-import pRetry from "p-retry";
-import type { CloseEvent, WebSocket } from "ws";
 import type { ActorDefinitionActions } from "./actor-common";
 import {
 	ACTOR_CONNS_SYMBOL,

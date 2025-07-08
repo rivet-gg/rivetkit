@@ -1,14 +1,14 @@
 import type {
 	AttemptAcquireLease,
+	CoordinateDriver,
 	ExtendLeaseOutput,
 	GetActorLeaderOutput,
 	NodeMessageCallback,
-	CoordinateDriver,
 	StartActorAndAcquireLeaseOutput,
 } from "@rivetkit/core/driver-helpers";
+import dedent from "dedent";
 import type Redis from "ioredis";
 import { KEYS, PUBSUB } from "./keys";
-import dedent from "dedent";
 
 // Define custom commands for ioredis
 declare module "ioredis" {
@@ -109,7 +109,10 @@ export class RedisCoordinateDriver implements CoordinateDriver {
 		if (mgetErr) throw new Error(`Redis MGET error: ${mgetErr}`);
 		if (leaseErr) throw new Error(`Redis acquire lease error: ${leaseErr}`);
 
-		const [initialized, metadataRaw] = mgetRes as [string | null, string | null];
+		const [initialized, metadataRaw] = mgetRes as [
+			string | null,
+			string | null,
+		];
 		const leaderNodeId = leaseRes as unknown as string;
 
 		if (!initialized) {
@@ -117,7 +120,8 @@ export class RedisCoordinateDriver implements CoordinateDriver {
 		}
 
 		// Parse metadata if present
-		if (!metadataRaw) throw new Error("Actor should have metadata if initialized.");
+		if (!metadataRaw)
+			throw new Error("Actor should have metadata if initialized.");
 		const metadata = JSON.parse(metadataRaw);
 
 		return {

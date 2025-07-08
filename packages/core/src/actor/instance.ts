@@ -1,3 +1,6 @@
+import * as cbor from "cbor-x";
+import invariant from "invariant";
+import onChange from "on-change";
 import type { ActorKey } from "@/actor/mod";
 import type * as wsToClient from "@/actor/protocol/message/to-client";
 import type * as wsToServer from "@/actor/protocol/message/to-server";
@@ -5,14 +8,11 @@ import type { Client } from "@/client/client";
 import type { Logger } from "@/common/log";
 import { isCborSerializable, stringifyError } from "@/common/utils";
 import type { Registry } from "@/mod";
-import invariant from "invariant";
-import onChange from "on-change";
 import type { ActionContext } from "./action";
 import type { ActorConfig } from "./config";
 import { Conn, type ConnId } from "./connection";
 import { ActorContext } from "./context";
-import type { ActorDriver, ConnDrivers } from "./driver";
-import type { ConnDriver } from "./driver";
+import type { ActorDriver, ConnDriver, ConnDrivers } from "./driver";
 import * as errors from "./errors";
 import { instanceLogger, logger } from "./log";
 import type {
@@ -23,8 +23,7 @@ import type {
 import { processMessage } from "./protocol/message/mod";
 import { CachedSerializer } from "./protocol/serde";
 import { Schedule } from "./schedule";
-import { DeadlineError, Lock, deadline } from "./utils";
-import * as cbor from "cbor-x";
+import { DeadlineError, deadline, Lock } from "./utils";
 
 /**
  * Options for the `_saveState` method.
@@ -200,7 +199,7 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 
 		// TODO: Exit process if this errors
 		if (this.#varsEnabled) {
-			let vars: V | undefined = undefined;
+			let vars: V | undefined;
 			if ("createVars" in this.#config) {
 				const dataOrPromise = this.#config.createVars(
 					this.actorContext as unknown as ActorContext<
@@ -558,7 +557,7 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 			logger().info("actor creating");
 
 			// Initialize actor state
-			let stateData: unknown = undefined;
+			let stateData: unknown;
 			if (this.stateEnabled) {
 				logger().info("actor state initializing");
 
@@ -667,7 +666,7 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 		request?: Request,
 	): Promise<CS> {
 		// Authenticate connection
-		let connState: CS | undefined = undefined;
+		let connState: CS | undefined;
 
 		const onBeforeConnectOpts = {
 			request,

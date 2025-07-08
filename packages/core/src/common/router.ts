@@ -1,11 +1,11 @@
+import type { Context as HonoContext, Next } from "hono";
 import type { ResponseError } from "@/actor/protocol/http/error";
 import { type Encoding, serialize } from "@/actor/protocol/serde";
 import {
 	getRequestEncoding,
 	getRequestExposeInternalError,
 } from "@/actor/router-endpoints";
-import type { Context as HonoContext, Next } from "hono";
-import { type Logger, getLogger } from "./log";
+import { getLogger, type Logger } from "./log";
 import { deconstructError, stringifyError } from "./utils";
 
 export function logger() {
