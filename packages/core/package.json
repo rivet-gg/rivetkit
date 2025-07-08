@@ -141,6 +141,16 @@
         "types": "./dist/test/mod.d.cts",
         "default": "./dist/test/mod.cjs"
       }
+    },
+    "./inspector": {
+      "import": {
+        "types": "./dist/inspector/mod.d.ts",
+        "default": "./dist/inspector/mod.js"
+      },
+      "require": {
+        "types": "./dist/inspector/mod.d.cts",
+        "default": "./dist/inspector/mod.cjs"
+      }
     }
   },
   "engines": {
@@ -149,7 +159,7 @@
   "sideEffects": false,
   "scripts": {
     "dev": "pnpm build --watch",
-    "build": "tsup src/mod.ts src/client/mod.ts src/common/log.ts src/common/websocket.ts src/actor/errors.ts src/topologies/coordinate/mod.ts src/topologies/partition/mod.ts src/utils.ts src/drivers/rivet/mod.ts src/driver-helpers/mod.ts src/driver-test-suite/mod.ts src/test/mod.ts",
+    "build": "tsup src/mod.ts src/client/mod.ts src/common/log.ts src/common/websocket.ts src/actor/errors.ts src/topologies/coordinate/mod.ts src/topologies/partition/mod.ts src/utils.ts src/drivers/rivet/mod.ts src/driver-helpers/mod.ts src/driver-test-suite/mod.ts src/test/mod.ts src/inspector/mod.ts",
     "check-types": "tsc --noEmit",
     "boop": "tsc --outDir dist/test -d",
     "test": "vitest run",

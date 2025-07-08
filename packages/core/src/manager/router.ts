@@ -56,9 +56,9 @@ import {
 } from "./protocol/query";
 import type { ActorQuery } from "./protocol/query";
 import { noopNext } from "@/common/utils";
+import { handleManagerInspectorRoute } from "@/inspector/manager";
 
 type ManagerRouterHandler = {
-	// onConnectInspector?: ManagerInspectorConnHandler;
 	routingHandler: ConnRoutingHandler;
 };
 
@@ -350,16 +350,16 @@ export function createManagerRouter(
 		);
 	}
 
-	// if (registryConfig.inspector.enabled) {
-	// 	router.route(
-	// 		"/inspect",
-	// 		createManagerInspectorRouter(
-	// 			upgradeWebSocket,
-	// 			handler.onConnectInspector,
-	// 			registryConfig.inspector,
-	// 		),
-	// 	);
-	// }
+	if (registryConfig.inspector?.enabled) {
+		router.all("/inspect", (c) =>
+			handleManagerInspectorRoute({
+				// this needs to be fetched on the fly since we inject this after the router is mounted
+				upgradeWebSocket: runConfig.getUpgradeWebSocket?.(),
+				driver,
+				config: registryConfig.inspector,
+			})(c, noopNext()),
+		);
+	}
 
 	if (registryConfig.test.enabled) {
 		// Add HTTP endpoint to test the inline client

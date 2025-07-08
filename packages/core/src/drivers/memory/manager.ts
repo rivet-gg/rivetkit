@@ -9,14 +9,14 @@ import type {
 	ManagerDriver,
 } from "@/driver-helpers/mod";
 import type { MemoryGlobalState } from "./global-state";
+import { ManagerInspector } from "@/inspector/manager";
 
 export class MemoryManagerDriver implements ManagerDriver {
 	#state: MemoryGlobalState;
 
-	// inspector: ManagerInspector = new ManagerInspector(this, {
-	// 	getAllActors: () => this.#state.getAllActors(),
-	// 	getAllTypesOfActors: () => Object.keys(this.registry.config.actors),
-	// });
+	inspector: ManagerInspector = new ManagerInspector(this, {
+		getAllActors: () => this.#state.getAllActors(),
+	});
 
 	constructor(state: MemoryGlobalState) {
 		this.#state = state;
@@ -93,7 +93,7 @@ export class MemoryManagerDriver implements ManagerDriver {
 		const actorId = crypto.randomUUID();
 		this.#state.createActor(actorId, name, key, input);
 
-		// this.inspector.onActorsChange(this.#state.getAllActors());
+		this.inspector.onActorsChange();
 
 		return { actorId, name, key };
 	}

@@ -9,21 +9,17 @@ import type {
 import { ActorAlreadyExists } from "@/actor/errors";
 import { logger } from "./log";
 import type { FileSystemGlobalState } from "./global-state";
-import { ActorState } from "./global-state";
-import type { Registry } from "@/registry/mod";
 import { generateActorId } from "./utils";
+import { ManagerInspector } from "@/inspector/manager";
 
 export class FileSystemManagerDriver implements ManagerDriver {
 	#state: FileSystemGlobalState;
 
-	// inspector: ManagerInspector = new ManagerInspector(this, {
-	// 	getAllActors: () => this.#state.getAllActors(),
-	// 	getAllTypesOfActors: () => Object.keys(this.registry.config.actors),
-	// });
+	inspector: ManagerInspector = new ManagerInspector(this, {
+		getAllActors: () => [],
+	});
 
-	constructor(
-		state: FileSystemGlobalState,
-	) {
+	constructor(state: FileSystemGlobalState) {
 		this.#state = state;
 	}
 
@@ -54,7 +50,7 @@ export class FileSystemManagerDriver implements ManagerDriver {
 	}: GetWithKeyInput): Promise<ActorOutput | undefined> {
 		// Generate the deterministic actor ID
 		const actorId = generateActorId(name, key);
-		
+
 		// Check if actor exists
 		if (this.#state.hasActor(actorId)) {
 			return {
@@ -82,7 +78,7 @@ export class FileSystemManagerDriver implements ManagerDriver {
 	async createActor({ name, key, input }: CreateInput): Promise<ActorOutput> {
 		// Generate the deterministic actor ID
 		const actorId = generateActorId(name, key);
-		
+
 		// Check if actor already exists
 		if (this.#state.hasActor(actorId)) {
 			throw new ActorAlreadyExists(name, key);
