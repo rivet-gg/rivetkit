@@ -10,7 +10,7 @@ Example project demonstrating real-time messaging and actor state management wit
 
 ### Prerequisites
 
-- Node.js
+- Node.js 18+
 
 ### Installation
 
@@ -22,15 +22,35 @@ npm install
 
 ### Development
 
+#### Web UI
+Start the development server with both backend and React frontend:
+
 ```sh
 npm run dev
 ```
 
-Run the connect script to interact with the chat room:
+Open your browser to `http://localhost:3000` to use the web chat interface.
+
+#### CLI Interface
+Alternatively, use the CLI interface:
 
 ```sh
-tsx scripts/connect.ts
+npm run dev:cli
 ```
+
+Or connect programmatically:
+
+```sh
+tsx src/scripts/connect.ts
+```
+
+## Features
+
+- Real-time messaging with automatic persistence
+- Multiple chat rooms support
+- Both web and CLI interfaces
+- Event-driven architecture with RivetKit actors
+- TypeScript support throughout
 
 ## License
 

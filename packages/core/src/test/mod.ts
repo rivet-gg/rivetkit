@@ -25,7 +25,7 @@ function serve(registry: Registry<any>, inputConfig?: InputConfig): ServerType {
 	}
 
 	// Setup topology
-	const runConfig = RunConfigSchema.parse(inputConfig);
+	const runConfig = RunConfigSchema.parse(config);
 	let topology: StandaloneTopology | CoordinateTopology;
 	if (config.driver.topology === "standalone") {
 		topology = new StandaloneTopology(registry.config, runConfig);
