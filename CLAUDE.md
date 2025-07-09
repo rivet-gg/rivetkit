@@ -210,3 +210,4 @@ Always include a README.md. The `README.md` should always follow this structure:
 ## Test Notes
 
 - Using setTimeout in tests & test actors will not work unless you call `await waitFor(driverTestConfig, <ts>)`
+- Do not use setTimeout in tests or in actors used in tests unless you explictily use `await vi.advanceTimersByTimeAsync(time)`

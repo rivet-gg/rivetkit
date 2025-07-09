@@ -1,0 +1,10 @@
+{
+  "version": "1.0.0",
+  "services": {
+    "sync": {
+      "type": "nodejs",
+      "source": "src/backend/server.ts",
+      "port": 8080
+    }
+  }
+}
