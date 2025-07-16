@@ -69,21 +69,11 @@
         "types": "./dist/test.d.cts",
         "default": "./dist/test.cjs"
       }
-    },
-    "./drivers/rivet": {
-      "import": {
-        "types": "./dist/drivers/rivet.d.ts",
-        "default": "./dist/drivers/rivet.js"
-      },
-      "require": {
-        "types": "./dist/drivers/rivet.d.cts",
-        "default": "./dist/drivers/rivet.cjs"
-      }
     }
   },
   "sideEffects": false,
   "scripts": {
-    "build": "tsup src/mod.ts src/client.ts src/log.ts src/errors.ts src/test.ts src/drivers/rivet.ts",
+    "build": "tsup src/mod.ts src/client.ts src/log.ts src/errors.ts src/test.ts",
     "check-types": "tsc --noEmit",
     "test": "vitest run"
   },

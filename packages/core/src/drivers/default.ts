@@ -1,7 +1,6 @@
 import { logger } from "@/actor/log";
 import { createFileSystemDriver } from "@/drivers/file-system/mod";
 import { createMemoryDriver } from "@/drivers/memory/mod";
-import { createRivetManagerDriver } from "@/drivers/rivet/mod";
 import { type DriverConfig, UserError } from "@/mod";
 import { getEnvUniversal } from "@/utils";
 
@@ -16,9 +15,6 @@ export function createDefaultDriver(): DriverConfig {
 	} else if (driver === "memory") {
 		logger().info("using default memory driver");
 		return createMemoryDriver();
-	} else if (driver === "rivet") {
-		logger().info("using default rivet driver");
-		return createRivetManagerDriver();
 	} else {
 		throw new UserError(`Unrecognized driver: ${driver}`);
 	}
