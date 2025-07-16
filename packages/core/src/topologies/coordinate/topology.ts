@@ -11,12 +11,15 @@ import type {
 	ConnectWebSocketOpts,
 	ConnectWebSocketOutput,
 	ConnsMessageOpts,
+	FetchOpts,
+	WebSocketOpts,
 } from "@/actor/router-endpoints";
 import {
 	type Client,
 	type ClientDriver,
 	createClientWithDriver,
 } from "@/client/client";
+import type { UniversalWebSocket } from "@/common/websocket-interface";
 import { createInlineClientDriver } from "@/inline-client-driver/mod";
 import { createManagerRouter } from "@/manager/router";
 import type { RegistryConfig } from "@/registry/config";
@@ -25,8 +28,10 @@ import type { RunConfig } from "@/registry/run-config";
 import type { ActorPeer } from "./actor-peer";
 import type { RelayConn } from "./conn/mod";
 import { publishActionToLeader } from "./node/action";
+import { publishFetchToLeader } from "./node/fetch";
 import { publishMessageToLeader } from "./node/message";
 import { Node } from "./node/mod";
+import { handleRawWebSocket } from "./router/raw-websocket";
 import { serveSse } from "./router/sse";
 import { serveWebSocket } from "./router/websocket";
 
@@ -43,6 +48,10 @@ export interface GlobalState {
 		string,
 		(result: { success: boolean; output?: unknown; error?: string }) => void
 	>;
+	/** Resolvers for when a fetch response is received. */
+	fetchResponseResolvers: Map<string, (response: any) => void>;
+	/** Raw WebSocket connections mapped by WebSocket ID. */
+	rawWebSockets: Map<string, UniversalWebSocket>;
 }
 
 export class CoordinateTopology {
@@ -66,6 +75,8 @@ export class CoordinateTopology {
 			relayConns: new Map(),
 			messageAckResolvers: new Map(),
 			actionResponseResolvers: new Map(),
+			fetchResponseResolvers: new Map(),
+			rawWebSockets: new Map(),
 		};
 
 		const node = new Node(CoordinateDriver, globalState);
@@ -131,6 +142,28 @@ export class CoordinateTopology {
 						},
 					},
 					opts.req?.raw.signal,
+				);
+			},
+			onFetch: async (opts: FetchOpts): Promise<Response> => {
+				return await publishFetchToLeader(
+					registryConfig,
+					runConfig,
+					CoordinateDriver,
+					actorDriver,
+					this.inlineClient,
+					globalState,
+					opts,
+				);
+			},
+			onWebSocket: async (opts: WebSocketOpts): Promise<void> => {
+				await handleRawWebSocket(
+					registryConfig,
+					runConfig,
+					actorDriver,
+					this.inlineClient,
+					CoordinateDriver,
+					globalState,
+					opts,
 				);
 			},
 		};

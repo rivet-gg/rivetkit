@@ -27,6 +27,26 @@ import { customTimeoutActor, errorHandlingActor } from "./error-handling";
 import { inlineClientActor } from "./inline-client";
 import { counterWithLifecycle } from "./lifecycle";
 import { metadataActor } from "./metadata";
+import {
+	rawHttpActor,
+	rawHttpHonoActor,
+	rawHttpNoHandlerActor,
+	rawHttpVoidReturnActor,
+} from "./raw-http";
+import {
+	rawHttpAuthActor,
+	rawHttpCustomAuthActor,
+	rawHttpNoAuthActor,
+	rawHttpPublicActor,
+} from "./raw-http-auth";
+import { rawHttpRequestPropertiesActor } from "./raw-http-request-properties";
+import { rawWebSocketActor, rawWebSocketBinaryActor } from "./raw-websocket";
+import {
+	rawWebSocketAuthActor,
+	rawWebSocketCustomAuthActor,
+	rawWebSocketNoAuthActor,
+	rawWebSocketPublicActor,
+} from "./raw-websocket-auth";
 import { scheduled } from "./scheduled";
 import {
 	driverCtxActor,
@@ -79,5 +99,25 @@ export const registry = setup({
 		publicActor,
 		noAuthActor,
 		asyncAuthActor,
+		// From raw-http.ts
+		rawHttpActor,
+		rawHttpNoHandlerActor,
+		rawHttpVoidReturnActor,
+		rawHttpHonoActor,
+		// From raw-http-auth.ts
+		rawHttpAuthActor,
+		rawHttpNoAuthActor,
+		rawHttpPublicActor,
+		rawHttpCustomAuthActor,
+		// From raw-http-request-properties.ts
+		rawHttpRequestPropertiesActor,
+		// From raw-websocket.ts
+		rawWebSocketActor,
+		rawWebSocketBinaryActor,
+		// From raw-websocket-auth.ts
+		rawWebSocketAuthActor,
+		rawWebSocketNoAuthActor,
+		rawWebSocketPublicActor,
+		rawWebSocketCustomAuthActor,
 	},
 });

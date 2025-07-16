@@ -1,4 +1,3 @@
-import type { EventSource } from "eventsource";
 import type { Context as HonoContext } from "hono";
 import invariant from "invariant";
 import onChange from "on-change";
@@ -23,12 +22,13 @@ import type { ClientDriver } from "@/client/client";
 import { ActorError as ClientActorError } from "@/client/errors";
 import { sendHttpRequest } from "@/client/utils";
 import { importEventSource } from "@/common/eventsource";
+import type { UniversalEventSource } from "@/common/eventsource-interface";
 import { deconstructError } from "@/common/utils";
 import type { ManagerDriver } from "@/manager/driver";
 import type { ActorQuery } from "@/manager/protocol/query";
 import { httpUserAgent } from "@/utils";
 import { FakeEventSource } from "./fake-event-source";
-import { FakeWebSocket } from "./fake-websocket";
+import { InlineWebSocketAdapter } from "./inline-websocket-adapter";
 import { logger } from "./log";
 
 /**
@@ -181,12 +181,16 @@ export function createInlineClientDriver(
 					authData: undefined,
 				});
 
-				logger().debug("got ConnectWebSocketOutput, creating FakeWebSocket");
+				logger().debug(
+					"got ConnectWebSocketOutput, creating InlineWebSocketAdapter",
+				);
 
 				// TODO: There might be a bug where mutating data from the response of an action over a websocket will mutate the original data. See note about `structuredClone` in `action`
-				// Create and initialize the FakeWebSocket, waiting for it to be ready
-				const webSocket = new FakeWebSocket(output) as any as WebSocket;
-				logger().debug("FakeWebSocket created and initialized");
+				// Create and initialize the InlineWebSocketAdapter, waiting for it to be ready
+				const webSocket = new InlineWebSocketAdapter(
+					output,
+				) as any as WebSocket;
+				logger().debug("InlineWebSocketAdapter created and initialized");
 
 				return webSocket;
 			} else if ("custom" in routingHandler) {
@@ -209,7 +213,7 @@ export function createInlineClientDriver(
 			actorQuery: ActorQuery,
 			encodingKind: Encoding,
 			params: unknown,
-		): Promise<EventSource> => {
+		): Promise<UniversalEventSource> => {
 			// Get the actor ID
 			const { actorId } = await queryActor(c, actorQuery, managerDriver);
 			logger().debug("found actor for sse connection", { actorId });
@@ -255,7 +259,7 @@ export function createInlineClientDriver(
 				// Initialize the connection
 				await output.onOpen(eventSource.getStream());
 
-				return eventSource as unknown as EventSource;
+				return eventSource as unknown as UniversalEventSource;
 			} else if ("custom" in routingHandler) {
 				const EventSourceClass = await importEventSource();
 
@@ -274,7 +278,7 @@ export function createInlineClientDriver(
 							},
 						});
 					},
-				}) as EventSource;
+				}) as UniversalEventSource;
 
 				return eventSource;
 			} else {
@@ -334,6 +338,115 @@ export function createInlineClientDriver(
 				});
 			} else {
 				assertUnreachable(routingHandler);
+			}
+		},
+
+		rawHttpRequest: async (
+			c: HonoContext | undefined,
+			actorQuery: ActorQuery,
+			encoding: Encoding,
+			params: unknown,
+			path: string,
+			init: RequestInit,
+		): Promise<Response> => {
+			try {
+				// Get the actor ID
+				const { actorId } = await queryActor(c, actorQuery, managerDriver);
+				logger().debug("found actor for raw http", { actorId });
+				invariant(actorId, "Missing actor ID");
+
+				if ("inline" in routingHandler) {
+					// Check if we have an onFetch handler
+					if (!routingHandler.inline.handlers.onFetch) {
+						throw new errors.FetchHandlerNotDefined();
+					}
+
+					// Create a request with the correct URL path
+					// Remove leading slash from path to avoid double slashes
+					const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
+					const url = new URL(`http://actor/${normalizedPath}`);
+					const request = new Request(url.toString(), init);
+
+					// Call the onFetch handler
+					const response = await routingHandler.inline.handlers.onFetch({
+						request,
+						actorId,
+						authData: undefined, // No auth data since this is from internal
+					});
+
+					if (!response || !(response instanceof Response)) {
+						throw new errors.InternalError(
+							"onFetch handler must return a Response",
+						);
+					}
+
+					return response;
+				} else if ("custom" in routingHandler) {
+					// Build the URL with normalized path
+					const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
+					const url = new URL(`http://actor/http/${normalizedPath}`);
+
+					// Forward the request to the actor
+					const proxyRequest = new Request(url, init);
+
+					// Forward conn params if provided
+					if (params) {
+						proxyRequest.headers.set(
+							HEADER_CONN_PARAMS,
+							JSON.stringify(params),
+						);
+					}
+
+					return await routingHandler.custom.sendRequest(actorId, proxyRequest);
+				} else {
+					assertUnreachable(routingHandler);
+				}
+			} catch (err) {
+				// Standardize to ClientActorError instead of the native backend error
+				const { code, message, metadata } = deconstructError(
+					err,
+					logger(),
+					{},
+					true,
+				);
+				throw new ClientActorError(code, message, metadata);
+			}
+		},
+
+		rawWebSocket: async (
+			c: HonoContext | undefined,
+			actorQuery: ActorQuery,
+			encoding: Encoding,
+			params: unknown,
+			path: string,
+			protocols: string | string[] | undefined,
+		): Promise<WebSocket> => {
+			try {
+				// Get the actor ID
+				const { actorId } = await queryActor(c, actorQuery, managerDriver);
+				logger().debug("found actor for raw websocket", { actorId });
+				invariant(actorId, "Missing actor ID");
+
+				if ("inline" in routingHandler) {
+					throw new errors.InternalError(
+						"Raw WebSocket is not supported in inline mode",
+					);
+				} else if ("custom" in routingHandler) {
+					throw new errors.InternalError(
+						"Raw WebSocket is not supported in custom mode",
+					);
+				} else {
+					assertUnreachable(routingHandler);
+				}
+			} catch (err) {
+				// Standardize to ClientActorError instead of the native backend error
+				const { code, message, metadata } = deconstructError(
+					err,
+					logger(),
+					{},
+					true,
+				);
+				throw new ClientActorError(code, message, metadata);
 			}
 		},
 	};

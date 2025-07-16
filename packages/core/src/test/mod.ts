@@ -12,12 +12,13 @@ import { ConfigSchema, type InputConfig } from "./config";
 import { logger } from "./log";
 
 function serve(registry: Registry<any>, inputConfig?: InputConfig): ServerType {
-	const config = ConfigSchema.parse(inputConfig);
-
 	// Configure default configuration
-	if (!config.driver) {
-		config.driver = createMemoryDriver();
+	inputConfig ??= {};
+	if (!inputConfig.driver) {
+		inputConfig.driver = createMemoryDriver();
 	}
+
+	const config = ConfigSchema.parse(inputConfig);
 
 	let upgradeWebSocket: any;
 	if (!config.getUpgradeWebSocket) {

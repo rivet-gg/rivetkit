@@ -1,20 +1,30 @@
-import type { EventListener, EventSource } from "eventsource";
+import type { EventListener } from "eventsource";
 import type { SSEStreamingApi } from "hono/streaming";
+import type {
+	UniversalEvent,
+	UniversalEventSource,
+	UniversalMessageEvent,
+} from "@/common/eventsource-interface";
 import { logger } from "./log";
 
 /**
  * FakeEventSource provides a minimal implementation of an SSE stream
  * that handles events for the inline client driver
  */
-export class FakeEventSource {
+export class FakeEventSource implements UniversalEventSource {
+	// EventSource readyState values
+	readonly CONNECTING = 0 as const;
+	readonly OPEN = 1 as const;
+	readonly CLOSED = 2 as const;
+
 	url = "http://internal-sse-endpoint";
-	readyState = 1; // OPEN
+	readyState: 0 | 1 | 2 = 1; // OPEN
 	withCredentials = false;
 
 	// Event handlers
-	onopen: ((this: EventSource, ev: Event) => any) | null = null;
-	onmessage: ((this: EventSource, ev: MessageEvent) => any) | null = null;
-	onerror: ((this: EventSource, ev: Event) => any) | null = null;
+	onopen: ((event: UniversalEvent) => void) | null = null;
+	onmessage: ((event: UniversalMessageEvent) => void) | null = null;
+	onerror: ((event: UniversalEvent) => void) | null = null;
 
 	// Private event listeners
 	#listeners: Record<string, Set<EventListener>> = {
@@ -187,6 +197,11 @@ export class FakeEventSource {
 		} else if (type === "error" && this.onerror === listener) {
 			this.onerror = null;
 		}
+	}
+
+	dispatchEvent(event: UniversalEvent): boolean {
+		this.#dispatchEvent(event.type, event);
+		return true;
 	}
 
 	// Internal method to dispatch events

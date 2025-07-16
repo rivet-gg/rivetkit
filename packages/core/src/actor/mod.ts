@@ -30,6 +30,18 @@ export function actor<
 	return new ActorDefinition(config);
 }
 export type { Encoding } from "@/actor/protocol/serde";
+export type {
+	UniversalErrorEvent,
+	UniversalEvent,
+	UniversalEventSource,
+	UniversalMessageEvent,
+} from "@/common/eventsource-interface";
+export type {
+	RivetCloseEvent,
+	RivetEvent,
+	RivetMessageEvent,
+	UniversalWebSocket,
+} from "@/common/websocket-interface";
 export type { ActorKey } from "@/manager/protocol/query";
 export type { ActionContext } from "./action";
 export type * from "./config";

@@ -24,6 +24,11 @@ import { runActorInlineClientTests } from "./tests/actor-inline-client";
 import { runActorMetadataTests } from "./tests/actor-metadata";
 import { runActorVarsTests } from "./tests/actor-vars";
 import { runManagerDriverTests } from "./tests/manager-driver";
+import { runRawHttpTests } from "./tests/raw-http";
+import { runRawHttpDirectRegistryTests } from "./tests/raw-http-direct-registry";
+import { runRawHttpRequestPropertiesTests } from "./tests/raw-http-request-properties";
+import { runRawWebSocketTests } from "./tests/raw-websocket";
+import { runRawWebSocketDirectRegistryTests } from "./tests/raw-websocket-direct-registry";
 
 export interface DriverTestConfig {
 	/** Deploys an registry and returns the connection endpoint. */
@@ -97,6 +102,16 @@ export function runDriverTests(
 			runActorAuthTests(driverTestConfig);
 
 			runActorInlineClientTests(driverTestConfig);
+
+			runRawHttpTests(driverTestConfig);
+
+			runRawHttpRequestPropertiesTests(driverTestConfig);
+
+			runRawWebSocketTests(driverTestConfig);
+
+			runRawHttpDirectRegistryTests(driverTestConfig);
+
+			runRawWebSocketDirectRegistryTests(driverTestConfig);
 		});
 	}
 }

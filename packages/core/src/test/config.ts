@@ -12,6 +12,5 @@ export const ConfigSchema = RunConfigSchema.removeDefault()
 			.optional()
 			.default(Number.parseInt(process.env.PORT ?? "8080")),
 	})
-	.partial({ driver: true })
 	.default({});
 export type InputConfig = z.input<typeof ConfigSchema>;

@@ -316,3 +316,36 @@ export class DatabaseNotEnabled extends ActorError {
 		);
 	}
 }
+
+export class FetchHandlerNotDefined extends ActorError {
+	constructor() {
+		super(
+			"fetch_handler_not_defined",
+			"Raw HTTP handler not defined. Actor must implement `onFetch` to handle raw HTTP requests.",
+			{ public: true },
+		);
+		this.statusCode = 404;
+	}
+}
+
+export class WebSocketHandlerNotDefined extends ActorError {
+	constructor() {
+		super(
+			"websocket_handler_not_defined",
+			"Raw WebSocket handler not defined. Actor must implement `onWebSocket` to handle raw WebSocket connections.",
+			{ public: true },
+		);
+		this.statusCode = 404;
+	}
+}
+
+export class InvalidFetchResponse extends ActorError {
+	constructor() {
+		super(
+			"invalid_fetch_response",
+			"Actor's onFetch handler must return a Response object. Returning void/undefined is not allowed.",
+			{ public: true },
+		);
+		this.statusCode = 500;
+	}
+}

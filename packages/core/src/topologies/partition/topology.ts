@@ -1,6 +1,5 @@
 import type { Hono } from "hono";
 import invariant from "invariant";
-import type { WebSocket } from "ws";
 import { ActionContext } from "@/actor/action";
 import {
 	type AnyConn,
@@ -19,12 +18,15 @@ import type {
 	ConnectWebSocketOpts,
 	ConnectWebSocketOutput,
 	ConnsMessageOpts,
+	FetchOpts,
+	WebSocketOpts,
 } from "@/actor/router-endpoints";
 import {
 	type Client,
 	type ClientDriver,
 	createClientWithDriver,
 } from "@/client/client";
+import type { UniversalWebSocket } from "@/common/websocket-interface";
 import { createInlineClientDriver } from "@/inline-client-driver/mod";
 import { createManagerRouter } from "@/manager/router";
 import type { RegistryConfig } from "@/registry/config";
@@ -51,7 +53,7 @@ export type SendRequestHandler = (
 export type OpenWebSocketHandler = (
 	path: string,
 	actorId: string,
-) => Promise<WebSocket>;
+) => Promise<UniversalWebSocket>;
 
 export class PartitionTopologyManager {
 	clientDriver: ClientDriver;
@@ -303,6 +305,37 @@ export class PartitionTopologyActor {
 
 					// Process message
 					await actor.processMessage(opts.message, conn);
+				},
+				onFetch: async (opts: FetchOpts): Promise<Response> => {
+					// Wait for init to finish
+					if (this.#actorStartedPromise)
+						await this.#actorStartedPromise.promise;
+
+					const actor = this.#actor;
+					if (!actor) throw new Error("Actor should be defined");
+
+					// Call the actor's onFetch handler - it will throw appropriate errors
+					const response = await actor.handleFetch(opts.request);
+
+					// This should never happen now since handleFetch throws errors
+					if (!response) {
+						throw new errors.InternalError(
+							"handleFetch returned void unexpectedly",
+						);
+					}
+
+					return response;
+				},
+				onWebSocket: async (opts: WebSocketOpts): Promise<void> => {
+					// Wait for init to finish
+					if (this.#actorStartedPromise)
+						await this.#actorStartedPromise.promise;
+
+					const actor = this.#actor;
+					if (!actor) throw new Error("Actor should be defined");
+
+					// Call the actor's onWebSocket handler
+					await actor.handleWebSocket(opts.websocket, opts.request);
 				},
 			},
 			// onConnectInspector: async () => {
