@@ -2,6 +2,7 @@ import invariant from "invariant";
 import type { AnyActorDefinition } from "@/actor/definition";
 import type { Encoding } from "@/actor/protocol/serde";
 import { assertUnreachable } from "@/actor/utils";
+import { importWebSocket } from "@/common/websocket";
 import type { ActorQuery } from "@/manager/protocol/query";
 import type { ActorDefinitionActions } from "./actor-common";
 import { type ActorConn, ActorConnRaw } from "./actor-conn";
@@ -11,6 +12,7 @@ import {
 	CREATE_ACTOR_CONN_PROXY,
 } from "./client";
 import { logger } from "./log";
+import { rawHttpFetch, rawWebSocket } from "./raw-utils";
 
 /**
  * Provides underlying functions for stateless {@link ActorHandle} for action calls.
@@ -94,6 +96,48 @@ export class ActorHandleRaw {
 		return this.#client[CREATE_ACTOR_CONN_PROXY](
 			conn,
 		) as ActorConn<AnyActorDefinition>;
+	}
+
+	/**
+	 * Makes a raw HTTP request to the actor.
+	 *
+	 * @param input - The URL, path, or Request object
+	 * @param init - Standard fetch RequestInit options
+	 * @returns Promise<Response> - The raw HTTP response
+	 */
+	async fetch(
+		input: string | URL | Request,
+		init?: RequestInit,
+	): Promise<Response> {
+		return rawHttpFetch(
+			this.#driver,
+			this.#actorQuery,
+			this.#encodingKind,
+			this.#params,
+			input,
+			init,
+		);
+	}
+
+	/**
+	 * Creates a raw WebSocket connection to the actor.
+	 *
+	 * @param path - The path for the WebSocket connection (e.g., "stream")
+	 * @param protocols - Optional WebSocket subprotocols
+	 * @returns WebSocket - A raw WebSocket connection
+	 */
+	async websocket(
+		path?: string,
+		protocols?: string | string[],
+	): Promise<WebSocket> {
+		return rawWebSocket(
+			this.#driver,
+			this.#actorQuery,
+			this.#encodingKind,
+			this.#params,
+			path,
+			protocols,
+		);
 	}
 
 	/**

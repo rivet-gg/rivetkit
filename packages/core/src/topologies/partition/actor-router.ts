@@ -174,6 +174,58 @@ export function createActorRouter(
 		);
 	});
 
+	// Raw HTTP endpoints - /http/*
+	router.all("/http/*", async (c) => {
+		const actorId = await handler.getActorId();
+		const authDataRaw = c.req.header(HEADER_AUTH_DATA);
+		let authData: unknown;
+		if (authDataRaw) {
+			authData = JSON.parse(authDataRaw);
+		}
+
+		// Get the actor instance to handle raw HTTP
+		if (!handlers.onFetch) {
+			return c.text("Not Found", 404);
+		}
+
+		return handlers.onFetch({
+			actorId,
+			authData,
+			request: c.req.raw,
+		});
+	});
+
+	// Raw WebSocket endpoint - /websocket/*
+	router.get("/websocket/*", async (c) => {
+		const upgradeWebSocket = runConfig.getUpgradeWebSocket?.();
+		if (upgradeWebSocket) {
+			return upgradeWebSocket(async (ws: any) => {
+				const actorId = await handler.getActorId();
+				const authDataRaw = c.req.header(HEADER_AUTH_DATA);
+				let authData: unknown;
+				if (authDataRaw) {
+					authData = JSON.parse(authDataRaw);
+				}
+
+				if (!handlers.onWebSocket) {
+					throw new Error("onWebSocket handler not implemented");
+				}
+
+				await handlers.onWebSocket({
+					actorId,
+					authData,
+					request: c.req.raw,
+					websocket: ws,
+				});
+			})(c, noopNext());
+		} else {
+			return c.text(
+				"WebSockets are not enabled for this driver. Use SSE instead.",
+				400,
+			);
+		}
+	});
+
 	// if (registryConfig.inspector.enabled) {
 	// 	router.route(
 	// 		"/inspect",

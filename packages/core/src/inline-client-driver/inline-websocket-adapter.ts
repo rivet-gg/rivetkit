@@ -1,16 +1,21 @@
 import { WSContext } from "hono/ws";
-import type { CloseEvent, Event, MessageEvent } from "ws";
 import { parseMessage } from "@/actor/protocol/message/mod";
 import type * as messageToServer from "@/actor/protocol/message/to-server";
 import type { InputData } from "@/actor/protocol/serde";
 import type { ConnectWebSocketOutput } from "@/actor/router-endpoints";
+import type {
+	RivetCloseEvent,
+	RivetEvent,
+	RivetMessageEvent,
+	UniversalWebSocket,
+} from "@/common/websocket-interface";
 import { logger } from "@/registry/log";
 
 /**
- * FakeWebSocket implements a WebSocket-like interface
+ * InlineWebSocketAdapter implements a WebSocket-like interface
  * that connects to a ConnectWebSocketOutput handler
  */
-export class FakeWebSocket {
+export class InlineWebSocketAdapter implements UniversalWebSocket {
 	// WebSocket readyState values
 	readonly CONNECTING = 0 as const;
 	readonly OPEN = 1 as const;
@@ -55,6 +60,30 @@ export class FakeWebSocket {
 
 	get readyState(): 0 | 1 | 2 | 3 {
 		return this.#readyState;
+	}
+
+	get binaryType(): "arraybuffer" | "blob" {
+		return "arraybuffer";
+	}
+
+	set binaryType(value: "arraybuffer" | "blob") {
+		// Ignored for now - always use arraybuffer
+	}
+
+	get bufferedAmount(): number {
+		return 0; // Not tracked in InlineWebSocketAdapter
+	}
+
+	get extensions(): string {
+		return ""; // Not available in InlineWebSocketAdapter
+	}
+
+	get protocol(): string {
+		return ""; // Not available in InlineWebSocketAdapter
+	}
+
+	get url(): string {
+		return ""; // Not available in InlineWebSocketAdapter
 	}
 
 	send(data: string | ArrayBufferLike | Blob | ArrayBufferView): void {
@@ -166,7 +195,7 @@ export class FakeWebSocket {
 					reason,
 					target: this,
 					currentTarget: this,
-				} as unknown as CloseEvent;
+				} as unknown as RivetCloseEvent;
 
 				this.#fireClose(closeEvent);
 			});
@@ -265,7 +294,7 @@ export class FakeWebSocket {
 			data,
 			target: this,
 			currentTarget: this,
-		} as unknown as MessageEvent;
+		} as unknown as RivetMessageEvent;
 
 		// Dispatch the event
 		this.#dispatchEvent("message", event);
@@ -284,7 +313,7 @@ export class FakeWebSocket {
 			wasClean: code === 1000,
 			target: this,
 			currentTarget: this,
-		} as unknown as CloseEvent;
+		} as unknown as RivetCloseEvent;
 
 		// Dispatch the event
 		this.#dispatchEvent("close", event);
@@ -327,6 +356,51 @@ export class FakeWebSocket {
 			logger().debug(`no ${type} listeners registered, buffering event`);
 			this.#bufferedEvents.push({ type, event });
 		}
+
+		// Also check for on* properties
+		switch (type) {
+			case "open":
+				if (this.#onopen) {
+					try {
+						this.#onopen(event);
+					} catch (error) {
+						logger().error("error in onopen handler", { error });
+					}
+				}
+				break;
+			case "close":
+				if (this.#onclose) {
+					try {
+						this.#onclose(event);
+					} catch (error) {
+						logger().error("error in onclose handler", { error });
+					}
+				}
+				break;
+			case "error":
+				if (this.#onerror) {
+					try {
+						this.#onerror(event);
+					} catch (error) {
+						logger().error("error in onerror handler", { error });
+					}
+				}
+				break;
+			case "message":
+				if (this.#onmessage) {
+					try {
+						this.#onmessage(event);
+					} catch (error) {
+						logger().error("error in onmessage handler", { error });
+					}
+				}
+				break;
+		}
+	}
+
+	dispatchEvent(event: RivetEvent): boolean {
+		this.#dispatchEvent(event.type, event);
+		return true;
 	}
 
 	#flushBufferedEvents(type: string): void {
@@ -349,7 +423,7 @@ export class FakeWebSocket {
 				type: "open",
 				target: this,
 				currentTarget: this,
-			} as unknown as Event;
+			} as unknown as RivetEvent;
 
 			this.#dispatchEvent("open", event);
 		} catch (err) {
@@ -357,7 +431,7 @@ export class FakeWebSocket {
 		}
 	}
 
-	#fireClose(event: CloseEvent): void {
+	#fireClose(event: RivetCloseEvent): void {
 		try {
 			this.#dispatchEvent("close", event);
 		} catch (err) {
@@ -374,7 +448,7 @@ export class FakeWebSocket {
 				currentTarget: this,
 				error,
 				message: error instanceof Error ? error.message : String(error),
-			} as unknown as Event;
+			} as unknown as RivetEvent;
 
 			this.#dispatchEvent("error", event);
 		} catch (err) {
@@ -407,5 +481,39 @@ export class FakeWebSocket {
 			});
 			this.#fireError(err);
 		}
+	}
+
+	// Event handler properties with getters/setters
+	#onopen: ((event: RivetEvent) => void) | null = null;
+	#onclose: ((event: RivetCloseEvent) => void) | null = null;
+	#onerror: ((event: RivetEvent) => void) | null = null;
+	#onmessage: ((event: RivetMessageEvent) => void) | null = null;
+
+	get onopen(): ((event: RivetEvent) => void) | null {
+		return this.#onopen;
+	}
+	set onopen(handler: ((event: RivetEvent) => void) | null) {
+		this.#onopen = handler;
+	}
+
+	get onclose(): ((event: RivetCloseEvent) => void) | null {
+		return this.#onclose;
+	}
+	set onclose(handler: ((event: RivetCloseEvent) => void) | null) {
+		this.#onclose = handler;
+	}
+
+	get onerror(): ((event: RivetEvent) => void) | null {
+		return this.#onerror;
+	}
+	set onerror(handler: ((event: RivetEvent) => void) | null) {
+		this.#onerror = handler;
+	}
+
+	get onmessage(): ((event: RivetMessageEvent) => void) | null {
+		return this.#onmessage;
+	}
+	set onmessage(handler: ((event: RivetMessageEvent) => void) | null) {
+		this.#onmessage = handler;
 	}
 }

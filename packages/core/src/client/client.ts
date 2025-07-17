@@ -1,10 +1,10 @@
-import type { EventSource } from "eventsource";
 import type { Context as HonoContext } from "hono";
 import type { WebSocket } from "ws";
 import type { AnyActorDefinition } from "@/actor/definition";
 import type { Transport } from "@/actor/protocol/message/mod";
 import type * as wsToServer from "@/actor/protocol/message/to-server";
 import type { Encoding } from "@/actor/protocol/serde";
+import type { UniversalEventSource } from "@/common/eventsource-interface";
 import type { ActorQuery } from "@/manager/protocol/query";
 import type { Registry } from "@/mod";
 import type { ActorActionFunction } from "./actor-common";
@@ -189,7 +189,7 @@ export interface ClientDriver {
 		encodingKind: Encoding,
 		params: unknown,
 		opts: { signal?: AbortSignal } | undefined,
-	): Promise<EventSource>;
+	): Promise<UniversalEventSource>;
 	sendHttpMessage(
 		c: HonoContext | undefined,
 		actorId: string,
@@ -199,6 +199,30 @@ export interface ClientDriver {
 		message: wsToServer.ToServer,
 		opts: { signal?: AbortSignal } | undefined,
 	): Promise<Response>;
+	/**
+	 * Send a raw HTTP request to an actor
+	 */
+	rawHttpRequest?(
+		c: HonoContext | undefined,
+		actorQuery: ActorQuery,
+		encoding: Encoding,
+		params: unknown,
+		path: string,
+		init: RequestInit,
+		opts: { signal?: AbortSignal } | undefined,
+	): Promise<Response>;
+	/**
+	 * Create a raw WebSocket connection to an actor
+	 */
+	rawWebSocket?(
+		c: HonoContext | undefined,
+		actorQuery: ActorQuery,
+		encoding: Encoding,
+		params: unknown,
+		path: string,
+		protocols: string | string[] | undefined,
+		opts: { signal?: AbortSignal } | undefined,
+	): Promise<WebSocket>;
 }
 
 /**

@@ -1,5 +1,9 @@
 import { ActionContext } from "@/actor/action";
 import { assertUnreachable } from "@/common/utils";
+import type {
+	RivetCloseEvent,
+	UniversalWebSocket,
+} from "@/common/websocket-interface";
 import {
 	CONN_DRIVER_GENERIC_HTTP,
 	type GenericHttpDriverState,
@@ -18,11 +22,18 @@ import {
 	NodeMessageSchema,
 	type ToFollowerActionResponse,
 	type ToFollowerConnectionClose,
+	type ToFollowerFetchResponse,
 	type ToFollowerMessage,
+	type ToFollowerWebSocketClose,
+	type ToFollowerWebSocketMessage,
 	type ToLeaderAction,
 	type ToLeaderConnectionClose,
 	type ToLeaderConnectionOpen,
+	type ToLeaderFetch,
 	type ToLeaderMessage,
+	type ToLeaderWebSocketClose,
+	type ToLeaderWebSocketMessage,
+	type ToLeaderWebSocketOpen,
 } from "./protocol";
 
 export class Node {
@@ -97,6 +108,20 @@ export class Node {
 			await this.#onFollowerMessage(data.b.fm);
 		} else if ("far" in data.b) {
 			await this.#onFollowerActionResponse(data.b.far);
+		} else if ("lf" in data.b) {
+			await this.#onLeaderFetch(data.n, data.b.lf);
+		} else if ("ffr" in data.b) {
+			await this.#onFollowerFetchResponse(data.b.ffr);
+		} else if ("lwo" in data.b) {
+			await this.#onLeaderWebSocketOpen(data.n, data.b.lwo);
+		} else if ("lwm" in data.b) {
+			await this.#onLeaderWebSocketMessage(data.b.lwm);
+		} else if ("lwc" in data.b) {
+			await this.#onLeaderWebSocketClose(data.b.lwc);
+		} else if ("fwm" in data.b) {
+			await this.#onFollowerWebSocketMessage(data.b.fwm);
+		} else if ("fwc" in data.b) {
+			await this.#onFollowerWebSocketClose(data.b.fwc);
 		} else {
 			assertUnreachable(data.b);
 		}
@@ -388,5 +413,369 @@ export class Node {
 		} else {
 			logger().warn("missing action response resolver", { requestId });
 		}
+	}
+
+	async #onLeaderFetch(nodeId: string | undefined, fetch: ToLeaderFetch) {
+		if (!nodeId) {
+			logger().error("node id not provided for leader fetch");
+			return;
+		}
+
+		try {
+			const actor = ActorPeer.getLeaderActor(this.#globalState, fetch.ai);
+			if (!actor) {
+				const errorMessage: NodeMessage = {
+					b: {
+						ffr: {
+							ri: fetch.ri,
+							status: 404,
+							headers: {},
+							error: "Actor not found",
+						},
+					},
+				};
+				await this.#CoordinateDriver.publishToNode(
+					nodeId,
+					JSON.stringify(errorMessage),
+				);
+				return;
+			}
+
+			// Reconstruct request
+			const url = new URL(`http://actor${fetch.url}`);
+			const body = fetch.body
+				? new Uint8Array(
+						atob(fetch.body)
+							.split("")
+							.map((c) => c.charCodeAt(0)),
+					)
+				: undefined;
+
+			const request = new Request(url, {
+				method: fetch.method,
+				headers: fetch.headers,
+				body,
+			});
+
+			// Call actor's handleFetch
+			const response = await actor.handleFetch(request);
+
+			// handleFetch should always return a Response (it throws if not), but TypeScript doesn't know that
+			if (!response) {
+				throw new Error("handleFetch returned void unexpectedly");
+			}
+
+			// Serialize response
+			const responseHeaders: Record<string, string> = {};
+			response.headers.forEach((value: string, key: string) => {
+				responseHeaders[key] = value;
+			});
+
+			let responseBody: string | undefined;
+			if (response.body) {
+				const buffer = await response.arrayBuffer();
+				responseBody = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+			}
+
+			// Send response back
+			const responseMessage: NodeMessage = {
+				b: {
+					ffr: {
+						ri: fetch.ri,
+						status: response.status,
+						headers: responseHeaders,
+						body: responseBody,
+					},
+				},
+			};
+			await this.#CoordinateDriver.publishToNode(
+				nodeId,
+				JSON.stringify(responseMessage),
+			);
+		} catch (error) {
+			const errorMessage: NodeMessage = {
+				b: {
+					ffr: {
+						ri: fetch.ri,
+						status: 500,
+						headers: {},
+						error:
+							error instanceof Error ? error.message : "Internal server error",
+					},
+				},
+			};
+			await this.#CoordinateDriver.publishToNode(
+				nodeId,
+				JSON.stringify(errorMessage),
+			);
+		}
+	}
+
+	async #onFollowerFetchResponse(response: ToFollowerFetchResponse) {
+		const resolver = this.#globalState.fetchResponseResolvers.get(response.ri);
+		if (resolver) {
+			resolver(response);
+		}
+	}
+
+	async #onLeaderWebSocketOpen(
+		nodeId: string | undefined,
+		open: ToLeaderWebSocketOpen,
+	) {
+		if (!nodeId) {
+			logger().error("node id not provided for leader websocket open");
+			return;
+		}
+
+		try {
+			const actor = ActorPeer.getLeaderActor(this.#globalState, open.ai);
+			if (!actor) {
+				logger().warn("received websocket open for nonexistent actor leader", {
+					actorId: open.ai,
+				});
+				return;
+			}
+
+			// Reconstruct request
+			const url = new URL(`ws://actor${open.url}`);
+			const request = new Request(url, {
+				headers: open.headers,
+			});
+
+			// Create WebSocket bridge that will forward messages back to follower
+			const bridge: UniversalWebSocket = {
+				// WebSocket state constants
+				CONNECTING: 0 as const,
+				OPEN: 1 as const,
+				CLOSING: 2 as const,
+				CLOSED: 3 as const,
+
+				// Properties
+				readyState: 1 as const, // OPEN
+				binaryType: "arraybuffer" as const,
+				bufferedAmount: 0,
+				extensions: "",
+				protocol: "",
+				url: request.url,
+
+				// Event handlers
+				onopen: null,
+				onclose: null,
+				onerror: null,
+				onmessage: null,
+
+				// Methods
+				send: (
+					data: string | ArrayBufferLike | Blob | ArrayBufferView,
+				): void => {
+					// Convert data to ArrayBuffer or string
+					let processedData: string | ArrayBuffer;
+					if (typeof data === "string") {
+						processedData = data;
+					} else if (data instanceof ArrayBuffer) {
+						processedData = data;
+					} else if (data instanceof Blob) {
+						// For now, we'll throw on Blob since we need to handle it async
+						throw new Error("Blob data not supported in coordinate topology");
+					} else if (ArrayBuffer.isView(data)) {
+						// Handle ArrayBufferView (including TypedArrays and DataView)
+						if (data.buffer instanceof SharedArrayBuffer) {
+							// Convert from SharedArrayBuffer
+							const buffer = new ArrayBuffer(data.byteLength);
+							new Uint8Array(buffer).set(
+								new Uint8Array(data.buffer, data.byteOffset, data.byteLength),
+							);
+							processedData = buffer;
+						} else {
+							processedData = data.buffer.slice(
+								data.byteOffset,
+								data.byteOffset + data.byteLength,
+							);
+						}
+					} else if (data instanceof SharedArrayBuffer) {
+						// Convert SharedArrayBuffer to ArrayBuffer
+						const buffer = new ArrayBuffer(data.byteLength);
+						new Uint8Array(buffer).set(new Uint8Array(data));
+						processedData = buffer;
+					} else {
+						// Assume it's ArrayBuffer-like
+						const buffer = new ArrayBuffer((data as ArrayBuffer).byteLength);
+						new Uint8Array(buffer).set(new Uint8Array(data as ArrayBuffer));
+						processedData = buffer;
+					}
+
+					const isBinary = processedData instanceof ArrayBuffer;
+					const encodedData = isBinary
+						? btoa(
+								String.fromCharCode(
+									...new Uint8Array(processedData as ArrayBuffer),
+								),
+							)
+						: (processedData as string);
+
+					const message: NodeMessage = {
+						b: {
+							fwm: {
+								wi: open.wi,
+								data: encodedData,
+								binary: isBinary,
+							},
+						},
+					};
+					this.#CoordinateDriver.publishToNode(nodeId, JSON.stringify(message));
+				},
+				close: (code?: number, reason?: string): void => {
+					const message: NodeMessage = {
+						b: {
+							fwc: {
+								wi: open.wi,
+								code,
+								reason,
+							},
+						},
+					};
+					this.#CoordinateDriver.publishToNode(nodeId, JSON.stringify(message));
+				},
+				addEventListener(): void {
+					// For now, we only support the on* event handlers
+				},
+				removeEventListener(): void {
+					// For now, we only support the on* event handlers
+				},
+				dispatchEvent(): boolean {
+					return true;
+				},
+			};
+
+			// Store WebSocket handler reference
+			const wsHandler = { bridge, actorId: open.ai };
+			(this.#globalState as any).leaderWebSockets =
+				(this.#globalState as any).leaderWebSockets || new Map();
+			(this.#globalState as any).leaderWebSockets.set(open.wi, wsHandler);
+
+			// Call actor's handleWebSocket
+			await actor.handleWebSocket(bridge as any, request);
+		} catch (error) {
+			logger().warn("failed to open websocket", { error: `${error}` });
+
+			// Send close message
+			const message: NodeMessage = {
+				b: {
+					fwc: {
+						wi: open.wi,
+						code: 1011, // Internal error
+						reason:
+							error instanceof Error ? error.message : "Internal server error",
+					},
+				},
+			};
+			await this.#CoordinateDriver.publishToNode(
+				nodeId,
+				JSON.stringify(message),
+			);
+		}
+	}
+
+	async #onLeaderWebSocketMessage(message: ToLeaderWebSocketMessage) {
+		const wsHandler = (this.#globalState as any).leaderWebSockets?.get(
+			message.wi,
+		);
+		if (!wsHandler) {
+			logger().warn("received websocket message for nonexistent websocket", {
+				websocketId: message.wi,
+			});
+			return;
+		}
+
+		const actor = ActorPeer.getLeaderActor(
+			this.#globalState,
+			wsHandler.actorId,
+		);
+		if (!actor) {
+			logger().warn("received websocket message for nonexistent actor leader", {
+				actorId: wsHandler.actorId,
+			});
+			return;
+		}
+
+		// Decode message
+		const data = message.binary
+			? new Uint8Array(
+					atob(message.data)
+						.split("")
+						.map((c) => c.charCodeAt(0)),
+				)
+			: message.data;
+
+		// Forward to actor's WebSocket handler
+		if (wsHandler.bridge.onmessage) {
+			wsHandler.bridge.onmessage({ data } as MessageEvent);
+		}
+	}
+
+	async #onLeaderWebSocketClose(close: ToLeaderWebSocketClose) {
+		const wsHandler = (this.#globalState as any).leaderWebSockets?.get(
+			close.wi,
+		);
+		if (!wsHandler) {
+			logger().warn("received websocket close for nonexistent websocket", {
+				websocketId: close.wi,
+			});
+			return;
+		}
+
+		// Clean up
+		(this.#globalState as any).leaderWebSockets.delete(close.wi);
+
+		// Forward to actor's WebSocket handler
+		if (wsHandler.bridge.onclose) {
+			wsHandler.bridge.onclose({
+				type: "close",
+				code: close.code ?? 1005,
+				reason: close.reason ?? "",
+				wasClean: true,
+			} as RivetCloseEvent);
+		}
+	}
+
+	async #onFollowerWebSocketMessage(message: ToFollowerWebSocketMessage) {
+		const ws = this.#globalState.rawWebSockets.get(message.wi);
+		if (!ws) {
+			logger().warn(
+				"received websocket message for nonexistent follower websocket",
+				{
+					websocketId: message.wi,
+				},
+			);
+			return;
+		}
+
+		// Decode and forward message
+		const data = message.binary
+			? new Uint8Array(
+					atob(message.data)
+						.split("")
+						.map((c) => c.charCodeAt(0)),
+				)
+			: message.data;
+
+		ws.send(data);
+	}
+
+	async #onFollowerWebSocketClose(close: ToFollowerWebSocketClose) {
+		const ws = this.#globalState.rawWebSockets.get(close.wi);
+		if (!ws) {
+			logger().warn(
+				"received websocket close for nonexistent follower websocket",
+				{
+					websocketId: close.wi,
+				},
+			);
+			return;
+		}
+
+		// Clean up and close WebSocket
+		this.#globalState.rawWebSockets.delete(close.wi);
+		ws.close(close.code, close.reason);
 	}
 }

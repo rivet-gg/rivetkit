@@ -18,6 +18,8 @@ import type {
 	ConnectWebSocketOpts,
 	ConnectWebSocketOutput,
 	ConnsMessageOpts,
+	FetchOpts,
+	WebSocketOpts,
 } from "@/actor/router-endpoints";
 import {
 	type Client,
@@ -303,8 +305,41 @@ export class StandaloneTopology {
 				// Process message
 				await actor.processMessage(opts.message, conn);
 			},
+			onFetch: async (opts: FetchOpts): Promise<Response> => {
+				const { actor } = await this.#getActor(opts.actorId);
+
+				// Call the actor's onFetch handler - it will throw appropriate errors
+				const response = await actor.handleFetch(opts.request);
+
+				// This should never happen now since handleFetch throws errors
+				if (!response) {
+					throw new errors.InternalError(
+						"handleFetch returned void unexpectedly",
+					);
+				}
+
+				return response;
+			},
+			onWebSocket: async (opts: WebSocketOpts): Promise<void> => {
+				const { actor } = await this.#getActor(opts.actorId);
+
+				// Call the actor's onWebSocket handler
+				await actor.handleWebSocket(opts.websocket, opts.request);
+			},
 		};
 
-		return { inline: { handlers } };
+		return {
+			inline: {
+				handlers,
+				getActorInstance: async (actorId: string) => {
+					const handler = this.#actors.get(actorId);
+					if (!handler) {
+						return undefined;
+					}
+					await handler.actorPromise?.promise;
+					return handler.actor;
+				},
+			},
+		};
 	}
 }

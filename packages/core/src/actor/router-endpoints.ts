@@ -12,6 +12,7 @@ import {
 	serialize,
 } from "@/actor/protocol/serde";
 import { deconstructError, stringifyError } from "@/common/utils";
+import type { UniversalWebSocket } from "@/common/websocket-interface";
 import type { RegistryConfig } from "@/registry/config";
 import type { RunConfig } from "@/registry/run-config";
 import * as errors from "./errors";
@@ -66,6 +67,19 @@ export interface ConnsMessageOpts {
 	actorId: string;
 }
 
+export interface FetchOpts {
+	request: Request;
+	actorId: string;
+	authData: unknown;
+}
+
+export interface WebSocketOpts {
+	request: Request;
+	websocket: UniversalWebSocket;
+	actorId: string;
+	authData: unknown;
+}
+
 /**
  * Shared interface for connection handlers used by both ActorRouterHandler and ManagerRouterHandler
  */
@@ -76,6 +90,8 @@ export interface ConnectionHandlers {
 	onConnectSse(opts: ConnectSseOpts): Promise<ConnectSseOutput>;
 	onAction(opts: ActionOpts): Promise<ActionOutput>;
 	onConnMessage(opts: ConnsMessageOpts): Promise<void>;
+	onFetch?(opts: FetchOpts): Promise<Response>;
+	onWebSocket?(opts: WebSocketOpts): Promise<void>;
 }
 
 /**

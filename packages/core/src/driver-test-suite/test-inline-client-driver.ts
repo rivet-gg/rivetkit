@@ -1,13 +1,18 @@
 import * as cbor from "cbor-x";
-import type { EventSource } from "eventsource";
 import type { Context as HonoContext } from "hono";
 import type { WebSocket } from "ws";
 import type * as wsToServer from "@/actor/protocol/message/to-server";
 import type { Encoding } from "@/actor/protocol/serde";
+import {
+	HEADER_ACTOR_QUERY,
+	HEADER_CONN_PARAMS,
+	HEADER_ENCODING,
+} from "@/actor/router-endpoints";
 import { assertUnreachable } from "@/actor/utils";
 import type { ClientDriver } from "@/client/client";
 import { ActorError as ClientActorError } from "@/client/errors";
 import type { Transport } from "@/client/mod";
+import type { UniversalEventSource } from "@/common/eventsource-interface";
 import { importWebSocket } from "@/common/websocket";
 import type { ActorQuery } from "@/manager/protocol/query";
 import type {
@@ -97,7 +102,7 @@ export function createTestInlineClientDriver(
 			actorQuery: ActorQuery,
 			encodingKind: Encoding,
 			params: unknown,
-		): Promise<EventSource> => {
+		): Promise<UniversalEventSource> => {
 			logger().info("creating sse connection via test inline driver", {
 				actorQuery,
 				encodingKind,
@@ -150,7 +155,7 @@ export function createTestInlineClientDriver(
 				}, 10000); // 10 second timeout
 			});
 
-			return eventSource;
+			return eventSource as UniversalEventSource;
 		},
 
 		sendHttpMessage: async (
@@ -198,6 +203,107 @@ export function createTestInlineClientDriver(
 				statusText: result.statusText,
 				headers: result.headers,
 			});
+		},
+
+		rawHttpRequest: async (
+			_c: HonoContext | undefined,
+			actorQuery: ActorQuery,
+			encoding: Encoding,
+			params: unknown,
+			path: string,
+			init: RequestInit,
+		): Promise<Response> => {
+			// Extract actor name from query
+			let actorName: string;
+			if ("getForId" in actorQuery) {
+				const parts = actorQuery.getForId.actorId.split("-");
+				actorName = parts[0];
+			} else if ("getForKey" in actorQuery) {
+				actorName = actorQuery.getForKey.name;
+			} else if ("getOrCreateForKey" in actorQuery) {
+				actorName = actorQuery.getOrCreateForKey.name;
+			} else if ("create" in actorQuery) {
+				actorName = actorQuery.create.name;
+			} else {
+				assertUnreachable(actorQuery);
+			}
+
+			// Build the full URL
+			// Remove leading slash from path to avoid double slashes
+			const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
+			const url = `${endpoint}/registry/actors/${actorName}/http/${normalizedPath}`;
+
+			// Merge headers properly
+			const headers = new Headers(init.headers);
+			headers.set(HEADER_ACTOR_QUERY, JSON.stringify(actorQuery));
+			headers.set(HEADER_ENCODING, encoding);
+			if (params !== undefined) {
+				headers.set(HEADER_CONN_PARAMS, JSON.stringify(params));
+			}
+
+			// Forward the request with query in headers
+			return await fetch(url, {
+				...init,
+				headers,
+			});
+		},
+
+		rawWebSocket: async (
+			_c: HonoContext | undefined,
+			actorQuery: ActorQuery,
+			encoding: Encoding,
+			params: unknown,
+			path: string,
+			protocols: string | string[] | undefined,
+		): Promise<WebSocket> => {
+			const WebSocket = await importWebSocket();
+
+			// Extract actor name from query
+			let actorName: string;
+			if ("getForId" in actorQuery) {
+				const parts = actorQuery.getForId.actorId.split("-");
+				actorName = parts[0];
+			} else if ("getForKey" in actorQuery) {
+				actorName = actorQuery.getForKey.name;
+			} else if ("getOrCreateForKey" in actorQuery) {
+				actorName = actorQuery.getOrCreateForKey.name;
+			} else if ("create" in actorQuery) {
+				actorName = actorQuery.create.name;
+			} else {
+				assertUnreachable(actorQuery);
+			}
+
+			// Build the WebSocket URL
+			const wsEndpoint = endpoint
+				.replace(/^http:/, "ws:")
+				.replace(/^https:/, "wss:");
+			// Remove leading slash from path to avoid double slashes
+			const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
+			const url = `${wsEndpoint}/registry/actors/${actorName}/websocket/${normalizedPath}`;
+
+			// Pass data via WebSocket protocol subprotocols
+			const protocolList: string[] = [];
+			protocolList.push(
+				`query.${encodeURIComponent(JSON.stringify(actorQuery))}`,
+			);
+			protocolList.push(`encoding.${encoding}`);
+			if (params) {
+				protocolList.push(
+					`conn_params.${encodeURIComponent(JSON.stringify(params))}`,
+				);
+			}
+
+			// Add user protocols
+			if (protocols) {
+				if (Array.isArray(protocols)) {
+					protocolList.push(...protocols);
+				} else {
+					protocolList.push(protocols);
+				}
+			}
+
+			// Create WebSocket connection
+			return new WebSocket(url, protocolList) as any;
 		},
 	};
 }

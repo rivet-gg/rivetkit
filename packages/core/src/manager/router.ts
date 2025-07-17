@@ -42,11 +42,13 @@ import {
 	noopNext,
 	stringifyError,
 } from "@/common/utils";
+import type { UniversalWebSocket } from "@/common/websocket-interface";
 import type { RegistryConfig } from "@/registry/config";
 import type { RunConfig } from "@/registry/run-config";
 import { VERSION } from "@/utils";
 import { authenticateEndpoint } from "./auth";
 import type { ManagerDriver } from "./driver";
+import { HonoWebSocketAdapter } from "./hono-websocket-adapter";
 import { logger } from "./log";
 import type { ActorQuery } from "./protocol/query";
 import {
@@ -55,6 +57,36 @@ import {
 	ConnMessageRequestSchema,
 	ResolveRequestSchema,
 } from "./protocol/query";
+
+/**
+ * Parse WebSocket protocol headers for query and connection parameters
+ */
+function parseWebSocketProtocols(protocols: string | undefined): {
+	queryRaw: string | undefined;
+	encodingRaw: string | undefined;
+	connParamsRaw: string | undefined;
+} {
+	let queryRaw: string | undefined;
+	let encodingRaw: string | undefined;
+	let connParamsRaw: string | undefined;
+
+	if (protocols) {
+		const protocolList = protocols.split(",").map((p) => p.trim());
+		for (const protocol of protocolList) {
+			if (protocol.startsWith("query.")) {
+				queryRaw = decodeURIComponent(protocol.substring("query.".length));
+			} else if (protocol.startsWith("encoding.")) {
+				encodingRaw = protocol.substring("encoding.".length);
+			} else if (protocol.startsWith("conn_params.")) {
+				connParamsRaw = decodeURIComponent(
+					protocol.substring("conn_params.".length),
+				);
+			}
+		}
+	}
+
+	return { queryRaw, encodingRaw, connParamsRaw };
+}
 
 type ManagerRouterHandler = {
 	// onConnectInspector?: ManagerInspectorConnHandler;
@@ -124,9 +156,12 @@ export function createManagerRouter(
 		router.use("*", async (c, next) => {
 			// Don't apply to WebSocket routes
 			// HACK: This could be insecure if we had a varargs path. We have to check the path suffix for WS since we don't know the path that this router was mounted.
+			// HACK: Checking "/websocket/" is not safe, but there is no other way to handle this if we don't know the base path this is
+			// mounted on
 			const path = c.req.path;
 			if (
 				path.endsWith("/actors/connect/websocket") ||
+				path.includes("/websocket/") ||
 				path.endsWith("/inspect")
 			) {
 				return next();
@@ -347,6 +382,138 @@ export function createManagerRouter(
 		router.openapi(messageRoute, (c) =>
 			handleMessageRequest(c, registryConfig, runConfig, handler),
 		);
+	}
+
+	// Raw HTTP endpoints - /actors/:name/http/*
+	{
+		const RawHttpRequestBodySchema = z.any().optional().openapi({
+			description: "Raw request body (can be any content type)",
+		});
+
+		const RawHttpResponseSchema = z.any().openapi({
+			description: "Raw response from actor's onFetch handler",
+		});
+
+		// Define common route config
+		const rawHttpRouteConfig = {
+			path: "/actors/:name/http/*",
+			request: {
+				params: z.object({
+					name: z.string().openapi({
+						description: "Actor name",
+						example: "my-actor",
+					}),
+				}),
+				headers: z.object({
+					[HEADER_ACTOR_QUERY]: OPENAPI_ACTOR_QUERY.optional(),
+					[HEADER_CONN_PARAMS]: OPENAPI_CONN_PARAMS.optional(),
+				}),
+				body: {
+					content: {
+						"*/*": {
+							schema: RawHttpRequestBodySchema,
+						},
+					},
+				},
+			},
+			responses: {
+				200: {
+					description: "Success - response from actor's onFetch handler",
+					content: {
+						"*/*": {
+							schema: RawHttpResponseSchema,
+						},
+					},
+				},
+				404: {
+					description: "Actor does not have an onFetch handler",
+				},
+				500: {
+					description: "Internal server error or invalid response from actor",
+				},
+			},
+		};
+
+		// Create routes for each HTTP method
+		const httpMethods = [
+			"get",
+			"post",
+			"put",
+			"delete",
+			"patch",
+			"head",
+			"options",
+		] as const;
+		for (const method of httpMethods) {
+			const route = createRoute({
+				method,
+				...rawHttpRouteConfig,
+			});
+
+			router.openapi(route, async (c) => {
+				return handleRawHttpRequest(
+					c,
+					registryConfig,
+					runConfig,
+					driver,
+					handler,
+				);
+			});
+		}
+	}
+
+	// Raw WebSocket endpoint - /actors/:name/websocket/*
+	{
+		const rawWebSocketRoute = createRoute({
+			method: "get",
+			path: "/actors/:name/websocket/*",
+			request: {
+				params: z.object({
+					name: z.string().openapi({
+						description: "Actor name",
+						example: "my-actor",
+					}),
+				}),
+				headers: z.object({
+					"sec-websocket-protocol": z.string().optional().openapi({
+						description:
+							"WebSocket protocols containing query and connection parameters encoded as query.{encoded} and conn_params.{encoded}",
+						example:
+							"query.%7B%22getOrCreateForKey%22%3A%7B%22name%22%3A%22my-actor%22%2C%22key%22%3A%5B%22default%22%5D%7D%7D",
+					}),
+				}),
+			},
+			responses: {
+				101: {
+					description: "WebSocket upgrade successful",
+				},
+				400: {
+					description: "WebSockets not enabled or invalid request",
+				},
+				404: {
+					description: "Actor does not have an onWebSocket handler",
+				},
+			},
+		});
+
+		router.openapi(rawWebSocketRoute, async (c) => {
+			const upgradeWebSocket = runConfig.getUpgradeWebSocket?.();
+			if (!upgradeWebSocket) {
+				return c.text(
+					"WebSockets are not enabled for this driver. Use SSE instead.",
+					400,
+				);
+			}
+
+			return handleRawWebSocketRequest(
+				c,
+				registryConfig,
+				runConfig,
+				driver,
+				handler,
+				upgradeWebSocket,
+			);
+		});
 	}
 
 	// if (registryConfig.inspector.enabled) {
@@ -810,25 +977,8 @@ async function handleWebSocketConnectRequest(
 		// Browsers don't support using headers, so this is the only way to
 		// pass data securely.
 		const protocols = c.req.header("sec-websocket-protocol");
-		let queryRaw: string | undefined;
-		let encodingRaw: string | undefined;
-		let connParamsRaw: string | undefined;
-
-		if (protocols) {
-			// Parse protocols for conn_params.{token} pattern
-			const protocolList = protocols.split(",").map((p) => p.trim());
-			for (const protocol of protocolList) {
-				if (protocol.startsWith("query.")) {
-					queryRaw = decodeURIComponent(protocol.substring("query.".length));
-				} else if (protocol.startsWith("encoding.")) {
-					encodingRaw = protocol.substring("encoding.".length);
-				} else if (protocol.startsWith("conn_params.")) {
-					connParamsRaw = decodeURIComponent(
-						protocol.substring("conn_params.".length),
-					);
-				}
-			}
-		}
+		const { queryRaw, encodingRaw, connParamsRaw } =
+			parseWebSocketProtocols(protocols);
 
 		// Parse query
 		let queryUnvalidated: unknown;
@@ -1205,4 +1355,271 @@ async function handleResolveRequest(
 	};
 	const serialized = serialize(response, encoding);
 	return c.body(serialized);
+}
+
+/**
+ * Handle raw HTTP requests to an actor
+ */
+async function handleRawHttpRequest(
+	c: HonoContext,
+	registryConfig: RegistryConfig,
+	runConfig: RunConfig,
+	driver: ManagerDriver,
+	handler: ManagerRouterHandler,
+): Promise<Response> {
+	try {
+		const actorName = c.req.param("name");
+		const subpath = c.req.path.split("/http/")[1] || "";
+		logger().debug("raw http request received", { actorName, subpath });
+
+		// Get actor query from header (consistent with other endpoints)
+		const queryHeader = c.req.header(HEADER_ACTOR_QUERY);
+		if (!queryHeader) {
+			throw new errors.InvalidRequest("Missing actor query header");
+		}
+		const query: ActorQuery = JSON.parse(queryHeader);
+
+		// Parse connection parameters for authentication
+		const connParamsHeader = c.req.header(HEADER_CONN_PARAMS);
+		const connParams = connParamsHeader
+			? JSON.parse(connParamsHeader)
+			: undefined;
+
+		// Authenticate the request
+		const authData = await authenticateEndpoint(
+			c,
+			driver,
+			registryConfig,
+			query,
+			["action"],
+			connParams,
+		);
+
+		// Get the actor ID
+		const { actorId } = await queryActor(c, query, driver);
+		logger().debug("found actor for raw http", { actorId });
+		invariant(actorId, "Missing actor ID");
+
+		// Handle based on mode
+		if ("inline" in handler.routingHandler) {
+			logger().debug("using inline mode for raw http");
+
+			// Check if we have an onFetch handler
+			const handlers = handler.routingHandler.inline.handlers;
+			if (!handlers.onFetch) {
+				throw new errors.FetchHandlerNotDefined();
+			}
+
+			// Create a new request with the correct URL path
+			const url = new URL(c.req.url);
+			url.pathname = `/${subpath}`;
+			const request = new Request(url.toString(), c.req.raw);
+
+			// Call the onFetch handler
+			const response = await handlers.onFetch({
+				request,
+				actorId,
+				authData,
+			});
+
+			return response;
+		} else if ("custom" in handler.routingHandler) {
+			logger().debug("using custom proxy mode for raw http");
+
+			const url = new URL(`http://actor/http/${subpath}`);
+
+			// Forward the request to the actor
+			const proxyRequest = new Request(url, {
+				method: c.req.method,
+				headers: c.req.raw.headers,
+				body: c.req.raw.body,
+			});
+
+			// Forward conn params if provided
+			if (connParams) {
+				proxyRequest.headers.set(
+					HEADER_CONN_PARAMS,
+					JSON.stringify(connParams),
+				);
+			}
+			// Forward auth data to actor
+			if (authData) {
+				proxyRequest.headers.set(HEADER_AUTH_DATA, JSON.stringify(authData));
+			}
+
+			return await handler.routingHandler.custom.proxyRequest(
+				c,
+				proxyRequest,
+				actorId,
+			);
+		} else {
+			assertUnreachable(handler.routingHandler);
+		}
+	} catch (error) {
+		logger().error("error in raw http handler", {
+			error: stringifyError(error),
+		});
+
+		// Use ProxyError if it's not already an ActorError
+		if (!errors.ActorError.isActorError(error)) {
+			throw new errors.ProxyError("Raw HTTP request", error);
+		} else {
+			throw error;
+		}
+	}
+}
+
+/**
+ * Handle raw WebSocket requests to an actor
+ */
+async function handleRawWebSocketRequest(
+	c: HonoContext,
+	registryConfig: RegistryConfig,
+	runConfig: RunConfig,
+	driver: ManagerDriver,
+	handler: ManagerRouterHandler,
+	upgradeWebSocket: any,
+): Promise<Response> {
+	try {
+		const actorName = c.req.param("name");
+		const subpath = c.req.path.split("/websocket/")[1] || "";
+		logger().debug("raw websocket request received", { actorName, subpath });
+
+		// Get actor query and connection parameters from WebSocket protocols only
+		let query: ActorQuery;
+		let connParams: unknown;
+
+		// Parse protocols from Sec-WebSocket-Protocol header
+		const protocols = c.req.header("sec-websocket-protocol");
+		const {
+			queryRaw: queryFromProtocol,
+			connParamsRaw: connParamsFromProtocol,
+		} = parseWebSocketProtocols(protocols);
+
+		if (!queryFromProtocol) {
+			throw new errors.InvalidRequest("Missing query in WebSocket protocol");
+		}
+		query = JSON.parse(queryFromProtocol);
+
+		// Parse connection parameters from protocol
+		if (connParamsFromProtocol) {
+			connParams = JSON.parse(connParamsFromProtocol);
+		}
+
+		// Authenticate the request
+		const authData = await authenticateEndpoint(
+			c,
+			driver,
+			registryConfig,
+			query,
+			["action"],
+			connParams,
+		);
+
+		// Get the actor ID
+		const { actorId } = await queryActor(c, query, driver);
+		logger().debug("found actor for raw websocket", { actorId });
+		invariant(actorId, "Missing actor ID");
+
+		// Handle based on mode
+		if ("inline" in handler.routingHandler) {
+			logger().debug("using inline mode for raw websocket");
+
+			// Check if we have an onWebSocket handler
+			const handlers = handler.routingHandler.inline.handlers;
+			const onWebSocket = handlers.onWebSocket;
+			if (!onWebSocket) {
+				throw new errors.WebSocketHandlerNotDefined();
+			}
+
+			// Create a WebSocket upgrade handler
+			return upgradeWebSocket(() => {
+				// Create a new request with the correct URL path
+				const url = new URL(c.req.url);
+				url.pathname = `/${subpath}`;
+				const request = new Request(url.toString(), {
+					method: c.req.method,
+					headers: c.req.raw.headers,
+				});
+
+				let bridge: HonoWebSocketAdapter | undefined;
+
+				return {
+					onOpen: async (_evt: any, ws: WSContext) => {
+						logger().debug("raw websocket connection opened");
+
+						// Create a HonoWebSocketAdapter to convert WSContext to WebSocket interface
+						bridge = new HonoWebSocketAdapter(ws);
+
+						// Call the onWebSocket handler
+						try {
+							await onWebSocket({
+								request,
+								websocket: bridge as any,
+								actorId,
+								authData,
+							});
+						} catch (error) {
+							logger().error("error in onWebSocket handler", {
+								error: stringifyError(error),
+							});
+							ws.close(1011, "Internal server error");
+						}
+					},
+					onMessage: async (message: any, ws: WSContext) => {
+						invariant(bridge, "Bridge not initialized");
+						// Forward the message to the bridge
+						// Hono passes the raw data, not a MessageEvent
+						bridge._handleMessage(message);
+					},
+					onClose: async (evt: any, ws: WSContext) => {
+						invariant(bridge, "Bridge not initialized");
+						bridge._handleClose(evt.code || 1000, evt.reason || "");
+					},
+					onError: async (error: unknown) => {
+						logger().error("error in raw websocket connection", { error });
+						invariant(bridge, "Bridge not initialized");
+						bridge._handleError(error);
+					},
+				};
+			})(c, noopNext());
+		} else if ("custom" in handler.routingHandler) {
+			logger().debug("using custom proxy mode for raw websocket");
+
+			const url = new URL(`http://actor/websocket/${subpath}`);
+
+			// For custom mode, proxy the WebSocket
+			return upgradeWebSocket(async (ws: WSContext) => {
+				try {
+					// Use the custom proxy handler
+					const customHandler = handler.routingHandler as {
+						custom: import("@/actor/conn-routing-handler").ConnRoutingHandlerCustom;
+					};
+					await customHandler.custom.proxyWebSocket(
+						c,
+						`/websocket/${subpath}`,
+						actorId,
+						"json", // Default encoding for raw WebSocket
+						connParams, // Pass connection parameters
+						authData,
+						upgradeWebSocket,
+					);
+				} catch (error) {
+					logger().error("error proxying raw websocket", {
+						error: stringifyError(error),
+					});
+					ws.close(1011, "Proxy error");
+				}
+			});
+		} else {
+			assertUnreachable(handler.routingHandler);
+		}
+	} catch (error) {
+		logger().error("error in raw websocket handler", {
+			error: stringifyError(error),
+		});
+
+		// Return error response instead of WebSocket upgrade
+		return c.text("WebSocket upgrade failed: " + stringifyError(error), 500);
+	}
 }

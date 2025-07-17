@@ -7,6 +7,7 @@ import type * as wsToServer from "@/actor/protocol/message/to-server";
 import type { Client } from "@/client/client";
 import type { Logger } from "@/common/log";
 import { isCborSerializable, stringifyError } from "@/common/utils";
+import type { UniversalWebSocket } from "@/common/websocket-interface";
 import type { Registry } from "@/mod";
 import type { ActionContext } from "./action";
 import type { ActorConfig } from "./config";
@@ -1019,6 +1020,53 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 	 */
 	get actions(): string[] {
 		return Object.keys(this.#config.actions);
+	}
+
+	/**
+	 * Handles raw HTTP requests to the actor.
+	 */
+	async handleFetch(request: Request): Promise<Response | void> {
+		this.#assertReady();
+
+		if (!this.#config.onFetch) {
+			throw new errors.FetchHandlerNotDefined();
+		}
+
+		try {
+			const response = await this.#config.onFetch(this.actorContext, request);
+			if (!response) {
+				throw new errors.InvalidFetchResponse();
+			}
+			return response;
+		} catch (error) {
+			logger().error("onFetch error", {
+				error: stringifyError(error),
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Handles raw WebSocket connections to the actor.
+	 */
+	async handleWebSocket(
+		websocket: UniversalWebSocket,
+		request: Request,
+	): Promise<void> {
+		this.#assertReady();
+
+		if (!this.#config.onWebSocket) {
+			throw new errors.InternalError("onWebSocket handler not defined");
+		}
+
+		try {
+			await this.#config.onWebSocket(this.actorContext, websocket, request);
+		} catch (error) {
+			logger().error("onWebSocket error", {
+				error: stringifyError(error),
+			});
+			throw error;
+		}
 	}
 
 	// MARK: Lifecycle hooks

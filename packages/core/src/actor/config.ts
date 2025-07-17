@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { UniversalWebSocket } from "@/common/websocket-interface";
 import type { ActionContext } from "./action";
 import type { Conn } from "./connection";
 import type { ActorContext } from "./context";
@@ -18,6 +19,8 @@ export const ActorConfigSchema = z
 		onConnect: z.function().optional(),
 		onDisconnect: z.function().optional(),
 		onBeforeActionResponse: z.function().optional(),
+		onFetch: z.function().optional(),
+		onWebSocket: z.function().optional(),
 		actions: z.record(z.function()),
 		state: z.any().optional(),
 		createState: z.function().optional(),
@@ -348,6 +351,35 @@ interface BaseActorConfig<
 		output: Out,
 	) => Out | Promise<Out>;
 
+	/**
+	 * Called when a raw HTTP request is made to the actor.
+	 *
+	 * This handler receives raw HTTP requests made to `/actors/{actorName}/http/*` endpoints.
+	 * Use this hook to handle custom HTTP patterns, REST APIs, or other HTTP-based protocols.
+	 *
+	 * @param request The raw HTTP request object
+	 * @returns A Response object to send back, or void to continue with default routing
+	 */
+	onFetch?: (
+		c: ActorContext<S, CP, CS, V, I, AD, DB>,
+		request: Request,
+	) => Response | void | Promise<Response | void>;
+
+	/**
+	 * Called when a raw WebSocket connection is established to the actor.
+	 *
+	 * This handler receives WebSocket connections made to `/actors/{actorName}/websocket/*` endpoints.
+	 * Use this hook to handle custom WebSocket protocols, binary streams, or other WebSocket-based communication.
+	 *
+	 * @param websocket The raw WebSocket connection
+	 * @param request The original HTTP upgrade request
+	 */
+	onWebSocket?: (
+		c: ActorContext<S, CP, CS, V, I, AD, DB>,
+		websocket: UniversalWebSocket,
+		request: Request,
+	) => void | Promise<void>;
+
 	actions: R;
 }
 
@@ -387,6 +419,8 @@ export type ActorConfig<S, CP, CS, V, I, AD, DB> = Omit<
 	| "onConnect"
 	| "onDisconnect"
 	| "onBeforeActionResponse"
+	| "onFetch"
+	| "onWebSocket"
 	| "state"
 	| "createState"
 	| "connState"
@@ -423,6 +457,8 @@ export type ActorConfigInput<
 	| "onConnect"
 	| "onDisconnect"
 	| "onBeforeActionResponse"
+	| "onFetch"
+	| "onWebSocket"
 	| "state"
 	| "createState"
 	| "connState"

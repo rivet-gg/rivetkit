@@ -1,5 +1,6 @@
 import type { Context as HonoContext } from "hono";
 import type { UpgradeWebSocket } from "@/utils";
+import type { AnyActorInstance } from "./instance";
 import type { Encoding } from "./protocol/serde";
 import type { ConnectionHandlers as ConnHandlers } from "./router-endpoints";
 
@@ -14,6 +15,9 @@ export type ConnRoutingHandler =
 	| {
 			inline: {
 				handlers: ConnHandlers;
+				getActorInstance?: (
+					actorId: string,
+				) => Promise<AnyActorInstance | undefined>;
 			};
 	  }
 	| {

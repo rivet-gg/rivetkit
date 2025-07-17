@@ -207,7 +207,10 @@ export function deconstructError(
 	let message: string;
 	let metadata: unknown;
 	if (errors.ActorError.isActorError(error) && error.public) {
-		statusCode = 400;
+		// Check if error has statusCode (could be ActorError instance or DeconstructedError)
+		statusCode = (
+			"statusCode" in error && error.statusCode ? error.statusCode : 400
+		) as ContentfulStatusCode;
 		public_ = true;
 		code = error.code;
 		message = getErrorMessage(error);
