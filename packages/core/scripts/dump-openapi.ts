@@ -1,10 +1,25 @@
 import * as fs from "node:fs/promises";
 import { resolve } from "node:path";
-import type { ConnectionHandlers } from "@/actor/router-endpoints";
+import { Context } from "hono";
+import WebSocket from "ws";
 import type { ClientDriver } from "@/client/client";
-import { createMemoryDriver } from "@/drivers/memory/mod";
+import { createFileSystemDriver } from "@/drivers/file-system/mod";
+import type {
+	ActorOutput,
+	CreateInput,
+	GetForIdInput,
+	GetOrCreateWithKeyInput,
+	GetWithKeyInput,
+	ManagerDriver,
+} from "@/manager/driver";
+import { ActorQuery } from "@/manager/protocol/query";
 import { createManagerRouter } from "@/manager/router";
-import { type RegistryConfig, RegistryConfigSchema, setup } from "@/mod";
+import {
+	Encoding,
+	type RegistryConfig,
+	RegistryConfigSchema,
+	setup,
+} from "@/mod";
 import { type RunConfig, RunConfigSchema } from "@/registry/run-config";
 import { VERSION } from "@/utils";
 
@@ -15,24 +30,9 @@ function main() {
 	const registry = setup(registryConfig);
 
 	const driverConfig: RunConfig = RunConfigSchema.parse({
-		driver: createMemoryDriver(),
+		driver: createFileSystemDriver(false),
 		getUpgradeWebSocket: () => () => unimplemented(),
 	});
-
-	const sharedConnectionHandlers: ConnectionHandlers = {
-		onConnectWebSocket: async () => {
-			unimplemented();
-		},
-		onConnectSse: async (opts) => {
-			unimplemented();
-		},
-		onAction: async (opts) => {
-			unimplemented();
-		},
-		onConnMessage: async (opts) => {
-			unimplemented();
-		},
-	};
 
 	const inlineClientDriver: ClientDriver = {
 		action: unimplemented,
@@ -40,19 +40,26 @@ function main() {
 		connectWebSocket: unimplemented,
 		connectSse: unimplemented,
 		sendHttpMessage: unimplemented,
+		rawHttpRequest: unimplemented,
+		rawWebSocket: unimplemented,
+	};
+
+	const managerDriver: ManagerDriver = {
+		getForId: unimplemented,
+		getWithKey: unimplemented,
+		getOrCreateWithKey: unimplemented,
+		createActor: unimplemented,
+		sendRequest: unimplemented,
+		openWebSocket: unimplemented,
+		proxyRequest: unimplemented,
+		proxyWebSocket: unimplemented,
 	};
 
 	const { openapi } = createManagerRouter(
 		registryConfig,
 		driverConfig,
 		inlineClientDriver,
-		{
-			routingHandler: {
-				inline: {
-					handlers: sharedConnectionHandlers,
-				},
-			},
-		},
+		managerDriver,
 	);
 
 	const openApiDoc = openapi.getOpenAPIDocument({

@@ -8,7 +8,7 @@ import type { Client } from "@/client/client";
 import type { Logger } from "@/common/log";
 import { isCborSerializable, stringifyError } from "@/common/utils";
 import type { UniversalWebSocket } from "@/common/websocket-interface";
-import type { Registry } from "@/mod";
+import type { Registry, RegistryConfig } from "@/mod";
 import type { ActionContext } from "./action";
 import type { ActorConfig } from "./config";
 import { Conn, type ConnId } from "./connection";
@@ -1025,7 +1025,7 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 	/**
 	 * Handles raw HTTP requests to the actor.
 	 */
-	async handleFetch(request: Request): Promise<Response | void> {
+	async handleFetch(request: Request, opts: { auth: AD }): Promise<Response> {
 		this.#assertReady();
 
 		if (!this.#config.onFetch) {
@@ -1033,7 +1033,11 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 		}
 
 		try {
-			const response = await this.#config.onFetch(this.actorContext, request);
+			const response = await this.#config.onFetch(
+				this.actorContext,
+				request,
+				opts,
+			);
 			if (!response) {
 				throw new errors.InvalidFetchResponse();
 			}
@@ -1051,7 +1055,7 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 	 */
 	async handleWebSocket(
 		websocket: UniversalWebSocket,
-		request: Request,
+		opts: { request: Request; auth: AD },
 	): Promise<void> {
 		this.#assertReady();
 
@@ -1060,7 +1064,7 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 		}
 
 		try {
-			await this.#config.onWebSocket(this.actorContext, websocket, request);
+			await this.#config.onWebSocket(this.actorContext, websocket, opts);
 		} catch (error) {
 			logger().error("onWebSocket error", {
 				error: stringifyError(error),

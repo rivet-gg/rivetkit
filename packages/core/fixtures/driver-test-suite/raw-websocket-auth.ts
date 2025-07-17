@@ -24,11 +24,7 @@ export const rawWebSocketAuthActor = actor({
 
 		return { userId: "user123", token: apiKey };
 	},
-	onWebSocket(
-		ctx: ActorContext<any, any, any, any, any, any, any>,
-		websocket: UniversalWebSocket,
-		request: Request,
-	) {
+	onWebSocket(ctx, websocket) {
 		ctx.state.connectionCount++;
 
 		// Send welcome message on connect
@@ -88,11 +84,7 @@ export const rawWebSocketNoAuthActor = actor({
 	state: {
 		connections: 0,
 	},
-	onWebSocket(
-		ctx: ActorContext<any, any, any, any, any, any, any>,
-		websocket: UniversalWebSocket,
-		request: Request,
-	) {
+	onWebSocket(ctx, websocket) {
 		ctx.state.connections++;
 		websocket.send(
 			JSON.stringify({
@@ -116,11 +108,7 @@ export const rawWebSocketPublicActor = actor({
 	onAuth: () => {
 		return null; // Allow public access
 	},
-	onWebSocket(
-		ctx: ActorContext<any, any, any, any, any, any, any>,
-		websocket: UniversalWebSocket,
-		request: Request,
-	) {
+	onWebSocket(ctx, websocket) {
 		ctx.state.visitors++;
 
 		websocket.send(
@@ -153,13 +141,9 @@ export const rawWebSocketCustomAuthActor = actor({
 		// Allow all connections - auth will be handled in onWebSocket
 		return {};
 	},
-	onWebSocket(
-		ctx: ActorContext<any, any, any, any, any, any, any>,
-		websocket: UniversalWebSocket,
-		request: Request,
-	) {
+	onWebSocket(ctx, websocket, opts) {
 		// Check for auth token in URL or headers
-		const url = new URL(request.url);
+		const url = new URL(opts.request.url);
 		const token = url.searchParams.get("token");
 
 		if (!token || token !== "custom-ws-token") {

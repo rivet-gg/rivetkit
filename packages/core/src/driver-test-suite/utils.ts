@@ -13,6 +13,7 @@ export async function setupDriverTest(
 	driverTestConfig: DriverTestConfig,
 ): Promise<{
 	client: Client<typeof registry>;
+	endpoint: string;
 }> {
 	if (!driverTestConfig.useRealTimers) {
 		vi.useFakeTimers();
@@ -47,6 +48,7 @@ export async function setupDriverTest(
 
 	return {
 		client,
+		endpoint,
 	};
 }
 

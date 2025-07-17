@@ -363,7 +363,8 @@ interface BaseActorConfig<
 	onFetch?: (
 		c: ActorContext<S, CP, CS, V, I, AD, DB>,
 		request: Request,
-	) => Response | void | Promise<Response | void>;
+		opts: { auth: AD },
+	) => Response | Promise<Response>;
 
 	/**
 	 * Called when a raw WebSocket connection is established to the actor.
@@ -377,7 +378,7 @@ interface BaseActorConfig<
 	onWebSocket?: (
 		c: ActorContext<S, CP, CS, V, I, AD, DB>,
 		websocket: UniversalWebSocket,
-		request: Request,
+		opts: { request: Request; auth: AD },
 	) => void | Promise<void>;
 
 	actions: R;

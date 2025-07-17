@@ -1,21 +1,15 @@
-import { resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 import { importWebSocket } from "@/common/websocket";
 import type { ActorQuery } from "@/manager/protocol/query";
 import type { DriverTestConfig } from "../mod";
-import { waitFor } from "../utils";
+import { setupDriverTest, waitFor } from "../utils";
 
 export function runRawWebSocketDirectRegistryTests(
 	driverTestConfig: DriverTestConfig,
 ) {
 	describe("raw websocket - direct registry access", () => {
 		test("should establish vanilla WebSocket connection with proper subprotocols", async (c) => {
-			const projectPath = resolve(
-				__dirname,
-				"../../../fixtures/driver-test-suite",
-			);
-			const { endpoint, cleanup } = await driverTestConfig.start(projectPath);
-			c.onTestFinished(cleanup);
+			const { endpoint } = await setupDriverTest(c, driverTestConfig);
 			const WebSocket = await importWebSocket();
 
 			// Build the actor query
@@ -33,10 +27,14 @@ export function runRawWebSocketDirectRegistryTests(
 			const wsEndpoint = endpoint
 				.replace(/^http:/, "ws:")
 				.replace(/^https:/, "wss:");
-			const wsUrl = `${wsEndpoint}/registry/actors/rawWebSocketActor/websocket/`;
+			const wsUrl = `${wsEndpoint}/registry/actors/raw/websocket/`;
 
 			// Create WebSocket connection with subprotocol
-			const ws = new WebSocket(wsUrl, [queryProtocol]) as any;
+			const ws = new WebSocket(wsUrl, [
+				queryProtocol,
+				// HACK: See packages/platforms/cloudflare-workers/src/websocket.ts
+				"rivetkit",
+			]) as any;
 
 			await new Promise<void>((resolve, reject) => {
 				ws.addEventListener("open", () => {
@@ -64,12 +62,7 @@ export function runRawWebSocketDirectRegistryTests(
 		});
 
 		test("should echo messages with vanilla WebSocket", async (c) => {
-			const projectPath = resolve(
-				__dirname,
-				"../../../fixtures/driver-test-suite",
-			);
-			const { endpoint, cleanup } = await driverTestConfig.start(projectPath);
-			c.onTestFinished(cleanup);
+			const { endpoint } = await setupDriverTest(c, driverTestConfig);
 			const WebSocket = await importWebSocket();
 
 			const actorQuery: ActorQuery = {
@@ -84,9 +77,13 @@ export function runRawWebSocketDirectRegistryTests(
 			const wsEndpoint = endpoint
 				.replace(/^http:/, "ws:")
 				.replace(/^https:/, "wss:");
-			const wsUrl = `${wsEndpoint}/registry/actors/rawWebSocketActor/websocket/`;
+			const wsUrl = `${wsEndpoint}/registry/actors/raw/websocket/`;
 
-			const ws = new WebSocket(wsUrl, [queryProtocol]) as any;
+			const ws = new WebSocket(wsUrl, [
+				queryProtocol,
+				// HACK: See packages/platforms/cloudflare-workers/src/websocket.ts
+				"rivetkit",
+			]) as any;
 
 			await new Promise<void>((resolve) => {
 				ws.addEventListener("open", () => resolve(), { once: true });
@@ -118,12 +115,7 @@ export function runRawWebSocketDirectRegistryTests(
 		});
 
 		test("should handle connection parameters for authentication", async (c) => {
-			const projectPath = resolve(
-				__dirname,
-				"../../../fixtures/driver-test-suite",
-			);
-			const { endpoint, cleanup } = await driverTestConfig.start(projectPath);
-			c.onTestFinished(cleanup);
+			const { endpoint } = await setupDriverTest(c, driverTestConfig);
 			const WebSocket = await importWebSocket();
 
 			const actorQuery: ActorQuery = {
@@ -142,11 +134,13 @@ export function runRawWebSocketDirectRegistryTests(
 			const wsEndpoint = endpoint
 				.replace(/^http:/, "ws:")
 				.replace(/^https:/, "wss:");
-			const wsUrl = `${wsEndpoint}/registry/actors/rawWebSocketActor/websocket/`;
+			const wsUrl = `${wsEndpoint}/registry/actors/raw/websocket/`;
 
 			const ws = new WebSocket(wsUrl, [
 				queryProtocol,
 				connParamsProtocol,
+				// HACK: See packages/platforms/cloudflare-workers/src/websocket.ts
+				"rivetkit",
 			]) as any;
 
 			await new Promise<void>((resolve, reject) => {
@@ -174,12 +168,7 @@ export function runRawWebSocketDirectRegistryTests(
 		});
 
 		test("should handle custom user protocols alongside rivetkit protocols", async (c) => {
-			const projectPath = resolve(
-				__dirname,
-				"../../../fixtures/driver-test-suite",
-			);
-			const { endpoint, cleanup } = await driverTestConfig.start(projectPath);
-			c.onTestFinished(cleanup);
+			const { endpoint } = await setupDriverTest(c, driverTestConfig);
 			const WebSocket = await importWebSocket();
 
 			const actorQuery: ActorQuery = {
@@ -197,12 +186,14 @@ export function runRawWebSocketDirectRegistryTests(
 			const wsEndpoint = endpoint
 				.replace(/^http:/, "ws:")
 				.replace(/^https:/, "wss:");
-			const wsUrl = `${wsEndpoint}/registry/actors/rawWebSocketActor/websocket/`;
+			const wsUrl = `${wsEndpoint}/registry/actors/raw/websocket/`;
 
 			const ws = new WebSocket(wsUrl, [
 				queryProtocol,
 				userProtocol1,
 				userProtocol2,
+				// HACK: See packages/platforms/cloudflare-workers/src/websocket.ts
+				"rivetkit",
 			]) as any;
 
 			await new Promise<void>((resolve, reject) => {
@@ -230,12 +221,7 @@ export function runRawWebSocketDirectRegistryTests(
 		});
 
 		test("should handle different paths for WebSocket routes", async (c) => {
-			const projectPath = resolve(
-				__dirname,
-				"../../../fixtures/driver-test-suite",
-			);
-			const { endpoint, cleanup } = await driverTestConfig.start(projectPath);
-			c.onTestFinished(cleanup);
+			const { endpoint } = await setupDriverTest(c, driverTestConfig);
 			const WebSocket = await importWebSocket();
 
 			const actorQuery: ActorQuery = {
@@ -255,8 +241,12 @@ export function runRawWebSocketDirectRegistryTests(
 			const paths = ["chat/room1", "updates/feed", "stream/events"];
 
 			for (const path of paths) {
-				const wsUrl = `${wsEndpoint}/registry/actors/rawWebSocketActor/websocket/${path}`;
-				const ws = new WebSocket(wsUrl, [queryProtocol]) as any;
+				const wsUrl = `${wsEndpoint}/registry/actors/raw/websocket/${path}`;
+				const ws = new WebSocket(wsUrl, [
+					queryProtocol,
+					// HACK: See packages/platforms/cloudflare-workers/src/websocket.ts
+					"rivetkit",
+				]) as any;
 
 				await new Promise<void>((resolve, reject) => {
 					ws.addEventListener("open", () => {
@@ -284,12 +274,7 @@ export function runRawWebSocketDirectRegistryTests(
 		});
 
 		test("should return error for actors without onWebSocket handler", async (c) => {
-			const projectPath = resolve(
-				__dirname,
-				"../../../fixtures/driver-test-suite",
-			);
-			const { endpoint, cleanup } = await driverTestConfig.start(projectPath);
-			c.onTestFinished(cleanup);
+			const { endpoint } = await setupDriverTest(c, driverTestConfig);
 			const WebSocket = await importWebSocket();
 
 			const actorQuery: ActorQuery = {
@@ -304,9 +289,14 @@ export function runRawWebSocketDirectRegistryTests(
 			const wsEndpoint = endpoint
 				.replace(/^http:/, "ws:")
 				.replace(/^https:/, "wss:");
-			const wsUrl = `${wsEndpoint}/registry/actors/rawWebSocketNoHandlerActor/websocket/`;
+			const wsUrl = `${wsEndpoint}/registry/actors/raw/websocket/`;
 
-			const ws = new WebSocket(wsUrl, [queryProtocol]) as any;
+			const ws = new WebSocket(wsUrl, [
+				queryProtocol,
+
+				// HACK: See packages/platforms/cloudflare-workers/src/websocket.ts
+				"rivetkit",
+			]) as any;
 
 			// Should fail to connect
 			await new Promise<void>((resolve) => {
@@ -318,12 +308,7 @@ export function runRawWebSocketDirectRegistryTests(
 		});
 
 		test("should handle binary data over vanilla WebSocket", async (c) => {
-			const projectPath = resolve(
-				__dirname,
-				"../../../fixtures/driver-test-suite",
-			);
-			const { endpoint, cleanup } = await driverTestConfig.start(projectPath);
-			c.onTestFinished(cleanup);
+			const { endpoint } = await setupDriverTest(c, driverTestConfig);
 			const WebSocket = await importWebSocket();
 
 			const actorQuery: ActorQuery = {
@@ -338,9 +323,13 @@ export function runRawWebSocketDirectRegistryTests(
 			const wsEndpoint = endpoint
 				.replace(/^http:/, "ws:")
 				.replace(/^https:/, "wss:");
-			const wsUrl = `${wsEndpoint}/registry/actors/rawWebSocketActor/websocket/`;
+			const wsUrl = `${wsEndpoint}/registry/actors/raw/websocket/`;
 
-			const ws = new WebSocket(wsUrl, [queryProtocol]) as any;
+			const ws = new WebSocket(wsUrl, [
+				queryProtocol,
+				// HACK: See packages/platforms/cloudflare-workers/src/websocket.ts
+				"rivetkit",
+			]) as any;
 			ws.binaryType = "arraybuffer";
 
 			await new Promise<void>((resolve) => {

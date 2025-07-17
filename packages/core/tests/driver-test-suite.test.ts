@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { createTestRuntime, runDriverTests } from "@/driver-test-suite/mod";
-import { createMemoryDriver } from "@/drivers/memory/mod";
+import { createFileSystemDriver } from "@/drivers/file-system/mod";
 
 runDriverTests({
 	async start(projectPath: string) {
@@ -8,7 +8,7 @@ runDriverTests({
 			join(projectPath, "registry.ts"),
 			async () => {
 				return {
-					driver: createMemoryDriver(),
+					driver: createFileSystemDriver(false),
 				};
 			},
 		);
