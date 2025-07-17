@@ -39,3 +39,8 @@ export function getEnvUniversal(key: string): string | undefined {
 		return process.env[key];
 	}
 }
+
+export function dbg<T>(x: T): T {
+	console.trace(`=== DEBUG ===\n${x}`);
+	return x;
+}

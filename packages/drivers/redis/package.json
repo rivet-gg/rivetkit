@@ -46,21 +46,11 @@
         "types": "./dist/manager.d.cts",
         "default": "./dist/manager.cjs"
       }
-    },
-    "./coordinate": {
-      "import": {
-        "types": "./dist/coordinate.d.ts",
-        "default": "./dist/coordinate.js"
-      },
-      "require": {
-        "types": "./dist/coordinate.d.cts",
-        "default": "./dist/coordinate.cjs"
-      }
     }
   },
   "sideEffects": false,
   "scripts": {
-    "build": "tsup src/actor.ts src/manager.ts src/coordinate.ts src/mod.ts",
+    "build": "tsup src/actor.ts src/manager.ts src/mod.ts",
     "check-types": "tsc --noEmit",
     "test": "vitest run"
   },
@@ -69,6 +59,7 @@
     "hono": "^4.7.0"
   },
   "devDependencies": {
+    "@types/invariant": "^2.2.35",
     "@types/node": "^22.13.1",
     "@rivetkit/core": "workspace:*",
     "tsup": "^8.4.0",
@@ -77,7 +68,9 @@
   },
   "dependencies": {
     "@types/node": "^22.13.1",
+    "cbor-x": "^1.5.9",
     "dedent": "^1.5.3",
+    "invariant": "^2.2.4",
     "ioredis": "^5.4.2",
     "p-retry": "^6.2.1",
     "zx": "^7.2.3"

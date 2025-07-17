@@ -70,12 +70,9 @@ export const rawHttpVoidReturnActor = actor({
 		// Allow public access - empty onAuth
 		return {};
 	},
-	onFetch(
-		ctx: ActorContext<any, any, any, any, any, any, any>,
-		request: Request,
-	) {
+	onFetch(ctx, request) {
 		// Intentionally return void to test error handling
-		return;
+		return undefined as any;
 	},
 	actions: {},
 });

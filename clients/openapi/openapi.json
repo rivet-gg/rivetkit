@@ -301,19 +301,9 @@
         }
       }
     },
-    "/actors/:name/http/*": {
+    "/actors/raw/http/*": {
       "get": {
         "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "description": "Actor name",
-              "example": "my-actor"
-            },
-            "required": true,
-            "name": "name",
-            "in": "path"
-          },
           {
             "schema": {
               "type": "string",
@@ -368,16 +358,6 @@
           {
             "schema": {
               "type": "string",
-              "description": "Actor name",
-              "example": "my-actor"
-            },
-            "required": true,
-            "name": "name",
-            "in": "path"
-          },
-          {
-            "schema": {
-              "type": "string",
               "description": "Actor query information"
             },
             "required": false,
@@ -426,16 +406,6 @@
       },
       "put": {
         "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "description": "Actor name",
-              "example": "my-actor"
-            },
-            "required": true,
-            "name": "name",
-            "in": "path"
-          },
           {
             "schema": {
               "type": "string",
@@ -490,16 +460,6 @@
           {
             "schema": {
               "type": "string",
-              "description": "Actor name",
-              "example": "my-actor"
-            },
-            "required": true,
-            "name": "name",
-            "in": "path"
-          },
-          {
-            "schema": {
-              "type": "string",
               "description": "Actor query information"
             },
             "required": false,
@@ -548,16 +508,6 @@
       },
       "patch": {
         "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "description": "Actor name",
-              "example": "my-actor"
-            },
-            "required": true,
-            "name": "name",
-            "in": "path"
-          },
           {
             "schema": {
               "type": "string",
@@ -612,16 +562,6 @@
           {
             "schema": {
               "type": "string",
-              "description": "Actor name",
-              "example": "my-actor"
-            },
-            "required": true,
-            "name": "name",
-            "in": "path"
-          },
-          {
-            "schema": {
-              "type": "string",
               "description": "Actor query information"
             },
             "required": false,
@@ -673,16 +613,6 @@
           {
             "schema": {
               "type": "string",
-              "description": "Actor name",
-              "example": "my-actor"
-            },
-            "required": true,
-            "name": "name",
-            "in": "path"
-          },
-          {
-            "schema": {
-              "type": "string",
               "description": "Actor query information"
             },
             "required": false,
@@ -730,30 +660,8 @@
         }
       }
     },
-    "/actors/:name/websocket/*": {
+    "/actors/raw/websocket/*": {
       "get": {
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "description": "Actor name",
-              "example": "my-actor"
-            },
-            "required": true,
-            "name": "name",
-            "in": "path"
-          },
-          {
-            "schema": {
-              "type": "string",
-              "description": "WebSocket protocols containing query and connection parameters encoded as query.{encoded} and conn_params.{encoded}",
-              "example": "query.%7B%22getOrCreateForKey%22%3A%7B%22name%22%3A%22my-actor%22%2C%22key%22%3A%5B%22default%22%5D%7D%7D"
-            },
-            "required": false,
-            "name": "sec-websocket-protocol",
-            "in": "header"
-          }
-        ],
         "responses": {
           "101": {
             "description": "WebSocket upgrade successful"

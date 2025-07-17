@@ -2,7 +2,7 @@
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
     "paths": {
-      "@/*": ["./src/*"]
+      "@rivetkit/core/*": ["../core/src/*"]
     }
   },
   "include": ["src/**/*", "tests/**/*"]

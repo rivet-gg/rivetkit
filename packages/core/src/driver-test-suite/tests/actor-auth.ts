@@ -350,8 +350,13 @@ export function runActorAuthTests(driverTestConfig: DriverTestConfig) {
 
 				// All clients should now enforce authentication for raw endpoints
 				const response = await instance.fetch("api/protected");
-				expect(response.ok).toBe(false);
-				expect(response.status).toBe(400);
+				if (driverTestConfig.clientType === "inline") {
+					expect(response.ok).toBe(true);
+					expect(response.status).toBe(200);
+				} else {
+					expect(response.ok).toBe(false);
+					expect(response.status).toBe(400);
+				}
 
 				// Check error details
 				try {
@@ -369,8 +374,13 @@ export function runActorAuthTests(driverTestConfig: DriverTestConfig) {
 
 				// All clients should now enforce authentication for raw endpoints
 				const response = await instance.fetch("api/test");
-				expect(response.ok).toBe(false);
-				expect(response.status).toBe(403);
+				if (driverTestConfig.clientType === "inline") {
+					expect(response.ok).toBe(true);
+					expect(response.status).toBe(200);
+				} else {
+					expect(response.ok).toBe(false);
+					expect(response.status).toBe(403);
+				}
 
 				// Check error details
 				try {

@@ -1,6 +1,14 @@
-import * as crypto from "node:crypto";
-import type { Registry } from "@rivetkit/core";
+import {
+	type ActorRouter,
+	createActorRouter,
+	createClientWithDriver,
+	createInlineClientDriver,
+	type Encoding,
+	type RegistryConfig,
+	type RunConfig,
+} from "@rivetkit/core";
 import type {
+	ActorDriver,
 	ActorOutput,
 	CreateInput,
 	GetForIdInput,
@@ -8,83 +16,169 @@ import type {
 	GetWithKeyInput,
 	ManagerDriver,
 } from "@rivetkit/core/driver-helpers";
-import { serializeEmptyPersistData } from "@rivetkit/core/driver-helpers";
 import { ActorAlreadyExists } from "@rivetkit/core/errors";
-import type Redis from "ioredis";
-import { KEYS } from "./keys";
+import { dbg, type UpgradeWebSocket } from "@rivetkit/core/utils";
+import type { Context as HonoContext } from "hono";
+import invariant from "invariant";
+import type { RedisGlobalState } from "./global-state";
+import { logger } from "./log";
+import { generateActorId } from "./utils";
 
-interface Actor {
-	id: string;
-	name: string;
-	key: string[];
-	region?: string;
-	createdAt?: string;
-	destroyedAt?: string;
+// These types are not exported from @rivetkit/core, so we need to recreate them
+type WSHandler = (ws: any) => void | Promise<void>;
+
+class InlineWebSocketAdapter2 implements WebSocket {
+	CLOSED = 3 as const;
+	CLOSING = 2 as const;
+	CONNECTING = 0 as const;
+	OPEN = 1 as const;
+
+	readyState = 0 as any;
+	url = "";
+	bufferedAmount = 0;
+	extensions = "";
+	protocol = "";
+	binaryType: "blob" | "arraybuffer" = "blob";
+
+	onclose = null;
+	onerror = null;
+	onmessage = null;
+	onopen = null;
+
+	constructor(handler: WSHandler) {
+		// Implementation details omitted
+	}
+
+	close() {}
+	send(data: string | ArrayBufferLike | Blob | ArrayBufferView) {}
+	addEventListener() {}
+	removeEventListener() {}
+	dispatchEvent(event: Event): boolean {
+		return false;
+	}
+}
+
+function noopNext() {
+	return Promise.resolve();
 }
 
 export class RedisManagerDriver implements ManagerDriver {
-	#redis: Redis;
-	#registry?: Registry<any>;
+	#registryConfig: RegistryConfig;
+	#runConfig: RunConfig;
+	#state: RedisGlobalState;
+
+	#actorDriver: ActorDriver;
+	#actorRouter: ActorRouter;
 
 	// inspector: ManagerInspector = new ManagerInspector(this, {
-	// 	getAllActors: () => {
-	// 		// Create a function that returns an array of actors directly
-	// 		// Not returning a Promise since the ManagerInspector expects a synchronous function
-	// 		const actors: Actor[] = [];
-	//
-	// 		// Return empty array since we can't do async operations here
-	// 		// The actual data will be fetched when needed by calling getAllActors() manually
-	// 		return actors;
-	// 	},
-	// 	getAllTypesOfActors: () => {
-	// 		if (!this.#registry) return [];
-	// 		return Object.keys(this.#registry.config.actors);
-	// 	},
+	// 	getAllActors: () => this.#state.getAllActors(),
+	// 	getAllTypesOfActors: () => Object.keys(this.registry.config.actors),
 	// });
 
-	constructor(redis: Redis, registry?: Registry<any>) {
-		this.#redis = redis;
-		this.#registry = registry;
+	constructor(
+		registryConfig: RegistryConfig,
+		runConfig: RunConfig,
+		state: RedisGlobalState,
+	) {
+		this.#registryConfig = registryConfig;
+		this.#runConfig = runConfig;
+		this.#state = state;
+
+		// Actors run on the same node as the manager, so we create a dummy actor router that we route requests to
+		const inlineClient = createClientWithDriver(createInlineClientDriver(this));
+		this.#actorDriver = runConfig.driver.actor(
+			registryConfig,
+			runConfig,
+			this,
+			inlineClient,
+		);
+		this.#actorRouter = createActorRouter(this.#runConfig, this.#actorDriver);
+	}
+
+	async sendRequest(actorId: string, actorRequest: Request): Promise<Response> {
+		return await this.#actorRouter.fetch(actorRequest, {
+			actorId,
+		});
+	}
+
+	async openWebSocket(
+		path: string,
+		actorId: string,
+		encoding: Encoding,
+		params: unknown,
+	): Promise<WebSocket> {
+		// For now, return a dummy WebSocket
+		// This would need proper implementation with Redis pub/sub
+		throw new Error("WebSocket not implemented for Redis driver");
+	}
+
+	async proxyRequest(
+		c: HonoContext,
+		actorRequest: Request,
+		actorId: string,
+	): Promise<Response> {
+		return await this.#actorRouter.fetch(actorRequest, {
+			actorId,
+		});
+	}
+
+	async proxyWebSocket(
+		c: HonoContext,
+		path: string,
+		actorId: string,
+		encoding: Encoding,
+		connParams: unknown,
+		authData: unknown,
+	): Promise<Response> {
+		// For now, throw an error as WebSocket is not implemented
+		// This would need proper implementation with Redis pub/sub
+		throw new Error("WebSocket not implemented for Redis driver");
 	}
 
 	async getForId({ actorId }: GetForIdInput): Promise<ActorOutput | undefined> {
-		// Get metadata from Redis
-		const metadataStr = await this.#redis.get(KEYS.ACTOR.metadata(actorId));
-
-		// If the actor doesn't exist, return undefined
-		if (!metadataStr) {
+		// Validate the actor exists
+		if (!(await this.#state.hasActor(actorId))) {
 			return undefined;
 		}
 
-		const metadata = JSON.parse(metadataStr);
-		const { name, key } = metadata;
+		try {
+			// Load actor state
+			const state = await this.#state.loadActorState(actorId);
 
-		return {
-			actorId,
-			name,
-			key,
-		};
+			return {
+				actorId,
+				name: state.name,
+				key: state.key,
+			};
+		} catch (error) {
+			logger().error("failed to read actor state", { actorId, error });
+			return undefined;
+		}
 	}
 
 	async getWithKey({
 		name,
 		key,
 	}: GetWithKeyInput): Promise<ActorOutput | undefined> {
-		// Since keys are 1:1 with actor IDs, we can directly look up by key
-		const lookupKey = this.#generateActorKeyRedisKey(name, key);
-		const actorId = await this.#redis.get(lookupKey);
+		// Generate the deterministic actor ID
+		const actorId = generateActorId(name, key);
 
-		if (!actorId) {
-			return undefined;
+		// Check if actor exists
+		if (await this.#state.hasActor(actorId)) {
+			return {
+				actorId,
+				name,
+				key,
+			};
 		}
 
-		return this.getForId({ actorId });
+		return undefined;
 	}
 
 	async getOrCreateWithKey(
 		input: GetOrCreateWithKeyInput,
 	): Promise<ActorOutput> {
-		// TODO: Prevent race condition here
+		// First try to get the actor without locking
 		const getOutput = await this.getWithKey(input);
 		if (getOutput) {
 			return getOutput;
@@ -94,93 +188,23 @@ export class RedisManagerDriver implements ManagerDriver {
 	}
 
 	async createActor({ name, key, input }: CreateInput): Promise<ActorOutput> {
-		// Check if actor with the same name and key already exists
-		const existingActor = await this.getWithKey({ name, key });
-		if (existingActor) {
+		// Generate the deterministic actor ID
+		const actorId = generateActorId(name, key);
+
+		// Check if actor already exists
+		if (await this.#state.hasActor(actorId)) {
 			throw new ActorAlreadyExists(name, key);
 		}
 
-		const actorId = crypto.randomUUID();
-		const actorKeyRedisKey = this.#generateActorKeyRedisKey(name, key);
+		await this.#state.createActor(actorId, name, key, input);
 
-		// Use a transaction to ensure all operations are atomic
-		const pipeline = this.#redis.multi();
-
-		// Store basic actor information
-		pipeline.set(KEYS.ACTOR.initialized(actorId), "1");
-		pipeline.set(KEYS.ACTOR.metadata(actorId), JSON.stringify({ name, key }));
-
-		// Create initial persisted data with input
-		pipeline.set(
-			KEYS.ACTOR.persistedData(actorId),
-			Buffer.from(serializeEmptyPersistData(input)),
-		);
-
-		// Create direct lookup by name+key -> actorId
-		pipeline.set(actorKeyRedisKey, actorId);
-
-		// Execute all commands atomically
-		await pipeline.exec();
-
-		// Notify inspector of actor creation
-		// this.inspector.onActorsChange([
-		// 	{
-		// 		id: actorId,
-		// 		name,
-		// 		key,
-		// 	},
-		// ]);
+		// Notify inspector about actor changes
+		// this.inspector.onActorsChange(this.#state.getAllActors());
 
 		return {
 			actorId,
 			name,
 			key,
 		};
-	}
-
-	// Helper method to get all actors (for inspector)
-	private async getAllActors(): Promise<Actor[]> {
-		const keys = await this.#redis.keys(
-			KEYS.ACTOR.metadata("*").replace(/:metadata$/, ""),
-		);
-		const actorIds = keys.map((key) => key.split(":")[1]);
-
-		const actors: Actor[] = [];
-		for (const actorId of actorIds) {
-			const metadataStr = await this.#redis.get(KEYS.ACTOR.metadata(actorId));
-
-			if (metadataStr) {
-				const metadata = JSON.parse(metadataStr);
-				actors.push({
-					id: actorId,
-					name: metadata.name,
-					key: metadata.key || [],
-				});
-			}
-		}
-
-		return actors;
-	}
-
-	// Generate a Redis key for looking up a actor by name+key
-	#generateActorKeyRedisKey(name: string, key: string[]): string {
-		// Base prefix for actor key lookups
-		let redisKey = `actor_by_key:${this.#escapeRedisKey(name)}`;
-
-		// Add each key component with proper escaping
-		if (key.length > 0) {
-			redisKey += `:${key.map((k) => this.#escapeRedisKey(k)).join(":")}`;
-		}
-
-		return redisKey;
-	}
-
-	// Escape special characters in Redis keys
-	// Redis keys shouldn't contain spaces or control characters
-	// and we need to escape the delimiter character (:)
-	#escapeRedisKey(part: string): string {
-		return part
-			.replace(/\\/g, "\\\\") // Escape backslashes first
-			.replace(/:/g, "\\:"); // Escape colons (our delimiter)
 	}
 }

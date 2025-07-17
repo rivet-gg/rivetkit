@@ -2,8 +2,23 @@ import * as fsSync from "node:fs";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import * as cbor from "cbor-x";
+import invariant from "invariant";
+import { lookupInRegistry } from "@/actor/definition";
+import {
+	createGenericConnDrivers,
+	GenericConnGlobalState,
+} from "@/actor/generic-conn-driver";
+import type { AnyActorInstance } from "@/actor/instance";
 import type { ActorKey } from "@/actor/mod";
-import { serializeEmptyPersistData } from "@/driver-helpers/mod";
+import { ActionRequestSchema } from "@/actor/protocol/http/action";
+import type { AnyClient, Client, ClientDriver } from "@/client/client";
+import {
+	type ActorDriver,
+	serializeEmptyPersistData,
+} from "@/driver-helpers/mod";
+import type { RegistryConfig } from "@/registry/config";
+import type { Registry } from "@/registry/mod";
+import type { RunConfig } from "@/registry/run-config";
 import { logger } from "./log";
 import {
 	ensureDirectoryExists,
@@ -12,6 +27,15 @@ import {
 	getActorsDir,
 	getStoragePath,
 } from "./utils";
+
+// Actor handler to track running instances
+class ActorHandler {
+	/** Will be undefined if not yet loaded. */
+	actor?: AnyActorInstance;
+	/** Promise that will resolve when the actor is loaded. This should always be awaited before accessing the actor. */
+	actorPromise?: PromiseWithResolvers<void> = Promise.withResolvers();
+	genericConnGlobalState = new GenericConnGlobalState();
+}
 
 /**
  * Interface representing a actor's state
@@ -29,28 +53,34 @@ export interface ActorState {
 export class FileSystemGlobalState {
 	#storagePath: string;
 	#stateCache: Map<string, ActorState> = new Map();
+	#persist: boolean;
+	#actors = new Map<string, ActorHandler>();
 
-	constructor(customPath?: string) {
-		// Set up storage directory
-		this.#storagePath = getStoragePath(customPath);
+	constructor(persist: boolean = true, customPath?: string) {
+		this.#persist = persist;
+		this.#storagePath = persist ? getStoragePath(customPath) : ":memory:";
 
-		// Ensure storage directories exist synchronously during initialization
-		ensureDirectoryExistsSync(getActorsDir(this.#storagePath));
+		if (this.#persist) {
+			// Ensure storage directories exist synchronously during initialization
+			ensureDirectoryExistsSync(getActorsDir(this.#storagePath));
 
-		const actorsDir = getActorsDir(this.#storagePath);
-		let actorCount = 0;
+			const actorsDir = getActorsDir(this.#storagePath);
+			let actorCount = 0;
 
-		try {
-			const actorIds = fsSync.readdirSync(actorsDir);
-			actorCount = actorIds.length;
-		} catch (error) {
-			logger().error("failed to count actors", { error });
+			try {
+				const actorIds = fsSync.readdirSync(actorsDir);
+				actorCount = actorIds.length;
+			} catch (error) {
+				logger().error("failed to count actors", { error });
+			}
+
+			logger().info("file system driver ready", {
+				dir: this.#storagePath,
+				actorCount,
+			});
+		} else {
+			logger().info("memory driver ready");
 		}
-
-		logger().info("file system loaded", {
-			dir: this.#storagePath,
-			actorCount,
-		});
 	}
 
 	/**
@@ -68,6 +98,11 @@ export class FileSystemGlobalState {
 		const cachedActor = this.#stateCache.get(actorId);
 		if (cachedActor) {
 			return cachedActor;
+		}
+
+		// If not persisting, actor doesn't exist if not in cache
+		if (!this.#persist) {
+			throw new Error(`Actor does not exist for ID: ${actorId}`);
 		}
 
 		// Try to load from disk
@@ -116,6 +151,11 @@ export class FileSystemGlobalState {
 			return;
 		}
 
+		// Skip disk write if not persisting
+		if (!this.#persist) {
+			return;
+		}
+
 		const dataPath = getActorDataPath(this.#storagePath, actorId);
 
 		try {
@@ -139,6 +179,11 @@ export class FileSystemGlobalState {
 		// Check cache first
 		if (this.#stateCache.has(actorId)) {
 			return true;
+		}
+
+		// If not persisting, only check cache
+		if (!this.#persist) {
+			return false;
 		}
 
 		// Check if file exists on disk
@@ -173,5 +218,73 @@ export class FileSystemGlobalState {
 
 		// Save to disk
 		await this.saveActorState(actorId);
+	}
+
+	/**
+	 * Get actor metadata
+	 */
+	getActorMetadata(actorId: string): ActorState | undefined {
+		try {
+			return this.loadActorState(actorId);
+		} catch {
+			return undefined;
+		}
+	}
+
+	async loadActor(
+		registryConfig: RegistryConfig,
+		runConfig: RunConfig,
+		inlineClient: AnyClient,
+		actorDriver: ActorDriver,
+		actorId: string,
+	): Promise<AnyActorInstance> {
+		// Check if actor is already loaded
+		let handler = this.#actors.get(actorId);
+		if (handler) {
+			if (handler.actorPromise) await handler.actorPromise.promise;
+			if (!handler.actor) throw new Error("Actor should be loaded");
+			return handler.actor;
+		}
+
+		// Create new actor
+		logger().debug("creating new actor", { actorId });
+
+		// Insert unloaded placeholder in order to prevent race conditions with multiple insertions of the actor
+		handler = new ActorHandler();
+		this.#actors.set(actorId, handler);
+
+		// Get the actor metadata
+		invariant(this.hasActor(actorId), `actor ${actorId} does not exist`);
+		const { name, key } = this.loadActorState(actorId);
+
+		// Create actor
+		const definition = lookupInRegistry(registryConfig, name);
+		handler.actor = definition.instantiate();
+
+		// Start actor
+		const connDrivers = createGenericConnDrivers(
+			handler.genericConnGlobalState,
+		);
+		await handler.actor.start(
+			connDrivers,
+			actorDriver,
+			inlineClient,
+			actorId,
+			name,
+			key,
+			"unknown",
+		);
+
+		// Finish
+		handler.actorPromise?.resolve();
+		handler.actorPromise = undefined;
+
+		return handler.actor;
+	}
+
+	getGenericConnGlobalState(actorId: string): GenericConnGlobalState {
+		const actor = this.#actors.get(actorId);
+		invariant(actor, `no actor for generic conn global state: ${actorId}`);
+		return actor.genericConnGlobalState;
 	}
 }

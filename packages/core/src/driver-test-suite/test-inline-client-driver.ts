@@ -76,7 +76,7 @@ export function createTestInlineClientDriver(
 
 			// Create WebSocket connection to the test endpoint
 			const wsUrl = new URL(
-				`${endpoint}/.test/inline-driver/connect-websocket`,
+				`${endpoint}/registry/.test/inline-driver/connect-websocket`,
 			);
 			wsUrl.searchParams.set("actorQuery", JSON.stringify(actorQuery));
 			if (params !== undefined)
@@ -123,7 +123,9 @@ export function createTestInlineClientDriver(
 				: null;
 
 			// Create SSE connection URL
-			const sseUrl = new URL(`${endpoint}/.test/inline-driver/connect-sse`);
+			const sseUrl = new URL(
+				`${endpoint}/registry/.test/inline-driver/connect-sse`,
+			);
 			sseUrl.searchParams.set("actorQueryRaw", actorQueryParam);
 			sseUrl.searchParams.set("encodingKind", encodingParam);
 			if (paramsParam) {
@@ -173,25 +175,28 @@ export function createTestInlineClientDriver(
 				transport,
 			});
 
-			const result = await fetch(`${endpoint}/.test/inline-driver/call`, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify({
-					encoding,
-					transport,
-					method: "sendHttpMessage",
-					args: [
-						undefined,
-						actorId,
+			const result = await fetch(
+				`${endpoint}/registry/.test/inline-driver/call`,
+				{
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({
 						encoding,
-						connectionId,
-						connectionToken,
-						message,
-					],
-				} satisfies TestInlineDriverCallRequest),
-			});
+						transport,
+						method: "sendHttpMessage",
+						args: [
+							undefined,
+							actorId,
+							encoding,
+							connectionId,
+							connectionToken,
+							message,
+						],
+					} satisfies TestInlineDriverCallRequest),
+				},
+			);
 
 			if (!result.ok) {
 				throw new Error(`Failed to send HTTP message: ${result.statusText}`);
@@ -206,34 +211,26 @@ export function createTestInlineClientDriver(
 		},
 
 		rawHttpRequest: async (
-			_c: HonoContext | undefined,
+			c: HonoContext | undefined,
 			actorQuery: ActorQuery,
 			encoding: Encoding,
 			params: unknown,
 			path: string,
 			init: RequestInit,
 		): Promise<Response> => {
-			// Extract actor name from query
-			let actorName: string;
-			if ("getForId" in actorQuery) {
-				const parts = actorQuery.getForId.actorId.split("-");
-				actorName = parts[0];
-			} else if ("getForKey" in actorQuery) {
-				actorName = actorQuery.getForKey.name;
-			} else if ("getOrCreateForKey" in actorQuery) {
-				actorName = actorQuery.getOrCreateForKey.name;
-			} else if ("create" in actorQuery) {
-				actorName = actorQuery.create.name;
-			} else {
-				assertUnreachable(actorQuery);
-			}
-
-			// Build the full URL
-			// Remove leading slash from path to avoid double slashes
+			// Normalize path to match other drivers
 			const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
-			const url = `${endpoint}/registry/actors/${actorName}/http/${normalizedPath}`;
 
-			// Merge headers properly
+			logger().info("sending raw http request via test inline driver", {
+				actorQuery,
+				encoding,
+				path: normalizedPath,
+			});
+
+			// Use the dedicated raw HTTP endpoint
+			const url = `${endpoint}/registry/.test/inline-driver/raw-http/${normalizedPath}`;
+
+			// Merge headers with our metadata
 			const headers = new Headers(init.headers);
 			headers.set(HEADER_ACTOR_QUERY, JSON.stringify(actorQuery));
 			headers.set(HEADER_ENCODING, encoding);
@@ -241,11 +238,45 @@ export function createTestInlineClientDriver(
 				headers.set(HEADER_CONN_PARAMS, JSON.stringify(params));
 			}
 
-			// Forward the request with query in headers
-			return await fetch(url, {
+			// Forward the request directly
+			const response = await fetch(url, {
 				...init,
 				headers,
 			});
+
+			// Check if it's an error response from our handler
+			if (
+				!response.ok &&
+				response.headers.get("content-type")?.includes("application/json")
+			) {
+				try {
+					// Clone the response to avoid consuming the body
+					const clonedResponse = response.clone();
+					const errorData = (await clonedResponse.json()) as any;
+					if (errorData.error) {
+						// Handle both error formats:
+						// 1. { error: { code, message, metadata } } - structured format
+						// 2. { error: "message" } - simple string format (from custom onFetch handlers)
+						if (typeof errorData.error === "object") {
+							throw new ClientActorError(
+								errorData.error.code,
+								errorData.error.message,
+								errorData.error.metadata,
+							);
+						}
+						// For simple string errors, just return the response as-is
+						// This allows custom onFetch handlers to return their own error formats
+					}
+				} catch (e) {
+					// If it's not our error format, just return the response as-is
+					if (!(e instanceof ClientActorError)) {
+						return response;
+					}
+					throw e;
+				}
+			}
+
+			return response;
 		},
 
 		rawWebSocket: async (
@@ -258,52 +289,43 @@ export function createTestInlineClientDriver(
 		): Promise<WebSocket> => {
 			const WebSocket = await importWebSocket();
 
-			// Extract actor name from query
-			let actorName: string;
-			if ("getForId" in actorQuery) {
-				const parts = actorQuery.getForId.actorId.split("-");
-				actorName = parts[0];
-			} else if ("getForKey" in actorQuery) {
-				actorName = actorQuery.getForKey.name;
-			} else if ("getOrCreateForKey" in actorQuery) {
-				actorName = actorQuery.getOrCreateForKey.name;
-			} else if ("create" in actorQuery) {
-				actorName = actorQuery.create.name;
-			} else {
-				assertUnreachable(actorQuery);
-			}
-
-			// Build the WebSocket URL
-			const wsEndpoint = endpoint
-				.replace(/^http:/, "ws:")
-				.replace(/^https:/, "wss:");
-			// Remove leading slash from path to avoid double slashes
+			// Normalize path to match other drivers
 			const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
-			const url = `${wsEndpoint}/registry/actors/${actorName}/websocket/${normalizedPath}`;
 
-			// Pass data via WebSocket protocol subprotocols
-			const protocolList: string[] = [];
-			protocolList.push(
-				`query.${encodeURIComponent(JSON.stringify(actorQuery))}`,
+			logger().info(
+				"creating raw websocket connection via test inline driver",
+				{
+					actorQuery,
+					encoding,
+					path: normalizedPath,
+					protocols,
+				},
 			);
-			protocolList.push(`encoding.${encoding}`);
-			if (params) {
-				protocolList.push(
-					`conn_params.${encodeURIComponent(JSON.stringify(params))}`,
-				);
-			}
 
-			// Add user protocols
-			if (protocols) {
-				if (Array.isArray(protocols)) {
-					protocolList.push(...protocols);
-				} else {
-					protocolList.push(protocols);
-				}
-			}
+			// Create WebSocket connection to the test endpoint
+			const wsUrl = new URL(
+				`${endpoint}/registry/.test/inline-driver/raw-websocket`,
+			);
+			wsUrl.searchParams.set("actorQuery", JSON.stringify(actorQuery));
+			if (params !== undefined)
+				wsUrl.searchParams.set("params", JSON.stringify(params));
+			wsUrl.searchParams.set("encodingKind", encoding);
+			wsUrl.searchParams.set("path", normalizedPath);
+			if (protocols !== undefined)
+				wsUrl.searchParams.set("protocols", JSON.stringify(protocols));
 
-			// Create WebSocket connection
-			return new WebSocket(url, protocolList) as any;
+			// Convert http/https to ws/wss
+			const wsProtocol = wsUrl.protocol === "https:" ? "wss:" : "ws:";
+			const finalWsUrl = `${wsProtocol}//${wsUrl.host}${wsUrl.pathname}${wsUrl.search}`;
+
+			logger().debug("connecting to raw websocket", { url: finalWsUrl });
+
+			// Create and return the WebSocket
+			// Node & browser WebSocket types are incompatible
+			return new WebSocket(finalWsUrl, [
+				// HACK: See packages/platforms/cloudflare-workers/src/websocket.ts
+				"rivetkit",
+			]) as any;
 		},
 	};
 }
@@ -323,18 +345,21 @@ async function makeInlineRequest<T>(
 	});
 
 	// Call driver
-	const response = await fetch(`${endpoint}/.test/inline-driver/call`, {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
+	const response = await fetch(
+		`${endpoint}/registry/.test/inline-driver/call`,
+		{
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: cbor.encode({
+				encoding,
+				transport,
+				method,
+				args,
+			} satisfies TestInlineDriverCallRequest),
 		},
-		body: cbor.encode({
-			encoding,
-			transport,
-			method,
-			args,
-		} satisfies TestInlineDriverCallRequest),
-	});
+	);
 
 	if (!response.ok) {
 		throw new Error(`Failed to call inline ${method}: ${response.statusText}`);

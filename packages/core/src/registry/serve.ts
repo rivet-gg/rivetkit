@@ -3,7 +3,7 @@ import { getEnvUniversal } from "@/utils";
 import { logger } from "./log";
 
 export async function crossPlatformServe(
-	rivetKitRouter: Hono,
+	rivetKitRouter: Hono<any>,
 	userRouter: Hono | undefined,
 ) {
 	const app = userRouter ?? new Hono();

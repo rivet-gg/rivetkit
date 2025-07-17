@@ -14,11 +14,6 @@ export async function rawHttpFetch(
 	input: string | URL | Request,
 	init?: RequestInit,
 ): Promise<Response> {
-	// Check if the driver supports raw HTTP
-	if (!driver.rawHttpRequest) {
-		throw new Error("Raw HTTP is not supported by the current client driver");
-	}
-
 	// Extract path and merge init options
 	let path: string;
 	let mergedInit: RequestInit = init || {};
@@ -86,13 +81,6 @@ export async function rawWebSocket(
 	path?: string,
 	protocols?: string | string[],
 ): Promise<any> {
-	// Check if the driver supports raw WebSocket
-	if (!driver.rawWebSocket) {
-		throw new Error(
-			"Raw WebSocket is not supported by the current client driver",
-		);
-	}
-
 	// Use the driver's raw WebSocket method
 	return await driver.rawWebSocket(
 		undefined,

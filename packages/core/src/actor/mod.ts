@@ -53,5 +53,12 @@ export type {
 	ActorDefinition,
 	AnyActorDefinition,
 } from "./definition";
+export { lookupInRegistry } from "./definition";
 export { UserError, type UserErrorOptions } from "./errors";
+export {
+	createGenericConnDrivers,
+	GenericConnGlobalState,
+} from "./generic-conn-driver";
+export type { AnyActorInstance } from "./instance";
+export { type ActorRouter, createActorRouter } from "./router";
 export { ALLOWED_PUBLIC_HEADERS } from "./router-endpoints";

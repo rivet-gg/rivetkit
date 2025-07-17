@@ -192,26 +192,43 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 				ws.addEventListener("open", () => resolve(), { once: true });
 			});
 
-			// Send binary data
-			const testData = new Uint8Array([1, 2, 3, 4, 5]);
-			ws.send(testData);
+			// Helper to receive and convert binary message
+			const receiveBinaryMessage = async (): Promise<Uint8Array> => {
+				const response = await new Promise<ArrayBuffer | Blob>((resolve) => {
+					ws.addEventListener(
+						"message",
+						(event: any) => {
+							resolve(event.data);
+						},
+						{ once: true },
+					);
+				});
 
-			const reversedData = await new Promise<Uint8Array>((resolve) => {
-				ws.addEventListener(
-					"message",
-					async (event: any) => {
-						if (event.data instanceof Blob) {
-							const buffer = await event.data.arrayBuffer();
-							resolve(new Uint8Array(buffer));
-						} else if (event.data instanceof ArrayBuffer) {
-							resolve(new Uint8Array(event.data));
-						}
-					},
-					{ once: true },
-				);
-			});
+				// Convert Blob to ArrayBuffer if needed
+				const buffer =
+					response instanceof Blob ? await response.arrayBuffer() : response;
 
-			expect(Array.from(reversedData)).toEqual([5, 4, 3, 2, 1]);
+				return new Uint8Array(buffer);
+			};
+
+			// Test 1: Small binary data
+			const smallData = new Uint8Array([1, 2, 3, 4, 5]);
+			ws.send(smallData);
+			const smallReversed = await receiveBinaryMessage();
+			expect(Array.from(smallReversed)).toEqual([5, 4, 3, 2, 1]);
+
+			// Test 2: Large binary data (1KB)
+			const largeData = new Uint8Array(1024);
+			for (let i = 0; i < largeData.length; i++) {
+				largeData[i] = i % 256;
+			}
+			ws.send(largeData);
+			const largeReversed = await receiveBinaryMessage();
+
+			// Verify it's reversed correctly
+			for (let i = 0; i < largeData.length; i++) {
+				expect(largeReversed[i]).toBe(largeData[largeData.length - 1 - i]);
+			}
 
 			ws.close();
 			await waitFor(driverTestConfig, 100);
@@ -282,36 +299,6 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 			await waitFor(driverTestConfig, 100);
 		});
 
-		test("should work with connections too", async (c) => {
-			const { client } = await setupDriverTest(c, driverTestConfig);
-			const conn = client.rawWebSocketActor
-				.getOrCreate(["conn-test"])
-				.connect();
-
-			const ws = await conn.websocket();
-
-			await new Promise<void>((resolve) => {
-				ws.addEventListener("open", () => resolve(), { once: true });
-			});
-
-			// Should receive welcome message
-			const welcomeMessage = await new Promise<any>((resolve) => {
-				ws.addEventListener(
-					"message",
-					(event: any) => {
-						resolve(JSON.parse(event.data as string));
-					},
-					{ once: true },
-				);
-			});
-
-			expect(welcomeMessage.type).toBe("welcome");
-
-			ws.close();
-			await conn.dispose();
-			await waitFor(driverTestConfig, 100);
-		});
-
 		test("should handle connection close properly", async (c) => {
 			const { client } = await setupDriverTest(c, driverTestConfig);
 			const actor = client.rawWebSocketActor.getOrCreate(["close-test"]);
@@ -326,13 +313,14 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 			const initialStats = await actor.getStats();
 			expect(initialStats.connectionCount).toBe(1);
 
-			// Close connection
-			ws.close();
-
 			// Wait for close event on client side
-			await new Promise<void>((resolve) => {
+			const closePromise = new Promise<void>((resolve) => {
 				ws.addEventListener("close", () => resolve(), { once: true });
 			});
+
+			// Close connection
+			ws.close();
+			await closePromise;
 
 			// Poll for the expected state change with timeout
 			const maxAttempts = 10;

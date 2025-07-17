@@ -1,6 +1,11 @@
 import type { Context as HonoContext, HonoRequest } from "hono";
 import { type SSEStreamingApi, streamSSE } from "hono/streaming";
 import type { WSContext } from "hono/ws";
+import { ActionContext } from "@/actor/action";
+import type { AnyConn } from "@/actor/connection";
+import { generateConnId, generateConnToken } from "@/actor/connection";
+import * as errors from "@/actor/errors";
+import type { AnyActorInstance } from "@/actor/instance";
 import * as protoHttpAction from "@/actor/protocol/http/action";
 import { parseMessage } from "@/actor/protocol/message/mod";
 import type * as messageToServer from "@/actor/protocol/message/to-server";
@@ -11,11 +16,20 @@ import {
 	EncodingSchema,
 	serialize,
 } from "@/actor/protocol/serde";
+import type { UpgradeWebSocketArgs } from "@/common/inline-websocket-adapter2";
 import { deconstructError, stringifyError } from "@/common/utils";
 import type { UniversalWebSocket } from "@/common/websocket-interface";
-import type { RegistryConfig } from "@/registry/config";
+import { HonoWebSocketAdapter } from "@/manager/hono-websocket-adapter";
 import type { RunConfig } from "@/registry/run-config";
-import * as errors from "./errors";
+import type { ActorDriver } from "./driver";
+import {
+	CONN_DRIVER_GENERIC_HTTP,
+	CONN_DRIVER_GENERIC_SSE,
+	CONN_DRIVER_GENERIC_WEBSOCKET,
+	type GenericHttpDriverState,
+	type GenericSseDriverState,
+	type GenericWebSocketDriverState,
+} from "./generic-conn-driver";
 import { logger } from "./log";
 import { assertUnreachable } from "./utils";
 
@@ -81,33 +95,18 @@ export interface WebSocketOpts {
 }
 
 /**
- * Shared interface for connection handlers used by both ActorRouterHandler and ManagerRouterHandler
- */
-export interface ConnectionHandlers {
-	onConnectWebSocket?(
-		opts: ConnectWebSocketOpts,
-	): Promise<ConnectWebSocketOutput>;
-	onConnectSse(opts: ConnectSseOpts): Promise<ConnectSseOutput>;
-	onAction(opts: ActionOpts): Promise<ActionOutput>;
-	onConnMessage(opts: ConnsMessageOpts): Promise<void>;
-	onFetch?(opts: FetchOpts): Promise<Response>;
-	onWebSocket?(opts: WebSocketOpts): Promise<void>;
-}
-
-/**
  * Creates a WebSocket connection handler
  */
 export function handleWebSocketConnect(
-	context: HonoContext,
-	registryConfig: RegistryConfig,
+	c: HonoContext | undefined,
 	runConfig: RunConfig,
-	handler: (opts: ConnectWebSocketOpts) => Promise<ConnectWebSocketOutput>,
+	actorDriver: ActorDriver,
 	actorId: string,
 	encoding: Encoding,
-	params: unknown,
+	parameters: unknown,
 	authData: unknown,
-) {
-	const exposeInternalError = getRequestExposeInternalError(context.req);
+): UpgradeWebSocketArgs {
+	const exposeInternalError = c ? getRequestExposeInternalError(c.req) : false;
 
 	// Setup promise for the init message since all other behavior depends on this
 	const {
@@ -122,13 +121,51 @@ export function handleWebSocketConnect(
 
 			try {
 				// Create connection handler
-				const wsHandler = await handler({
-					req: context.req,
-					encoding,
-					params,
-					actorId,
-					authData,
-				});
+				const actor = await actorDriver.loadActor(actorId);
+
+				const connId = generateConnId();
+				const connToken = generateConnToken();
+				const connState = await actor.prepareConn(parameters, c?.req.raw);
+
+				let conn: AnyConn | undefined;
+				const wsHandler: ConnectWebSocketOutput = {
+					onOpen: async (ws) => {
+						// Save socket
+						actorDriver
+							.getGenericConnGlobalState(actorId)
+							.websockets.set(connId, ws);
+
+						// Create connection
+						conn = await actor.createConn(
+							connId,
+							connToken,
+							parameters,
+							connState,
+							CONN_DRIVER_GENERIC_WEBSOCKET,
+							{ encoding } satisfies GenericWebSocketDriverState,
+							authData,
+						);
+					},
+					onMessage: async (message) => {
+						logger().debug("received message");
+
+						if (!conn) {
+							logger().warn("`conn` does not exist");
+							return;
+						}
+
+						await actor.processMessage(message, conn);
+					},
+					onClose: async () => {
+						actorDriver
+							.getGenericConnGlobalState(actorId)
+							.websockets.delete(connId);
+
+						if (conn) {
+							actor.__removeConn(conn);
+						}
+					},
+				};
 
 				// Notify socket open
 				// TODO: Add timeout to this
@@ -232,22 +269,47 @@ export function handleWebSocketConnect(
  */
 export async function handleSseConnect(
 	c: HonoContext,
-	registryConfig: RegistryConfig,
 	runConfig: RunConfig,
-	handler: (opts: ConnectSseOpts) => Promise<ConnectSseOutput>,
+	actorDriver: ActorDriver,
 	actorId: string,
 	authData: unknown,
 ) {
 	const encoding = getRequestEncoding(c.req);
-	const parameters = getRequestConnParams(c.req, registryConfig, runConfig);
+	const parameters = getRequestConnParams(c.req);
 
-	const sseHandler = await handler({
-		req: c.req,
-		encoding,
-		params: parameters,
-		actorId,
-		authData,
-	});
+	const actor = await actorDriver.loadActor(actorId);
+
+	const connId = generateConnId();
+	const connToken = generateConnToken();
+	const connState = await actor.prepareConn(parameters, c.req.raw);
+
+	let conn: AnyConn | undefined;
+	const sseHandler = {
+		onOpen: async (stream: SSEStreamingApi) => {
+			// Save socket
+			actorDriver
+				.getGenericConnGlobalState(actorId)
+				.sseStreams.set(connId, stream);
+
+			// Create connection
+			conn = await actor.createConn(
+				connId,
+				connToken,
+				parameters,
+				connState,
+				CONN_DRIVER_GENERIC_SSE,
+				{ encoding } satisfies GenericSseDriverState,
+				authData,
+			);
+		},
+		onClose: async () => {
+			actorDriver.getGenericConnGlobalState(actorId).sseStreams.delete(connId);
+
+			if (conn) {
+				actor.__removeConn(conn);
+			}
+		},
+	};
 
 	return streamSSE(c, async (stream) => {
 		try {
@@ -290,15 +352,14 @@ export async function handleSseConnect(
  */
 export async function handleAction(
 	c: HonoContext,
-	registryConfig: RegistryConfig,
 	runConfig: RunConfig,
-	handler: (opts: ActionOpts) => Promise<ActionOutput>,
+	actorDriver: ActorDriver,
 	actionName: string,
 	actorId: string,
 	authData: unknown,
 ) {
 	const encoding = getRequestEncoding(c.req);
-	const parameters = getRequestConnParams(c.req, registryConfig, runConfig);
+	const parameters = getRequestConnParams(c.req);
 
 	logger().debug("handling action", { actionName, encoding });
 
@@ -343,22 +404,40 @@ export async function handleAction(
 	}
 
 	// Invoke the action
-	const result = await handler({
-		req: c.req,
-		params: parameters,
-		actionName: actionName,
-		actionArgs: actionArgs,
-		actorId,
-		authData,
-	});
+	let actor: AnyActorInstance | undefined;
+	let conn: AnyConn | undefined;
+	let output: unknown | undefined;
+	try {
+		actor = await actorDriver.loadActor(actorId);
+
+		// Create conn
+		const connState = await actor.prepareConn(parameters, c.req.raw);
+		conn = await actor.createConn(
+			generateConnId(),
+			generateConnToken(),
+			parameters,
+			connState,
+			CONN_DRIVER_GENERIC_HTTP,
+			{} satisfies GenericHttpDriverState,
+			authData,
+		);
+
+		// Call action
+		const ctx = new ActionContext(actor.actorContext!, conn!);
+		output = await actor.executeAction(ctx, actionName, actionArgs);
+	} finally {
+		if (conn) {
+			actor?.__removeConn(conn);
+		}
+	}
 
 	// Encode the response
 	if (encoding === "json") {
-		return c.json(result.output as Record<string, unknown>);
+		return c.json(output as Record<string, unknown>);
 	} else if (encoding === "cbor") {
 		// Use serialize from serde.ts instead of custom encoder
 		const responseData = {
-			o: result.output, // Use the format expected by ResponseOkSchema
+			o: output, // Use the format expected by ResponseOkSchema
 		};
 		const serialized = serialize(responseData, encoding);
 
@@ -375,9 +454,8 @@ export async function handleAction(
  */
 export async function handleConnectionMessage(
 	c: HonoContext,
-	registryConfig: RegistryConfig,
 	runConfig: RunConfig,
-	handler: (opts: ConnsMessageOpts) => Promise<void>,
+	actorDriver: ActorDriver,
 	connId: string,
 	connToken: string,
 	actorId: string,
@@ -389,7 +467,7 @@ export async function handleConnectionMessage(
 	if (encoding === "json") {
 		try {
 			message = await c.req.json();
-		} catch (err) {
+		} catch (_err) {
 			throw new errors.InvalidRequest("Invalid JSON");
 		}
 	} else if (encoding === "cbor") {
@@ -409,15 +487,83 @@ export async function handleConnectionMessage(
 		return assertUnreachable(encoding);
 	}
 
-	await handler({
-		req: c.req,
-		connId,
-		connToken,
-		message,
-		actorId,
-	});
+	const actor = await actorDriver.loadActor(actorId);
+
+	// Find connection
+	const conn = actor.conns.get(connId);
+	if (!conn) {
+		throw new errors.ConnNotFound(connId);
+	}
+
+	// Authenticate connection
+	if (conn._token !== connToken) {
+		throw new errors.IncorrectConnToken();
+	}
+
+	// Process message
+	await actor.processMessage(message, conn);
 
 	return c.json({});
+}
+
+export function handleRawWebSocketHandler(
+	c: HonoContext | undefined,
+	path: string,
+	actorDriver: ActorDriver,
+	actorId: string,
+	authData: unknown,
+) {
+	// Return WebSocket event handlers
+	return {
+		onOpen: async (_evt: any, ws: any) => {
+			const actor = await actorDriver.loadActor(actorId);
+
+			// TODO: This isn't a clean way of handling paths
+			// Create a new request with the corrected URL
+			const originalPath = path.replace(/^\/websocket/, "") || "/";
+			let newRequest: Request;
+			if (c) {
+				newRequest = new Request(`http://actor${originalPath}`, c.req.raw);
+			} else {
+				newRequest = new Request(`http://actor${originalPath}`, {
+					method: "GET",
+				});
+			}
+
+			// Wrap the Hono WebSocket in our adapter
+			const adapter = new HonoWebSocketAdapter(ws);
+
+			// Store adapter reference on the WebSocket for event handlers
+			(ws as any).__adapter = adapter;
+
+			// Call the actor's onWebSocket handler with the adapted WebSocket
+			await actor.handleWebSocket(adapter, {
+				request: newRequest,
+				auth: authData,
+			});
+		},
+		onMessage: async (event: any, ws: any) => {
+			// Find the adapter for this WebSocket
+			const adapter = (ws as any).__adapter;
+			if (adapter) {
+				adapter._handleMessage(event);
+			}
+		},
+		onClose: async (evt: any, ws: any) => {
+			// Find the adapter for this WebSocket
+			const adapter = (ws as any).__adapter;
+			if (adapter) {
+				adapter._handleClose(evt?.code || 1006, evt?.reason || "");
+			}
+		},
+		onError: async (error: any, ws: any) => {
+			// Find the adapter for this WebSocket
+			const adapter = (ws as any).__adapter;
+			if (adapter) {
+				adapter._handleError(error);
+			}
+		},
+	};
 }
 
 // Helper to get the connection encoding from a request
@@ -498,11 +644,7 @@ export const ALLOWED_PUBLIC_HEADERS = [
 ];
 
 // Helper to get connection parameters for the request
-export function getRequestConnParams(
-	req: HonoRequest,
-	registryConfig: RegistryConfig,
-	runConfig: RunConfig,
-): unknown {
+export function getRequestConnParams(req: HonoRequest): unknown {
 	const paramsParam = req.header(HEADER_CONN_PARAMS);
 	if (!paramsParam) {
 		return null;

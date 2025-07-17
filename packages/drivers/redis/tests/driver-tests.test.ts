@@ -7,11 +7,7 @@ import { getPort } from "@rivetkit/core/test";
 import Redis from "ioredis";
 import { expect, test } from "vitest";
 import { $ } from "zx";
-import {
-	RedisActorDriver,
-	RedisCoordinateDriver,
-	RedisManagerDriver,
-} from "../src/mod";
+import { createRedisDriver } from "../src/mod";
 
 async function startValkeyContainer(): Promise<{
 	port: number;
@@ -78,8 +74,8 @@ runDriverTests({
 			async (registry) => {
 				const { port, containerId } = await startValkeyContainer();
 
-				// Create a new Redis client for this test (we still use ioredis for client)
-				const redisClient = new Redis({
+				// Create driver config
+				const driverConfig = createRedisDriver({
 					host: "localhost",
 					port,
 					// Use a random db number to avoid conflicts
@@ -89,18 +85,8 @@ runDriverTests({
 				});
 
 				return {
-					driver: {
-						topology: "coordinate" as const,
-						actor: new RedisActorDriver(redisClient),
-						manager: new RedisManagerDriver(redisClient, registry),
-						coordinate: new RedisCoordinateDriver(redisClient),
-					},
+					driver: driverConfig,
 					async cleanup() {
-						try {
-							await redisClient.quit();
-						} catch (error) {
-							// Ignore cleanup errors
-						}
 						await stopValkeyContainer(containerId);
 					},
 				};

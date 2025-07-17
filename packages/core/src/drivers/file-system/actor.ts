@@ -1,4 +1,11 @@
-import type { ActorDriver, AnyActorInstance } from "@/driver-helpers/mod";
+import type { GenericConnGlobalState } from "@/actor/generic-conn-driver";
+import type { AnyClient } from "@/client/client";
+import type {
+	ActorDriver,
+	AnyActorInstance,
+	ManagerDriver,
+} from "@/driver-helpers/mod";
+import type { RegistryConfig, RunConfig } from "@/mod";
 import type { FileSystemGlobalState } from "./global-state";
 
 export type ActorDriverContext = Record<never, never>;
@@ -7,10 +14,38 @@ export type ActorDriverContext = Record<never, never>;
  * File System implementation of the Actor Driver
  */
 export class FileSystemActorDriver implements ActorDriver {
+	#registryConfig: RegistryConfig;
+	#runConfig: RunConfig;
+	#managerDriver: ManagerDriver;
+	#inlineClient: AnyClient;
 	#state: FileSystemGlobalState;
 
-	constructor(state: FileSystemGlobalState) {
+	constructor(
+		registryConfig: RegistryConfig,
+		runConfig: RunConfig,
+		managerDriver: ManagerDriver,
+		inlineClient: AnyClient,
+		state: FileSystemGlobalState,
+	) {
+		this.#registryConfig = registryConfig;
+		this.#runConfig = runConfig;
+		this.#managerDriver = managerDriver;
+		this.#inlineClient = inlineClient;
 		this.#state = state;
+	}
+
+	async loadActor(actorId: string): Promise<AnyActorInstance> {
+		return this.#state.loadActor(
+			this.#registryConfig,
+			this.#runConfig,
+			this.#inlineClient,
+			this,
+			actorId,
+		);
+	}
+
+	getGenericConnGlobalState(actorId: string): GenericConnGlobalState {
+		return this.#state.getGenericConnGlobalState(actorId);
 	}
 
 	/**

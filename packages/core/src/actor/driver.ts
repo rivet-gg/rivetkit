@@ -1,12 +1,29 @@
 import type * as messageToClient from "@/actor/protocol/message/to-client";
 import type { CachedSerializer } from "@/actor/protocol/serde";
+import type { AnyClient } from "@/client/client";
+import type { ManagerDriver } from "@/manager/driver";
+import type { RegistryConfig } from "@/registry/config";
+import type { RunConfig } from "@/registry/run-config";
 import type { AnyConn } from "./connection";
+import type { GenericConnGlobalState } from "./generic-conn-driver";
 import type { AnyActorInstance } from "./instance";
 
 export type ConnDrivers = Record<string, ConnDriver>;
 
+export type ActorDriverBuilder = (
+	registryConfig: RegistryConfig,
+	runConfig: RunConfig,
+	managerDriver: ManagerDriver,
+	inlineClient: AnyClient,
+) => ActorDriver;
+
 export interface ActorDriver {
 	//load(): Promise<LoadOutput>;
+
+	loadActor(actorId: string): Promise<AnyActorInstance>;
+
+	getGenericConnGlobalState(actorId: string): GenericConnGlobalState;
+
 	getContext(actorId: string): unknown;
 
 	readPersistedData(actorId: string): Promise<Uint8Array | undefined>;

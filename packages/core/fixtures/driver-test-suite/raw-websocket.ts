@@ -13,12 +13,8 @@ export const rawWebSocketActor = actor({
 		// Allow all connections and pass through connection params
 		return { connParams: opts.params };
 	},
-	onWebSocket(
-		ctx: ActorContext<any, any, any, any, any, any, any>,
-		websocket: UniversalWebSocket,
-		request: Request,
-	) {
-		ctx.state.connectionCount++;
+	onWebSocket(ctx, websocket) {
+		ctx.state.connectionCount = ctx.state.connectionCount + 1;
 
 		// Send welcome message
 		websocket.send(
@@ -30,7 +26,7 @@ export const rawWebSocketActor = actor({
 
 		// Echo messages back
 		websocket.addEventListener("message", (event: any) => {
-			ctx.state.messageCount++;
+			ctx.state.messageCount = ctx.state.messageCount + 1;
 
 			const data = event.data;
 			if (typeof data === "string") {
@@ -77,7 +73,7 @@ export const rawWebSocketActor = actor({
 
 		// Handle close
 		websocket.addEventListener("close", () => {
-			ctx.state.connectionCount--;
+			ctx.state.connectionCount = ctx.state.connectionCount - 1;
 		});
 	},
 	actions: {
@@ -95,11 +91,7 @@ export const rawWebSocketBinaryActor = actor({
 		// Allow all connections
 		return {};
 	},
-	onWebSocket(
-		ctx: ActorContext<any, any, any, any, any, any, any>,
-		websocket: UniversalWebSocket,
-		request: Request,
-	) {
+	onWebSocket(ctx, websocket) {
 		// Handle binary data
 		websocket.addEventListener("message", (event: any) => {
 			const data = event.data;

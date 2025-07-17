@@ -1,4 +1,3 @@
-import { resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 import {
 	HEADER_ACTOR_QUERY,
@@ -6,18 +5,14 @@ import {
 } from "@/actor/router-endpoints";
 import type { ActorQuery } from "@/manager/protocol/query";
 import type { DriverTestConfig } from "../mod";
+import { setupDriverTest } from "../utils";
 
 export function runRawHttpDirectRegistryTests(
 	driverTestConfig: DriverTestConfig,
 ) {
 	describe("raw http - direct registry access", () => {
 		test("should handle direct fetch requests to registry with proper headers", async (c) => {
-			const projectPath = resolve(
-				__dirname,
-				"../../../fixtures/driver-test-suite",
-			);
-			const { endpoint, cleanup } = await driverTestConfig.start(projectPath);
-			c.onTestFinished(cleanup);
+			const { endpoint } = await setupDriverTest(c, driverTestConfig);
 
 			// Build the actor query
 			const actorQuery: ActorQuery = {
@@ -29,7 +24,7 @@ export function runRawHttpDirectRegistryTests(
 
 			// Make a direct fetch request to the registry
 			const response = await fetch(
-				`${endpoint}/registry/actors/rawHttpActor/http/api/hello`,
+				`${endpoint}/registry/actors/raw/http/api/hello`,
 				{
 					method: "GET",
 					headers: {
@@ -45,12 +40,7 @@ export function runRawHttpDirectRegistryTests(
 		});
 
 		test("should handle POST requests with body to registry", async (c) => {
-			const projectPath = resolve(
-				__dirname,
-				"../../../fixtures/driver-test-suite",
-			);
-			const { endpoint, cleanup } = await driverTestConfig.start(projectPath);
-			c.onTestFinished(cleanup);
+			const { endpoint } = await setupDriverTest(c, driverTestConfig);
 
 			const actorQuery: ActorQuery = {
 				getOrCreateForKey: {
@@ -61,7 +51,7 @@ export function runRawHttpDirectRegistryTests(
 
 			const testData = { test: "direct", number: 456 };
 			const response = await fetch(
-				`${endpoint}/registry/actors/rawHttpActor/http/api/echo`,
+				`${endpoint}/registry/actors/raw/http/api/echo`,
 				{
 					method: "POST",
 					headers: {
@@ -79,12 +69,7 @@ export function runRawHttpDirectRegistryTests(
 		});
 
 		test("should pass custom headers through to actor", async (c) => {
-			const projectPath = resolve(
-				__dirname,
-				"../../../fixtures/driver-test-suite",
-			);
-			const { endpoint, cleanup } = await driverTestConfig.start(projectPath);
-			c.onTestFinished(cleanup);
+			const { endpoint } = await setupDriverTest(c, driverTestConfig);
 
 			const actorQuery: ActorQuery = {
 				getOrCreateForKey: {
@@ -99,7 +84,7 @@ export function runRawHttpDirectRegistryTests(
 			};
 
 			const response = await fetch(
-				`${endpoint}/registry/actors/rawHttpActor/http/api/headers`,
+				`${endpoint}/registry/actors/raw/http/api/headers`,
 				{
 					method: "GET",
 					headers: {
@@ -116,12 +101,7 @@ export function runRawHttpDirectRegistryTests(
 		});
 
 		test("should handle connection parameters for authentication", async (c) => {
-			const projectPath = resolve(
-				__dirname,
-				"../../../fixtures/driver-test-suite",
-			);
-			const { endpoint, cleanup } = await driverTestConfig.start(projectPath);
-			c.onTestFinished(cleanup);
+			const { endpoint } = await setupDriverTest(c, driverTestConfig);
 
 			const actorQuery: ActorQuery = {
 				getOrCreateForKey: {
@@ -133,7 +113,7 @@ export function runRawHttpDirectRegistryTests(
 			const connParams = { token: "test-auth-token", userId: "user123" };
 
 			const response = await fetch(
-				`${endpoint}/registry/actors/rawHttpActor/http/api/hello`,
+				`${endpoint}/registry/actors/raw/http/api/hello`,
 				{
 					method: "GET",
 					headers: {
@@ -149,12 +129,7 @@ export function runRawHttpDirectRegistryTests(
 		});
 
 		test("should return 404 for actors without onFetch handler", async (c) => {
-			const projectPath = resolve(
-				__dirname,
-				"../../../fixtures/driver-test-suite",
-			);
-			const { endpoint, cleanup } = await driverTestConfig.start(projectPath);
-			c.onTestFinished(cleanup);
+			const { endpoint } = await setupDriverTest(c, driverTestConfig);
 
 			const actorQuery: ActorQuery = {
 				getOrCreateForKey: {
@@ -164,7 +139,7 @@ export function runRawHttpDirectRegistryTests(
 			};
 
 			const response = await fetch(
-				`${endpoint}/registry/actors/rawHttpNoHandlerActor/http/api/anything`,
+				`${endpoint}/registry/actors/raw/http/api/anything`,
 				{
 					method: "GET",
 					headers: {
@@ -178,12 +153,7 @@ export function runRawHttpDirectRegistryTests(
 		});
 
 		test("should handle different HTTP methods", async (c) => {
-			const projectPath = resolve(
-				__dirname,
-				"../../../fixtures/driver-test-suite",
-			);
-			const { endpoint, cleanup } = await driverTestConfig.start(projectPath);
-			c.onTestFinished(cleanup);
+			const { endpoint } = await setupDriverTest(c, driverTestConfig);
 
 			const actorQuery: ActorQuery = {
 				getOrCreateForKey: {
@@ -197,7 +167,7 @@ export function runRawHttpDirectRegistryTests(
 
 			for (const method of methods) {
 				const response = await fetch(
-					`${endpoint}/registry/actors/rawHttpActor/http/api/echo`,
+					`${endpoint}/registry/actors/raw/http/api/echo`,
 					{
 						method,
 						headers: {
@@ -206,7 +176,9 @@ export function runRawHttpDirectRegistryTests(
 								? { "Content-Type": "application/json" }
 								: {}),
 						},
-						body: method !== "GET" ? JSON.stringify({ method }) : undefined,
+						body: ["POST", "PUT", "PATCH"].includes(method)
+							? JSON.stringify({ method })
+							: undefined,
 					},
 				);
 
@@ -222,12 +194,7 @@ export function runRawHttpDirectRegistryTests(
 		});
 
 		test("should handle binary data", async (c) => {
-			const projectPath = resolve(
-				__dirname,
-				"../../../fixtures/driver-test-suite",
-			);
-			const { endpoint, cleanup } = await driverTestConfig.start(projectPath);
-			c.onTestFinished(cleanup);
+			const { endpoint } = await setupDriverTest(c, driverTestConfig);
 
 			const actorQuery: ActorQuery = {
 				getOrCreateForKey: {
@@ -239,7 +206,7 @@ export function runRawHttpDirectRegistryTests(
 			// Send binary data
 			const binaryData = new Uint8Array([1, 2, 3, 4, 5]);
 			const response = await fetch(
-				`${endpoint}/registry/actors/rawHttpActor/http/api/echo`,
+				`${endpoint}/registry/actors/raw/http/api/echo`,
 				{
 					method: "POST",
 					headers: {

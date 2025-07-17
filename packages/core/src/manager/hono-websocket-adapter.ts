@@ -79,9 +79,9 @@ export class HonoWebSocketAdapter implements UniversalWebSocket {
 			});
 
 			if (typeof data === "string") {
-				this.#ws.send(data);
+				(this.#ws as any).send(data);
 			} else if (data instanceof ArrayBuffer) {
-				this.#ws.send(data);
+				(this.#ws as any).send(data);
 			} else if (ArrayBuffer.isView(data)) {
 				// Convert ArrayBufferView to ArrayBuffer
 				const buffer = data.buffer.slice(
@@ -92,16 +92,16 @@ export class HonoWebSocketAdapter implements UniversalWebSocket {
 				if (buffer instanceof SharedArrayBuffer) {
 					const arrayBuffer = new ArrayBuffer(buffer.byteLength);
 					new Uint8Array(arrayBuffer).set(new Uint8Array(buffer));
-					this.#ws.send(arrayBuffer);
+					(this.#ws as any).send(arrayBuffer);
 				} else {
-					this.#ws.send(buffer);
+					(this.#ws as any).send(buffer);
 				}
 			} else if (data instanceof Blob) {
 				// Convert Blob to ArrayBuffer
 				data
 					.arrayBuffer()
 					.then((buffer) => {
-						this.#ws.send(buffer);
+						(this.#ws as any).send(buffer);
 					})
 					.catch((error) => {
 						logger().error("failed to convert blob to arraybuffer", { error });
@@ -113,7 +113,7 @@ export class HonoWebSocketAdapter implements UniversalWebSocket {
 					dataType: typeof data,
 					data,
 				});
-				this.#ws.send(String(data));
+				(this.#ws as any).send(String(data));
 			}
 		} catch (error) {
 			logger().error("error sending websocket data", { error });
@@ -132,7 +132,7 @@ export class HonoWebSocketAdapter implements UniversalWebSocket {
 		this.#closeReason = reason;
 
 		try {
-			this.#ws.close(code, reason);
+			(this.#ws as any).close(code, reason);
 
 			// Update state and fire close event
 			this.#readyState = this.CLOSED;
@@ -185,34 +185,41 @@ export class HonoWebSocketAdapter implements UniversalWebSocket {
 	}
 
 	// Internal method to handle incoming messages from WSContext
-	_handleMessage(data: string | ArrayBuffer): void {
-		// Hono passes MessageEvent-like objects
-		let actualData = data;
-		if (data && typeof data === "object" && data !== null) {
-			// Try to extract data from MessageEvent-like object
-			if ("data" in data) {
-				actualData = (data as any).data;
-			} else if (data.toString() !== "[object Object]") {
-				// If it has a meaningful toString, use that
-				actualData = data.toString();
-			}
+	_handleMessage(data: any): void {
+		// Hono may pass either raw data or a MessageEvent-like object
+		let messageData: string | ArrayBuffer | ArrayBufferView;
+
+		if (typeof data === "string") {
+			messageData = data;
+		} else if (data instanceof ArrayBuffer || ArrayBuffer.isView(data)) {
+			messageData = data;
+		} else if (data && typeof data === "object" && "data" in data) {
+			// Handle MessageEvent-like objects
+			messageData = data.data;
+		} else {
+			// Fallback - shouldn't happen in normal operation
+			messageData = String(data);
 		}
 
 		logger().debug("bridge handling message", {
-			dataType: typeof actualData,
-			isArrayBuffer: actualData instanceof ArrayBuffer,
-			dataStr: typeof actualData === "string" ? actualData : "<binary>",
+			dataType: typeof messageData,
+			isArrayBuffer: messageData instanceof ArrayBuffer,
+			dataStr: typeof messageData === "string" ? messageData : "<binary>",
 		});
 
 		this.#fireEvent("message", {
 			type: "message",
 			target: this,
-			data: actualData,
+			data: messageData,
 		});
 	}
 
 	// Internal method to handle close from WSContext
 	_handleClose(code: number, reason: string): void {
+		// HACK: Close socket in order to fix bug with Cloudflare leaving WS in closing state
+		// https://github.com/cloudflare/workerd/issues/2569
+		(this.#ws as any).close(1000, "hack_force_close");
+
 		if (this.readyState === this.CLOSED) return;
 
 		this.#readyState = this.CLOSED;

@@ -4,13 +4,9 @@ import { bundleRequire } from "bundle-require";
 import invariant from "invariant";
 import { describe } from "vitest";
 import type { Transport } from "@/client/mod";
-import {
-	CoordinateTopology,
-	type DriverConfig,
-	type Registry,
-	type RunConfig,
-	StandaloneTopology,
-} from "@/mod";
+import { createInlineClientDriver } from "@/inline-client-driver/mod";
+import { createManagerRouter } from "@/manager/router";
+import type { DriverConfig, Registry, RunConfig } from "@/mod";
 import { RunConfigSchema } from "@/registry/run-config";
 import { getPort } from "@/test/mod";
 import { runActionFeaturesTests } from "./tests/action-features";
@@ -149,21 +145,25 @@ export async function createTestRuntime(
 		getUpgradeWebSocket: () => upgradeWebSocket!,
 	});
 
-	// Build topology
-	const topology =
-		config.driver.topology === "coordinate"
-			? new CoordinateTopology(registry.config, config)
-			: new StandaloneTopology(registry.config, config);
+	// Create router
+	const managerDriver = config.driver.manager(registry.config, config);
+	const inlineDriver = createInlineClientDriver(managerDriver);
+	const { router } = createManagerRouter(
+		registry.config,
+		config,
+		inlineDriver,
+		managerDriver,
+	);
 
 	// Inject WebSocket
-	const nodeWebSocket = createNodeWebSocket({ app: topology.router });
+	const nodeWebSocket = createNodeWebSocket({ app: router });
 	upgradeWebSocket = nodeWebSocket.upgradeWebSocket;
 	injectWebSocket = nodeWebSocket.injectWebSocket;
 
 	// Start server
 	const port = await getPort();
 	const server = honoServe({
-		fetch: topology.router.fetch,
+		fetch: router.fetch,
 		hostname: "127.0.0.1",
 		port,
 	});
