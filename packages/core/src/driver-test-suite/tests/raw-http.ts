@@ -116,19 +116,6 @@ export function runRawHttpTests(driverTestConfig: DriverTestConfig) {
 			// No actions available when onFetch returns void
 		});
 
-		test("should work with connections too", async (c) => {
-			const { client } = await setupDriverTest(c, driverTestConfig);
-			const conn = client.rawHttpActor.getOrCreate(["conn-test"]).connect();
-
-			// Test the hello endpoint
-			const helloResponse = await conn.fetch("api/hello");
-			expect(helloResponse.ok).toBe(true);
-			const helloData = await helloResponse.json();
-			expect(helloData).toEqual({ message: "Hello from actor!" });
-
-			await conn.dispose();
-		});
-
 		test("should handle different HTTP methods", async (c) => {
 			const { client } = await setupDriverTest(c, driverTestConfig);
 			const actor = client.rawHttpActor.getOrCreate(["methods-test"]);
@@ -139,7 +126,9 @@ export function runRawHttpTests(driverTestConfig: DriverTestConfig) {
 			for (const method of methods) {
 				const response = await actor.fetch("api/echo", {
 					method,
-					body: method !== "GET" ? JSON.stringify({ method }) : undefined,
+					body: ["POST", "PUT", "PATCH"].includes(method)
+						? JSON.stringify({ method })
+						: undefined,
 				});
 
 				// Echo endpoint only handles POST, others should fall through to 404

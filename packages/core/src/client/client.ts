@@ -199,10 +199,7 @@ export interface ClientDriver {
 		message: wsToServer.ToServer,
 		opts: { signal?: AbortSignal } | undefined,
 	): Promise<Response>;
-	/**
-	 * Send a raw HTTP request to an actor
-	 */
-	rawHttpRequest?(
+	rawHttpRequest(
 		c: HonoContext | undefined,
 		actorQuery: ActorQuery,
 		encoding: Encoding,
@@ -211,10 +208,7 @@ export interface ClientDriver {
 		init: RequestInit,
 		opts: { signal?: AbortSignal } | undefined,
 	): Promise<Response>;
-	/**
-	 * Create a raw WebSocket connection to an actor
-	 */
-	rawWebSocket?(
+	rawWebSocket(
 		c: HonoContext | undefined,
 		actorQuery: ActorQuery,
 		encoding: Encoding,
@@ -474,6 +468,8 @@ export type Client<A extends Registry<any>> = ClientRaw & {
 		ExtractActorsFromRegistry<A>[K]
 	>;
 };
+
+export type AnyClient = Client<Registry<any>>;
 
 export function createClientWithDriver<A extends Registry<any>>(
 	driver: ClientDriver,

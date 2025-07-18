@@ -225,25 +225,10 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 			path: string,
 			init: RequestInit,
 		): Promise<Response> => {
-			// Extract actor name from query
-			let actorName: string;
-			if ("getForId" in actorQuery) {
-				const parts = actorQuery.getForId.actorId.split("-");
-				actorName = parts[0];
-			} else if ("getForKey" in actorQuery) {
-				actorName = actorQuery.getForKey.name;
-			} else if ("getOrCreateForKey" in actorQuery) {
-				actorName = actorQuery.getOrCreateForKey.name;
-			} else if ("create" in actorQuery) {
-				actorName = actorQuery.create.name;
-			} else {
-				assertUnreachable(actorQuery);
-			}
-
 			// Build the full URL
 			// Remove leading slash from path to avoid double slashes
 			const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
-			const url = `${managerEndpoint}/registry/actors/${actorName}/http/${normalizedPath}`;
+			const url = `${managerEndpoint}/registry/actors/raw/http/${normalizedPath}`;
 
 			// Merge headers properly
 			const headers = new Headers(init.headers);
@@ -271,26 +256,13 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 		): Promise<WebSocket> => {
 			const { WebSocket } = await dynamicImports;
 
-			// Extract actor name from query
-			let actorName: string;
-			if ("getForId" in actorQuery) {
-				const parts = actorQuery.getForId.actorId.split("-");
-				actorName = parts[0];
-			} else if ("getForKey" in actorQuery) {
-				actorName = actorQuery.getForKey.name;
-			} else if ("getOrCreateForKey" in actorQuery) {
-				actorName = actorQuery.getOrCreateForKey.name;
-			} else if ("create" in actorQuery) {
-				actorName = actorQuery.create.name;
-			} else {
-				assertUnreachable(actorQuery);
-			}
-
-			// Build the WebSocket URL
+			// Build the WebSocket URL with normalized path
 			const wsEndpoint = managerEndpoint
 				.replace(/^http:/, "ws:")
 				.replace(/^https:/, "wss:");
-			const url = `${wsEndpoint}/registry/actors/${actorName}/websocket/${path}`;
+			// Normalize path to match raw HTTP behavior
+			const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
+			const url = `${wsEndpoint}/registry/actors/raw/websocket/${normalizedPath}`;
 
 			// Pass data via WebSocket protocol subprotocols
 			const protocolList: string[] = [];
@@ -304,6 +276,9 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 				);
 			}
 
+			// HACK: See packages/platforms/cloudflare-workers/src/websocket.ts
+			protocolList.push("rivetkit");
+
 			// Add user protocols
 			if (protocols) {
 				if (Array.isArray(protocols)) {
@@ -314,6 +289,7 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 			}
 
 			// Create WebSocket connection
+			logger().debug("opening raw websocket", { url });
 			return new WebSocket(url, protocolList) as any;
 		},
 	};

@@ -1,4 +1,3 @@
-export type { ConnRoutingHandler } from "@/actor/conn-routing-handler";
 export type { ActorDriver } from "@/actor/driver";
 export type { ActorInstance, AnyActorInstance } from "@/actor/instance";
 export {
@@ -20,12 +19,4 @@ export type {
 	ManagerDriver,
 } from "@/manager/driver";
 export { DriverConfigSchema, RunConfigSchema } from "@/registry/run-config";
-export type {
-	AttemptAcquireLease,
-	CoordinateDriver,
-	ExtendLeaseOutput,
-	GetActorLeaderOutput,
-	NodeMessageCallback,
-	StartActorAndAcquireLeaseOutput,
-} from "@/topologies/coordinate/driver";
 export { serializeEmptyPersistData } from "./utils";
