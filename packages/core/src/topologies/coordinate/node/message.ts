@@ -1,7 +1,7 @@
+import pRetry, { AbortError } from "p-retry";
 import type { RegistryConfig } from "@/registry/config";
 import type { RunConfig } from "@/registry/run-config";
 import type { GlobalState } from "@/topologies/coordinate/topology";
-import pRetry, { AbortError } from "p-retry";
 import type { CoordinateDriver } from "../driver";
 import { logger } from "../log";
 import type { NodeMessage } from "./protocol";

@@ -1,11 +1,10 @@
+import * as cbor from "cbor-x";
 import type { ResponseError } from "@/actor/protocol/http/error";
 import { assertUnreachable } from "@/common/utils";
 import type { Encoding } from "@/mod";
 import { httpUserAgent } from "@/utils";
-import * as cbor from "cbor-x";
 import { ActorError, HttpRequestError } from "./errors";
 import { logger } from "./log";
-import { warn } from "node:console";
 
 export type WebSocketMessage = string | Blob | ArrayBuffer | Uint8Array;
 
@@ -46,8 +45,8 @@ export async function sendHttpRequest<
 	});
 
 	// Serialize body
-	let contentType: string | undefined = undefined;
-	let bodyData: string | Buffer | undefined = undefined;
+	let contentType: string | undefined;
+	let bodyData: string | Buffer | undefined;
 	if (opts.method === "POST" || opts.method === "PUT") {
 		if (opts.encoding === "json") {
 			contentType = "application/json";

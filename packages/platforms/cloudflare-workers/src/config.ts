@@ -1,5 +1,5 @@
 import { RunConfigSchema } from "@rivetkit/core/driver-helpers";
-import { Hono } from "hono";
+import type { Hono } from "hono";
 import { z } from "zod";
 
 export const ConfigSchema = RunConfigSchema.removeDefault()

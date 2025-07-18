@@ -1,10 +1,10 @@
-import { runDriverTests } from "@rivetkit/core/driver-test-suite";
-import fs from "node:fs/promises";
-import path from "node:path";
-import os from "node:os";
-import { spawn, exec } from "node:child_process";
+import { exec, spawn } from "node:child_process";
 import crypto from "node:crypto";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { promisify } from "node:util";
+import { runDriverTests } from "@rivetkit/core/driver-test-suite";
 import { getPort } from "@rivetkit/core/test";
 
 const execPromise = promisify(exec);
@@ -90,7 +90,7 @@ runDriverTests({
 		});
 
 		return {
-			endpoint: `http://localhost:${port}`,
+			endpoint: `http://localhost:${port}/registry`,
 			async cleanup() {
 				// Shut down wrangler process
 				wranglerProcess.kill();
@@ -99,7 +99,7 @@ runDriverTests({
 	},
 });
 
-let setupProjectOnce: Promise<string> | undefined = undefined;
+let setupProjectOnce: Promise<string> | undefined;
 
 async function setupProject(projectPath: string) {
 	// Create a temporary directory for the test
@@ -108,6 +108,7 @@ async function setupProject(projectPath: string) {
 	await fs.mkdir(tmpDir, { recursive: true });
 
 	// Create package.json with workspace dependencies
+	const wranglerVersion = "^4.22.0";
 	const packageJson = {
 		name: "rivetkit-test",
 		private: true,
@@ -117,9 +118,7 @@ async function setupProject(projectPath: string) {
 			start: "wrangler dev",
 		},
 		dependencies: {
-			wrangler: "4.8.0",
-			"@rivetkit/cloudflare-workers": "workspace:*",
-			rivetkit: "workspace:*",
+			wrangler: wranglerVersion,
 		},
 		packageManager:
 			"pnpm@10.7.1+sha512.2d92c86b7928dc8284f53494fb4201f983da65f0fb4f0d40baafa5cf628fa31dae3e5968f12466f17df7e97310e30f343a648baea1b9b350685dafafffdf5808",
@@ -129,12 +128,37 @@ async function setupProject(projectPath: string) {
 		JSON.stringify(packageJson, null, 2),
 	);
 
-	// Get the current workspace root path and link the workspace
-	const workspaceRoot = path.resolve(__dirname, "../../../..");
-	await execPromise(`pnpm link -A ${workspaceRoot}`, { cwd: tmpDir });
+	// Create node_modules directory and copy necessary packages
+	const nodeModulesDir = path.join(tmpDir, "node_modules");
+	await fs.mkdir(nodeModulesDir, { recursive: true });
 
-	// Install deps
-	await execPromise("pnpm install", { cwd: tmpDir });
+	// Copy the built packages from workspace
+	const workspaceRoot = path.resolve(__dirname, "../../../..");
+	const rivetKitDir = path.join(nodeModulesDir, "@rivetkit");
+	await fs.mkdir(rivetKitDir, { recursive: true });
+
+	// Copy core package
+	const corePackagePath = path.join(workspaceRoot, "packages/core");
+	const targetCorePath = path.join(rivetKitDir, "core");
+	await fs.cp(corePackagePath, targetCorePath, { recursive: true });
+
+	// Copy cloudflare-workers package
+	const cfPackagePath = path.join(
+		workspaceRoot,
+		"packages/platforms/cloudflare-workers",
+	);
+	const targetCfPath = path.join(rivetKitDir, "cloudflare-workers");
+	await fs.cp(cfPackagePath, targetCfPath, { recursive: true });
+
+	// Copy main rivetkit package
+	const mainPackagePath = path.join(workspaceRoot, "packages/rivetkit");
+	const targetMainPath = path.join(nodeModulesDir, "rivetkit");
+	await fs.cp(mainPackagePath, targetMainPath, { recursive: true });
+
+	// Install wrangler only
+	await execPromise(`pnpm install wrangler@${wranglerVersion}`, {
+		cwd: tmpDir,
+	});
 
 	// Create a wrangler.json file
 	const wranglerConfig = {
@@ -175,7 +199,7 @@ async function setupProject(projectPath: string) {
 	await fs.cp(projectPath, projectDestDir, { recursive: true });
 
 	// Write script
-	const indexContent = `import { createHandler } from "@rivetkit/cloudflare-workers";
+	const indexContent = `import { createServerHandler } from "@rivetkit/cloudflare-workers";
 import { registry } from "./actors/registry";
 
 // TODO: Find a cleaner way of flagging an registry as test mode (ideally not in the config itself)
@@ -183,7 +207,7 @@ import { registry } from "./actors/registry";
 registry.config.test.enabled = true;
 
 // Create handlers for Cloudflare Workers
-const { handler, ActorHandler } = createHandler(registry);
+const { handler, ActorHandler } = createServerHandler(registry);
 
 // Export the handlers for Cloudflare
 export { handler as default, ActorHandler };

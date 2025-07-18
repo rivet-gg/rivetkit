@@ -1,8 +1,8 @@
 ---
-title: Actors Overview
+title: Rivet Actors Overview
 icon: square-info
 sidebarTitle: "Overview"
-description: Stateful serverless functions with persistence, real-time communication, and automatic scaling
+description: Long-running functions with persistence, real-time communication, and hibernation
 ---
 
 Actors are lightweight, stateful serverless functions that maintain persistent state and provide real-time communication. They're the core building blocks of RivetKit applications.
@@ -28,7 +28,7 @@ Actors are lightweight, stateful serverless functions that maintain persistent s
   State is stored on the same machine as your compute, so reads and writes are ultra-fast. No database round trips, no latency spikes.
 </Card>
 <Card title="Realtime, Made Simple" icon="tower-broadcast">
-  Update state and broadcast changes in realtime. No external pub/sub systems, no polling – just built-in low-latency events.
+  Update state and broadcast changes in realtime with WebSockets or SSE. No external pub/sub systems, no polling – just built-in low-latency events.
 </Card>
 <Card title="Store Data Near Your Users" icon="globe">
   Your state lives close to your users on the edge – not in a faraway data center – so every interaction feels instant.
@@ -40,25 +40,23 @@ Actors are lightweight, stateful serverless functions that maintain persistent s
 
 Actors are perfect for applications that need persistent state and real-time updates:
 
-### Real-time Communication
-- **Chat rooms**: Real-time messaging with message history and user presence
-- **Collaborative documents**: Multiple users editing documents simultaneously
-- **Live events**: Broadcasting updates to many participants
-
 ### AI & Automation
 - **AI agents**: Stateful AI assistants with conversation history
 - **Workflow automation**: Long-running business processes with state persistence
-- **Stream processing**: Real-time data processing with persistent state
+
+### Real-time Communication
+- **Collaborative documents**: Multiple users editing documents simultaneously
+- **Multiplayer games**: Game state management with real-time updates
+- **Chat rooms**: Real-time messaging with message history and user presence
+- **Live events**: Broadcasting updates to many participants
 
 ### Data & Synchronization
 - **Local-first sync**: Offline-first applications with server synchronization
 - **Per-user databases**: Isolated data stores for each user or tenant
-- **Per-tenant SaaS**: Multi-tenant applications with isolated state
-- **CRDT collaboration**: Conflict-free replicated data types for real-time editing
 
-### Gaming & Interactive Applications
-- **Multiplayer games**: Game state management with real-time updates
+### Infrastructure
 - **Rate limiting**: Distributed rate limiting with persistent counters
+- **Stream processing**: Real-time data processing with persistent state
 
 ## State Management
 
@@ -211,3 +209,44 @@ const foundUser = await manager.getUser(user.userId);
 
 </CodeGroup>
 
+## Frequently Asked Questions
+
+<AccordionGroup>
+    <Accordion title="How is RivetKit different than Rivet Actors?">
+        RivetKit is a framework written in TypeScript that provides high-level functionality. Rivet is an open-source serverless platform written in Rust with features tailored for stateful serverless.
+
+        You can think of it as RivetKit is to Rivet as Next.js is to Vercel.
+
+        While Rivet is the primary maintainer of RivetKit, we intend for this to be community driven.
+    </Accordion>
+
+    <Accordion title="How does stateful serverless compare to the traditional actor model?">
+        Stateful serverless is very similar to actors: it's essentially actors with persistence, and usually doesn't have as rigid constraints on message handling. This makes it more flexible while maintaining the core benefits of the actor model.
+    </Accordion>
+
+    <Accordion title="How do stateful and stateless serverless work together?">
+        Stateless serverless works well when you have an external resource that maintains state. Stateful serverless, on the other hand, is almost like a mini-database.
+
+        Sometimes it makes sense to use stateless serverless to make requests to multiple stateful serverless instances, orchestrating complex operations across multiple state boundaries.
+    </Accordion>
+
+    <Accordion title="How does RivetKit achieve huge performance gains?">
+        By storing state in memory and flushing to a persistence layer, we can serve requests instantly instead of waiting for a round trip to the database. There are additional optimizations that can be made around your state to tune the durability of it.
+
+        Additionally, data is stored near your users at the edge, ensuring round-trip times of less than 50ms when they request it. This edge-first approach eliminates the latency typically associated with centralized databases.
+    </Accordion>
+
+    <Accordion title="Isn't well-designed software supposed to separate compute and storage?">
+        Some software makes sense to separate – e.g., for data lakes or highly relational data. But at the end of the day, data has to be partitioned somewhere at some point.
+
+        Usually "faster" databases like Cassandra, DynamoDB, or Vitess make consistency tradeoffs to get better performance. Stateful serverless forces you to think about how your data is sharded for better performance, better scalability, and less consistency footguns.
+    </Accordion>
+
+    <Accordion title="What is stateful serverless not good for?">
+        OLAP, data lakes, graph databases, and highly relational data are currently not ideal use cases for stateful serverless, though it will get better at handling these use cases over time.
+    </Accordion>
+
+    <Accordion title="Can this create a single bottleneck?">
+        Yes, but only as much as storing data in a single database row does. We're working on building out read replicas to allow you to perform read-only actions on actors.
+    </Accordion>
+</AccordionGroup>

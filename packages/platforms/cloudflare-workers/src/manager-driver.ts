@@ -1,22 +1,22 @@
+import type { Encoding } from "@rivetkit/core";
 import {
-	type ManagerDriver,
-	type GetForIdInput,
-	type GetWithKeyInput,
 	type ActorOutput,
-	type CreateInput,
-	type GetOrCreateWithKeyInput,
 	type ConnRoutingHandler,
-	HEADER_EXPOSE_INTERNAL_ERROR,
-	HEADER_ENCODING,
-	HEADER_CONN_PARAMS,
+	type CreateInput,
+	type GetForIdInput,
+	type GetOrCreateWithKeyInput,
+	type GetWithKeyInput,
 	HEADER_AUTH_DATA,
+	HEADER_CONN_PARAMS,
+	HEADER_ENCODING,
+	HEADER_EXPOSE_INTERNAL_ERROR,
+	type ManagerDriver,
 } from "@rivetkit/core/driver-helpers";
 import { ActorAlreadyExists, InternalError } from "@rivetkit/core/errors";
-import { Bindings } from "./mod";
-import { logger } from "./log";
-import { serializeNameAndKey, serializeKey } from "./util";
 import { getCloudflareAmbientEnv } from "./handler";
-import { Encoding } from "@rivetkit/core";
+import { logger } from "./log";
+import type { Bindings } from "./mod";
+import { serializeKey, serializeNameAndKey } from "./util";
 
 // Actor metadata structure
 interface ActorData {

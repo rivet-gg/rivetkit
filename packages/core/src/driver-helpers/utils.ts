@@ -1,5 +1,5 @@
-import { PersistedActor } from "@/actor/persisted";
 import * as cbor from "cbor-x";
+import type { PersistedActor } from "@/actor/persisted";
 
 export function serializeEmptyPersistData(
 	input: unknown | undefined,

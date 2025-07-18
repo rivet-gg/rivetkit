@@ -1,6 +1,6 @@
-import * as errors from "@/actor/errors";
 import * as cbor from "cbor-x";
 import { z } from "zod";
+import * as errors from "@/actor/errors";
 import { logger } from "../log";
 import { assertUnreachable } from "../utils";
 

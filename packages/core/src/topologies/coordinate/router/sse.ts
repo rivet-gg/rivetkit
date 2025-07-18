@@ -4,14 +4,14 @@ import type {
 	ConnectSseOpts,
 	ConnectSseOutput,
 } from "@/actor/router-endpoints";
+import type { Client } from "@/client/client";
 import type { RegistryConfig } from "@/registry/config";
+import type { Registry } from "@/registry/mod";
 import type { RunConfig } from "@/registry/run-config";
 import type { GlobalState } from "@/topologies/coordinate/topology";
 import { RelayConn } from "../conn/mod";
 import type { CoordinateDriver } from "../driver";
 import { logger } from "../log";
-import { Registry } from "@/registry/mod";
-import { Client } from "@/client/client";
 
 export async function serveSse(
 	registryConfig: RegistryConfig,

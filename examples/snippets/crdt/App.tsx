@@ -1,178 +1,178 @@
 import { createClient } from "@rivetkit/actor/client";
 import { createReactRivetKit } from "@rivetkit/react";
-import { useState, useEffect, useRef } from "react";
-import * as Y from 'yjs';
-import { applyUpdate, encodeStateAsUpdate } from 'yjs';
+import { useEffect, useRef, useState } from "react";
+import * as Y from "yjs";
+import { applyUpdate, encodeStateAsUpdate } from "yjs";
 import type { Registry } from "../actors/registry";
 
 const client = createClient<Registry>("http://localhost:8080");
 const { useActor, useActorEvent } = createReactRivetKit(client);
 
 export function YjsEditor({ documentId = "shared-doc" }) {
-  // Connect to specific document using tags
-  const { actor } = useActor("yjsDocument", { 
-    tags: { documentId }
-  });
-  
-  // Document state
-  const [isLoading, setIsLoading] = useState(true);
-  const [text, setText] = useState("");
-  
-  // Local Yjs document
-  const yDocRef = useRef<Y.Doc | null>(null);
-  // Flag to prevent infinite update loops
-  const updatingFromServer = useRef(false);
-  const updatingFromLocal = useRef(false);
-  // Track if we've initialized observation
-  const observationInitialized = useRef(false);
+	// Connect to specific document using tags
+	const { actor } = useActor("yjsDocument", {
+		tags: { documentId },
+	});
 
-  // Initialize local Yjs document and connect
-  useEffect(() => {
-    // Create Yjs document
-    const yDoc = new Y.Doc();
-    yDocRef.current = yDoc;
-    setIsLoading(false);
-    
-    return () => {
-      // Clean up Yjs document
-      yDoc.destroy();
-    };
-  }, [actor]);
-  
-  // Set up text observation
-  useEffect(() => {
-    const yDoc = yDocRef.current;
-    if (!yDoc || observationInitialized.current) return;
-    
-    // Get the Yjs Text type from the document
-    const yText = yDoc.getText('content');
-    
-    // Observe changes to the text
-    yText.observe(() => {
-      // Only update UI if change wasn't from server
-      if (!updatingFromServer.current) {
-        // Update React state
-        setText(yText.toString());
-        
-        if (actor && !updatingFromLocal.current) {
-          // Set flag to prevent loops
-          updatingFromLocal.current = true;
-          
-          // Convert update to base64 and send to server
-          const update = encodeStateAsUpdate(yDoc);
-          const base64 = bufferToBase64(update);
-          actor.applyUpdate(base64).finally(() => {
-            updatingFromLocal.current = false;
-          });
-        }
-      }
-    });
-    
-    observationInitialized.current = true;
-  }, [actor]);
+	// Document state
+	const [isLoading, setIsLoading] = useState(true);
+	const [text, setText] = useState("");
 
-  // Handle initial state from server
-  useActorEvent({ actor, event: "initialState" }, ({ update }) => {
-    const yDoc = yDocRef.current;
-    if (!yDoc) return;
-    
-    // Set flag to prevent update loops
-    updatingFromServer.current = true;
-    
-    try {
-      // Convert base64 to binary and apply to document
-      const binary = atob(update);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-      }
-      
-      // Apply update to Yjs document
-      applyUpdate(yDoc, bytes);
-      
-      // Update React state
-      const yText = yDoc.getText('content');
-      setText(yText.toString());
-    } catch (error) {
-      console.error("Error applying initial update:", error);
-    } finally {
-      updatingFromServer.current = false;
-    }
-  });
+	// Local Yjs document
+	const yDocRef = useRef<Y.Doc | null>(null);
+	// Flag to prevent infinite update loops
+	const updatingFromServer = useRef(false);
+	const updatingFromLocal = useRef(false);
+	// Track if we've initialized observation
+	const observationInitialized = useRef(false);
 
-  // Handle updates from other clients
-  useActorEvent({ actor, event: "update" }, ({ update }) => {
-    const yDoc = yDocRef.current;
-    if (!yDoc) return;
-    
-    // Set flag to prevent update loops
-    updatingFromServer.current = true;
-    
-    try {
-      // Convert base64 to binary and apply to document
-      const binary = atob(update);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-      }
-      
-      // Apply update to Yjs document
-      applyUpdate(yDoc, bytes);
-      
-      // Update React state
-      const yText = yDoc.getText('content');
-      setText(yText.toString());
-    } catch (error) {
-      console.error("Error applying update:", error);
-    } finally {
-      updatingFromServer.current = false;
-    }
-  });
+	// Initialize local Yjs document and connect
+	useEffect(() => {
+		// Create Yjs document
+		const yDoc = new Y.Doc();
+		yDocRef.current = yDoc;
+		setIsLoading(false);
 
-  // Handle text changes from user
-  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    if (!yDocRef.current) return;
-    
-    const newText = e.target.value;
-    const yText = yDocRef.current.getText('content');
-    
-    // Only update if text actually changed
-    if (newText !== yText.toString()) {
-      // Set flag to avoid loops
-      updatingFromLocal.current = true;
-      
-      // Update Yjs document (this will trigger observe callback)
-      yDocRef.current.transact(() => {
-        yText.delete(0, yText.length);
-        yText.insert(0, newText);
-      });
-      
-      updatingFromLocal.current = false;
-    }
-  };
+		return () => {
+			// Clean up Yjs document
+			yDoc.destroy();
+		};
+	}, [actor]);
 
-  if (isLoading) {
-    return <div className="loading">Loading collaborative document...</div>;
-  }
+	// Set up text observation
+	useEffect(() => {
+		const yDoc = yDocRef.current;
+		if (!yDoc || observationInitialized.current) return;
 
-  return (
-    <div className="yjs-editor">
-      <h3>Collaborative Document: {documentId}</h3>
-      <textarea
-        value={text}
-        onChange={handleTextChange}
-        placeholder="Start typing... All changes are synchronized in real-time!"
-        className="collaborative-textarea"
-      />
-    </div>
-  );
+		// Get the Yjs Text type from the document
+		const yText = yDoc.getText("content");
+
+		// Observe changes to the text
+		yText.observe(() => {
+			// Only update UI if change wasn't from server
+			if (!updatingFromServer.current) {
+				// Update React state
+				setText(yText.toString());
+
+				if (actor && !updatingFromLocal.current) {
+					// Set flag to prevent loops
+					updatingFromLocal.current = true;
+
+					// Convert update to base64 and send to server
+					const update = encodeStateAsUpdate(yDoc);
+					const base64 = bufferToBase64(update);
+					actor.applyUpdate(base64).finally(() => {
+						updatingFromLocal.current = false;
+					});
+				}
+			}
+		});
+
+		observationInitialized.current = true;
+	}, [actor]);
+
+	// Handle initial state from server
+	useActorEvent({ actor, event: "initialState" }, ({ update }) => {
+		const yDoc = yDocRef.current;
+		if (!yDoc) return;
+
+		// Set flag to prevent update loops
+		updatingFromServer.current = true;
+
+		try {
+			// Convert base64 to binary and apply to document
+			const binary = atob(update);
+			const bytes = new Uint8Array(binary.length);
+			for (let i = 0; i < binary.length; i++) {
+				bytes[i] = binary.charCodeAt(i);
+			}
+
+			// Apply update to Yjs document
+			applyUpdate(yDoc, bytes);
+
+			// Update React state
+			const yText = yDoc.getText("content");
+			setText(yText.toString());
+		} catch (error) {
+			console.error("Error applying initial update:", error);
+		} finally {
+			updatingFromServer.current = false;
+		}
+	});
+
+	// Handle updates from other clients
+	useActorEvent({ actor, event: "update" }, ({ update }) => {
+		const yDoc = yDocRef.current;
+		if (!yDoc) return;
+
+		// Set flag to prevent update loops
+		updatingFromServer.current = true;
+
+		try {
+			// Convert base64 to binary and apply to document
+			const binary = atob(update);
+			const bytes = new Uint8Array(binary.length);
+			for (let i = 0; i < binary.length; i++) {
+				bytes[i] = binary.charCodeAt(i);
+			}
+
+			// Apply update to Yjs document
+			applyUpdate(yDoc, bytes);
+
+			// Update React state
+			const yText = yDoc.getText("content");
+			setText(yText.toString());
+		} catch (error) {
+			console.error("Error applying update:", error);
+		} finally {
+			updatingFromServer.current = false;
+		}
+	});
+
+	// Handle text changes from user
+	const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+		if (!yDocRef.current) return;
+
+		const newText = e.target.value;
+		const yText = yDocRef.current.getText("content");
+
+		// Only update if text actually changed
+		if (newText !== yText.toString()) {
+			// Set flag to avoid loops
+			updatingFromLocal.current = true;
+
+			// Update Yjs document (this will trigger observe callback)
+			yDocRef.current.transact(() => {
+				yText.delete(0, yText.length);
+				yText.insert(0, newText);
+			});
+
+			updatingFromLocal.current = false;
+		}
+	};
+
+	if (isLoading) {
+		return <div className="loading">Loading collaborative document...</div>;
+	}
+
+	return (
+		<div className="yjs-editor">
+			<h3>Collaborative Document: {documentId}</h3>
+			<textarea
+				value={text}
+				onChange={handleTextChange}
+				placeholder="Start typing... All changes are synchronized in real-time!"
+				className="collaborative-textarea"
+			/>
+		</div>
+	);
 }
 
 // Helper to convert ArrayBuffer to base64
 function bufferToBase64(buffer: Uint8Array): string {
-  let binary = '';
-  for (let i = 0; i < buffer.byteLength; i++) {
-    binary += String.fromCharCode(buffer[i]);
-  }
-  return btoa(binary);
+	let binary = "";
+	for (let i = 0; i < buffer.byteLength; i++) {
+		binary += String.fromCharCode(buffer[i]);
+	}
+	return btoa(binary);
 }

@@ -1,7 +1,14 @@
 {
   "name": "@rivetkit/cloudflare-workers",
-  "version": "0.9.0-rc.1",
-  "keywords": ["rivetkit", "cloudflare", "actors", "edge", "platform", "serverless"],
+  "version": "0.9.1",
+  "keywords": [
+    "rivetkit",
+    "cloudflare",
+    "actors",
+    "edge",
+    "platform",
+    "serverless"
+  ],
   "files": [
     "src",
     "dist",
@@ -29,7 +36,7 @@
   },
   "peerDependencies": {
     "@rivetkit/core": "*",
-    "hono": "^4.7.0"
+    "hono": "4.8.3"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250129.0",
@@ -39,7 +46,7 @@
     "tsup": "^8.4.0",
     "typescript": "^5.5.2",
     "vitest": "^3.1.1",
-    "wrangler": "^3.101.0"
+    "wrangler": "^4.22.0"
   },
   "dependencies": {
     "invariant": "^2.2.4",

@@ -1,5 +1,5 @@
-import type { ActorError } from "@/client/errors";
 import { describe, expect, test } from "vitest";
+import type { ActorError } from "@/client/errors";
 import type { DriverTestConfig } from "../mod";
 import { setupDriverTest } from "../utils";
 

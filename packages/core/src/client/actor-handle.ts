@@ -1,14 +1,14 @@
+import invariant from "invariant";
 import type { AnyActorDefinition } from "@/actor/definition";
 import type { Encoding } from "@/actor/protocol/serde";
 import { assertUnreachable } from "@/actor/utils";
 import type { ActorQuery } from "@/manager/protocol/query";
-import invariant from "invariant";
 import type { ActorDefinitionActions } from "./actor-common";
 import { type ActorConn, ActorConnRaw } from "./actor-conn";
 import {
-	CREATE_ACTOR_CONN_PROXY,
 	type ClientDriver,
 	type ClientRaw,
+	CREATE_ACTOR_CONN_PROXY,
 } from "./client";
 import { logger } from "./log";
 

@@ -1,6 +1,6 @@
 {
   "name": "@rivetkit/actor",
-  "version": "0.9.0-rc.1",
+  "version": "0.9.1",
   "keywords": [
     "rivetkit",
     "actor",
@@ -13,7 +13,11 @@
     "scaling",
     "distributed"
   ],
-  "files": ["src", "dist", "package.json"],
+  "files": [
+    "src",
+    "dist",
+    "package.json"
+  ],
   "type": "module",
   "exports": {
     ".": {

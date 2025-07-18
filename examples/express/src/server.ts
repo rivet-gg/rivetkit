@@ -1,5 +1,5 @@
-import { registry } from "./registry";
 import express from "express";
+import { registry } from "./registry";
 
 // Start RivetKit
 const { client, handler } = registry.createServer();

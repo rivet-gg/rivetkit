@@ -1,11 +1,11 @@
-import { useStore } from "@tanstack/react-store";
+import type { Client, ExtractActorsFromRegistry } from "@rivetkit/core/client";
 import {
+	type ActorOptions,
 	type AnyActorRegistry,
 	type CreateRivetKitOptions,
-	type ActorOptions,
 	createRivetKit as createVanillaRivetKit,
 } from "@rivetkit/framework-base";
-import type { Client, ExtractActorsFromRegistry } from "@rivetkit/core/client";
+import { useStore } from "@tanstack/react-store";
 import { useEffect } from "react";
 
 export { createClient } from "@rivetkit/core/client";

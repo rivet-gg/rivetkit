@@ -9,7 +9,9 @@ export function runActorInlineClientTests(driverTestConfig: DriverTestConfig) {
 				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Create the inline client actor
-				const inlineClientHandle = client.inlineClientActor.getOrCreate(["inline-client-test"]);
+				const inlineClientHandle = client.inlineClientActor.getOrCreate([
+					"inline-client-test",
+				]);
 
 				// Test calling counter.increment via inline client
 				const result = await inlineClientHandle.callCounterIncrement(5);
@@ -30,7 +32,9 @@ export function runActorInlineClientTests(driverTestConfig: DriverTestConfig) {
 				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Create the inline client actor
-				const inlineClientHandle = client.inlineClientActor.getOrCreate(["inline-client-multi"]);
+				const inlineClientHandle = client.inlineClientActor.getOrCreate([
+					"inline-client-multi",
+				]);
 
 				// Clear any existing messages
 				await inlineClientHandle.clearMessages();
@@ -48,7 +52,9 @@ export function runActorInlineClientTests(driverTestConfig: DriverTestConfig) {
 				const messages = await inlineClientHandle.getMessages();
 				expect(messages).toHaveLength(3);
 				expect(messages[0]).toContain("Called counter.increment(3), result: 3");
-				expect(messages[1]).toContain("Called counter.increment(7), result: 10");
+				expect(messages[1]).toContain(
+					"Called counter.increment(7), result: 10",
+				);
 				expect(messages[2]).toContain("Got counter state: 10");
 			});
 		});
@@ -58,7 +64,9 @@ export function runActorInlineClientTests(driverTestConfig: DriverTestConfig) {
 				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Create the inline client actor
-				const inlineClientHandle = client.inlineClientActor.getOrCreate(["inline-client-stateful"]);
+				const inlineClientHandle = client.inlineClientActor.getOrCreate([
+					"inline-client-stateful",
+				]);
 
 				// Clear any existing messages
 				await inlineClientHandle.clearMessages();
@@ -73,7 +81,9 @@ export function runActorInlineClientTests(driverTestConfig: DriverTestConfig) {
 				// Check that message was logged
 				const messages = await inlineClientHandle.getMessages();
 				expect(messages).toHaveLength(1);
-				expect(messages[0]).toContain("Connected to counter, incremented by 4 and 8");
+				expect(messages[0]).toContain(
+					"Connected to counter, incremented by 4 and 8",
+				);
 				expect(messages[0]).toContain("results: 4, 12");
 				expect(messages[0]).toContain("events: [4,12]");
 			});
@@ -82,7 +92,9 @@ export function runActorInlineClientTests(driverTestConfig: DriverTestConfig) {
 				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Create the inline client actor
-				const inlineClientHandle = client.inlineClientActor.getOrCreate(["inline-client-independent"]);
+				const inlineClientHandle = client.inlineClientActor.getOrCreate([
+					"inline-client-independent",
+				]);
 
 				// Clear any existing messages
 				await inlineClientHandle.clearMessages();
@@ -97,7 +109,9 @@ export function runActorInlineClientTests(driverTestConfig: DriverTestConfig) {
 				// Verify the state is independent from previous tests
 				const messages = await inlineClientHandle.getMessages();
 				expect(messages).toHaveLength(1);
-				expect(messages[0]).toContain("Connected to counter, incremented by 2 and 4");
+				expect(messages[0]).toContain(
+					"Connected to counter, incremented by 2 and 4",
+				);
 			});
 		});
 
@@ -106,7 +120,9 @@ export function runActorInlineClientTests(driverTestConfig: DriverTestConfig) {
 				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Create the inline client actor
-				const inlineClientHandle = client.inlineClientActor.getOrCreate(["inline-client-mixed"]);
+				const inlineClientHandle = client.inlineClientActor.getOrCreate([
+					"inline-client-mixed",
+				]);
 
 				// Clear any existing messages
 				await inlineClientHandle.clearMessages();
@@ -117,7 +133,8 @@ export function runActorInlineClientTests(driverTestConfig: DriverTestConfig) {
 				expect(statelessResult).toBe(1);
 
 				// Then do stateful call
-				const statefulResult = await inlineClientHandle.connectToCounterAndIncrement(3);
+				const statefulResult =
+					await inlineClientHandle.connectToCounterAndIncrement(3);
 				expect(statefulResult.result1).toBe(3);
 				expect(statefulResult.result2).toBe(9); // 3 + 6
 
@@ -126,7 +143,9 @@ export function runActorInlineClientTests(driverTestConfig: DriverTestConfig) {
 				expect(messages).toHaveLength(3);
 				expect(messages[0]).toContain("Called counter.increment(1), result: 1");
 				expect(messages[1]).toContain("Got counter state: 1");
-				expect(messages[2]).toContain("Connected to counter, incremented by 3 and 6");
+				expect(messages[2]).toContain(
+					"Connected to counter, incremented by 3 and 6",
+				);
 			});
 		});
 	});

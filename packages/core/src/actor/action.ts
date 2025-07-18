@@ -1,12 +1,11 @@
 import type { ActorKey } from "@/actor/mod";
+import type { Client } from "@/client/client";
 import type { Logger } from "@/common/log";
-import type { Conn } from "./connection";
-import type { ConnId } from "./connection";
+import type { Registry } from "@/registry/mod";
+import type { Conn, ConnId } from "./connection";
 import type { ActorContext } from "./context";
 import type { SaveStateOptions } from "./instance";
 import type { Schedule } from "./schedule";
-import { Registry } from "@/registry/mod";
-import { Client } from "@/client/client";
 
 /**
  * Context for a remote procedure call.
@@ -124,6 +123,6 @@ export class ActionContext<S, CP, CS, V, I, AD, DB> {
 	 * Runs a promise in the background.
 	 */
 	runInBackground(promise: Promise<void>): void {
-		return this.#actorContext.runInBackground(promise);
+		this.#actorContext.runInBackground(promise);
 	}
 }

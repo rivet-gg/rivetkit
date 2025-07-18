@@ -2,6 +2,8 @@ import { generateConnId, generateConnToken } from "@/actor/connection";
 import type { ActorDriver } from "@/actor/driver";
 import * as errors from "@/actor/errors";
 import type * as messageToClient from "@/actor/protocol/message/to-client";
+import type { Client } from "@/client/client";
+import type { Registry } from "@/mod";
 import type { RegistryConfig } from "@/registry/config";
 import type { RunConfig } from "@/registry/run-config";
 import type { GlobalState } from "@/topologies/coordinate/topology";
@@ -9,8 +11,6 @@ import { ActorPeer } from "../actor-peer";
 import type { CoordinateDriver } from "../driver";
 import { logger } from "../log";
 import { publishMessageToLeader } from "../node/message";
-import { Client } from "@/client/client";
-import { Registry } from "@/mod";
 
 export interface RelayConnDriver {
 	sendMessage(message: messageToClient.ToClient): void;

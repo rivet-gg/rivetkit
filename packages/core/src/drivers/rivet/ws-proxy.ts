@@ -1,7 +1,7 @@
-import { importWebSocket } from "@/common/websocket";
 import type { WSContext } from "hono/ws";
 import invariant from "invariant";
 import type { CloseEvent } from "ws";
+import { importWebSocket } from "@/common/websocket";
 import { logger } from "./log";
 
 /**
@@ -17,7 +17,7 @@ export async function createWebSocketProxy(
 ) {
 	const WebSocket = await importWebSocket();
 
-	let targetWs: any | undefined = undefined; // WS not compatible between Node & browser
+	let targetWs: any | undefined; // WS not compatible between Node & browser
 	const messageQueue: any[] = [];
 
 	return {

@@ -1,5 +1,5 @@
-import { registry } from "./registry";
 import { Hono } from "hono";
+import { registry } from "./registry";
 
 // Start RivetKit
 const { client, serve } = registry.createServer();

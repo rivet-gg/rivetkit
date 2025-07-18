@@ -75,6 +75,36 @@ export function runActorConnTests(driverTestConfig: DriverTestConfig) {
 		});
 
 		describe("Event Communication", () => {
+			test("should mix RPC calls and WebSocket events", async (c) => {
+				const { client } = await setupDriverTest(c, driverTestConfig);
+
+				// Create actor
+				const handle = client.counter.getOrCreate(["test-mixed-rpc-ws"]);
+				const connection = handle.connect();
+
+				// Set up event listener
+				const receivedEvents: number[] = [];
+				connection.on("newCount", (count: number) => {
+					receivedEvents.push(count);
+				});
+
+				// Send one RPC call over the connection to ensure it's open
+				await connection.increment(1);
+
+				// Now use stateless RPC calls through the handle (no connection)
+				// These should still trigger events that the connection receives
+				await handle.increment(5);
+				await handle.increment(3);
+
+				// Verify events were received from both connection and handle calls
+				expect(receivedEvents).toContain(1); // From connection call
+				expect(receivedEvents).toContain(6); // From first handle call (1+5)
+				expect(receivedEvents).toContain(9); // From second handle call (6+3)
+
+				// Clean up
+				await connection.dispose();
+			});
+
 			test("should receive events via broadcast", async (c) => {
 				const { client } = await setupDriverTest(c, driverTestConfig);
 

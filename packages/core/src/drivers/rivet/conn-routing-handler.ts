@@ -1,3 +1,5 @@
+import { proxy } from "hono/proxy";
+import invariant from "invariant";
 import type { ConnRoutingHandler } from "@/actor/conn-routing-handler";
 import { importWebSocket } from "@/common/websocket";
 import {
@@ -6,8 +8,6 @@ import {
 	HEADER_ENCODING,
 	HEADER_EXPOSE_INTERNAL_ERROR,
 } from "@/driver-helpers/mod";
-import { proxy } from "hono/proxy";
-import invariant from "invariant";
 import { getActorMeta } from "./actor-meta";
 import { logger } from "./log";
 import type { RivetClientConfig } from "./rivet-client";

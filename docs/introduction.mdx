@@ -5,69 +5,50 @@ sidebarTitle: Welcome
 mode: custom
 ---
 
-import Snippets from "/snippets/landing-snippets.mdx";
-import Tech from "/snippets/landing-tech.mdx";
-import Quotes from "/snippets/landing-quotes.mdx";
-import FAQ from "/snippets/landing-faq.mdx";
-
-{/*<div className="particle-container"></div>*/}
+import LandingSnippets from "/snippets/landing-snippets.mdx";
+import { LandingTech } from "/snippets/landing-tech.jsx";
+import { LandingQuotes } from "/snippets/landing-quotes.jsx";
+import { HeroBackground } from "/snippets/HeroBackground.jsx";
 
 <div className="landing-root">
+	<HeroBackground />
 	<div className="landing-hero landing-section">
-        {/*<h1 className="landing-title">
-            Open-source libraries for<br/>modern backend primitives
-		</h1>*/}
+		<div style={{ flexGrow: '1' }} />
 
 		<h1 className="landing-title">
             Lightweight Libraries for Backends
 		</h1>
 
     	<p className="landing-subtitle">
-			Install one package to get up and running.<br/>
-            Scale seamlessly to production.<br/>
-            **Just a library, no SaaS.**
+			Install one package, scale to production.<br/><span className="landing-subtitle-highlight">Just a library, no SaaS.</span>
     	</p>
 
-        {/* <div className="landing-buttons">
-    		<a href="/actors/overview" className="landing-button landing-button-primary">
-    			Get Started
-    		</a>
-    		<a
-    			href="https://github.com/rivet-gg/rivetkit"
-    			className="landing-button landing-button-secondary"
-    			target="_blank"
-    			rel="noopener noreferrer"
-    		>
-    			View on GitHub
-    		</a>
-    	</div> */}
-
-		<div style={{ height: '20px' }} />
-
-        {/*<div className="copy-command-container" onClick={(e) => window.copyCommand && window.copyCommand(e.currentTarget)}>
-    		<div className="copy-command-icon"><Icon icon="arrow-right" iconType="solid" color="white" /></div>
-    		<div className="copy-command-text">npx create-actor@latest</div>
-    		<div className="icon-container">
-    			<div className="copy-icon"><Icon icon="copy" /></div>
-    			<div className="check-icon"><Icon icon="check" /></div>
-    		</div>
-    	</div>*/}
-
-		<div className="libraries-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)", maxWidth: "800px", display: "none" }}>
-			<a href="/actors/overview" className="library-box library-box-orange">
+		<div className="libraries-grid">
+			<a href="/actors/overview" className="library-box">
 				<div className="library-content">
 					<div className="library-title">
-						<div className="library-icon"><Icon icon="shapes" color="#ff4f00" size={28} /></div>
+						<div className="library-icon"><Icon icon="shapes" color="white" size={16} /></div>
 						<h3 className="not-prose">Actors</h3>
+                        <div className="library-arrow"><Icon icon="arrow-right" color="rgba(255, 255, 255, 0.8)" size={20} /></div>
 					</div>
 					<div className="library-description">
 						<p>Long running tasks with state persistence, hibernation, and realtime</p>
 						<p className="library-replaces">Replaces <span className="highlight">Durable Objects</span>, <span className="highlight">Orleans</span>, or <span className="highlight">Akka</span></p>
 					</div>
 				</div>
-				<div className="library-arrow"><Icon icon="arrow-right" color="rgba(255, 255, 255, 0.8)" size={20} /></div>
 			</a>
-			<a href="/" className="library-box library-box-green">
+            <div className="library-box library-box-coming-soon">
+				<div className="library-content">
+					<div className="library-title">
+						<div className="library-icon"><Icon icon="square-question" color="white" size={16} /></div>
+						<h3 className="not-prose">Coming Soon</h3>
+					</div>
+					<div className="library-description">
+						<p>Stay tuned for more</p>
+					</div>
+				</div>
+			</div>
+			{/*<a href="/" className="library-box">
 				<div className="library-content">
 					<div className="library-title">
 						<div className="library-icon"><Icon icon="tower-broadcast" color="#10b981" size={28} /></div>
@@ -80,7 +61,7 @@ import FAQ from "/snippets/landing-faq.mdx";
 				</div>
 				<div className="library-arrow"><Icon icon="arrow-right" color="rgba(255, 255, 255, 0.8)" size={20} /></div>
 			</a>
-			<a href="/" className="library-box library-box-purple">
+			<a href="/" className="library-box">
 				<div className="library-content">
 					<div className="library-title">
 						<div className="library-icon"><Icon icon="diagram-project" color="#a855f7" size={28} /></div>
@@ -92,8 +73,8 @@ import FAQ from "/snippets/landing-faq.mdx";
 					</div>
 				</div>
 				<div className="library-arrow"><Icon icon="arrow-right" color="rgba(255, 255, 255, 0.8)" size={20} /></div>
-			</a>
-			{/* <a href="/" className="library-box library-box-blue">
+			</a> */}
+			{/* <a href="/" className="library-box">
 				<div className="library-content">
 					<div className="library-title">
 						<div className="library-icon"><Icon icon="robot" color="#3b82f6" size={28} /></div>
@@ -107,6 +88,45 @@ import FAQ from "/snippets/landing-faq.mdx";
 				<div className="library-arrow"><Icon icon="arrow-right" color="rgba(255, 255, 255, 0.8)" size={20} /></div>
 			</a> */}
 		</div>
+
+        <div style={{ height: "40px" }} />
+
+        <div className="landing-buttons">
+    		<a
+    			href="https://github.com/rivet-gg/rivetkit"
+    			className="landing-button landing-button-secondary"
+    			target="_blank"
+    			rel="noopener noreferrer"
+    		>
+    			View on GitHub
+    		</a>
+    	</div>
+
+        {/*<div className="landing-buttons">
+    		<a href="/actors/quickstart-backend" className="landing-button landing-button-primary">
+    			Quickstart
+    		</a>
+    		<a
+    			href="https://github.com/rivet-gg/rivetkit"
+    			className="landing-button landing-button-secondary"
+    			target="_blank"
+    			rel="noopener noreferrer"
+    		>
+    			View on GitHub
+    		</a>
+    	</div>
+
+        <div className="copy-command-container" onClick={(e) => window.copyCommand && window.copyCommand(e.currentTarget)}>
+    		<div className="copy-command-icon"><Icon icon="arrow-right" iconType="solid" color="white" /></div>
+    		<div className="copy-command-text">npm i @rivetkit/actor</div>
+    		<div className="icon-container">
+    			<div className="copy-icon"><Icon icon="copy" /></div>
+    			<div className="check-icon"><Icon icon="check" /></div>
+    		</div>
+    	</div>*/}
+
+
+		<div style={{ flexGrow: '1' }} />
 
         {/*<div className="features-grid">
     		<div className="feature-box group">
@@ -151,10 +171,6 @@ import FAQ from "/snippets/landing-faq.mdx";
     				<p>No servers to manage. Your code runs on-demand and scales automatically with usage.</p>
     			</div>
     		</div>
-    	</div>*/}
-
-        {/*<div className="subtle-link-container">
-    		<a href="#faq" className="subtle-link">Have more questions? Jump to our FAQ <Icon icon="arrow-right" color="white" /></a>
     	</div>*/}
 
 		<div style={{ height: '60px' }} />
@@ -227,6 +243,10 @@ import FAQ from "/snippets/landing-faq.mdx";
                     <img src="/images/integrations/trpc.svg" alt="tRPC" className="platform-icon" noZoom />
                     <div className="platform-icon-tooltip">tRPC</div>
                 </a>
+                <a href="/integrations/better-auth" className="platform-icon-wrapper">
+                    <img src="/images/integrations/better-auth.svg" alt="Better Auth" className="platform-icon" noZoom />
+                    <div className="platform-icon-tooltip">Better Auth</div>
+                </a>
                 <a href="/general/testing" className="platform-icon-wrapper">
                     <img src="/images/integrations/vitest.svg" alt="Vitest" className="platform-icon" noZoom />
                     <div className="platform-icon-tooltip">Vitest</div>
@@ -236,18 +256,20 @@ import FAQ from "/snippets/landing-faq.mdx";
 
     </div>
 
+    <div style={{ height: '250px' }} />
+
 	<div className="landing-section-xl">
 		<h2 className="landing-section-heading">Reconsider What Your Backend Can Do</h2>
 		<p className="landing-section-text">Build powerful applications with RivetKit's libraries</p>
 
 		<div style={{ height: '20px' }} />
-		<Snippets />
+		<LandingSnippets />
 	</div>
 
     <div style={{ height: '260px' }} />
 
     <div className="landing-section">
-        <Tech />
+        <LandingTech />
     </div>
 
     {/* <div style={{ height: '260px' }} />
@@ -280,10 +302,10 @@ import FAQ from "/snippets/landing-faq.mdx";
     <div style={{ height: '220px' }} />
 
     <div className="landing-section">
-        <Quotes />
+        <LandingQuotes />
     </div>
 
-    <div style={{ height: '260px' }} />
+    <div style={{ height: '200px' }} />
 
     <div className="text-center landing-section">
         <h2 className="landing-section-heading">Join the Community</h2>
@@ -315,10 +337,10 @@ import FAQ from "/snippets/landing-faq.mdx";
         </div>
     </div>
 
-    {/* <div style={{ height: '260px' }} />
+    {/* <div style={{ height: '200px' }} />
 
     <div className="landing-section">
-        <FAQ />
+        <LandingFaq />
     </div> */}
 
     <div style={{ height: '260px' }} />

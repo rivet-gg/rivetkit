@@ -1,5 +1,5 @@
-import type { UpgradeWebSocket } from "@/utils";
 import type { Context as HonoContext } from "hono";
+import type { UpgradeWebSocket } from "@/utils";
 import type { Encoding } from "./protocol/serde";
 import type { ConnectionHandlers as ConnHandlers } from "./router-endpoints";
 

@@ -1,8 +1,8 @@
-import { registry } from "./registry";
-import { auth } from "./auth";
+import { ALLOWED_PUBLIC_HEADERS } from "@rivetkit/actor";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { ALLOWED_PUBLIC_HEADERS } from "@rivetkit/actor";
+import { auth } from "./auth";
+import { registry } from "./registry";
 
 // Start RivetKit
 const { serve } = registry.createServer();

@@ -1,10 +1,10 @@
+import { WSContext } from "hono/ws";
+import type { CloseEvent, Event, MessageEvent } from "ws";
 import { parseMessage } from "@/actor/protocol/message/mod";
 import type * as messageToServer from "@/actor/protocol/message/to-server";
 import type { InputData } from "@/actor/protocol/serde";
 import type { ConnectWebSocketOutput } from "@/actor/router-endpoints";
 import { logger } from "@/registry/log";
-import { WSContext } from "hono/ws";
-import type { CloseEvent, Event, MessageEvent } from "ws";
 
 /**
  * FakeWebSocket implements a WebSocket-like interface
@@ -295,7 +295,7 @@ export class FakeWebSocket {
 			this.#eventListeners.set(type, []);
 		}
 		this.#eventListeners.get(type)!.push(listener);
-		
+
 		// Flush any buffered events for this type
 		this.#flushBufferedEvents(type);
 	}
@@ -313,7 +313,9 @@ export class FakeWebSocket {
 	#dispatchEvent(type: string, event: any): void {
 		const listeners = this.#eventListeners.get(type);
 		if (listeners && listeners.length > 0) {
-			logger().debug(`dispatching ${type} event to ${listeners.length} listeners`);
+			logger().debug(
+				`dispatching ${type} event to ${listeners.length} listeners`,
+			);
 			for (const listener of listeners) {
 				try {
 					listener(event);

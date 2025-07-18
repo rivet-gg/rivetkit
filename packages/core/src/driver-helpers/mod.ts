@@ -1,31 +1,31 @@
+export type { ConnRoutingHandler } from "@/actor/conn-routing-handler";
+export type { ActorDriver } from "@/actor/driver";
 export type { ActorInstance, AnyActorInstance } from "@/actor/instance";
+export {
+	HEADER_ACTOR_ID,
+	HEADER_ACTOR_QUERY,
+	HEADER_AUTH_DATA,
+	HEADER_CONN_ID,
+	HEADER_CONN_PARAMS,
+	HEADER_CONN_TOKEN,
+	HEADER_ENCODING,
+	HEADER_EXPOSE_INTERNAL_ERROR,
+} from "@/actor/router-endpoints";
+export type {
+	ActorOutput,
+	CreateInput,
+	GetForIdInput,
+	GetOrCreateWithKeyInput,
+	GetWithKeyInput,
+	ManagerDriver,
+} from "@/manager/driver";
+export { DriverConfigSchema, RunConfigSchema } from "@/registry/run-config";
 export type {
 	AttemptAcquireLease,
+	CoordinateDriver,
 	ExtendLeaseOutput,
 	GetActorLeaderOutput,
 	NodeMessageCallback,
-	CoordinateDriver,
 	StartActorAndAcquireLeaseOutput,
 } from "@/topologies/coordinate/driver";
-export type { ActorDriver } from "@/actor/driver";
-export type {
-	ManagerDriver,
-	CreateInput,
-	GetForIdInput,
-	GetWithKeyInput,
-	GetOrCreateWithKeyInput,
-	ActorOutput,
-} from "@/manager/driver";
-export {
-	HEADER_ACTOR_QUERY,
-	HEADER_ENCODING,
-	HEADER_EXPOSE_INTERNAL_ERROR,
-	HEADER_CONN_PARAMS,
-	HEADER_AUTH_DATA,
-	HEADER_ACTOR_ID,
-	HEADER_CONN_ID,
-	HEADER_CONN_TOKEN,
-} from "@/actor/router-endpoints";
-export { RunConfigSchema, DriverConfigSchema } from "@/registry/run-config";
 export { serializeEmptyPersistData } from "./utils";
-export type { ConnRoutingHandler } from "@/actor/conn-routing-handler";

@@ -1,8 +1,14 @@
 {
   "name": "@rivetkit/framework-base",
-  "version": "0.9.0-rc.1",
+  "version": "0.9.1",
   "license": "Apache-2.0",
-  "keywords": ["rivetkit", "framework", "base", "utilities", "integration"],
+  "keywords": [
+    "rivetkit",
+    "framework",
+    "base",
+    "utilities",
+    "integration"
+  ],
   "sideEffects": false,
   "type": "module",
   "files": [

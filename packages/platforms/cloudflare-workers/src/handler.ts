@@ -1,17 +1,17 @@
+import { AsyncLocalStorage } from "node:async_hooks";
+import type { Registry, RunConfig } from "@rivetkit/core";
+import type { Client } from "@rivetkit/core/client";
+import { PartitionTopologyManager } from "@rivetkit/core/topologies/partition";
+import { Hono } from "hono";
+import invariant from "invariant";
 import {
-	type DurableObjectConstructor,
 	type ActorHandlerInterface,
 	createActorDurableObject,
+	type DurableObjectConstructor,
 } from "./actor-handler-do";
-import { ConfigSchema, type Config, type InputConfig } from "./config";
-import { Hono } from "hono";
-import { PartitionTopologyManager } from "@rivetkit/core/topologies/partition";
-import type { Client } from "@rivetkit/core/client";
+import { ConfigSchema, type InputConfig } from "./config";
 import { CloudflareActorsManagerDriver } from "./manager-driver";
-import { DriverConfig, Registry, RunConfig } from "@rivetkit/core";
 import { upgradeWebSocket } from "./websocket";
-import invariant from "invariant";
-import { AsyncLocalStorage } from "node:async_hooks";
 
 /** Cloudflare Workers env */
 export interface Bindings {

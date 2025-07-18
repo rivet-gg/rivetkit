@@ -1,6 +1,6 @@
 {
   "name": "@rivetkit/core",
-  "version": "0.9.0-rc.1",
+  "version": "0.9.1",
   "license": "Apache-2.0",
   "keywords": [
     "rivetkit",
@@ -13,7 +13,13 @@
     "actors",
     "framework"
   ],
-  "files": ["dist", "src", "deno.json", "bun.json", "package.json"],
+  "files": [
+    "dist",
+    "src",
+    "deno.json",
+    "bun.json",
+    "package.json"
+  ],
   "type": "module",
   "exports": {
     ".": {

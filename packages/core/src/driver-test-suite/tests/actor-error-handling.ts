@@ -1,9 +1,9 @@
+import { describe, expect, test } from "vitest";
 import {
 	INTERNAL_ERROR_CODE,
 	INTERNAL_ERROR_DESCRIPTION,
 } from "@/actor/errors";
 import { assertUnreachable } from "@/actor/utils";
-import { describe, expect, test } from "vitest";
 import type { DriverTestConfig } from "../mod";
 import { setupDriverTest } from "../utils";
 

@@ -1,6 +1,6 @@
 [package]
 name = "rivetkit-client"
-version = "0.9.0-rc.1"
+version = "0.9.0-rc.2"
 description = "Rust client for RivetKit - the Stateful Serverless Framework for building AI agents, realtime apps, and game servers"
 edition = "2021"
 authors = ["Rivet Gaming, LLC <developer@rivet.gg>"]

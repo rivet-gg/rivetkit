@@ -1,4 +1,4 @@
-import { UserError, actor } from "@rivetkit/core";
+import { actor, UserError } from "@rivetkit/core";
 
 // Actor with synchronous actions
 export const syncActionActor = actor({

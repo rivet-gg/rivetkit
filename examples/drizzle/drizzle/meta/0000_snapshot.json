@@ -39,9 +39,7 @@
       "indexes": {
         "users_table_email_unique": {
           "name": "users_table_email_unique",
-          "columns": [
-            "email"
-          ],
+          "columns": ["email"],
           "isUnique": true
         }
       },

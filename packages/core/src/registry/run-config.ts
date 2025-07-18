@@ -1,11 +1,10 @@
-import type { ActorDriver } from "@/actor/driver";
-import type { ManagerDriver } from "@/manager/driver";
-import type { CoordinateDriver } from "@/topologies/coordinate/driver";
-import { type UpgradeWebSocket } from "@/utils";
-import { createDefaultDriver } from "@/drivers/default";
-import type { Hono } from "hono";
 import type { cors } from "hono/cors";
 import { z } from "zod";
+import type { ActorDriver } from "@/actor/driver";
+import { createDefaultDriver } from "@/drivers/default";
+import type { ManagerDriver } from "@/manager/driver";
+import type { CoordinateDriver } from "@/topologies/coordinate/driver";
+import type { UpgradeWebSocket } from "@/utils";
 
 type CorsOptions = NonNullable<Parameters<typeof cors>[0]>;
 

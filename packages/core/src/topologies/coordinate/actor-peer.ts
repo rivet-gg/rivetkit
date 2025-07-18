@@ -5,6 +5,10 @@ import type { Client } from "@/client/client";
 import type { Registry } from "@/mod";
 import type { RegistryConfig } from "@/registry/config";
 import type { RunConfig } from "@/registry/run-config";
+import {
+	createGenericConnDrivers,
+	GenericConnGlobalState,
+} from "@/topologies/common/generic-conn-driver";
 import type { GlobalState } from "@/topologies/coordinate/topology";
 import {
 	CONN_DRIVER_COORDINATE_RELAY,
@@ -225,12 +229,17 @@ export class ActorPeer {
 		const actor = definition.instantiate();
 		this.#loadedActor = actor;
 
+		// Create generic connection drivers for testing and HTTP support
+		const genericConnGlobalState = new GenericConnGlobalState();
+		const genericConnDrivers = createGenericConnDrivers(genericConnGlobalState);
+
 		await actor.start(
 			{
 				[CONN_DRIVER_COORDINATE_RELAY]: createCoordinateRelayDriver(
 					this.#globalState,
 					this.#coordinateDriver,
 				),
+				...genericConnDrivers,
 			},
 			this.#actorDriver,
 			this.#inlineClient,

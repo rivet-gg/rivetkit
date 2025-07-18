@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { authClient } from "./auth-client";
 import { AuthForm } from "./components/AuthForm";
 import { ChatRoom } from "./components/ChatRoom";
@@ -42,12 +42,14 @@ function App() {
 
 	if (loading) {
 		return (
-			<div style={{ 
-				display: "flex", 
-				justifyContent: "center", 
-				alignItems: "center", 
-				height: "100vh" 
-			}}>
+			<div
+				style={{
+					display: "flex",
+					justifyContent: "center",
+					alignItems: "center",
+					height: "100vh",
+				}}
+			>
 				Loading...
 			</div>
 		);

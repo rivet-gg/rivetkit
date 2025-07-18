@@ -1,16 +1,16 @@
+import type { ActorContext } from "@rivet-gg/actor-core";
+import * as cbor from "cbor-x";
+import invariant from "invariant";
 import { setupLogging } from "@/common/log";
 import { stringifyError } from "@/common/utils";
 import type { Registry, RunConfig } from "@/registry/mod";
+import { type RunConfigInput, RunConfigSchema } from "@/registry/run-config";
 import { PartitionTopologyActor } from "@/topologies/partition/mod";
-import type { ActorContext } from "@rivet-gg/actor-core";
-import invariant from "invariant";
 import { RivetActorDriver } from "./actor-driver";
 import { logger } from "./log";
 import { RivetManagerDriver } from "./manager-driver";
-import { type RivetClientConfig, getRivetClientConfig } from "./rivet-client";
-import { type RivetHandler, deserializeKeyFromTag } from "./util";
-import * as cbor from "cbor-x";
-import { RunConfigInput, RunConfigSchema } from "@/registry/run-config";
+import { getRivetClientConfig, type RivetClientConfig } from "./rivet-client";
+import { deserializeKeyFromTag, type RivetHandler } from "./util";
 
 export function createActorHandler(
 	registry: Registry<any>,

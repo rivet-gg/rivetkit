@@ -1,8 +1,8 @@
+import type { Next } from "hono";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import * as errors from "@/actor/errors";
 import { getEnvUniversal } from "@/utils";
-import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { Logger } from "./log";
-import { type Next } from "hono";
 
 export function assertUnreachable(x: never): never {
 	throw new Error(`Unreachable case: ${x}`);
@@ -39,7 +39,7 @@ export function safeStringify(obj: unknown, maxSize: number) {
 /**
  * Check if a value is CBOR serializable.
  * Optionally pass an onInvalid callback to receive the path to invalid values.
- * 
+ *
  * For a complete list of supported CBOR tags, see:
  * https://github.com/kriszyp/cbor-x/blob/cc1cf9df8ba72288c7842af1dd374d73e34cdbc1/README.md#list-of-supported-tags-for-decoding
  */
@@ -95,9 +95,16 @@ export function isCborSerializable(
 	// Handle Map (CBOR tag 259)
 	if (value instanceof Map) {
 		for (const [key, val] of value.entries()) {
-			const keyPath = currentPath ? `${currentPath}.key(${String(key)})` : `key(${String(key)})`;
-			const valPath = currentPath ? `${currentPath}.value(${String(key)})` : `value(${String(key)})`;
-			if (!isCborSerializable(key, onInvalid, keyPath) || !isCborSerializable(val, onInvalid, valPath)) {
+			const keyPath = currentPath
+				? `${currentPath}.key(${String(key)})`
+				: `key(${String(key)})`;
+			const valPath = currentPath
+				? `${currentPath}.value(${String(key)})`
+				: `value(${String(key)})`;
+			if (
+				!isCborSerializable(key, onInvalid, keyPath) ||
+				!isCborSerializable(val, onInvalid, valPath)
+			) {
 				return false;
 			}
 		}
@@ -108,7 +115,9 @@ export function isCborSerializable(
 	if (value instanceof Set) {
 		let index = 0;
 		for (const item of value.values()) {
-			const itemPath = currentPath ? `${currentPath}.set[${index}]` : `set[${index}]`;
+			const itemPath = currentPath
+				? `${currentPath}.set[${index}]`
+				: `set[${index}]`;
 			if (!isCborSerializable(item, onInvalid, itemPath)) {
 				return false;
 			}
@@ -144,8 +153,8 @@ export function isCborSerializable(
 		const proto = Object.getPrototypeOf(value);
 		if (proto !== null && proto !== Object.prototype) {
 			// Check if it's a known serializable object type
-			const constructor = value.constructor;
-			if (constructor && typeof constructor.name === "string") {
+			const protoConstructor = value.constructor;
+			if (protoConstructor && typeof protoConstructor.name === "string") {
 				// Allow objects with named constructors (records, named objects)
 				// This includes user-defined classes and built-in objects
 				// that CBOR can serialize with tag 27 or record tags
@@ -196,7 +205,7 @@ export function deconstructError(
 	let public_: boolean;
 	let code: string;
 	let message: string;
-	let metadata: unknown = undefined;
+	let metadata: unknown;
 	if (errors.ActorError.isActorError(error) && error.public) {
 		statusCode = 400;
 		public_ = true;

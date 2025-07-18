@@ -1,3 +1,4 @@
+import type { WSContext } from "hono/ws";
 import type { ActorDriver } from "@/actor/driver";
 import * as errors from "@/actor/errors";
 import type * as messageToServer from "@/actor/protocol/message/to-server";
@@ -6,16 +7,15 @@ import type {
 	ConnectWebSocketOpts,
 	ConnectWebSocketOutput,
 } from "@/actor/router-endpoints";
+import type { Client } from "@/client/client";
 import type { RegistryConfig } from "@/registry/config";
+import type { Registry } from "@/registry/mod";
 import type { RunConfig } from "@/registry/run-config";
 import type { GlobalState } from "@/topologies/coordinate/topology";
-import type { WSContext } from "hono/ws";
 import { RelayConn } from "../conn/mod";
 import type { CoordinateDriver } from "../driver";
 import { logger } from "../log";
 import { publishMessageToLeader } from "../node/message";
-import { Registry } from "@/registry/mod";
-import { Client } from "@/client/client";
 
 export async function serveWebSocket(
 	registryConfig: RegistryConfig,

@@ -29,17 +29,17 @@ export function actor<
 	>;
 	return new ActorDefinition(config);
 }
+export type { Encoding } from "@/actor/protocol/serde";
 export type { ActorKey } from "@/manager/protocol/query";
-export type { ActorContext } from "./context";
-export { UserError, type UserErrorOptions } from "./errors";
-export type { Conn } from "./connection";
 export type { ActionContext } from "./action";
 export type * from "./config";
-export type { Encoding } from "@/actor/protocol/serde";
+export type { Conn } from "./connection";
+export type { ActorContext } from "./context";
 export type {
+	ActionContextOf,
+	ActorContextOf,
 	ActorDefinition,
 	AnyActorDefinition,
-	ActorContextOf,
-	ActionContextOf,
 } from "./definition";
+export { UserError, type UserErrorOptions } from "./errors";
 export { ALLOWED_PUBLIC_HEADERS } from "./router-endpoints";

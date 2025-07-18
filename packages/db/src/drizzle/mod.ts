@@ -1,17 +1,18 @@
+import * as Database from "better-sqlite3";
 import {
 	type BetterSQLite3Database,
 	drizzle as sqliteDrizzle,
 } from "drizzle-orm/better-sqlite3";
-
-import { migrate as sqliteMigrate } from "drizzle-orm/durable-sqlite/migrator";
 import { drizzle as durableDrizzle } from "drizzle-orm/durable-sqlite";
-import { migrate as durableMigrate } from "drizzle-orm/durable-sqlite/migrator";
-import * as Database from "better-sqlite3";
+import {
+	migrate as durableMigrate,
+	migrate as sqliteMigrate,
+} from "drizzle-orm/durable-sqlite/migrator";
 import type { DatabaseFactory } from "@/config";
 
 export * from "drizzle-orm/sqlite-core";
 
-import { defineConfig as originalDefineConfig, type Config } from "drizzle-kit";
+import { type Config, defineConfig as originalDefineConfig } from "drizzle-kit";
 
 export function defineConfig(
 	config: Partial<Config & { driver: "durable-sqlite" }>,
