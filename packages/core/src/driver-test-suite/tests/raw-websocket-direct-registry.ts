@@ -32,7 +32,7 @@ export function runRawWebSocketDirectRegistryTests(
 			// Create WebSocket connection with subprotocol
 			const ws = new WebSocket(wsUrl, [
 				queryProtocol,
-				// HACK: See packages/platforms/cloudflare-workers/src/websocket.ts
+				// HACK: See packages/drivers/cloudflare-workers/src/websocket.ts
 				"rivetkit",
 			]) as any;
 
@@ -41,10 +41,11 @@ export function runRawWebSocketDirectRegistryTests(
 					resolve();
 				});
 				ws.addEventListener("error", reject);
+				ws.addEventListener("close", reject);
 			});
 
 			// Should receive welcome message
-			const welcomeMessage = await new Promise<any>((resolve) => {
+			const welcomeMessage = await new Promise<any>((resolve, reject) => {
 				ws.addEventListener(
 					"message",
 					(event: any) => {
@@ -52,6 +53,7 @@ export function runRawWebSocketDirectRegistryTests(
 					},
 					{ once: true },
 				);
+				ws.addEventListener("close", reject);
 			});
 
 			expect(welcomeMessage.type).toBe("welcome");
@@ -81,24 +83,26 @@ export function runRawWebSocketDirectRegistryTests(
 
 			const ws = new WebSocket(wsUrl, [
 				queryProtocol,
-				// HACK: See packages/platforms/cloudflare-workers/src/websocket.ts
+				// HACK: See packages/drivers/cloudflare-workers/src/websocket.ts
 				"rivetkit",
 			]) as any;
 
-			await new Promise<void>((resolve) => {
+			await new Promise<void>((resolve, reject) => {
 				ws.addEventListener("open", () => resolve(), { once: true });
+				ws.addEventListener("close", reject);
 			});
 
 			// Skip welcome message
-			await new Promise<void>((resolve) => {
+			await new Promise<void>((resolve, reject) => {
 				ws.addEventListener("message", () => resolve(), { once: true });
+				ws.addEventListener("close", reject);
 			});
 
 			// Send and receive echo
 			const testMessage = { test: "vanilla", timestamp: Date.now() };
 			ws.send(JSON.stringify(testMessage));
 
-			const echoMessage = await new Promise<any>((resolve) => {
+			const echoMessage = await new Promise<any>((resolve, reject) => {
 				ws.addEventListener(
 					"message",
 					(event: any) => {
@@ -106,6 +110,7 @@ export function runRawWebSocketDirectRegistryTests(
 					},
 					{ once: true },
 				);
+				ws.addEventListener("close", reject);
 			});
 
 			expect(echoMessage).toEqual(testMessage);
@@ -139,7 +144,7 @@ export function runRawWebSocketDirectRegistryTests(
 			const ws = new WebSocket(wsUrl, [
 				queryProtocol,
 				connParamsProtocol,
-				// HACK: See packages/platforms/cloudflare-workers/src/websocket.ts
+				// HACK: See packages/drivers/cloudflare-workers/src/websocket.ts
 				"rivetkit",
 			]) as any;
 
@@ -148,10 +153,11 @@ export function runRawWebSocketDirectRegistryTests(
 					resolve();
 				});
 				ws.addEventListener("error", reject);
+				ws.addEventListener("close", reject);
 			});
 
 			// Connection should succeed with auth params
-			const welcomeMessage = await new Promise<any>((resolve) => {
+			const welcomeMessage = await new Promise<any>((resolve, reject) => {
 				ws.addEventListener(
 					"message",
 					(event: any) => {
@@ -159,6 +165,7 @@ export function runRawWebSocketDirectRegistryTests(
 					},
 					{ once: true },
 				);
+				ws.addEventListener("close", reject);
 			});
 
 			expect(welcomeMessage.type).toBe("welcome");
@@ -192,7 +199,7 @@ export function runRawWebSocketDirectRegistryTests(
 				queryProtocol,
 				userProtocol1,
 				userProtocol2,
-				// HACK: See packages/platforms/cloudflare-workers/src/websocket.ts
+				// HACK: See packages/drivers/cloudflare-workers/src/websocket.ts
 				"rivetkit",
 			]) as any;
 
@@ -201,10 +208,11 @@ export function runRawWebSocketDirectRegistryTests(
 					resolve();
 				});
 				ws.addEventListener("error", reject);
+				ws.addEventListener("close", reject);
 			});
 
 			// Should connect successfully with custom protocols
-			const welcomeMessage = await new Promise<any>((resolve) => {
+			const welcomeMessage = await new Promise<any>((resolve, reject) => {
 				ws.addEventListener(
 					"message",
 					(event: any) => {
@@ -212,6 +220,7 @@ export function runRawWebSocketDirectRegistryTests(
 					},
 					{ once: true },
 				);
+				ws.addEventListener("close", reject);
 			});
 
 			expect(welcomeMessage.type).toBe("welcome");
@@ -244,7 +253,7 @@ export function runRawWebSocketDirectRegistryTests(
 				const wsUrl = `${wsEndpoint}/registry/actors/raw/websocket/${path}`;
 				const ws = new WebSocket(wsUrl, [
 					queryProtocol,
-					// HACK: See packages/platforms/cloudflare-workers/src/websocket.ts
+					// HACK: See packages/drivers/cloudflare-workers/src/websocket.ts
 					"rivetkit",
 				]) as any;
 
@@ -256,7 +265,7 @@ export function runRawWebSocketDirectRegistryTests(
 				});
 
 				// Should receive welcome message with the path
-				const welcomeMessage = await new Promise<any>((resolve) => {
+				const welcomeMessage = await new Promise<any>((resolve, reject) => {
 					ws.addEventListener(
 						"message",
 						(event: any) => {
@@ -264,6 +273,7 @@ export function runRawWebSocketDirectRegistryTests(
 						},
 						{ once: true },
 					);
+					ws.addEventListener("close", reject);
 				});
 
 				expect(welcomeMessage.type).toBe("welcome");
@@ -294,7 +304,7 @@ export function runRawWebSocketDirectRegistryTests(
 			const ws = new WebSocket(wsUrl, [
 				queryProtocol,
 
-				// HACK: See packages/platforms/cloudflare-workers/src/websocket.ts
+				// HACK: See packages/drivers/cloudflare-workers/src/websocket.ts
 				"rivetkit",
 			]) as any;
 
@@ -327,18 +337,20 @@ export function runRawWebSocketDirectRegistryTests(
 
 			const ws = new WebSocket(wsUrl, [
 				queryProtocol,
-				// HACK: See packages/platforms/cloudflare-workers/src/websocket.ts
+				// HACK: See packages/drivers/cloudflare-workers/src/websocket.ts
 				"rivetkit",
 			]) as any;
 			ws.binaryType = "arraybuffer";
 
-			await new Promise<void>((resolve) => {
+			await new Promise<void>((resolve, reject) => {
 				ws.addEventListener("open", () => resolve(), { once: true });
+				ws.addEventListener("close", reject);
 			});
 
 			// Skip welcome message
-			await new Promise<void>((resolve) => {
+			await new Promise<void>((resolve, reject) => {
 				ws.addEventListener("message", () => resolve(), { once: true });
+				ws.addEventListener("close", reject);
 			});
 
 			// Send binary data
@@ -346,7 +358,7 @@ export function runRawWebSocketDirectRegistryTests(
 			ws.send(binaryData.buffer);
 
 			// Receive echoed binary data
-			const echoedData = await new Promise<ArrayBuffer>((resolve) => {
+			const echoedData = await new Promise<ArrayBuffer>((resolve, reject) => {
 				ws.addEventListener(
 					"message",
 					(event: any) => {
@@ -355,6 +367,7 @@ export function runRawWebSocketDirectRegistryTests(
 					},
 					{ once: true },
 				);
+				ws.addEventListener("close", reject);
 			});
 
 			// Verify the echoed data matches what we sent
@@ -364,7 +377,7 @@ export function runRawWebSocketDirectRegistryTests(
 			// Now test JSON echo
 			ws.send(JSON.stringify({ type: "binary-test", size: binaryData.length }));
 
-			const echoMessage = await new Promise<any>((resolve) => {
+			const echoMessage = await new Promise<any>((resolve, reject) => {
 				ws.addEventListener(
 					"message",
 					(event: any) => {
@@ -372,6 +385,7 @@ export function runRawWebSocketDirectRegistryTests(
 					},
 					{ once: true },
 				);
+				ws.addEventListener("close", reject);
 			});
 
 			expect(echoMessage.type).toBe("binary-test");

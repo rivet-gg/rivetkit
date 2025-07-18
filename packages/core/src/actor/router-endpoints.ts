@@ -518,17 +518,25 @@ export function handleRawWebSocketHandler(
 		onOpen: async (_evt: any, ws: any) => {
 			const actor = await actorDriver.loadActor(actorId);
 
-			// TODO: This isn't a clean way of handling paths
-			// Create a new request with the corrected URL
-			const originalPath = path.replace(/^\/websocket/, "") || "/";
+			// Extract the path after /raw/websocket and preserve query parameters
+			// Use URL API for cleaner parsing
+			const url = new URL(path, "http://actor");
+			const pathname = url.pathname.replace(/^\/raw\/websocket/, "") || "/";
+			const normalizedPath = pathname + url.search;
+
 			let newRequest: Request;
 			if (c) {
-				newRequest = new Request(`http://actor${originalPath}`, c.req.raw);
+				newRequest = new Request(`http://actor${normalizedPath}`, c.req.raw);
 			} else {
-				newRequest = new Request(`http://actor${originalPath}`, {
+				newRequest = new Request(`http://actor${normalizedPath}`, {
 					method: "GET",
 				});
 			}
+
+			logger().debug("rewriting websocket url", {
+				from: path,
+				to: newRequest.url,
+			});
 
 			// Wrap the Hono WebSocket in our adapter
 			const adapter = new HonoWebSocketAdapter(ws);

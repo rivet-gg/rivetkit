@@ -92,7 +92,7 @@ export function createTestInlineClientDriver(
 			// Create and return the WebSocket
 			// Node & browser WebSocket types are incompatible
 			return new WebSocket(finalWsUrl, [
-				// HACK: See packages/platforms/cloudflare-workers/src/websocket.ts
+				// HACK: See packages/drivers/cloudflare-workers/src/websocket.ts
 				"rivetkit",
 			]) as any;
 		},
@@ -230,6 +230,11 @@ export function createTestInlineClientDriver(
 			// Use the dedicated raw HTTP endpoint
 			const url = `${endpoint}/registry/.test/inline-driver/raw-http/${normalizedPath}`;
 
+			logger().debug("rewriting http url", {
+				from: path,
+				to: url,
+			});
+
 			// Merge headers with our metadata
 			const headers = new Headers(init.headers);
 			headers.set(HEADER_ACTOR_QUERY, JSON.stringify(actorQuery));
@@ -320,10 +325,15 @@ export function createTestInlineClientDriver(
 
 			logger().debug("connecting to raw websocket", { url: finalWsUrl });
 
+			logger().debug("rewriting websocket url", {
+				from: path,
+				to: finalWsUrl,
+			});
+
 			// Create and return the WebSocket
 			// Node & browser WebSocket types are incompatible
 			return new WebSocket(finalWsUrl, [
-				// HACK: See packages/platforms/cloudflare-workers/src/websocket.ts
+				// HACK: See packages/drivers/cloudflare-workers/src/websocket.ts
 				"rivetkit",
 			]) as any;
 		},

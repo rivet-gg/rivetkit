@@ -171,6 +171,11 @@ export function createActorRouter(
 			body: c.req.raw.body,
 		});
 
+		logger().debug("rewriting http url", {
+			from: c.req.url,
+			to: correctedRequest.url,
+		});
+
 		// Call the actor's onFetch handler - it will throw appropriate errors
 		const response = await actor.handleFetch(correctedRequest, {
 			auth: authData,
@@ -199,9 +204,19 @@ export function createActorRouter(
 					: undefined;
 				const authData = authDataRaw ? JSON.parse(authDataRaw) : undefined;
 
+				const url = new URL(c.req.url);
+				const pathWithQuery = c.req.path + url.search;
+
+				logger().debug("actor router raw websocket", {
+					path: c.req.path,
+					url: c.req.url,
+					search: url.search,
+					pathWithQuery,
+				});
+
 				return handleRawWebSocketHandler(
 					c,
-					c.req.path,
+					pathWithQuery,
 					actorDriver,
 					c.env.actorId,
 					authData,

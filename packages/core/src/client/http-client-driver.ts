@@ -139,7 +139,7 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 					`conn_params.${encodeURIComponent(JSON.stringify(params))}`,
 				);
 
-			// HACK: See packages/platforms/cloudflare-workers/src/websocket.ts
+			// HACK: See packages/drivers/cloudflare-workers/src/websocket.ts
 			protocol.push("rivetkit");
 
 			logger().debug("connecting to websocket", { url });
@@ -230,6 +230,11 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 			const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
 			const url = `${managerEndpoint}/registry/actors/raw/http/${normalizedPath}`;
 
+			logger().debug("rewriting http url", {
+				from: path,
+				to: url,
+			});
+
 			// Merge headers properly
 			const headers = new Headers(init.headers);
 			headers.set("User-Agent", httpUserAgent());
@@ -264,6 +269,11 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 			const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
 			const url = `${wsEndpoint}/registry/actors/raw/websocket/${normalizedPath}`;
 
+			logger().debug("rewriting websocket url", {
+				from: path,
+				to: url,
+			});
+
 			// Pass data via WebSocket protocol subprotocols
 			const protocolList: string[] = [];
 			protocolList.push(
@@ -276,7 +286,7 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 				);
 			}
 
-			// HACK: See packages/platforms/cloudflare-workers/src/websocket.ts
+			// HACK: See packages/drivers/cloudflare-workers/src/websocket.ts
 			protocolList.push("rivetkit");
 
 			// Add user protocols

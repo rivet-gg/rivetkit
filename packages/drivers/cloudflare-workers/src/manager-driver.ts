@@ -86,11 +86,17 @@ export class CloudflareActorsManagerDriver implements ManagerDriver {
 		if (params) {
 			headers[HEADER_CONN_PARAMS] = JSON.stringify(params);
 		}
-		// HACK: See packages/platforms/cloudflare-workers/src/websocket.ts
+		// HACK: See packages/drivers/cloudflare-workers/src/websocket.ts
 		headers["sec-websocket-protocol"] = "rivetkit";
 
 		// Use the path parameter to determine the URL
 		const url = `http://actor${path}`;
+
+		logger().debug("rewriting websocket url", {
+			from: path,
+			to: url,
+		});
+
 		const response = await stub.fetch(url, {
 			headers,
 		});
@@ -161,6 +167,11 @@ export class CloudflareActorsManagerDriver implements ManagerDriver {
 		// TODO: strip headers
 		const newUrl = new URL(`http://actor${path}`);
 		const actorRequest = new Request(newUrl, c.req.raw);
+
+		logger().debug("rewriting websocket url", {
+			from: c.req.url,
+			to: actorRequest.url,
+		});
 
 		// Always build fresh request to prevent forwarding unwanted headers
 		// HACK: Since we can't build a new request, we need to remove

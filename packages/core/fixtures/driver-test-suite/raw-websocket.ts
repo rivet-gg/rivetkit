@@ -13,7 +13,7 @@ export const rawWebSocketActor = actor({
 		// Allow all connections and pass through connection params
 		return { connParams: opts.params };
 	},
-	onWebSocket(ctx, websocket) {
+	onWebSocket(ctx, websocket, opts) {
 		ctx.state.connectionCount = ctx.state.connectionCount + 1;
 
 		// Send welcome message
@@ -57,6 +57,16 @@ export const rawWebSocketActor = actor({
 								message: "Auth data not available in raw WebSocket handler",
 							}),
 						);
+					} else if (parsed.type === "getRequestInfo") {
+						// Send back the request URL info
+						websocket.send(
+							JSON.stringify({
+								type: "requestInfo",
+								url: opts.request.url,
+								pathname: new URL(opts.request.url).pathname,
+								search: new URL(opts.request.url).search,
+							}),
+						);
 					} else {
 						// Echo back
 						websocket.send(data);
@@ -91,7 +101,7 @@ export const rawWebSocketBinaryActor = actor({
 		// Allow all connections
 		return {};
 	},
-	onWebSocket(ctx, websocket) {
+	onWebSocket(ctx, websocket, opts) {
 		// Handle binary data
 		websocket.addEventListener("message", (event: any) => {
 			const data = event.data;

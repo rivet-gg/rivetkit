@@ -1,7 +1,4 @@
 import { describe, expect, test } from "vitest";
-import { z } from "zod";
-import { importWebSocket } from "@/common/websocket";
-import { registry } from "../../../fixtures/driver-test-suite/registry";
 import type { DriverTestConfig } from "../mod";
 import { setupDriverTest, waitFor } from "../utils";
 
@@ -21,7 +18,7 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 			});
 
 			// Should receive welcome message
-			const welcomeMessage = await new Promise<any>((resolve) => {
+			const welcomeMessage = await new Promise<any>((resolve, reject) => {
 				ws.addEventListener(
 					"message",
 					(event: any) => {
@@ -29,6 +26,7 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 					},
 					{ once: true },
 				);
+				ws.addEventListener("close", reject);
 			});
 
 			expect(welcomeMessage.type).toBe("welcome");
@@ -44,20 +42,22 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 
 			const ws = await actor.websocket();
 
-			await new Promise<void>((resolve) => {
+			await new Promise<void>((resolve, reject) => {
 				ws.addEventListener("open", () => resolve(), { once: true });
+				ws.addEventListener("close", reject);
 			});
 
 			// Skip welcome message
-			await new Promise<void>((resolve) => {
+			await new Promise<void>((resolve, reject) => {
 				ws.addEventListener("message", () => resolve(), { once: true });
+				ws.addEventListener("close", reject);
 			});
 
 			// Send and receive echo
 			const testMessage = { test: "data", timestamp: Date.now() };
 			ws.send(JSON.stringify(testMessage));
 
-			const echoMessage = await new Promise<any>((resolve) => {
+			const echoMessage = await new Promise<any>((resolve, reject) => {
 				ws.addEventListener(
 					"message",
 					(event: any) => {
@@ -65,6 +65,7 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 					},
 					{ once: true },
 				);
+				ws.addEventListener("close", reject);
 			});
 
 			expect(echoMessage).toEqual(testMessage);
@@ -79,25 +80,28 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 
 			const ws = await actor.websocket();
 
-			await new Promise<void>((resolve) => {
+			await new Promise<void>((resolve, reject) => {
 				ws.addEventListener("open", () => resolve(), { once: true });
+				ws.addEventListener("close", reject);
 			});
 
 			// Skip welcome message
-			await new Promise<void>((resolve) => {
+			await new Promise<void>((resolve, reject) => {
 				ws.addEventListener("message", () => resolve(), { once: true });
+				ws.addEventListener("close", reject);
 			});
 
 			// Send ping
 			ws.send(JSON.stringify({ type: "ping" }));
 
-			const pongMessage = await new Promise<any>((resolve) => {
+			const pongMessage = await new Promise<any>((resolve, reject) => {
 				ws.addEventListener("message", (event: any) => {
 					const data = JSON.parse(event.data as string);
 					if (data.type === "pong") {
 						resolve(data);
 					}
 				});
+				ws.addEventListener("close", reject);
 			});
 
 			expect(pongMessage.type).toBe("pong");
@@ -120,21 +124,25 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 
 			// Wait for both to connect
 			await Promise.all([
-				new Promise<void>((resolve) => {
+				new Promise<void>((resolve, reject) => {
 					ws1.addEventListener("open", () => resolve(), { once: true });
+					ws1.addEventListener("close", reject);
 				}),
-				new Promise<void>((resolve) => {
+				new Promise<void>((resolve, reject) => {
 					ws2.addEventListener("open", () => resolve(), { once: true });
+					ws2.addEventListener("close", reject);
 				}),
 			]);
 
 			// Skip welcome messages
 			await Promise.all([
-				new Promise<void>((resolve) => {
+				new Promise<void>((resolve, reject) => {
 					ws1.addEventListener("message", () => resolve(), { once: true });
+					ws1.addEventListener("close", reject);
 				}),
-				new Promise<void>((resolve) => {
+				new Promise<void>((resolve, reject) => {
 					ws2.addEventListener("message", () => resolve(), { once: true });
+					ws2.addEventListener("close", reject);
 				}),
 			]);
 
@@ -162,6 +170,7 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 						// Ignore non-JSON messages
 					}
 				});
+				ws1.addEventListener("close", reject);
 			});
 
 			// Request stats
@@ -188,21 +197,25 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 
 			const ws = await actor.websocket();
 
-			await new Promise<void>((resolve) => {
+			await new Promise<void>((resolve, reject) => {
 				ws.addEventListener("open", () => resolve(), { once: true });
+				ws.addEventListener("close", reject);
 			});
 
 			// Helper to receive and convert binary message
 			const receiveBinaryMessage = async (): Promise<Uint8Array> => {
-				const response = await new Promise<ArrayBuffer | Blob>((resolve) => {
-					ws.addEventListener(
-						"message",
-						(event: any) => {
-							resolve(event.data);
-						},
-						{ once: true },
-					);
-				});
+				const response = await new Promise<ArrayBuffer | Blob>(
+					(resolve, reject) => {
+						ws.addEventListener(
+							"message",
+							(event: any) => {
+								resolve(event.data);
+							},
+							{ once: true },
+						);
+						ws.addEventListener("close", reject);
+					},
+				);
 
 				// Convert Blob to ArrayBuffer if needed
 				const buffer =
@@ -245,6 +258,7 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 					resolve();
 				});
 				ws.addEventListener("error", reject);
+				ws.addEventListener("close", reject);
 			});
 
 			// Should still work
@@ -282,13 +296,14 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 			// Send a request to echo the auth data (which should include conn params from auth)
 			ws.send(JSON.stringify({ type: "getAuthData" }));
 
-			const response = await new Promise<any>((resolve) => {
+			const response = await new Promise<any>((resolve, reject) => {
 				ws.addEventListener("message", (event: any) => {
 					const data = JSON.parse(event.data as string);
 					if (data.type === "authData") {
 						resolve(data);
 					}
 				});
+				ws.addEventListener("close", reject);
 			});
 
 			// For now, just verify we get a response
@@ -305,8 +320,9 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 
 			const ws = await actor.websocket();
 
-			await new Promise<void>((resolve) => {
+			await new Promise<void>((resolve, reject) => {
 				ws.addEventListener("open", () => resolve(), { once: true });
+				ws.addEventListener("close", reject);
 			});
 
 			// Get initial stats
@@ -348,12 +364,13 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 			const ws1 = await actor.websocket();
 
 			// Wait for open event
-			await new Promise<void>((resolve) => {
+			await new Promise<void>((resolve, reject) => {
 				ws1.addEventListener("open", () => resolve(), { once: true });
+				ws1.addEventListener("close", reject);
 			});
 
 			// Wait for welcome message which confirms onWebSocket was called
-			const welcome1 = await new Promise<any>((resolve) => {
+			const welcome1 = await new Promise<any>((resolve, reject) => {
 				ws1.addEventListener(
 					"message",
 					(event: any) => {
@@ -361,6 +378,7 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 					},
 					{ once: true },
 				);
+				ws1.addEventListener("close", reject);
 			});
 
 			expect(welcome1.type).toBe("welcome");
@@ -369,11 +387,12 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 			// Create second connection to same actor
 			const ws2 = await actor.websocket();
 
-			await new Promise<void>((resolve) => {
+			await new Promise<void>((resolve, reject) => {
 				ws2.addEventListener("open", () => resolve(), { once: true });
+				ws2.addEventListener("close", reject);
 			});
 
-			const welcome2 = await new Promise<any>((resolve) => {
+			const welcome2 = await new Promise<any>((resolve, reject) => {
 				ws2.addEventListener(
 					"message",
 					(event: any) => {
@@ -381,6 +400,7 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 					},
 					{ once: true },
 				);
+				ws2.addEventListener("close", reject);
 			});
 
 			expect(welcome2.type).toBe("welcome");
@@ -439,6 +459,40 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 			}
 
 			expect(finalStats?.connectionCount).toBe(0);
+		});
+
+		test("should handle query parameters in websocket paths", async (c) => {
+			const { client } = await setupDriverTest(c, driverTestConfig);
+			const actor = client.rawWebSocketActor.getOrCreate(["query-params"]);
+
+			// Test WebSocket with query parameters
+			const ws = await actor.websocket("api/v1/stream?token=abc123&user=test");
+
+			await new Promise<void>((resolve, reject) => {
+				ws.addEventListener("open", () => resolve(), { once: true });
+				ws.addEventListener("error", reject);
+			});
+
+			// Send request to get the request info
+			ws.send(JSON.stringify({ type: "getRequestInfo" }));
+
+			const requestInfo = await new Promise<any>((resolve, reject) => {
+				ws.addEventListener("message", (event: any) => {
+					const data = JSON.parse(event.data as string);
+					if (data.type === "requestInfo") {
+						resolve(data);
+					}
+				});
+				ws.addEventListener("close", reject);
+			});
+
+			// Verify the path and query parameters were preserved
+			expect(requestInfo.url).toContain("api/v1/stream");
+			expect(requestInfo.url).toContain("token=abc123");
+			expect(requestInfo.url).toContain("user=test");
+
+			ws.close();
+			await waitFor(driverTestConfig, 100);
 		});
 	});
 }

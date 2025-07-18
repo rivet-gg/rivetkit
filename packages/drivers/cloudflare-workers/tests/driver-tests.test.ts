@@ -146,7 +146,7 @@ async function setupProject(projectPath: string) {
 	// Copy cloudflare-workers package
 	const cfPackagePath = path.join(
 		workspaceRoot,
-		"packages/platforms/cloudflare-workers",
+		"packages/drivers/cloudflare-workers",
 	);
 	const targetCfPath = path.join(rivetKitDir, "cloudflare-workers");
 	await fs.cp(cfPackagePath, targetCfPath, { recursive: true });

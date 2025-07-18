@@ -463,13 +463,14 @@ export function runActorAuthTests(driverTestConfig: DriverTestConfig) {
 				const ws = await instance.websocket();
 
 				// Wait for welcome message
-				const welcomePromise = new Promise((resolve) => {
+				const welcomePromise = new Promise((resolve, reject) => {
 					ws.addEventListener("message", (event: any) => {
 						const data = JSON.parse(event.data);
 						if (data.type === "welcome") {
 							resolve(data);
 						}
 					});
+					ws.addEventListener("close", () => reject("closed"));
 				});
 
 				const welcomeData = (await welcomePromise) as any;
@@ -517,13 +518,14 @@ export function runActorAuthTests(driverTestConfig: DriverTestConfig) {
 				// Should work without auth
 				const ws = await instance.websocket();
 
-				const welcomePromise = new Promise((resolve) => {
+				const welcomePromise = new Promise((resolve, reject) => {
 					ws.addEventListener("message", (event: any) => {
 						const data = JSON.parse(event.data);
 						if (data.type === "welcome") {
 							resolve(data);
 						}
 					});
+					ws.addEventListener("close", reject);
 				});
 
 				const welcomeData = (await welcomePromise) as any;
@@ -550,11 +552,7 @@ export function runActorAuthTests(driverTestConfig: DriverTestConfig) {
 								resolve(data);
 							}
 						});
-						ws1.addEventListener("close", (event: any) => {
-							reject(
-								new Error(`WebSocket closed: ${event.code} ${event.reason}`),
-							);
-						});
+						ws1.addEventListener("close", reject);
 					});
 
 					const errorData = (await errorPromise) as any;
@@ -568,13 +566,14 @@ export function runActorAuthTests(driverTestConfig: DriverTestConfig) {
 				// WebSocket with correct token should succeed
 				const ws2 = await instance.websocket("?token=custom-ws-token");
 
-				const authPromise = new Promise((resolve) => {
+				const authPromise = new Promise((resolve, reject) => {
 					ws2.addEventListener("message", (event: any) => {
 						const data = JSON.parse(event.data);
 						if (data.type === "authorized") {
 							resolve(data);
 						}
 					});
+					ws2.addEventListener("close", reject);
 				});
 
 				const authData = (await authPromise) as any;

@@ -1410,6 +1410,11 @@ async function handleRawHttpRequest(
 			body: c.req.raw.body,
 		});
 
+		logger().debug("rewriting http url", {
+			from: c.req.url,
+			to: proxyRequest.url,
+		});
+
 		// Forward conn params if provided
 		if (connParams) {
 			proxyRequest.headers.set(HEADER_CONN_PARAMS, JSON.stringify(connParams));
@@ -1489,11 +1494,19 @@ async function handleRawWebSocketRequest(
 
 		// Preserve the original URL's query parameters
 		const originalUrl = new URL(c.req.url);
+		const proxyPath = `/raw/websocket/${subpath}${originalUrl.search}`;
+
+		logger().debug("manager router proxyWebSocket", {
+			originalUrl: c.req.url,
+			subpath,
+			search: originalUrl.search,
+			proxyPath,
+		});
 
 		// For raw WebSocket, we need to use proxyWebSocket instead of proxyRequest
 		return await driver.proxyWebSocket(
 			c,
-			`/raw/websocket/${subpath}${originalUrl.search}`,
+			proxyPath,
 			actorId,
 			"json", // Default encoding for raw WebSocket
 			connParams,
