@@ -68,7 +68,8 @@ function main() {
 		"..",
 		"..",
 		"..",
-		"docs",
+		"clients",
+		"openapi",
 		"openapi.json",
 	);
 	fs.writeFile(outputPath, JSON.stringify(openApiDoc, null, 2));

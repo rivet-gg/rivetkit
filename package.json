@@ -9,11 +9,6 @@
     "test:watch": "npx turbo watch test",
     "check-types": "npx turbo check-types",
     "fmt": "pnpm biome check --write --diagnostic-level=error .",
-    "dev-docs": "cd docs && pnpm dlx mintlify@latest dev",
-    "dev-docs-middleware": "cd packages/misc/docs-middleware && pnpm dev",
-    "deploy-docs-middleware": "cd packages/misc/docs-middleware && pnpm deploy",
-    "docs-broken-links": "cd docs && pnpm dlx mintlify@latest broken-links",
-    "docs-bump": "git checkout main && git pull --ff && date > docs/.bump && git add docs/.bump && git commit -m \"chore: bump mintlify\" && git push origin main",
     "release": "tsx scripts/release.ts"
   },
   "devDependencies": {
