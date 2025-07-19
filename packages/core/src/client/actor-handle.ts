@@ -13,6 +13,36 @@ import {
 import { logger } from "./log";
 
 /**
+ * Generates a unique identifier for an actor handle based on actor name and key.
+ */
+function generateHandleIdentifier(
+	actorQuery: ActorQuery,
+): string {
+	if ("getForKey" in actorQuery) {
+		return JSON.stringify([actorQuery.getForKey.name, actorQuery.getForKey.key]);
+	} else if ("getOrCreateForKey" in actorQuery) {
+		return JSON.stringify([actorQuery.getOrCreateForKey.name, actorQuery.getOrCreateForKey.key]);
+	} else if ("getForId" in actorQuery) {
+		// For ID-based queries, use a synthetic actor name and the ID as key
+		return JSON.stringify(["__id__", actorQuery.getForId.actorId]);
+	} else if ("create" in actorQuery) {
+		return JSON.stringify([actorQuery.create.name, actorQuery.create.key]);
+	} else {
+		assertUnreachable(actorQuery);
+	}
+}
+
+
+export interface ActorHandleRawOptions {
+	client: ClientRaw;
+	driver: ClientDriver;
+	params: unknown;
+	encodingKind: Encoding;
+	actorQuery: ActorQuery;
+	silenceConnectionWarnings?: boolean;
+}
+
+/**
  * Provides underlying functions for stateless {@link ActorHandle} for action calls.
  * Similar to ActorConnRaw but doesn't maintain a connection.
  *
@@ -24,6 +54,9 @@ export class ActorHandleRaw {
 	#encodingKind: Encoding;
 	#actorQuery: ActorQuery;
 	#params: unknown;
+	#silenceConnectionWarnings: boolean;
+	#handleIdentifier: string;
+	#activeConnections = new Set<ActorConnRaw>();
 
 	/**
 	 * Do not call this directly.
@@ -32,18 +65,14 @@ export class ActorHandleRaw {
 	 *
 	 * @protected
 	 */
-	public constructor(
-		client: any,
-		driver: ClientDriver,
-		params: unknown,
-		encodingKind: Encoding,
-		actorQuery: ActorQuery,
-	) {
-		this.#client = client;
-		this.#driver = driver;
-		this.#encodingKind = encodingKind;
-		this.#actorQuery = actorQuery;
-		this.#params = params;
+	public constructor(opts: ActorHandleRawOptions) {
+		this.#client = opts.client;
+		this.#driver = opts.driver;
+		this.#encodingKind = opts.encodingKind;
+		this.#actorQuery = opts.actorQuery;
+		this.#params = opts.params;
+		this.#silenceConnectionWarnings = opts.silenceConnectionWarnings ?? false;
+		this.#handleIdentifier = generateHandleIdentifier(opts.actorQuery);
 	}
 
 	/**
@@ -61,6 +90,18 @@ export class ActorHandleRaw {
 		args: Args;
 		signal?: AbortSignal;
 	}): Promise<Response> {
+		// Check for active connections and warn if they exist
+		if (!this.#silenceConnectionWarnings && this.#activeConnections.size > 0) {
+			logger().warn(
+				"calling stateless rpc on handle while connection is open - this may cause race conditions",
+				{
+					action: opts.name,
+					activeConnections: this.#activeConnections.size,
+					query: this.#actorQuery,
+				},
+			);
+		}
+
 		return await this.#driver.action<Args, Response>(
 			undefined,
 			this.#actorQuery,
@@ -89,7 +130,11 @@ export class ActorHandleRaw {
 			this.#params,
 			this.#encodingKind,
 			this.#actorQuery,
+			() => this.#activeConnections.delete(conn),
 		);
+
+		// Track this connection in the handle's registry
+		this.#activeConnections.add(conn);
 
 		return this.#client[CREATE_ACTOR_CONN_PROXY](
 			conn,
@@ -126,6 +171,7 @@ export class ActorHandleRaw {
 			assertUnreachable(this.#actorQuery);
 		}
 	}
+
 }
 
 /**

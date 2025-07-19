@@ -103,13 +103,19 @@ export interface QueryOptions {
  * Options for getting a actor by ID.
  * @typedef {QueryOptions} GetWithIdOptions
  */
-export interface GetWithIdOptions extends QueryOptions {}
+export interface GetWithIdOptions extends QueryOptions {
+	/** Silence warnings when using handles with active connections. */
+	silenceConnectionWarnings?: boolean;
+}
 
 /**
  * Options for getting a actor.
  * @typedef {QueryOptions} GetOptions
  */
-export interface GetOptions extends QueryOptions {}
+export interface GetOptions extends QueryOptions {
+	/** Silence warnings when using handles with active connections. */
+	silenceConnectionWarnings?: boolean;
+}
 
 /**
  * Options for getting or creating a actor.
@@ -121,6 +127,8 @@ export interface GetOrCreateOptions extends QueryOptions {
 	createInRegion?: string;
 	/** Input data to pass to the actor. */
 	createWithInput?: unknown;
+	/** Silence warnings when using handles with active connections. */
+	silenceConnectionWarnings?: boolean;
 }
 
 /**
@@ -133,6 +141,8 @@ export interface CreateOptions extends QueryOptions {
 	region?: string;
 	/** Input data to pass to the actor. */
 	input?: unknown;
+	/** Silence warnings when using handles with active connections. */
+	silenceConnectionWarnings?: boolean;
 }
 
 /**
@@ -256,7 +266,11 @@ export class ClientRaw {
 			},
 		};
 
-		const handle = this.#createHandle(opts?.params, actorQuery);
+		const handle = this.#createHandle(
+			opts?.params,
+			actorQuery,
+			opts?.silenceConnectionWarnings,
+		);
 		return createActorProxy(handle) as ActorHandle<AD>;
 	}
 
@@ -290,7 +304,11 @@ export class ClientRaw {
 			},
 		};
 
-		const handle = this.#createHandle(opts?.params, actorQuery);
+		const handle = this.#createHandle(
+			opts?.params,
+			actorQuery,
+			opts?.silenceConnectionWarnings,
+		);
 		return createActorProxy(handle) as ActorHandle<AD>;
 	}
 
@@ -327,7 +345,11 @@ export class ClientRaw {
 			},
 		};
 
-		const handle = this.#createHandle(opts?.params, actorQuery);
+		const handle = this.#createHandle(
+			opts?.params,
+			actorQuery,
+			opts?.silenceConnectionWarnings,
+		);
 		return createActorProxy(handle) as ActorHandle<AD>;
 	}
 
@@ -385,21 +407,30 @@ export class ClientRaw {
 				actorId,
 			},
 		} satisfies ActorQuery;
-		const handle = this.#createHandle(opts?.params, getForIdQuery);
+		const handle = this.#createHandle(
+			opts?.params,
+			getForIdQuery,
+			opts?.silenceConnectionWarnings,
+		);
 
 		const proxy = createActorProxy(handle) as ActorHandle<AD>;
 
 		return proxy;
 	}
 
-	#createHandle(params: unknown, actorQuery: ActorQuery): ActorHandleRaw {
-		return new ActorHandleRaw(
-			this,
-			this.#driver,
+	#createHandle(
+		params: unknown,
+		actorQuery: ActorQuery,
+		silenceConnectionWarnings = false,
+	): ActorHandleRaw {
+		return new ActorHandleRaw({
+			client: this,
+			driver: this.#driver,
 			params,
-			this.#encodingKind,
+			encodingKind: this.#encodingKind,
 			actorQuery,
-		);
+			silenceConnectionWarnings,
+		});
 	}
 
 	[CREATE_ACTOR_CONN_PROXY]<AD extends AnyActorDefinition>(
