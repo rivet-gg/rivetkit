@@ -194,17 +194,17 @@
     "@hono/node-ws": {
       "optional": true
     },
-    "@hono/zod-openapi": {
-      "optional": true
-    },
     "eventsource": {
-      "optional": true
-    },
-    "hono": {
       "optional": true
     },
     "ws": {
       "optional": true
+    },
+    "@hono/zod-openapi": {
+      "optional": false
+    },
+    "hono": {
+      "optional": false
     }
   },
   "stableVersion": "0.8.0"
