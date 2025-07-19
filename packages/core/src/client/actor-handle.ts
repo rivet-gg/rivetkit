@@ -112,7 +112,6 @@ export class ActorHandleRaw {
 		return rawHttpFetch(
 			this.#driver,
 			this.#actorQuery,
-			this.#encodingKind,
 			this.#params,
 			input,
 			init,
@@ -133,7 +132,6 @@ export class ActorHandleRaw {
 		return rawWebSocket(
 			this.#driver,
 			this.#actorQuery,
-			this.#encodingKind,
 			this.#params,
 			path,
 			protocols,

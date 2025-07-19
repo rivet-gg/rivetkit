@@ -40,7 +40,7 @@ export class RedisActorDriver implements ActorDriver {
 	}
 
 	async loadActor(actorId: string): Promise<AnyActorInstance> {
-		return this.#state.loadActor(
+		return this.#state.startActor(
 			this.#registryConfig,
 			this.#runConfig,
 			this.#inlineClient,
@@ -66,10 +66,9 @@ export class RedisActorDriver implements ActorDriver {
 	}
 
 	async setAlarm(actor: AnyActorInstance, timestamp: number): Promise<void> {
-		const delay = Math.max(0, timestamp - Date.now());
-		setTimeout(() => {
+		await this.#state.setAlarm(actor.id, timestamp, () => {
 			actor.onAlarm();
-		}, delay);
+		});
 	}
 
 	getDatabase(actorId: string): Promise<unknown | undefined> {

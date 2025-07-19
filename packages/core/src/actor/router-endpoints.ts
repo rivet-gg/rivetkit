@@ -506,17 +506,23 @@ export async function handleConnectionMessage(
 	return c.json({});
 }
 
-export function handleRawWebSocketHandler(
+export async function handleRawWebSocketHandler(
 	c: HonoContext | undefined,
 	path: string,
 	actorDriver: ActorDriver,
 	actorId: string,
 	authData: unknown,
 ) {
+	const actor = await actorDriver.loadActor(actorId);
+
 	// Return WebSocket event handlers
 	return {
-		onOpen: async (_evt: any, ws: any) => {
-			const actor = await actorDriver.loadActor(actorId);
+		onOpen: (_evt: any, ws: any) => {
+			// Wrap the Hono WebSocket in our adapter
+			const adapter = new HonoWebSocketAdapter(ws);
+
+			// Store adapter reference on the WebSocket for event handlers
+			(ws as any).__adapter = adapter;
 
 			// Extract the path after /raw/websocket and preserve query parameters
 			// Use URL API for cleaner parsing
@@ -538,14 +544,8 @@ export function handleRawWebSocketHandler(
 				to: newRequest.url,
 			});
 
-			// Wrap the Hono WebSocket in our adapter
-			const adapter = new HonoWebSocketAdapter(ws);
-
-			// Store adapter reference on the WebSocket for event handlers
-			(ws as any).__adapter = adapter;
-
 			// Call the actor's onWebSocket handler with the adapted WebSocket
-			await actor.handleWebSocket(adapter, {
+			actor.handleWebSocket(adapter, {
 				request: newRequest,
 				auth: authData,
 			});

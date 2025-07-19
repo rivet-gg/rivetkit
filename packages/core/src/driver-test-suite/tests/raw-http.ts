@@ -51,8 +51,6 @@ export function runRawHttpTests(driverTestConfig: DriverTestConfig) {
 				requestCount: number;
 			};
 			expect(stateData.requestCount).toBe(4); // 4 total requests
-
-			// State is now only accessible via HTTP
 		});
 
 		test("should pass headers correctly", async (c) => {

@@ -15,6 +15,7 @@ export const rawWebSocketActor = actor({
 	},
 	onWebSocket(ctx, websocket, opts) {
 		ctx.state.connectionCount = ctx.state.connectionCount + 1;
+		console.log(`[ACTOR] New connection, count: ${ctx.state.connectionCount}`);
 
 		// Send welcome message
 		websocket.send(
@@ -23,10 +24,15 @@ export const rawWebSocketActor = actor({
 				connectionCount: ctx.state.connectionCount,
 			}),
 		);
+		console.log("[ACTOR] Sent welcome message");
 
 		// Echo messages back
 		websocket.addEventListener("message", (event: any) => {
 			ctx.state.messageCount = ctx.state.messageCount + 1;
+			console.log(
+				`[ACTOR] Message received, total count: ${ctx.state.messageCount}, data:`,
+				event.data,
+			);
 
 			const data = event.data;
 			if (typeof data === "string") {
@@ -40,6 +46,9 @@ export const rawWebSocketActor = actor({
 							}),
 						);
 					} else if (parsed.type === "getStats") {
+						console.log(
+							`[ACTOR] Sending stats - connections: ${ctx.state.connectionCount}, messages: ${ctx.state.messageCount}`,
+						);
 						websocket.send(
 							JSON.stringify({
 								type: "stats",
@@ -84,6 +93,9 @@ export const rawWebSocketActor = actor({
 		// Handle close
 		websocket.addEventListener("close", () => {
 			ctx.state.connectionCount = ctx.state.connectionCount - 1;
+			console.log(
+				`[ACTOR] Connection closed, count: ${ctx.state.connectionCount}`,
+			);
 		});
 	},
 	actions: {

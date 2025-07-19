@@ -193,7 +193,7 @@ export function createActorRouter(
 	router.get("/raw/websocket/*", async (c) => {
 		const upgradeWebSocket = runConfig.getUpgradeWebSocket?.();
 		if (upgradeWebSocket) {
-			return upgradeWebSocket((c) => {
+			return upgradeWebSocket(async (c) => {
 				const encodingRaw = c.req.header(HEADER_ENCODING);
 				const connParamsRaw = c.req.header(HEADER_CONN_PARAMS);
 				const authDataRaw = c.req.header(HEADER_AUTH_DATA);
@@ -214,7 +214,7 @@ export function createActorRouter(
 					pathWithQuery,
 				});
 
-				return handleRawWebSocketHandler(
+				return await handleRawWebSocketHandler(
 					c,
 					pathWithQuery,
 					actorDriver,

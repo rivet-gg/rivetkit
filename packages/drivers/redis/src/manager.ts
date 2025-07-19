@@ -4,6 +4,10 @@ import {
 	createClientWithDriver,
 	createInlineClientDriver,
 	type Encoding,
+	handleRawWebSocketHandler,
+	handleWebSocketConnect,
+	InlineWebSocketAdapter2,
+	noopNext,
 	type RegistryConfig,
 	type RunConfig,
 } from "@rivetkit/core";
@@ -16,51 +20,11 @@ import type {
 	GetWithKeyInput,
 	ManagerDriver,
 } from "@rivetkit/core/driver-helpers";
-import { ActorAlreadyExists } from "@rivetkit/core/errors";
-import { dbg, type UpgradeWebSocket } from "@rivetkit/core/utils";
 import type { Context as HonoContext } from "hono";
 import invariant from "invariant";
 import type { RedisGlobalState } from "./global-state";
 import { logger } from "./log";
 import { generateActorId } from "./utils";
-
-// These types are not exported from @rivetkit/core, so we need to recreate them
-type WSHandler = (ws: any) => void | Promise<void>;
-
-class InlineWebSocketAdapter2 implements WebSocket {
-	CLOSED = 3 as const;
-	CLOSING = 2 as const;
-	CONNECTING = 0 as const;
-	OPEN = 1 as const;
-
-	readyState = 0 as any;
-	url = "";
-	bufferedAmount = 0;
-	extensions = "";
-	protocol = "";
-	binaryType: "blob" | "arraybuffer" = "blob";
-
-	onclose = null;
-	onerror = null;
-	onmessage = null;
-	onopen = null;
-
-	constructor(handler: WSHandler) {
-		// Implementation details omitted
-	}
-
-	close() {}
-	send(data: string | ArrayBufferLike | Blob | ArrayBufferView) {}
-	addEventListener() {}
-	removeEventListener() {}
-	dispatchEvent(event: Event): boolean {
-		return false;
-	}
-}
-
-function noopNext() {
-	return Promise.resolve();
-}
 
 export class RedisManagerDriver implements ManagerDriver {
 	#registryConfig: RegistryConfig;
@@ -107,9 +71,32 @@ export class RedisManagerDriver implements ManagerDriver {
 		encoding: Encoding,
 		params: unknown,
 	): Promise<WebSocket> {
-		// For now, return a dummy WebSocket
-		// This would need proper implementation with Redis pub/sub
-		throw new Error("WebSocket not implemented for Redis driver");
+		// Handle different WebSocket paths
+		if (path === "/connect/websocket") {
+			// Handle standard /connect/websocket
+			const wsHandler = handleWebSocketConnect(
+				undefined,
+				this.#runConfig,
+				this.#actorDriver,
+				actorId,
+				encoding,
+				params,
+				undefined,
+			);
+			return new InlineWebSocketAdapter2(wsHandler);
+		} else if (path.startsWith("/raw/websocket/")) {
+			// Handle websocket proxy (/raw/websocket/*)
+			const wsHandler = await handleRawWebSocketHandler(
+				undefined,
+				path,
+				this.#actorDriver,
+				actorId,
+				undefined,
+			);
+			return new InlineWebSocketAdapter2(wsHandler);
+		} else {
+			throw new Error(`Unreachable path: ${path}`);
+		}
 	}
 
 	async proxyRequest(
@@ -130,25 +117,52 @@ export class RedisManagerDriver implements ManagerDriver {
 		connParams: unknown,
 		authData: unknown,
 	): Promise<Response> {
-		// For now, throw an error as WebSocket is not implemented
-		// This would need proper implementation with Redis pub/sub
-		throw new Error("WebSocket not implemented for Redis driver");
+		const upgradeWebSocket = this.#runConfig.getUpgradeWebSocket?.();
+		invariant(upgradeWebSocket, "missing getUpgradeWebSocket");
+
+		// Handle raw WebSocket paths
+		if (path === "/connect/websocket") {
+			// Handle standard /connect/websocket
+			const wsHandler = handleWebSocketConnect(
+				undefined,
+				this.#runConfig,
+				this.#actorDriver,
+				actorId,
+				encoding,
+				connParams,
+				authData,
+			);
+
+			return upgradeWebSocket(() => wsHandler)(c, noopNext());
+		} else if (path.startsWith("/raw/websocket/")) {
+			// Handle websocket proxy (/raw/websocket/*)
+			const wsHandler = await handleRawWebSocketHandler(
+				c,
+				path,
+				this.#actorDriver,
+				actorId,
+				authData,
+			);
+
+			return upgradeWebSocket(() => wsHandler)(c, noopNext());
+		} else {
+			throw new Error(`Unreachable path: ${path}`);
+		}
 	}
 
 	async getForId({ actorId }: GetForIdInput): Promise<ActorOutput | undefined> {
 		// Validate the actor exists
-		if (!(await this.#state.hasActor(actorId))) {
+		const actor = await this.#state.loadActor(actorId);
+		if (!actor.state) {
 			return undefined;
 		}
 
 		try {
 			// Load actor state
-			const state = await this.#state.loadActorState(actorId);
-
 			return {
 				actorId,
-				name: state.name,
-				key: state.key,
+				name: actor.state.name,
+				key: actor.state.key,
 			};
 		} catch (error) {
 			logger().error("failed to read actor state", { actorId, error });
@@ -164,7 +178,8 @@ export class RedisManagerDriver implements ManagerDriver {
 		const actorId = generateActorId(name, key);
 
 		// Check if actor exists
-		if (await this.#state.hasActor(actorId)) {
+		const actor = await this.#state.loadActor(actorId);
+		if (actor.state) {
 			return {
 				actorId,
 				name,
@@ -178,23 +193,28 @@ export class RedisManagerDriver implements ManagerDriver {
 	async getOrCreateWithKey(
 		input: GetOrCreateWithKeyInput,
 	): Promise<ActorOutput> {
-		// First try to get the actor without locking
-		const getOutput = await this.getWithKey(input);
-		if (getOutput) {
-			return getOutput;
-		} else {
-			return await this.createActor(input);
-		}
+		// Generate the deterministic actor ID
+		const actorId = generateActorId(input.name, input.key);
+
+		// Use the atomic loadOrCreateActor method
+		const actorEntry = await this.#state.loadOrCreateActor(
+			actorId,
+			input.name,
+			input.key,
+			input.input,
+		);
+		invariant(actorEntry.state, "must have state");
+
+		return {
+			actorId: actorEntry.state.id,
+			name: actorEntry.state.name,
+			key: actorEntry.state.key,
+		};
 	}
 
 	async createActor({ name, key, input }: CreateInput): Promise<ActorOutput> {
 		// Generate the deterministic actor ID
 		const actorId = generateActorId(name, key);
-
-		// Check if actor already exists
-		if (await this.#state.hasActor(actorId)) {
-			throw new ActorAlreadyExists(name, key);
-		}
 
 		await this.#state.createActor(actorId, name, key, input);
 

@@ -61,4 +61,8 @@ export {
 } from "./generic-conn-driver";
 export type { AnyActorInstance } from "./instance";
 export { type ActorRouter, createActorRouter } from "./router";
-export { ALLOWED_PUBLIC_HEADERS } from "./router-endpoints";
+export {
+	ALLOWED_PUBLIC_HEADERS,
+	handleRawWebSocketHandler,
+	handleWebSocketConnect,
+} from "./router-endpoints";

@@ -4,20 +4,19 @@ import * as path from "node:path";
 import * as cbor from "cbor-x";
 import invariant from "invariant";
 import { lookupInRegistry } from "@/actor/definition";
+import { ActorAlreadyExists } from "@/actor/errors";
 import {
 	createGenericConnDrivers,
 	GenericConnGlobalState,
 } from "@/actor/generic-conn-driver";
 import type { AnyActorInstance } from "@/actor/instance";
 import type { ActorKey } from "@/actor/mod";
-import { ActionRequestSchema } from "@/actor/protocol/http/action";
-import type { AnyClient, Client, ClientDriver } from "@/client/client";
+import type { AnyClient } from "@/client/client";
 import {
 	type ActorDriver,
 	serializeEmptyPersistData,
 } from "@/driver-helpers/mod";
 import type { RegistryConfig } from "@/registry/config";
-import type { Registry } from "@/registry/mod";
 import type { RunConfig } from "@/registry/run-config";
 import { logger } from "./log";
 import {
@@ -29,12 +28,19 @@ import {
 } from "./utils";
 
 // Actor handler to track running instances
-class ActorHandler {
-	/** Will be undefined if not yet loaded. */
+
+interface ActorEntry {
+	id: string;
+
+	state?: ActorState;
+	/** Promise for loading the actor state. */
+	loadPromise?: PromiseWithResolvers<void>;
+
 	actor?: AnyActorInstance;
-	/** Promise that will resolve when the actor is loaded. This should always be awaited before accessing the actor. */
-	actorPromise?: PromiseWithResolvers<void> = Promise.withResolvers();
-	genericConnGlobalState = new GenericConnGlobalState();
+	/** Promise for starting the actor. */
+	startPromise?: PromiseWithResolvers<void>;
+
+	genericConnGlobalState: GenericConnGlobalState;
 }
 
 /**
@@ -52,9 +58,8 @@ export interface ActorState {
  */
 export class FileSystemGlobalState {
 	#storagePath: string;
-	#stateCache: Map<string, ActorState> = new Map();
 	#persist: boolean;
-	#actors = new Map<string, ActorHandler>();
+	#actors = new Map<string, ActorEntry>();
 
 	constructor(persist: boolean = true, customPath?: string) {
 		this.#persist = persist;
@@ -91,67 +96,134 @@ export class FileSystemGlobalState {
 	}
 
 	/**
-	 * Load actor state from cache or disk (lazy loading)
+	 * Ensures an entry exists for this actor.
+	 *
+	 * Used for #createActor and #loadActor.
 	 */
-	loadActorState(actorId: string): ActorState {
-		// Check if already in cache
-		const cachedActor = this.#stateCache.get(actorId);
-		if (cachedActor) {
-			return cachedActor;
+	#upsertEntry(actorId: string): ActorEntry {
+		let entry = this.#actors.get(actorId);
+		if (entry) {
+			return entry;
 		}
 
-		// If not persisting, actor doesn't exist if not in cache
+		entry = {
+			id: actorId,
+			genericConnGlobalState: new GenericConnGlobalState(),
+		};
+		this.#actors.set(actorId, entry);
+		return entry;
+	}
+
+	/**
+	 * Creates a new actor and writes to file system.
+	 */
+	async createActor(
+		actorId: string,
+		name: string,
+		key: ActorKey,
+		input: unknown | undefined,
+	): Promise<ActorEntry> {
+		if (this.#actors.has(actorId)) {
+			throw new ActorAlreadyExists(name, key);
+		}
+
+		const entry = this.#upsertEntry(actorId);
+		entry.state = {
+			id: actorId,
+			name,
+			key,
+			persistedData: serializeEmptyPersistData(input),
+		};
+		await this.writeActor(actorId);
+		return entry;
+	}
+
+	/**
+	 * Loads the actor from disk or returns the existing actor entry. This will return an entry even if the actor does not actually exist.
+	 */
+	async loadActor(actorId: string): Promise<ActorEntry> {
+		const entry = this.#upsertEntry(actorId);
+
+		// Check if already loaded
+		if (entry.state) {
+			return entry;
+		}
+
+		// If not persisted, then don't load from FS
 		if (!this.#persist) {
-			throw new Error(`Actor does not exist for ID: ${actorId}`);
+			return entry;
 		}
 
-		// Try to load from disk
-		const stateFilePath = getActorDataPath(this.#storagePath, actorId);
-
-		if (!fsSync.existsSync(stateFilePath)) {
-			throw new Error(`Actor does not exist for ID: ${actorId}`);
+		// If state is currently being loaded, wait for it
+		if (entry.loadPromise) {
+			await entry.loadPromise.promise;
+			return entry;
 		}
 
+		// Start loading state
+		entry.loadPromise = Promise.withResolvers();
+
+		const stateFilePath = getActorDataPath(this.#storagePath, entry.id);
+
+		// Check if file exists
 		try {
-			const stateData = fsSync.readFileSync(stateFilePath);
+			await fs.access(stateFilePath);
+		} catch {
+			// Actor does not exist
+			entry.loadPromise.resolve(undefined);
+			return entry;
+		}
+
+		// Read & parse file
+		try {
+			const stateData = await fs.readFile(stateFilePath);
 			const state = cbor.decode(stateData) as ActorState;
 
-			// Cache the loaded state
-			this.#stateCache.set(actorId, state);
+			// Cache the loaded state in handler
+			entry.state = state;
+			entry.loadPromise.resolve();
+			entry.loadPromise = undefined;
 
-			return state;
-		} catch (error) {
-			logger().error("failed to load actor state", { actorId, error });
-			throw new Error(`Failed to load actor state: ${error}`);
+			return entry;
+		} catch (innerError) {
+			// Failed to read actor, so reset promise to retry next time
+			const error = new Error(`Failed to load actor state: ${innerError}`);
+			entry.loadPromise?.reject(error);
+			entry.loadPromise = undefined;
+			throw error;
 		}
 	}
 
-	/**
-	 * Read persisted data for a actor
-	 */
-	readPersistedData(actorId: string): Uint8Array | undefined {
-		const state = this.loadActorState(actorId);
-		return state.persistedData;
+	async loadOrCreateActor(
+		actorId: string,
+		name: string,
+		key: ActorKey,
+		input: unknown | undefined,
+	): Promise<ActorEntry> {
+		// Attempt to load actor
+		const entry = await this.loadActor(actorId);
+
+		// If no state for this actor, then create & write state
+		if (!entry.state) {
+			entry.state = {
+				id: actorId,
+				name,
+				key,
+				persistedData: serializeEmptyPersistData(input),
+			};
+			await this.writeActor(actorId);
+		}
+		return entry;
 	}
 
-	/**
-	 * Write persisted data for a actor
-	 */
-	writePersistedData(actorId: string, data: Uint8Array): void {
-		const state = this.loadActorState(actorId);
-		state.persistedData = data;
-	}
-
-	/**
-	 * Save actor state to disk
-	 */
-	async saveActorState(actorId: string): Promise<void> {
-		const state = this.#stateCache.get(actorId);
-		if (!state) {
+	/** Writes actor state to file system. */
+	async writeActor(actorId: string) {
+		const handler = this.#actors.get(actorId);
+		if (!handler?.state) {
 			return;
 		}
 
-		// Skip disk write if not persisting
+		// Skip fs write if not persisting
 		if (!this.#persist) {
 			return;
 		}
@@ -164,127 +236,84 @@ export class FileSystemGlobalState {
 			await ensureDirectoryExists(path.dirname(dataPath));
 
 			// Write data
-			const serializedState = cbor.encode(state);
+			const serializedState = cbor.encode(handler.state);
 			await fs.writeFile(dataPath, serializedState);
 		} catch (error) {
-			logger().error("failed to save actor state", { actorId, error });
 			throw new Error(`Failed to save actor state: ${error}`);
 		}
 	}
 
-	/**
-	 * Check if a actor exists in cache or on disk
-	 */
-	hasActor(actorId: string): boolean {
-		// Check cache first
-		if (this.#stateCache.has(actorId)) {
-			return true;
-		}
-
-		// If not persisting, only check cache
-		if (!this.#persist) {
-			return false;
-		}
-
-		// Check if file exists on disk
-		const stateFilePath = getActorDataPath(this.#storagePath, actorId);
-		return fsSync.existsSync(stateFilePath);
-	}
-
-	/**
-	 * Create a actor
-	 */
-	async createActor(
-		actorId: string,
-		name: string,
-		key: ActorKey,
-		input: unknown | undefined,
-	): Promise<void> {
-		// Check if actor already exists
-		if (this.hasActor(actorId)) {
-			throw new Error(`Actor already exists for ID: ${actorId}`);
-		}
-
-		// Create initial state
-		const newState: ActorState = {
-			id: actorId,
-			name,
-			key,
-			persistedData: serializeEmptyPersistData(input),
-		};
-
-		// Cache the state
-		this.#stateCache.set(actorId, newState);
-
-		// Save to disk
-		await this.saveActorState(actorId);
-	}
-
-	/**
-	 * Get actor metadata
-	 */
-	getActorMetadata(actorId: string): ActorState | undefined {
-		try {
-			return this.loadActorState(actorId);
-		} catch {
-			return undefined;
-		}
-	}
-
-	async loadActor(
+	async startActor(
 		registryConfig: RegistryConfig,
 		runConfig: RunConfig,
 		inlineClient: AnyClient,
 		actorDriver: ActorDriver,
 		actorId: string,
 	): Promise<AnyActorInstance> {
-		// Check if actor is already loaded
-		let handler = this.#actors.get(actorId);
-		if (handler) {
-			if (handler.actorPromise) await handler.actorPromise.promise;
-			if (!handler.actor) throw new Error("Actor should be loaded");
-			return handler.actor;
+		// Get the actor metadata
+		const entry = await this.loadActor(actorId);
+		if (!entry.state) {
+			throw new Error(`Actor does exist and cannot be started: ${actorId}`);
 		}
 
-		// Create new actor
-		logger().debug("creating new actor", { actorId });
+		// Actor already starting
+		if (entry.startPromise) {
+			await entry.startPromise.promise;
+			invariant(entry.actor, "actor should have loaded");
+			return entry.actor;
+		}
 
-		// Insert unloaded placeholder in order to prevent race conditions with multiple insertions of the actor
-		handler = new ActorHandler();
-		this.#actors.set(actorId, handler);
+		// Actor already loaded
+		if (entry.actor) {
+			return entry.actor;
+		}
 
-		// Get the actor metadata
-		invariant(this.hasActor(actorId), `actor ${actorId} does not exist`);
-		const { name, key } = this.loadActorState(actorId);
+		// Create start promise
+		entry.startPromise = Promise.withResolvers();
 
-		// Create actor
-		const definition = lookupInRegistry(registryConfig, name);
-		handler.actor = definition.instantiate();
+		try {
+			// Create actor
+			const definition = lookupInRegistry(registryConfig, entry.state.name);
+			entry.actor = definition.instantiate();
 
-		// Start actor
-		const connDrivers = createGenericConnDrivers(
-			handler.genericConnGlobalState,
-		);
-		await handler.actor.start(
-			connDrivers,
-			actorDriver,
-			inlineClient,
-			actorId,
-			name,
-			key,
-			"unknown",
-		);
+			// Start actor
+			const connDrivers = createGenericConnDrivers(
+				entry.genericConnGlobalState,
+			);
+			await entry.actor.start(
+				connDrivers,
+				actorDriver,
+				inlineClient,
+				actorId,
+				entry.state.name,
+				entry.state.key,
+				"unknown",
+			);
 
-		// Finish
-		handler.actorPromise?.resolve();
-		handler.actorPromise = undefined;
+			// Finish
+			entry.startPromise.resolve();
+			entry.startPromise = undefined;
 
-		return handler.actor;
+			return entry.actor;
+		} catch (innerError) {
+			const error = new Error(
+				`Failed to start actor ${actorId}: ${innerError}`,
+			);
+			entry.startPromise?.reject(error);
+			entry.startPromise = undefined;
+			throw error;
+		}
 	}
 
-	getGenericConnGlobalState(actorId: string): GenericConnGlobalState {
-		const actor = this.#actors.get(actorId);
-		invariant(actor, `no actor for generic conn global state: ${actorId}`);
-		return actor.genericConnGlobalState;
+	async loadActorStateOrError(actorId: string): Promise<ActorState> {
+		const state = (await this.loadActor(actorId)).state;
+		if (!state) throw new Error(`Actor does not exist: ${actorId}`);
+		return state;
+	}
+
+	getActorOrError(actorId: string): ActorEntry {
+		const entry = this.#actors.get(actorId);
+		if (!entry) throw new Error(`No entry for actor: ${actorId}`);
+		return entry;
 	}
 }

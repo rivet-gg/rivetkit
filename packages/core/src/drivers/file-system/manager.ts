@@ -3,7 +3,6 @@ import invariant from "invariant";
 import { ActorAlreadyExists } from "@/actor/errors";
 import { type ActorRouter, createActorRouter } from "@/actor/router";
 import {
-	HEADER_AUTH_DATA,
 	handleRawWebSocketHandler,
 	handleWebSocketConnect,
 } from "@/actor/router-endpoints";
@@ -21,7 +20,6 @@ import type {
 } from "@/driver-helpers/mod";
 import { createInlineClientDriver } from "@/inline-client-driver/mod";
 import type { Encoding, RegistryConfig, RunConfig } from "@/mod";
-import { dbg, type UpgradeWebSocket } from "@/utils";
 import type { FileSystemGlobalState } from "./global-state";
 import { logger } from "./log";
 import { generateActorId } from "./utils";
@@ -88,7 +86,7 @@ export class FileSystemManagerDriver implements ManagerDriver {
 			return new InlineWebSocketAdapter2(wsHandler);
 		} else if (path.startsWith("/raw/websocket/")) {
 			// Handle websocket proxy (/raw/websocket/*)
-			const wsHandler = handleRawWebSocketHandler(
+			const wsHandler = await handleRawWebSocketHandler(
 				undefined,
 				path,
 				this.#actorDriver,
@@ -138,7 +136,7 @@ export class FileSystemManagerDriver implements ManagerDriver {
 			return upgradeWebSocket(() => wsHandler)(c, noopNext());
 		} else if (path.startsWith("/raw/websocket/")) {
 			// Handle websocket proxy (/raw/websocket/*)
-			const wsHandler = handleRawWebSocketHandler(
+			const wsHandler = await handleRawWebSocketHandler(
 				c,
 				path,
 				this.#actorDriver,
@@ -154,18 +152,17 @@ export class FileSystemManagerDriver implements ManagerDriver {
 
 	async getForId({ actorId }: GetForIdInput): Promise<ActorOutput | undefined> {
 		// Validate the actor exists
-		if (!this.#state.hasActor(actorId)) {
+		const actor = await this.#state.loadActor(actorId);
+		if (!actor.state) {
 			return undefined;
 		}
 
 		try {
 			// Load actor state
-			const state = this.#state.loadActorState(actorId);
-
 			return {
 				actorId,
-				name: state.name,
-				key: state.key,
+				name: actor.state.name,
+				key: actor.state.key,
 			};
 		} catch (error) {
 			logger().error("failed to read actor state", { actorId, error });
@@ -181,7 +178,8 @@ export class FileSystemManagerDriver implements ManagerDriver {
 		const actorId = generateActorId(name, key);
 
 		// Check if actor exists
-		if (this.#state.hasActor(actorId)) {
+		const actor = await this.#state.loadActor(actorId);
+		if (actor.state) {
 			return {
 				actorId,
 				name,
@@ -195,23 +193,28 @@ export class FileSystemManagerDriver implements ManagerDriver {
 	async getOrCreateWithKey(
 		input: GetOrCreateWithKeyInput,
 	): Promise<ActorOutput> {
-		// First try to get the actor without locking
-		const getOutput = await this.getWithKey(input);
-		if (getOutput) {
-			return getOutput;
-		} else {
-			return await this.createActor(input);
-		}
+		// Generate the deterministic actor ID
+		const actorId = generateActorId(input.name, input.key);
+
+		// Use the atomic getOrCreateActor method
+		const actorEntry = await this.#state.loadOrCreateActor(
+			actorId,
+			input.name,
+			input.key,
+			input.input,
+		);
+		invariant(actorEntry.state, "must have state");
+
+		return {
+			actorId: actorEntry.state.id,
+			name: actorEntry.state.name,
+			key: actorEntry.state.key,
+		};
 	}
 
 	async createActor({ name, key, input }: CreateInput): Promise<ActorOutput> {
 		// Generate the deterministic actor ID
 		const actorId = generateActorId(name, key);
-
-		// Check if actor already exists
-		if (this.#state.hasActor(actorId)) {
-			throw new ActorAlreadyExists(name, key);
-		}
 
 		await this.#state.createActor(actorId, name, key, input);
 

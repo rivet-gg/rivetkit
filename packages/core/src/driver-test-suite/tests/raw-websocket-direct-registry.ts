@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { importWebSocket } from "@/common/websocket";
 import type { ActorQuery } from "@/manager/protocol/query";
 import type { DriverTestConfig } from "../mod";
-import { setupDriverTest, waitFor } from "../utils";
+import { setupDriverTest } from "../utils";
 
 export function runRawWebSocketDirectRegistryTests(
 	driverTestConfig: DriverTestConfig,
@@ -60,7 +60,6 @@ export function runRawWebSocketDirectRegistryTests(
 			expect(welcomeMessage.connectionCount).toBe(1);
 
 			ws.close();
-			await waitFor(driverTestConfig, 100);
 		});
 
 		test("should echo messages with vanilla WebSocket", async (c) => {
@@ -116,7 +115,6 @@ export function runRawWebSocketDirectRegistryTests(
 			expect(echoMessage).toEqual(testMessage);
 
 			ws.close();
-			await waitFor(driverTestConfig, 100);
 		});
 
 		test("should handle connection parameters for authentication", async (c) => {
@@ -171,7 +169,6 @@ export function runRawWebSocketDirectRegistryTests(
 			expect(welcomeMessage.type).toBe("welcome");
 
 			ws.close();
-			await waitFor(driverTestConfig, 100);
 		});
 
 		test("should handle custom user protocols alongside rivetkit protocols", async (c) => {
@@ -226,7 +223,6 @@ export function runRawWebSocketDirectRegistryTests(
 			expect(welcomeMessage.type).toBe("welcome");
 
 			ws.close();
-			await waitFor(driverTestConfig, 100);
 		});
 
 		test("should handle different paths for WebSocket routes", async (c) => {
@@ -279,7 +275,6 @@ export function runRawWebSocketDirectRegistryTests(
 				expect(welcomeMessage.type).toBe("welcome");
 
 				ws.close();
-				await waitFor(driverTestConfig, 100);
 			}
 		});
 
@@ -392,7 +387,6 @@ export function runRawWebSocketDirectRegistryTests(
 			expect(echoMessage.size).toBe(5);
 
 			ws.close();
-			await waitFor(driverTestConfig, 100);
 		});
 	});
 }

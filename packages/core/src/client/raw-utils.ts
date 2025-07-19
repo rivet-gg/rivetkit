@@ -9,7 +9,6 @@ import type { ClientDriver } from "./client";
 export async function rawHttpFetch(
 	driver: ClientDriver,
 	actorQuery: ActorQuery,
-	encodingKind: Encoding,
 	params: unknown,
 	input: string | URL | Request,
 	init?: RequestInit,
@@ -62,7 +61,8 @@ export async function rawHttpFetch(
 	return await driver.rawHttpRequest(
 		undefined,
 		actorQuery,
-		encodingKind,
+		// Force JSON so it's readable by the user
+		"json",
 		params,
 		path,
 		mergedInit,
@@ -76,7 +76,6 @@ export async function rawHttpFetch(
 export async function rawWebSocket(
 	driver: ClientDriver,
 	actorQuery: ActorQuery,
-	encodingKind: Encoding,
 	params: unknown,
 	path?: string,
 	protocols?: string | string[],
@@ -85,7 +84,8 @@ export async function rawWebSocket(
 	return await driver.rawWebSocket(
 		undefined,
 		actorQuery,
-		encodingKind,
+		// Force JSON so it's readable by the user
+		"json",
 		params,
 		path || "",
 		protocols,

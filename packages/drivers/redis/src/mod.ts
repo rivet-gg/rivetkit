@@ -12,7 +12,6 @@ export interface RedisDriverOptions {
 	host?: string;
 	port?: number;
 	password?: string;
-	db?: number;
 	keyPrefix?: string;
 }
 
@@ -21,7 +20,6 @@ export function createRedisDriver(options?: RedisDriverOptions): DriverConfig {
 		host: options?.host ?? "localhost",
 		port: options?.port ?? 6379,
 		password: options?.password,
-		db: options?.db ?? 0,
 	});
 
 	const state = new RedisGlobalState(redis, options?.keyPrefix ?? "rivetkit:");

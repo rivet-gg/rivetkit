@@ -796,6 +796,8 @@ function createTestWebSocketProxy(
 ) {
 	// Store a reference to the resolved WebSocket
 	let clientWs: WebSocket | null = null;
+	// Queue messages that arrive before client WebSocket is ready
+	const messageQueue: any[] = [];
 
 	// Create WebSocket proxy handlers to relay messages between client and server
 	return {
@@ -835,6 +837,19 @@ function createTestWebSocketProxy(
 						serverWs.close(1011, "Error in client websocket");
 					}
 				});
+
+				// Send any queued messages
+				if (messageQueue.length > 0) {
+					logger().debug(
+						`sending ${messageQueue.length} queued messages to client`,
+					);
+					for (const data of messageQueue) {
+						if (clientWs.readyState === 1) {
+							clientWs.send(data);
+						}
+					}
+					messageQueue.length = 0;
+				}
 			} catch (error) {
 				logger().error(
 					`failed to establish client ${connectionType} websocket connection`,
@@ -844,11 +859,12 @@ function createTestWebSocketProxy(
 			}
 		},
 		onMessage: async (evt: { data: any }, serverWs: WSContext) => {
-			// If clientWs hasn't been resolved yet, messages will be lost
+			// If clientWs hasn't been resolved yet, queue the message
 			if (!clientWs) {
 				logger().debug(
-					"received server message before client WebSocket connected",
+					"received server message before client WebSocket connected, queuing",
 				);
+				messageQueue.push(evt.data);
 				return;
 			}
 

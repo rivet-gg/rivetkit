@@ -35,7 +35,7 @@ export class FileSystemActorDriver implements ActorDriver {
 	}
 
 	async loadActor(actorId: string): Promise<AnyActorInstance> {
-		return this.#state.loadActor(
+		return this.#state.startActor(
 			this.#registryConfig,
 			this.#runConfig,
 			this.#inlineClient,
@@ -45,7 +45,7 @@ export class FileSystemActorDriver implements ActorDriver {
 	}
 
 	getGenericConnGlobalState(actorId: string): GenericConnGlobalState {
-		return this.#state.getGenericConnGlobalState(actorId);
+		return this.#state.getActorOrError(actorId).genericConnGlobalState;
 	}
 
 	/**
@@ -60,14 +60,15 @@ export class FileSystemActorDriver implements ActorDriver {
 	}
 
 	async readPersistedData(actorId: string): Promise<Uint8Array | undefined> {
-		return this.#state.readPersistedData(actorId);
+		return (await this.#state.loadActorStateOrError(actorId)).persistedData;
 	}
 
 	async writePersistedData(actorId: string, data: Uint8Array): Promise<void> {
-		this.#state.writePersistedData(actorId, data);
+		const entry = await this.#state.loadActorStateOrError(actorId);
+		entry.persistedData = data;
 
 		// Save state to disk
-		await this.#state.saveActorState(actorId);
+		await this.#state.writeActor(actorId);
 	}
 
 	async setAlarm(actor: AnyActorInstance, timestamp: number): Promise<void> {

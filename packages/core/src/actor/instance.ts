@@ -1064,12 +1064,22 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 		}
 
 		try {
+			// Set up state tracking to detect changes during WebSocket handling
+			const stateBeforeHandler = this.#persistChanged;
+
 			await this.#config.onWebSocket(this.actorContext, websocket, opts);
+
+			// If state changed during the handler, save it
+			if (this.#persistChanged && !stateBeforeHandler) {
+				await this.saveState({ immediate: true });
+			}
 		} catch (error) {
 			logger().error("onWebSocket error", {
 				error: stringifyError(error),
 			});
 			throw error;
+		} finally {
+			this.#savePersistThrottled();
 		}
 	}
 

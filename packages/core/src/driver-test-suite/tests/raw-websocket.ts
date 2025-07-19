@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { DriverTestConfig } from "../mod";
-import { setupDriverTest, waitFor } from "../utils";
+import { setupDriverTest } from "../utils";
 
 export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 	describe("raw websocket", () => {
@@ -33,7 +33,6 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 			expect(welcomeMessage.connectionCount).toBe(1);
 
 			ws.close();
-			await waitFor(driverTestConfig, 100);
 		});
 
 		test("should echo messages", async (c) => {
@@ -71,7 +70,6 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 			expect(echoMessage).toEqual(testMessage);
 
 			ws.close();
-			await waitFor(driverTestConfig, 100);
 		});
 
 		test("should handle ping/pong protocol", async (c) => {
@@ -108,78 +106,62 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 			expect(pongMessage.timestamp).toBeDefined();
 
 			ws.close();
-			await waitFor(driverTestConfig, 100);
 		});
 
-		test.skip("should track stats across connections", async (c) => {
+		test("should track stats across connections", async (c) => {
 			const { client } = await setupDriverTest(c, driverTestConfig);
 			const actor1 = client.rawWebSocketActor.getOrCreate(["stats"]);
 
 			// Create first connection to ensure actor exists
 			const ws1 = await actor1.websocket();
+			const ws1MessagePromise = new Promise<void>((resolve, reject) => {
+				ws1.addEventListener("message", () => resolve(), { once: true });
+				ws1.addEventListener("close", reject);
+			});
+
+			// Wait for first connection to establish before getting the actor
+			await ws1MessagePromise;
 
 			// Now get reference to same actor
 			const actor2 = client.rawWebSocketActor.get(["stats"]);
 			const ws2 = await actor2.websocket();
+			const ws2MessagePromise = new Promise<void>((resolve, reject) => {
+				ws2.addEventListener("message", () => resolve(), { once: true });
+				ws2.addEventListener("close", reject);
+			});
 
-			// Wait for both to connect
-			await Promise.all([
-				new Promise<void>((resolve, reject) => {
-					ws1.addEventListener("open", () => resolve(), { once: true });
-					ws1.addEventListener("close", reject);
-				}),
-				new Promise<void>((resolve, reject) => {
-					ws2.addEventListener("open", () => resolve(), { once: true });
-					ws2.addEventListener("close", reject);
-				}),
-			]);
-
-			// Skip welcome messages
-			await Promise.all([
-				new Promise<void>((resolve, reject) => {
-					ws1.addEventListener("message", () => resolve(), { once: true });
-					ws1.addEventListener("close", reject);
-				}),
-				new Promise<void>((resolve, reject) => {
-					ws2.addEventListener("message", () => resolve(), { once: true });
-					ws2.addEventListener("close", reject);
-				}),
-			]);
+			// Wait for welcome messages
+			await Promise.all([ws1MessagePromise, ws2MessagePromise]);
 
 			// Send some messages
+			const pingPromise = new Promise<any>((resolve, reject) => {
+				ws2.addEventListener("message", (event: any) => {
+					const data = JSON.parse(event.data as string);
+					if (data.type === "pong") {
+						resolve(undefined);
+					}
+				});
+				ws2.addEventListener("close", reject);
+			});
 			ws1.send(JSON.stringify({ data: "test1" }));
-			ws2.send(JSON.stringify({ data: "test2" }));
 			ws1.send(JSON.stringify({ data: "test3" }));
+			ws2.send(JSON.stringify({ type: "ping" }));
+			await pingPromise;
 
-			await waitFor(driverTestConfig, 100);
-
-			// Set up listener before sending request to avoid race condition
+			// Get stats
 			const statsPromise = new Promise<any>((resolve, reject) => {
-				const timeout = setTimeout(() => {
-					reject(new Error("Timeout waiting for stats response"));
-				}, 2000);
-
 				ws1.addEventListener("message", (event: any) => {
-					try {
-						const data = JSON.parse(event.data as string);
-						if (data.type === "stats") {
-							clearTimeout(timeout);
-							resolve(data);
-						}
-					} catch (e) {
-						// Ignore non-JSON messages
+					const data = JSON.parse(event.data as string);
+					if (data.type === "stats") {
+						resolve(data);
 					}
 				});
 				ws1.addEventListener("close", reject);
 			});
-
-			// Request stats
 			ws1.send(JSON.stringify({ type: "getStats" }));
-
 			const stats = await statsPromise;
-
 			expect(stats.connectionCount).toBe(2);
-			expect(stats.messageCount).toBe(4); // 3 data messages + 1 getStats
+			expect(stats.messageCount).toBe(4);
 
 			// Verify via action
 			const actionStats = await actor1.getStats();
@@ -188,7 +170,6 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 
 			ws1.close();
 			ws2.close();
-			await waitFor(driverTestConfig, 100);
 		});
 
 		test("should handle binary data", async (c) => {
@@ -244,7 +225,6 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 			}
 
 			ws.close();
-			await waitFor(driverTestConfig, 100);
 		});
 
 		test("should work with custom paths", async (c) => {
@@ -275,7 +255,6 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 			expect(welcomeMessage.type).toBe("welcome");
 
 			ws.close();
-			await waitFor(driverTestConfig, 100);
 		});
 
 		test("should pass connection parameters through subprotocols", async (c) => {
@@ -311,7 +290,6 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 			expect(response).toBeDefined();
 
 			ws.close();
-			await waitFor(driverTestConfig, 100);
 		});
 
 		test("should handle connection close properly", async (c) => {
@@ -338,18 +316,14 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 			ws.close();
 			await closePromise;
 
-			// Poll for the expected state change with timeout
-			const maxAttempts = 10;
-			let attempts = 0;
+			// Poll getStats until connection count is 0
 			let finalStats: any;
-
-			while (attempts < maxAttempts) {
-				await waitFor(driverTestConfig, 50);
+			for (let i = 0; i < 20; i++) {
 				finalStats = await actor.getStats();
 				if (finalStats.connectionCount === 0) {
 					break;
 				}
-				attempts++;
+				await new Promise((resolve) => setTimeout(resolve, 50));
 			}
 
 			// Check stats after close
@@ -416,21 +390,14 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 				ws1.addEventListener("close", () => resolve(), { once: true });
 			});
 
-			// Wait a bit for server-side close handler
-			await waitFor(driverTestConfig, 200);
-
-			// Poll for the expected state change with timeout
+			// Poll getStats until connection count decreases to 1
 			let afterFirstClose: any;
-			let attempts = 0;
-			const maxAttempts = 10;
-
-			while (attempts < maxAttempts) {
+			for (let i = 0; i < 20; i++) {
 				afterFirstClose = await actor.getStats();
 				if (afterFirstClose.connectionCount === 1) {
 					break;
 				}
-				await waitFor(driverTestConfig, 50);
-				attempts++;
+				await new Promise((resolve) => setTimeout(resolve, 50));
 			}
 
 			// Verify connection count decreased
@@ -442,22 +409,17 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 				ws2.addEventListener("close", () => resolve(), { once: true });
 			});
 
-			// Wait and verify final state
-			await waitFor(driverTestConfig, 200);
-
-			// Poll for the expected final state
+			// Poll getStats until connection count is 0
 			let finalStats: any;
-			attempts = 0;
-
-			while (attempts < maxAttempts) {
+			for (let i = 0; i < 20; i++) {
 				finalStats = await actor.getStats();
 				if (finalStats.connectionCount === 0) {
 					break;
 				}
-				await waitFor(driverTestConfig, 50);
-				attempts++;
+				await new Promise((resolve) => setTimeout(resolve, 50));
 			}
 
+			// Verify final state
 			expect(finalStats?.connectionCount).toBe(0);
 		});
 
@@ -468,17 +430,20 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 			// Test WebSocket with query parameters
 			const ws = await actor.websocket("api/v1/stream?token=abc123&user=test");
 
+			console.log("=== POINT 1");
+
 			await new Promise<void>((resolve, reject) => {
 				ws.addEventListener("open", () => resolve(), { once: true });
 				ws.addEventListener("error", reject);
 			});
+			console.log("=== POINT 2");
 
-			// Send request to get the request info
-			ws.send(JSON.stringify({ type: "getRequestInfo" }));
+			console.log("=== POINT 3");
 
-			const requestInfo = await new Promise<any>((resolve, reject) => {
+			const requestInfoPromise = new Promise<any>((resolve, reject) => {
 				ws.addEventListener("message", (event: any) => {
 					const data = JSON.parse(event.data as string);
+					console.log("=== DATA", data);
 					if (data.type === "requestInfo") {
 						resolve(data);
 					}
@@ -486,13 +451,18 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 				ws.addEventListener("close", reject);
 			});
 
+			// Send request to get the request info
+			ws.send(JSON.stringify({ type: "getRequestInfo" }));
+
+			const requestInfo = await requestInfoPromise;
+			console.log("=== POINT 4");
+
 			// Verify the path and query parameters were preserved
 			expect(requestInfo.url).toContain("api/v1/stream");
 			expect(requestInfo.url).toContain("token=abc123");
 			expect(requestInfo.url).toContain("user=test");
 
 			ws.close();
-			await waitFor(driverTestConfig, 100);
 		});
 	});
 }

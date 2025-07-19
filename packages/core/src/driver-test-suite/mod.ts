@@ -42,6 +42,8 @@ export interface DriverTestConfig {
 	transport?: Transport;
 
 	clientType: ClientType;
+
+	cleanup?: () => Promise<void>;
 }
 
 /**
