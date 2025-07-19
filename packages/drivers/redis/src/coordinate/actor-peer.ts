@@ -1,28 +1,25 @@
-import type { ActorDriver } from "@/actor/driver";
-import type { AnyActorInstance } from "@/actor/instance";
-import type { ActorKey } from "@/actor/mod";
-import type { Client } from "@/client/client";
-import type { Registry } from "@/mod";
-import type { RegistryConfig } from "@/registry/config";
-import type { RunConfig } from "@/registry/run-config";
 import {
+	type ActorKey,
+	type AnyActorInstance,
 	createGenericConnDrivers,
 	GenericConnGlobalState,
-} from "@/topologies/common/generic-conn-driver";
-import type { GlobalState } from "@/topologies/coordinate/topology";
-import {
-	CONN_DRIVER_COORDINATE_RELAY,
-	createCoordinateRelayDriver,
-} from "./conn/driver";
+	type Registry,
+	type RegistryConfig,
+	type RunConfig,
+} from "@rivetkit/core";
+import type { ActorDriver } from "@rivetkit/core/driver-helpers";
+import type { CoordinateDriverConfig } from "./config";
 import type { CoordinateDriver } from "./driver";
 import { logger } from "./log";
+import type { GlobalState } from "./types";
 
 export class ActorPeer {
 	#registryConfig: RegistryConfig;
 	#runConfig: RunConfig;
+	#driverConfig: CoordinateDriverConfig;
 	#coordinateDriver: CoordinateDriver;
 	#actorDriver: ActorDriver;
-	#inlineClient: Client<Registry<any>>;
+	#inlineClient: any; // Client type
 	#globalState: GlobalState;
 	#actorId: string;
 	#actorName?: string;
@@ -38,10 +35,20 @@ export class ActorPeer {
 	/** Holds the insantiated actor class if is leader. */
 	#loadedActor?: AnyActorInstance;
 
+	/** Promise that resolves when the actor has fully started (only for leaders) */
+	#loadedActorStartingPromise?: Promise<void>;
+
 	#heartbeatTimeout?: NodeJS.Timeout;
+
+	// TODO: Only create this when becomse leader
+	readonly genericConnGlobalState = new GenericConnGlobalState();
 
 	get #isLeader() {
 		return this.#leaderNodeId === this.#globalState.nodeId;
+	}
+
+	get isLeader() {
+		return this.#isLeader;
 	}
 
 	get leaderNodeId() {
@@ -49,17 +56,27 @@ export class ActorPeer {
 		return this.#leaderNodeId;
 	}
 
+	get loadedActor() {
+		return this.#loadedActor;
+	}
+
+	get loadedActorStartingPromise() {
+		return this.#loadedActorStartingPromise;
+	}
+
 	constructor(
 		registryConfig: RegistryConfig,
 		runConfig: RunConfig,
+		driverConfig: CoordinateDriverConfig,
 		CoordinateDriver: CoordinateDriver,
 		actorDriver: ActorDriver,
-		inlineClient: Client<Registry<any>>,
+		inlineClient: any, // Client type
 		globalState: GlobalState,
 		actorId: string,
 	) {
 		this.#registryConfig = registryConfig;
 		this.#runConfig = runConfig;
+		this.#driverConfig = driverConfig;
 		this.#coordinateDriver = CoordinateDriver;
 		this.#actorDriver = actorDriver;
 		this.#inlineClient = inlineClient;
@@ -71,8 +88,9 @@ export class ActorPeer {
 	static async acquire(
 		registryConfig: RegistryConfig,
 		runConfig: RunConfig,
+		driverConfig: CoordinateDriverConfig,
 		actorDriver: ActorDriver,
-		inlineClient: Client<Registry<any>>,
+		inlineClient: any, // Client type
 		CoordinateDriver: CoordinateDriver,
 		globalState: GlobalState,
 		actorId: string,
@@ -85,6 +103,7 @@ export class ActorPeer {
 			peer = new ActorPeer(
 				registryConfig,
 				runConfig,
+				driverConfig,
 				CoordinateDriver,
 				actorDriver,
 				inlineClient,
@@ -106,20 +125,36 @@ export class ActorPeer {
 		return peer;
 	}
 
-	static getLeaderActor(
+	static getLeaderActorPeer(
 		globalState: GlobalState,
 		actorId: string,
-	): AnyActorInstance | undefined {
+	): ActorPeer | undefined {
 		const peer = globalState.actorPeers.get(actorId);
 		if (!peer) return undefined;
+
 		if (peer.#isLeader) {
-			const actor = peer.#loadedActor;
-			if (!actor)
-				throw new Error("Actor is leader, but loadedActor is undefined");
-			return actor;
+			return peer;
 		} else {
 			return undefined;
 		}
+	}
+
+	static async getLeaderActor(
+		globalState: GlobalState,
+		actorId: string,
+	): Promise<AnyActorInstance | undefined> {
+		const peer = ActorPeer.getLeaderActorPeer(globalState, actorId);
+		if (!peer) return undefined;
+
+		// Wait for actor to be ready if it's still starting
+		if (peer.loadedActorStartingPromise) {
+			await peer.loadedActorStartingPromise;
+		}
+
+		const actor = peer.loadedActor;
+		if (!actor)
+			throw new Error("Actor is leader, but loadedActor is undefined");
+		return actor;
 	}
 
 	async #start() {
@@ -144,7 +179,7 @@ export class ActorPeer {
 		const { actor } = await this.#coordinateDriver.startActorAndAcquireLease(
 			this.#actorId,
 			this.#globalState.nodeId,
-			this.#runConfig.actorPeer.leaseDuration,
+			this.#driverConfig.actorPeer.leaseDuration,
 		);
 		// Log
 		logger().debug("starting actor peer", {
@@ -200,13 +235,13 @@ export class ActorPeer {
 		let hbTimeout: number;
 		if (this.#isLeader) {
 			hbTimeout =
-				this.#runConfig.actorPeer.leaseDuration -
-				this.#runConfig.actorPeer.renewLeaseGrace;
+				this.#driverConfig.actorPeer.leaseDuration -
+				this.#driverConfig.actorPeer.renewLeaseGrace;
 		} else {
 			// TODO: Add jitter
 			hbTimeout =
-				this.#runConfig.actorPeer.checkLeaseInterval +
-				Math.random() * this.#runConfig.actorPeer.checkLeaseJitter;
+				this.#driverConfig.actorPeer.checkLeaseInterval +
+				Math.random() * this.#driverConfig.actorPeer.checkLeaseJitter;
 		}
 		if (hbTimeout < 0)
 			throw new Error("Actor peer heartbeat timeout is negative, check config");
@@ -229,25 +264,23 @@ export class ActorPeer {
 		const actor = definition.instantiate();
 		this.#loadedActor = actor;
 
-		// Create generic connection drivers for testing and HTTP support
-		const genericConnGlobalState = new GenericConnGlobalState();
-		const genericConnDrivers = createGenericConnDrivers(genericConnGlobalState);
+		// Create promise to track actor startup
+		this.#loadedActorStartingPromise = (async () => {
+			// Start actor
+			const connDrivers = createGenericConnDrivers(this.genericConnGlobalState);
+			await actor.start(
+				connDrivers,
+				this.#actorDriver,
+				this.#inlineClient,
+				this.#actorId,
+				this.#actorName!,
+				this.#actorKey!,
+				"unknown",
+			);
+		})();
 
-		await actor.start(
-			{
-				[CONN_DRIVER_COORDINATE_RELAY]: createCoordinateRelayDriver(
-					this.#globalState,
-					this.#coordinateDriver,
-				),
-				...genericConnDrivers,
-			},
-			this.#actorDriver,
-			this.#inlineClient,
-			this.#actorId,
-			this.#actorName,
-			this.#actorKey,
-			"unknown",
-		);
+		// Wait for actor to start
+		await this.#loadedActorStartingPromise;
 	}
 
 	/**
@@ -259,10 +292,10 @@ export class ActorPeer {
 		const { leaseValid } = await this.#coordinateDriver.extendLease(
 			this.#actorId,
 			this.#globalState.nodeId,
-			this.#runConfig.actorPeer.leaseDuration,
+			this.#driverConfig.actorPeer.leaseDuration,
 		);
 		if (leaseValid) {
-			logger().debug("lease is valid", { actorId: this.#actorId });
+			logger().trace("lease is valid", { actorId: this.#actorId });
 		} else {
 			logger().debug("lease is invalid", { actorId: this.#actorId });
 
@@ -279,21 +312,29 @@ export class ActorPeer {
 			await this.#coordinateDriver.attemptAcquireLease(
 				this.#actorId,
 				this.#globalState.nodeId,
-				this.#runConfig.actorPeer.leaseDuration,
+				this.#driverConfig.actorPeer.leaseDuration,
 			);
 
 		// Check if the lease was successfully acquired and promoted to leader
 		const isPromoted =
 			!this.#isLeader && newLeaderNodeId === this.#globalState.nodeId;
 
+		// Check if leader changed (and we're not the new leader)
+		const leaderChanged = this.#leaderNodeId !== newLeaderNodeId && !isPromoted;
+
 		// Save leader
 		this.#leaderNodeId = newLeaderNodeId;
+
+		// If leader changed, close all WebSockets for this actor
+		if (leaderChanged) {
+			this.#closeAllWebSockets();
+		}
 
 		// Promote as leader if needed
 		if (isPromoted) {
 			if (!this.#isLeader) throw new Error("assert: should be promoted");
 
-			this.#convertToLeader();
+			await this.#convertToLeader();
 		}
 	}
 
@@ -314,7 +355,57 @@ export class ActorPeer {
 		}
 
 		if (this.#referenceConnections.size === 0) {
-			this.#dispose(true);
+			await this.#dispose(true);
+		}
+	}
+
+	#closeAllWebSockets() {
+		logger().info("closing all websockets due to leader change", {
+			actorId: this.#actorId,
+		});
+
+		// Close all relay WebSockets (used by openWebSocket)
+		const relayWebSockets = (this.#globalState as any).relayWebSockets as
+			| Map<string, any>
+			| undefined;
+		if (relayWebSockets) {
+			for (const [wsId, ws] of relayWebSockets) {
+				// Check if this WebSocket belongs to this actor
+				if (ws.actorId === this.#actorId) {
+					ws._handleClose(1001, "Actor leader changed");
+					relayWebSockets.delete(wsId);
+				}
+			}
+		}
+
+		// Close all follower WebSockets (used by proxyWebSocket)
+		const followerWebSockets = (this.#globalState as any).followerWebSockets as
+			| Map<string, any>
+			| undefined;
+		if (followerWebSockets) {
+			for (const [wsId, wsData] of followerWebSockets) {
+				// Check if this WebSocket belongs to this actor
+				if (wsData.actorId === this.#actorId) {
+					wsData.ws.close(1001, "Actor leader changed");
+					followerWebSockets.delete(wsId);
+				}
+			}
+		}
+
+		// Close all leader WebSockets (WebSockets we're handling as leader)
+		const leaderWebSockets = (this.#globalState as any).leaderWebSockets as
+			| Map<string, any>
+			| undefined;
+		if (leaderWebSockets) {
+			for (const [wsId, wsData] of leaderWebSockets) {
+				if (wsData.actorId === this.#actorId) {
+					// Send close to follower
+					if (wsData.wsContext && wsData.wsContext.close) {
+						wsData.wsContext.close(1001, "Actor leader changed");
+					}
+					leaderWebSockets.delete(wsId);
+				}
+			}
 		}
 	}
 

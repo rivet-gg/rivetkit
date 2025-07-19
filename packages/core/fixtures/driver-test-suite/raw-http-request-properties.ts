@@ -65,7 +65,7 @@ export const rawHttpRequestPropertiesActor = actor({
 				headers: headers,
 
 				// Body
-				body: body,
+				body,
 				bodyText:
 					typeof body === "string"
 						? body

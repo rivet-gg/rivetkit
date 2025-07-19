@@ -1,8 +1,4 @@
-import {
-	RedisActorDriver,
-	RedisCoordinateDriver,
-	RedisManagerDriver,
-} from "@rivetkit/redis";
+import { createRedisDriver } from "@rivetkit/redis";
 import { Hono } from "hono";
 import Redis from "ioredis";
 import { registry } from "./registry";
@@ -26,12 +22,7 @@ redisClient.on("error", (err) => {
 
 // Start RivetKit with Redis drivers
 const { client, serve } = registry.createServer({
-	driver: {
-		topology: "coordinate",
-		actor: new RedisActorDriver(redisClient),
-		manager: new RedisManagerDriver(redisClient, registry),
-		coordinate: new RedisCoordinateDriver(redisClient),
-	},
+	driver: createRedisDriver(),
 });
 
 // Setup Hono router

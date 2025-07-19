@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import Redis from "ioredis";
 import { expect, test } from "vitest";
 
@@ -16,7 +17,7 @@ test("shared Valkey container works correctly", async () => {
 	);
 
 	// Verify we can connect and use Redis with isolated key prefix
-	const keyPrefix = `test-container-setup-${Date.now()}:`;
+	const keyPrefix = `test-${randomUUID()}:`;
 	const redis = new Redis({ port, host: "127.0.0.1", keyPrefix });
 	await redis.set("test-key", "test-value");
 	const value = await redis.get("test-key");

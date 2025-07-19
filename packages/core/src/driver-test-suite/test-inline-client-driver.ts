@@ -91,10 +91,12 @@ export function createTestInlineClientDriver(
 
 			// Create and return the WebSocket
 			// Node & browser WebSocket types are incompatible
-			return new WebSocket(finalWsUrl, [
+			const ws = new WebSocket(finalWsUrl, [
 				// HACK: See packages/drivers/cloudflare-workers/src/websocket.ts
 				"rivetkit",
 			]) as any;
+
+			return ws;
 		},
 
 		connectSse: async (
@@ -292,6 +294,7 @@ export function createTestInlineClientDriver(
 			path: string,
 			protocols: string | string[] | undefined,
 		): Promise<WebSocket> => {
+			logger().debug("test inline driver rawWebSocket called");
 			const WebSocket = await importWebSocket();
 
 			// Normalize path to match other drivers
@@ -332,10 +335,17 @@ export function createTestInlineClientDriver(
 
 			// Create and return the WebSocket
 			// Node & browser WebSocket types are incompatible
-			return new WebSocket(finalWsUrl, [
+			const ws = new WebSocket(finalWsUrl, [
 				// HACK: See packages/drivers/cloudflare-workers/src/websocket.ts
 				"rivetkit",
 			]) as any;
+
+			logger().debug("test inline driver created websocket", {
+				readyState: ws.readyState,
+				url: ws.url,
+			});
+
+			return ws;
 		},
 	};
 }

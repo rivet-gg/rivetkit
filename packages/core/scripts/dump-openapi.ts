@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { Context } from "hono";
 import WebSocket from "ws";
 import type { ClientDriver } from "@/client/client";
-import { createFileSystemDriver } from "@/drivers/file-system/mod";
+import { createFileSystemOrMemoryDriver } from "@/drivers/file-system/mod";
 import type {
 	ActorOutput,
 	CreateInput,
@@ -30,7 +30,7 @@ function main() {
 	const registry = setup(registryConfig);
 
 	const driverConfig: RunConfig = RunConfigSchema.parse({
-		driver: createFileSystemDriver(false),
+		driver: createFileSystemOrMemoryDriver(false),
 		getUpgradeWebSocket: () => () => unimplemented(),
 	});
 

@@ -32,11 +32,7 @@
     "build": "tsc && vite build",
     "check-types": "tsc --noEmit"
   },
-  "peerDependencies": {
-    "@rivetkit/core": "*"
-  },
   "devDependencies": {
-    "@rivetkit/core": "workspace:*",
     "typescript": "^5.5.2",
     "vite": "^6.3.5",
     "vite-plugin-dts": "^4.5.4",
@@ -44,6 +40,7 @@
   },
   "stableVersion": "0.8.0",
   "dependencies": {
+    "@rivetkit/core": "workspace:*",
     "@tanstack/store": "^0.7.1"
   }
 }

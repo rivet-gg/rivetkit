@@ -1,7 +1,11 @@
 import type { Context as HonoContext } from "hono";
 import invariant from "invariant";
-import { ActorAlreadyExists } from "@/actor/errors";
-import { type ActorRouter, createActorRouter } from "@/actor/router";
+import {
+	type ActorRouter,
+	createActorRouter,
+	PATH_CONNECT_WEBSOCKET,
+	PATH_RAW_WEBSOCKET_PREFIX,
+} from "@/actor/router";
 import {
 	handleRawWebSocketHandler,
 	handleWebSocketConnect,
@@ -72,9 +76,9 @@ export class FileSystemManagerDriver implements ManagerDriver {
 		// TODO:
 
 		// Handle raw WebSocket paths
-		if (path === "/connect/websocket") {
-			// Handle standard /connect/websocket
-			const wsHandler = handleWebSocketConnect(
+		if (path === PATH_CONNECT_WEBSOCKET) {
+			// Handle standard connect
+			const wsHandler = await handleWebSocketConnect(
 				undefined,
 				this.#runConfig,
 				this.#actorDriver,
@@ -84,8 +88,8 @@ export class FileSystemManagerDriver implements ManagerDriver {
 				undefined,
 			);
 			return new InlineWebSocketAdapter2(wsHandler);
-		} else if (path.startsWith("/raw/websocket/")) {
-			// Handle websocket proxy (/raw/websocket/*)
+		} else if (path.startsWith(PATH_RAW_WEBSOCKET_PREFIX)) {
+			// Handle websocket proxy
 			const wsHandler = await handleRawWebSocketHandler(
 				undefined,
 				path,
@@ -121,9 +125,9 @@ export class FileSystemManagerDriver implements ManagerDriver {
 		invariant(upgradeWebSocket, "missing getUpgradeWebSocket");
 
 		// Handle raw WebSocket paths
-		if (path === "/connect/websocket") {
-			// Handle standard /connect/websocket
-			const wsHandler = handleWebSocketConnect(
+		if (path === PATH_CONNECT_WEBSOCKET) {
+			// Handle standard connect
+			const wsHandler = await handleWebSocketConnect(
 				undefined,
 				this.#runConfig,
 				this.#actorDriver,
@@ -134,8 +138,8 @@ export class FileSystemManagerDriver implements ManagerDriver {
 			);
 
 			return upgradeWebSocket(() => wsHandler)(c, noopNext());
-		} else if (path.startsWith("/raw/websocket/")) {
-			// Handle websocket proxy (/raw/websocket/*)
+		} else if (path.startsWith(PATH_RAW_WEBSOCKET_PREFIX)) {
+			// Handle websocket proxy
 			const wsHandler = await handleRawWebSocketHandler(
 				c,
 				path,

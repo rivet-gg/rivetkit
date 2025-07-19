@@ -167,14 +167,14 @@
     "tsx": "^4.19.4",
     "typescript": "^5.7.3",
     "vitest": "^3.1.1",
-    "ws": "^8.18.1"
+    "ws": "^8.18.1",
+    "@hono/zod-openapi": "^0.19.10",
+    "hono": "^4.7.0"
   },
   "peerDependencies": {
     "@hono/node-server": "^1.14.0",
     "@hono/node-ws": "^1.1.1",
-    "@hono/zod-openapi": "^0.19.10",
     "eventsource": "^3.0.5",
-    "hono": "^4.7.0",
     "ws": "^8.0.0"
   },
   "peerDependenciesMeta": {

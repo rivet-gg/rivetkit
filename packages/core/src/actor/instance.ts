@@ -734,6 +734,8 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 		driverState: unknown,
 		authData: unknown,
 	): Promise<Conn<S, CP, CS, V, I, AD, DB>> {
+		this.#assertReady();
+
 		if (this.#connections.has(connectionId)) {
 			throw new Error(`Connection already exists: ${connectionId}`);
 		}
@@ -1047,6 +1049,8 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 				error: stringifyError(error),
 			});
 			throw error;
+		} finally {
+			this.#savePersistThrottled();
 		}
 	}
 

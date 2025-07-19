@@ -44,3 +44,25 @@ export function dbg<T>(x: T): T {
 	console.trace(`=== DEBUG ===\n${x}`);
 	return x;
 }
+
+/**
+ * Converts various ArrayBuffer-like types to Uint8Array.
+ * Handles ArrayBuffer, ArrayBufferView (including typed arrays), and passes through existing Uint8Array.
+ *
+ * @param data - The ArrayBuffer or ArrayBufferView to convert
+ * @returns A Uint8Array view of the data
+ */
+export function toUint8Array(data: ArrayBuffer | ArrayBufferView): Uint8Array {
+	if (data instanceof Uint8Array) {
+		return data;
+	} else if (data instanceof ArrayBuffer) {
+		return new Uint8Array(data);
+	} else if (ArrayBuffer.isView(data)) {
+		// Handle other ArrayBufferView types (Int8Array, Uint16Array, DataView, etc.)
+		return new Uint8Array(
+			data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength),
+		);
+	} else {
+		throw new TypeError("Input must be ArrayBuffer or ArrayBufferView");
+	}
+}

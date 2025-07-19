@@ -1,19 +1,26 @@
-import { generateConnId, generateConnToken } from "@/actor/connection";
-import type { ActorDriver } from "@/actor/driver";
-import * as errors from "@/actor/errors";
-import type * as messageToClient from "@/actor/protocol/message/to-client";
-import type { Client } from "@/client/client";
-import type { Registry } from "@/mod";
-import type { RegistryConfig } from "@/registry/config";
-import type { RunConfig } from "@/registry/run-config";
-import type { GlobalState } from "@/topologies/coordinate/topology";
-import { ActorPeer } from "../actor-peer";
-import type { CoordinateDriver } from "../driver";
-import { logger } from "../log";
-import { publishMessageToLeader } from "../node/message";
+import {
+	generateConnId,
+	generateConnToken,
+	type Registry,
+	type RegistryConfig,
+	type RunConfig,
+} from "@rivetkit/core";
+import type { Client } from "@rivetkit/core/client";
+import type { ActorDriver } from "@rivetkit/core/driver-helpers";
+import * as errors from "@rivetkit/core/errors";
+import { ActorPeer } from "./actor-peer";
+import type { CoordinateDriverConfig } from "./config";
+import type { CoordinateDriver } from "./driver";
+import { logger } from "./log";
+import {
+	publishMessageToLeader,
+	publishMessageToLeaderNoRetry,
+} from "./node/message";
+import type { NodeMessage } from "./node/protocol";
+import type { GlobalState } from "./types";
 
 export interface RelayConnDriver {
-	sendMessage(message: messageToClient.ToClient): void;
+	/** Called on disconnect (regardless of source). */
 	disconnect(reason?: string): Promise<void>;
 }
 
@@ -23,14 +30,13 @@ export interface RelayConnDriver {
 export class RelayConn {
 	#registryConfig: RegistryConfig;
 	#runConfig: RunConfig;
+	#driverConfig: CoordinateDriverConfig;
 	#coordinateDriver: CoordinateDriver;
 	#actorDriver: ActorDriver;
 	#inlineClient: Client<Registry<any>>;
 	#globalState: GlobalState;
 	#driver: RelayConnDriver;
 	#actorId: string;
-	#parameters: unknown;
-	#authData: unknown;
 
 	#actorPeer?: ActorPeer;
 
@@ -40,6 +46,10 @@ export class RelayConn {
 	#disposed = false;
 
 	#abortController = new AbortController();
+
+	public get actorId(): string {
+		return this.#actorId;
+	}
 
 	public get connId(): string {
 		if (!this.#connId) throw new errors.InternalError("Missing connId");
@@ -54,29 +64,27 @@ export class RelayConn {
 	constructor(
 		registryConfig: RegistryConfig,
 		runConfig: RunConfig,
+		driverConfig: CoordinateDriverConfig,
 		actorDriver: ActorDriver,
 		inlineClient: Client<Registry<any>>,
-		CoordinateDriver: CoordinateDriver,
+		coordinateDriver: CoordinateDriver,
 		globalState: GlobalState,
 		driver: RelayConnDriver,
 		actorId: string,
-		parameters: unknown,
-		authData: unknown,
 	) {
 		this.#registryConfig = registryConfig;
 		this.#runConfig = runConfig;
-		this.#coordinateDriver = CoordinateDriver;
+		this.#driverConfig = driverConfig;
+		this.#coordinateDriver = coordinateDriver;
 		this.#actorDriver = actorDriver;
 		this.#inlineClient = inlineClient;
 		this.#driver = driver;
 		this.#globalState = globalState;
 		this.#actorId = actorId;
-		this.#parameters = parameters;
-		this.#authData = authData;
 	}
 
 	async start() {
-		// TODO: Handle errors graecfully
+		// TODO: Handle errors gracefully
 
 		// Add connection
 		const connId = generateConnId();
@@ -93,6 +101,7 @@ export class RelayConn {
 		this.#actorPeer = await ActorPeer.acquire(
 			this.#registryConfig,
 			this.#runConfig,
+			this.#driverConfig,
 			this.#actorDriver,
 			this.#inlineClient,
 			this.#coordinateDriver,
@@ -102,33 +111,37 @@ export class RelayConn {
 		);
 
 		this.#globalState.relayConns.set(connId, this);
-
-		// Publish connection open
-		await publishMessageToLeader(
-			this.#registryConfig,
-			this.#runConfig,
-			this.#coordinateDriver,
-			this.#globalState,
-			this.#actorId,
-			{
-				b: {
-					lco: {
-						ai: this.#actorId,
-						ci: connId,
-						ct: connToken,
-						p: this.#parameters,
-						ad: this.#authData,
-					},
-				},
-			},
-			this.#abortController.signal,
-		);
-
-		// The leader will send the connection init to the client or close if invalid
 	}
 
-	onMessage(message: messageToClient.ToClient) {
-		this.#driver.sendMessage(message);
+	async publishMessageToleader(message: NodeMessage, retry: boolean) {
+		if (this.#disposed) {
+			logger().warn(
+				"attempted to call sendMessageToLeader on disposed RelayConn",
+			);
+			return;
+		}
+
+		if (retry) {
+			await publishMessageToLeader(
+				this.#registryConfig,
+				this.#driverConfig,
+				this.#coordinateDriver,
+				this.#globalState,
+				this.#actorId,
+				message,
+				this.#abortController.signal,
+			);
+		} else {
+			await publishMessageToLeaderNoRetry(
+				this.#registryConfig,
+				this.#driverConfig,
+				this.#coordinateDriver,
+				this.#globalState,
+				this.#actorId,
+				message,
+				this.#abortController.signal,
+			);
+		}
 	}
 
 	/**
@@ -136,8 +149,15 @@ export class RelayConn {
 	 *
 	 * @param fromLeader - If this message is coming from the leader. This will prevent sending a close message back to the leader.
 	 */
-	async disconnect(fromLeader: boolean, reason?: string) {
-		if (this.#disposed) return;
+	async disconnect(
+		fromLeader: boolean,
+		reason: string | undefined,
+		disconnectMessageToleader: NodeMessage | undefined,
+	) {
+		if (this.#disposed) {
+			logger().warn("attempted to call disconnect on disposed RelayConn");
+			return;
+		}
 
 		this.#disposed = true;
 
@@ -153,23 +173,17 @@ export class RelayConn {
 
 			// Publish connection close
 			if (!fromLeader && this.#actorPeer?.leaderNodeId) {
-				// Publish connection close
-				await publishMessageToLeader(
-					this.#registryConfig,
-					this.#runConfig,
-					this.#coordinateDriver,
-					this.#globalState,
-					this.#actorId,
-					{
-						b: {
-							lcc: {
-								ai: this.#actorId,
-								ci: this.#connId,
-							},
-						},
-					},
-					undefined,
-				);
+				if (disconnectMessageToleader) {
+					await publishMessageToLeader(
+						this.#registryConfig,
+						this.#driverConfig,
+						this.#coordinateDriver,
+						this.#globalState,
+						this.#actorId,
+						disconnectMessageToleader,
+						undefined,
+					);
+				}
 			}
 
 			// Remove reference to actor (will shut down if no more references)

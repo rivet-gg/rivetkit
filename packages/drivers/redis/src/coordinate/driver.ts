@@ -1,6 +1,7 @@
-import type { ActorKey } from "@/actor/mod";
+import type { ActorKey } from "@rivetkit/core";
+import type { NodeMessage } from "./node/protocol";
 
-export type NodeMessageCallback = (message: string) => void;
+export type NodeMessageCallback = (message: NodeMessage) => void;
 
 export interface GetActorLeaderOutput {
 	/** Undefined if not initialized. */
@@ -32,7 +33,7 @@ export interface CoordinateDriver {
 		selfNodeId: string,
 		callback: NodeMessageCallback,
 	): Promise<void>;
-	publishToNode(targetNodeId: string, message: string): Promise<void>;
+	publishToNode(targetNodeId: string, message: NodeMessage): Promise<void>;
 
 	// MARK: Actor lifecycle
 	getActorLeader(actorId: string): Promise<GetActorLeaderOutput>;

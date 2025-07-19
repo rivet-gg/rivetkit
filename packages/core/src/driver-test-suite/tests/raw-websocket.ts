@@ -10,11 +10,22 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 
 			const ws = await actor.websocket();
 
-			await new Promise<void>((resolve, reject) => {
-				ws.addEventListener("open", () => {
+			// The WebSocket should already be open since openWebSocket waits for openPromise
+			// But we still need to ensure any buffered events are processed
+			await new Promise<void>((resolve) => {
+				// If already open, resolve immediately
+				if (ws.readyState === WebSocket.OPEN) {
 					resolve();
-				});
-				ws.addEventListener("error", reject);
+				} else {
+					// Otherwise wait for open event
+					ws.addEventListener(
+						"open",
+						() => {
+							resolve();
+						},
+						{ once: true },
+					);
+				}
 			});
 
 			// Should receive welcome message
@@ -41,10 +52,13 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 
 			const ws = await actor.websocket();
 
-			await new Promise<void>((resolve, reject) => {
-				ws.addEventListener("open", () => resolve(), { once: true });
-				ws.addEventListener("close", reject);
-			});
+			// Check if WebSocket is already open
+			if (ws.readyState !== WebSocket.OPEN) {
+				await new Promise<void>((resolve, reject) => {
+					ws.addEventListener("open", () => resolve(), { once: true });
+					ws.addEventListener("close", reject);
+				});
+			}
 
 			// Skip welcome message
 			await new Promise<void>((resolve, reject) => {
@@ -78,10 +92,13 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 
 			const ws = await actor.websocket();
 
-			await new Promise<void>((resolve, reject) => {
-				ws.addEventListener("open", () => resolve(), { once: true });
-				ws.addEventListener("close", reject);
-			});
+			// Check if WebSocket is already open
+			if (ws.readyState !== WebSocket.OPEN) {
+				await new Promise<void>((resolve, reject) => {
+					ws.addEventListener("open", () => resolve(), { once: true });
+					ws.addEventListener("close", reject);
+				});
+			}
 
 			// Skip welcome message
 			await new Promise<void>((resolve, reject) => {
@@ -178,10 +195,13 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 
 			const ws = await actor.websocket();
 
-			await new Promise<void>((resolve, reject) => {
-				ws.addEventListener("open", () => resolve(), { once: true });
-				ws.addEventListener("close", reject);
-			});
+			// Check if WebSocket is already open
+			if (ws.readyState !== WebSocket.OPEN) {
+				await new Promise<void>((resolve, reject) => {
+					ws.addEventListener("open", () => resolve(), { once: true });
+					ws.addEventListener("close", reject);
+				});
+			}
 
 			// Helper to receive and convert binary message
 			const receiveBinaryMessage = async (): Promise<Uint8Array> => {
@@ -298,10 +318,13 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 
 			const ws = await actor.websocket();
 
-			await new Promise<void>((resolve, reject) => {
-				ws.addEventListener("open", () => resolve(), { once: true });
-				ws.addEventListener("close", reject);
-			});
+			// Check if WebSocket is already open
+			if (ws.readyState !== WebSocket.OPEN) {
+				await new Promise<void>((resolve, reject) => {
+					ws.addEventListener("open", () => resolve(), { once: true });
+					ws.addEventListener("close", reject);
+				});
+			}
 
 			// Get initial stats
 			const initialStats = await actor.getStats();
@@ -430,20 +453,14 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 			// Test WebSocket with query parameters
 			const ws = await actor.websocket("api/v1/stream?token=abc123&user=test");
 
-			console.log("=== POINT 1");
-
 			await new Promise<void>((resolve, reject) => {
 				ws.addEventListener("open", () => resolve(), { once: true });
 				ws.addEventListener("error", reject);
 			});
-			console.log("=== POINT 2");
-
-			console.log("=== POINT 3");
 
 			const requestInfoPromise = new Promise<any>((resolve, reject) => {
 				ws.addEventListener("message", (event: any) => {
 					const data = JSON.parse(event.data as string);
-					console.log("=== DATA", data);
 					if (data.type === "requestInfo") {
 						resolve(data);
 					}
@@ -455,7 +472,6 @@ export function runRawWebSocketTests(driverTestConfig: DriverTestConfig) {
 			ws.send(JSON.stringify({ type: "getRequestInfo" }));
 
 			const requestInfo = await requestInfoPromise;
-			console.log("=== POINT 4");
 
 			// Verify the path and query parameters were preserved
 			expect(requestInfo.url).toContain("api/v1/stream");

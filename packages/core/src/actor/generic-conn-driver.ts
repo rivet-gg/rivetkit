@@ -45,14 +45,18 @@ export function createGenericWebSocketDriver(
 ): ConnDriver<GenericWebSocketDriverState> {
 	return {
 		sendMessage: (
-			_actor: AnyActorInstance,
+			actor: AnyActorInstance,
 			conn: AnyConn,
 			state: GenericWebSocketDriverState,
 			message: CachedSerializer<messageToClient.ToClient>,
 		) => {
 			const ws = globalState.websockets.get(conn.id);
 			if (!ws) {
-				logger().warn("missing ws for sendMessage", { connId: conn.id });
+				logger().warn("missing ws for sendMessage", {
+					actorId: actor.id,
+					connId: conn.id,
+					totalCount: globalState.websockets.size,
+				});
 				return;
 			}
 
@@ -96,14 +100,18 @@ export function createGenericWebSocketDriver(
 		},
 
 		disconnect: async (
-			_actor: AnyActorInstance,
+			actor: AnyActorInstance,
 			conn: AnyConn,
 			_state: GenericWebSocketDriverState,
 			reason?: string,
 		) => {
 			const ws = globalState.websockets.get(conn.id);
 			if (!ws) {
-				logger().warn("missing ws for disconnect", { connId: conn.id });
+				logger().warn("missing ws for disconnect", {
+					actorId: actor.id,
+					connId: conn.id,
+					totalCount: globalState.websockets.size,
+				});
 				return;
 			}
 

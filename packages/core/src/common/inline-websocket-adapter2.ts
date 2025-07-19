@@ -13,6 +13,7 @@ export function logger() {
 	return getLogger(LOGGER_NAME);
 }
 
+// TODO: Merge with ConnectWebSocketOutput interface
 export interface UpgradeWebSocketArgs {
 	onOpen: (event: any, ws: WSContext) => void;
 	onMessage: (event: any, ws: WSContext) => void;
@@ -20,6 +21,7 @@ export interface UpgradeWebSocketArgs {
 	onError: (error: any, ws: WSContext) => void;
 }
 
+// TODO: Remove `2` suffix
 /**
  * InlineWebSocketAdapter implements a WebSocket-like interface
  * that connects to a UpgradeWebSocketArgs handler

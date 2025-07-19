@@ -34,6 +34,9 @@ import type { ActorDriver } from "./driver";
 import { InternalError } from "./errors";
 import { logger } from "./log";
 
+export const PATH_CONNECT_WEBSOCKET = "/connect/websocket";
+export const PATH_RAW_WEBSOCKET_PREFIX = "/raw/websocket/";
+
 export type {
 	ConnectWebSocketOpts,
 	ConnectWebSocketOutput,
@@ -71,10 +74,10 @@ export function createActorRouter(
 		return c.text("ok");
 	});
 
-	router.get("/connect/websocket", async (c) => {
+	router.get(PATH_CONNECT_WEBSOCKET, async (c) => {
 		const upgradeWebSocket = runConfig.getUpgradeWebSocket?.();
 		if (upgradeWebSocket) {
-			return upgradeWebSocket((c) => {
+			return upgradeWebSocket(async (c) => {
 				const encodingRaw = c.req.header(HEADER_ENCODING);
 				const connParamsRaw = c.req.header(HEADER_CONN_PARAMS);
 				const authDataRaw = c.req.header(HEADER_AUTH_DATA);
@@ -85,7 +88,7 @@ export function createActorRouter(
 					: undefined;
 				const authData = authDataRaw ? JSON.parse(authDataRaw) : undefined;
 
-				return handleWebSocketConnect(
+				return await handleWebSocketConnect(
 					c as HonoContext,
 					runConfig,
 					actorDriver,
@@ -190,7 +193,7 @@ export function createActorRouter(
 	});
 
 	// Raw WebSocket endpoint - /websocket/*
-	router.get("/raw/websocket/*", async (c) => {
+	router.get(`${PATH_RAW_WEBSOCKET_PREFIX}*`, async (c) => {
 		const upgradeWebSocket = runConfig.getUpgradeWebSocket?.();
 		if (upgradeWebSocket) {
 			return upgradeWebSocket(async (c) => {

@@ -13,6 +13,10 @@ import type { Transport } from "@/actor/protocol/message/mod";
 import type { ToClient } from "@/actor/protocol/message/to-client";
 import { type Encoding, serialize } from "@/actor/protocol/serde";
 import {
+	PATH_CONNECT_WEBSOCKET,
+	PATH_RAW_WEBSOCKET_PREFIX,
+} from "@/actor/router";
+import {
 	ALLOWED_PUBLIC_HEADERS,
 	getRequestEncoding,
 	getRequestQuery,
@@ -38,6 +42,7 @@ import {
 	stringifyError,
 } from "@/common/utils";
 import type { UniversalWebSocket } from "@/common/websocket-interface";
+import type { UpgradeWebSocketArgs } from "@/mod";
 import type { RegistryConfig } from "@/registry/config";
 import type { RunConfig } from "@/registry/run-config";
 import { VERSION } from "@/utils";
@@ -558,7 +563,7 @@ export function createManagerRouter(
 					undefined,
 				);
 
-				return createTestWebSocketProxy(clientWsPromise, "standard");
+				return await createTestWebSocketProxy(clientWsPromise, "standard");
 			})(c, noopNext());
 		});
 
@@ -595,6 +600,7 @@ export function createManagerRouter(
 				});
 
 				// Connect to the actor using the inline client driver - this returns a Promise<WebSocket>
+				logger().debug("calling inlineClientDriver.rawWebSocket");
 				const clientWsPromise = inlineClientDriver.rawWebSocket(
 					undefined,
 					actorQuery,
@@ -605,7 +611,8 @@ export function createManagerRouter(
 					undefined,
 				);
 
-				return createTestWebSocketProxy(clientWsPromise, "raw");
+				logger().debug("calling createTestWebSocketProxy");
+				return await createTestWebSocketProxy(clientWsPromise, "raw");
 			})(c, noopNext());
 		});
 
@@ -790,95 +797,154 @@ export async function queryActor(
 /**
  * Creates a WebSocket proxy for test endpoints that forwards messages between server and client WebSockets
  */
-function createTestWebSocketProxy(
+async function createTestWebSocketProxy(
 	clientWsPromise: Promise<WebSocket>,
 	connectionType: string,
-) {
+): Promise<UpgradeWebSocketArgs> {
 	// Store a reference to the resolved WebSocket
 	let clientWs: WebSocket | null = null;
-	// Queue messages that arrive before client WebSocket is ready
-	const messageQueue: any[] = [];
+	try {
+		// Resolve the client WebSocket promise
+		logger().debug("awaiting client websocket promise");
+		clientWs = await clientWsPromise;
+		logger().debug("client websocket promise resolved", {
+			constructor: clientWs?.constructor.name,
+		});
+	} catch (error) {
+		logger().error(
+			`failed to establish client ${connectionType} websocket connection`,
+			{ error },
+		);
+		return {
+			onOpen: (_evt, serverWs) => {
+				serverWs.close(1011, "Failed to establish connection");
+			},
+			onMessage: () => {},
+			onError: () => {},
+			onClose: () => {},
+		};
+	}
 
 	// Create WebSocket proxy handlers to relay messages between client and server
 	return {
-		onOpen: async (_evt: any, serverWs: WSContext) => {
+		onOpen: (_evt: any, serverWs: WSContext) => {
 			logger().debug(`test ${connectionType} websocket connection opened`);
 
-			try {
-				// Resolve the client WebSocket promise
-				clientWs = await clientWsPromise;
+			// Check WebSocket type
+			logger().debug("clientWs info", {
+				constructor: clientWs.constructor.name,
+				hasAddEventListener: typeof clientWs.addEventListener === "function",
+				readyState: clientWs.readyState,
+			});
 
-				// Add message handler to forward messages from client to server
-				clientWs.addEventListener("message", (clientEvt: MessageEvent) => {
-					logger().debug(`test ${connectionType} websocket connection message`);
+			// Add message handler to forward messages from client to server
+			clientWs.addEventListener("message", (clientEvt: MessageEvent) => {
+				logger().debug(
+					`test ${connectionType} websocket connection message from client`,
+					{
+						dataType: typeof clientEvt.data,
+						isBlob: clientEvt.data instanceof Blob,
+						isArrayBuffer: clientEvt.data instanceof ArrayBuffer,
+						dataConstructor: clientEvt.data?.constructor?.name,
+						dataStr:
+							typeof clientEvt.data === "string"
+								? clientEvt.data.substring(0, 100)
+								: undefined,
+					},
+				);
 
-					if (serverWs.readyState === 1) {
-						// OPEN
+				if (serverWs.readyState === 1) {
+					// OPEN
+					// Handle Blob data
+					if (clientEvt.data instanceof Blob) {
+						clientEvt.data
+							.arrayBuffer()
+							.then((buffer) => {
+								logger().debug(
+									"converted client blob to arraybuffer, sending to server",
+									{
+										bufferSize: buffer.byteLength,
+									},
+								);
+								serverWs.send(buffer as any);
+							})
+							.catch((error) => {
+								logger().error("failed to convert blob to arraybuffer", {
+									error,
+								});
+							});
+					} else {
+						logger().debug("sending client data directly to server", {
+							dataType: typeof clientEvt.data,
+							dataLength:
+								typeof clientEvt.data === "string"
+									? clientEvt.data.length
+									: undefined,
+						});
 						serverWs.send(clientEvt.data as any);
 					}
-				});
-
-				// Add close handler to close server when client closes
-				clientWs.addEventListener("close", (clientEvt: CloseEvent) => {
-					logger().debug(`test ${connectionType} websocket connection closed`);
-
-					if (serverWs.readyState !== 3) {
-						// Not CLOSED
-						serverWs.close(clientEvt.code, clientEvt.reason);
-					}
-				});
-
-				// Add error handler
-				clientWs.addEventListener("error", () => {
-					logger().debug(`test ${connectionType} websocket connection error`);
-
-					if (serverWs.readyState !== 3) {
-						// Not CLOSED
-						serverWs.close(1011, "Error in client websocket");
-					}
-				});
-
-				// Send any queued messages
-				if (messageQueue.length > 0) {
-					logger().debug(
-						`sending ${messageQueue.length} queued messages to client`,
-					);
-					for (const data of messageQueue) {
-						if (clientWs.readyState === 1) {
-							clientWs.send(data);
-						}
-					}
-					messageQueue.length = 0;
 				}
-			} catch (error) {
-				logger().error(
-					`failed to establish client ${connectionType} websocket connection`,
-					{ error },
-				);
-				serverWs.close(1011, "Failed to establish connection");
-			}
-		},
-		onMessage: async (evt: { data: any }, serverWs: WSContext) => {
-			// If clientWs hasn't been resolved yet, queue the message
-			if (!clientWs) {
-				logger().debug(
-					"received server message before client WebSocket connected, queuing",
-				);
-				messageQueue.push(evt.data);
-				return;
-			}
+			});
 
+			// Add close handler to close server when client closes
+			clientWs.addEventListener("close", (clientEvt: CloseEvent) => {
+				logger().debug(`test ${connectionType} websocket connection closed`);
+
+				if (serverWs.readyState !== 3) {
+					// Not CLOSED
+					serverWs.close(clientEvt.code, clientEvt.reason);
+				}
+			});
+
+			// Add error handler
+			clientWs.addEventListener("error", () => {
+				logger().debug(`test ${connectionType} websocket connection error`);
+
+				if (serverWs.readyState !== 3) {
+					// Not CLOSED
+					serverWs.close(1011, "Error in client websocket");
+				}
+			});
+		},
+		onMessage: (evt: { data: any }) => {
 			logger().debug("received message from server", {
 				dataType: typeof evt.data,
+				isBlob: evt.data instanceof Blob,
+				isArrayBuffer: evt.data instanceof ArrayBuffer,
+				dataConstructor: evt.data?.constructor?.name,
+				dataStr:
+					typeof evt.data === "string" ? evt.data.substring(0, 100) : undefined,
 			});
 
 			// Forward messages from server websocket to client websocket
 			if (clientWs.readyState === 1) {
 				// OPEN
-				clientWs.send(evt.data);
+				// Handle Blob data
+				if (evt.data instanceof Blob) {
+					evt.data
+						.arrayBuffer()
+						.then((buffer) => {
+							logger().debug("converted blob to arraybuffer, sending", {
+								bufferSize: buffer.byteLength,
+							});
+							clientWs.send(buffer);
+						})
+						.catch((error) => {
+							logger().error("failed to convert blob to arraybuffer", {
+								error,
+							});
+						});
+				} else {
+					logger().debug("sending data directly", {
+						dataType: typeof evt.data,
+						dataLength:
+							typeof evt.data === "string" ? evt.data.length : undefined,
+					});
+					clientWs.send(evt.data);
+				}
 			}
 		},
-		onClose: async (
+		onClose: (
 			event: {
 				wasClean: boolean;
 				code: number;
@@ -906,7 +972,7 @@ function createTestWebSocketProxy(
 				clientWs.close(1000, event.reason);
 			}
 		},
-		onError: async (error: unknown) => {
+		onError: (error: unknown) => {
 			logger().error(`error in server ${connectionType} websocket`, { error });
 
 			// Close the client websocket on error
@@ -1132,7 +1198,7 @@ async function handleWebSocketConnectRequest(
 		// 3. Handle the WebSocket pair and proxy messages between client and actor
 		return await driver.proxyWebSocket(
 			c,
-			"/connect/websocket",
+			PATH_CONNECT_WEBSOCKET,
 			actorId,
 			params.data.encoding,
 			params.data.connParams,
@@ -1148,7 +1214,7 @@ async function handleWebSocketConnectRequest(
 		});
 
 		return await upgradeWebSocket(() => ({
-			onOpen: async (_evt: unknown, ws: WSContext) => {
+			onOpen: (_evt: unknown, ws: WSContext) => {
 				if (encoding) {
 					try {
 						// Serialize and send the connection error
@@ -1510,7 +1576,7 @@ async function handleRawWebSocketRequest(
 
 		// Preserve the original URL's query parameters
 		const originalUrl = new URL(c.req.url);
-		const proxyPath = `/raw/websocket/${subpath}${originalUrl.search}`;
+		const proxyPath = `${PATH_RAW_WEBSOCKET_PREFIX}${subpath}${originalUrl.search}`;
 
 		logger().debug("manager router proxyWebSocket", {
 			originalUrl: c.req.url,
@@ -1538,7 +1604,7 @@ async function handleRawWebSocketRequest(
 		});
 
 		return await upgradeWebSocket(() => ({
-			onOpen: async (_evt: unknown, ws: WSContext) => {
+			onOpen: (_evt: unknown, ws: WSContext) => {
 				// Close with message so we can see the error on the client
 				ws.close(1011, code);
 			},

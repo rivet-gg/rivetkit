@@ -33,17 +33,16 @@
   },
   "dependencies": {
     "@rivetkit/framework-base": "workspace:*",
-    "@tanstack/react-store": "^0.7.1"
+    "@tanstack/react-store": "^0.7.1",
+    "@rivetkit/core": "workspace:^"
   },
   "peerDependencies": {
     "react": "^18 || ^19",
-    "react-dom": "^18 || ^19",
-    "@rivetkit/core": "*"
+    "react-dom": "^18 || ^19"
   },
   "devDependencies": {
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
-    "@rivetkit/core": "workspace:^",
     "tsup": "^8.4.0",
     "typescript": "^5.5.2"
   },

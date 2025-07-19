@@ -1,9 +1,9 @@
+import type { RegistryConfig } from "@rivetkit/core";
 import pRetry, { AbortError } from "p-retry";
-import type { RegistryConfig } from "@/registry/config";
-import type { RunConfig } from "@/registry/run-config";
-import type { GlobalState } from "@/topologies/coordinate/topology";
+import type { CoordinateDriverConfig } from "../config";
 import type { CoordinateDriver } from "../driver";
 import { logger } from "../log";
+import type { GlobalState } from "../types";
 import type { NodeMessage } from "./protocol";
 
 /**
@@ -13,7 +13,7 @@ import type { NodeMessage } from "./protocol";
  */
 export async function publishMessageToLeader(
 	registryConfig: RegistryConfig,
-	runConfig: RunConfig,
+	driverConfig: CoordinateDriverConfig,
 	CoordinateDriver: CoordinateDriver,
 	globalState: GlobalState,
 	actorId: string,
@@ -32,7 +32,7 @@ export async function publishMessageToLeader(
 		() =>
 			publishMessageToLeaderInner(
 				registryConfig,
-				runConfig,
+				driverConfig,
 				CoordinateDriver,
 				globalState,
 				actorId,
@@ -54,9 +54,66 @@ export async function publishMessageToLeader(
 	);
 }
 
+/**
+ * Publishes a message to the leader without retrying on failure.
+ *
+ * This is specifically designed for WebSocket messages where retry doesn't make sense.
+ * On leader change, it throws a LeaderChangedError that can be caught to close the WebSocket.
+ */
+export async function publishMessageToLeaderNoRetry(
+	registryConfig: RegistryConfig,
+	driverConfig: CoordinateDriverConfig,
+	CoordinateDriver: CoordinateDriver,
+	globalState: GlobalState,
+	actorId: string,
+	message: NodeMessage,
+	signal?: AbortSignal,
+): Promise<void> {
+	// Include node
+	message.n = globalState.nodeId;
+
+	// Add message ID for ack
+	const messageId = crypto.randomUUID();
+	message.m = messageId;
+
+	try {
+		await publishMessageToLeaderInner(
+			registryConfig,
+			driverConfig,
+			CoordinateDriver,
+			globalState,
+			actorId,
+			messageId,
+			message,
+			signal,
+		);
+	} catch (error) {
+		// Re-throw with more specific error types
+		if (error instanceof Error) {
+			if (error.message === "Actor not initialized") {
+				throw new LeaderChangedError("Actor not found");
+			} else if (
+				error.message === "actor not leased, may be transferring leadership"
+			) {
+				throw new LeaderChangedError("Leader is changing");
+			} else if (error.message === "Ack timed out") {
+				throw new LeaderChangedError("Leader not responding");
+			}
+		}
+		throw error;
+	}
+}
+
+export class LeaderChangedError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = "LeaderChangedError";
+	}
+}
+
 async function publishMessageToLeaderInner(
 	registryConfig: RegistryConfig,
-	runConfig: RunConfig,
+	driverConfig: CoordinateDriverConfig,
 	CoordinateDriver: CoordinateDriver,
 	globalState: GlobalState,
 	actorId: string,
@@ -92,15 +149,12 @@ async function publishMessageToLeaderInner(
 	// Throw error on timeout
 	const timeoutId = setTimeout(
 		() => ackReject(new Error("Ack timed out")),
-		runConfig.actorPeer.messageAckTimeout,
+		driverConfig.actorPeer.messageAckTimeout,
 	);
 
 	try {
 		// Forward outgoing message
-		await CoordinateDriver.publishToNode(
-			actor.leaderNodeId,
-			JSON.stringify(message),
-		);
+		await CoordinateDriver.publishToNode(actor.leaderNodeId, message);
 
 		logger().debug("waiting for message ack", { messageId });
 

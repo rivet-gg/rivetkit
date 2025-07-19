@@ -1,6 +1,14 @@
+import type { Encoding } from "@rivetkit/core";
 import { z } from "zod";
-import * as messageToClient from "@/actor/protocol/message/to-client";
-import * as messageToServer from "@/actor/protocol/message/to-server";
+
+// Shared schema for Uint8Array validation
+export const Uint8ArraySchema = z
+	.any()
+	.refine((val): val is Uint8Array => val instanceof Uint8Array, {
+		message: "Must be a Uint8Array",
+	});
+// import * as messageToClient from "@/actor/protocol/message/to-client";
+// import * as messageToServer from "@/actor/protocol/message/to-server";
 
 export const AckSchema = z.object({
 	// Message ID
@@ -8,99 +16,6 @@ export const AckSchema = z.object({
 });
 
 export type Ack = z.infer<typeof AckSchema>;
-
-export const ToLeaderConnectionOpenSchema = z.object({
-	// Actor ID
-	ai: z.string(),
-	// Connection ID
-	ci: z.string(),
-	// Connection token
-	ct: z.string(),
-	// Parameters
-	p: z.unknown(),
-	// Auth data
-	ad: z.unknown(),
-});
-
-export type ToLeaderConnectionOpen = z.infer<
-	typeof ToLeaderConnectionOpenSchema
->;
-
-export const ToLeaderConnectionCloseSchema = z.object({
-	// Actor ID
-	ai: z.string(),
-	// Connection ID
-	ci: z.string(),
-});
-
-export type ToLeaderConnectionClose = z.infer<
-	typeof ToLeaderConnectionCloseSchema
->;
-
-export const ToLeaderMessageSchema = z.object({
-	// Actor ID
-	ai: z.string(),
-	// Connection ID
-	ci: z.string(),
-	// Connection token
-	ct: z.string(),
-	// TODO: wsToServer.ToServerSchema
-	m: messageToServer.ToServerSchema,
-});
-
-export type ToLeaderMessage = z.infer<typeof ToLeaderMessageSchema>;
-
-export const ToLeaderActionSchema = z.object({
-	// Request ID (to match with the response)
-	ri: z.string(),
-	// Actor ID
-	ai: z.string(),
-	// Action name
-	an: z.string(),
-	// Action arguments
-	aa: z.array(z.unknown()),
-	// Parameters
-	p: z.unknown(),
-	// Auth data
-	ad: z.unknown(),
-});
-
-export type ToLeaderAction = z.infer<typeof ToLeaderActionSchema>;
-
-export const ToFollowerActionResponseSchema = z.object({
-	// Request ID (to match with the request)
-	ri: z.string(),
-	// Success flag
-	s: z.boolean(),
-	// Output (if successful)
-	o: z.unknown().optional(),
-	// Error message (if failed)
-	e: z.string().optional(),
-});
-
-export type ToFollowerActionResponse = z.infer<
-	typeof ToFollowerActionResponseSchema
->;
-
-export const ToFollowerConnectionCloseSchema = z.object({
-	// Connection ID
-	ci: z.string(),
-	// Reason
-	r: z.string().optional(),
-});
-
-export type ToFollowerConnectionClose = z.infer<
-	typeof ToFollowerConnectionCloseSchema
->;
-
-export const ToFollowerMessageSchema = z.object({
-	// Connection ID
-	ci: z.string(),
-	// Message
-	m: messageToClient.ToClientSchema,
-});
-
-export type ToFollowerMessage = z.infer<typeof ToFollowerMessageSchema>;
 
 // Raw HTTP request forwarding
 export const ToLeaderFetchSchema = z.object({
@@ -114,8 +29,8 @@ export const ToLeaderFetchSchema = z.object({
 	url: z.string(),
 	// Request headers
 	headers: z.record(z.string()),
-	// Request body (base64 encoded if binary)
-	body: z.string().optional(),
+	// Request body (string or binary data)
+	body: z.union([z.string(), Uint8ArraySchema]).optional(),
 	// Auth data
 	ad: z.unknown(),
 });
@@ -129,8 +44,8 @@ export const ToFollowerFetchResponseSchema = z.object({
 	status: z.number(),
 	// Response headers
 	headers: z.record(z.string()),
-	// Response body (base64 encoded if binary)
-	body: z.string().optional(),
+	// Response body (string or binary data)
+	body: z.union([z.string(), Uint8ArraySchema]).optional(),
 	// Error message (if failed)
 	error: z.string().optional(),
 });
@@ -147,10 +62,12 @@ export const ToLeaderWebSocketOpenSchema = z.object({
 	wi: z.string(),
 	// Request URL (path only)
 	url: z.string(),
-	// Request headers
-	headers: z.record(z.string()),
+	// Encoding
+	e: z.custom<Encoding>(),
+	// Conn params
+	cp: z.unknown().optional(),
 	// Auth data
-	ad: z.unknown(),
+	ad: z.unknown().optional(),
 });
 
 export type ToLeaderWebSocketOpen = z.infer<typeof ToLeaderWebSocketOpenSchema>;
@@ -158,8 +75,8 @@ export type ToLeaderWebSocketOpen = z.infer<typeof ToLeaderWebSocketOpenSchema>;
 export const ToLeaderWebSocketMessageSchema = z.object({
 	// WebSocket ID
 	wi: z.string(),
-	// Message data (base64 encoded if binary)
-	data: z.string(),
+	// Message data (string or binary data)
+	data: z.union([z.string(), Uint8ArraySchema]),
 	// Is binary
 	binary: z.boolean(),
 });
@@ -181,11 +98,20 @@ export type ToLeaderWebSocketClose = z.infer<
 	typeof ToLeaderWebSocketCloseSchema
 >;
 
+export const ToFollowerWebSocketOpenSchema = z.object({
+	// WebSocket ID
+	wi: z.string(),
+});
+
+export type ToFollowerWebSocketOpen = z.infer<
+	typeof ToFollowerWebSocketOpenSchema
+>;
+
 export const ToFollowerWebSocketMessageSchema = z.object({
 	// WebSocket ID
 	wi: z.string(),
-	// Message data (base64 encoded if binary)
-	data: z.string(),
+	// Message data (string or binary data)
+	data: z.union([z.string(), Uint8ArraySchema]),
 	// Is binary
 	binary: z.boolean(),
 });
@@ -218,17 +144,6 @@ export const NodeMessageSchema = z.object({
 		// Universal
 		z.object({ a: AckSchema }),
 
-		// Leader
-		z.object({ lco: ToLeaderConnectionOpenSchema }),
-		z.object({ lcc: ToLeaderConnectionCloseSchema }),
-		z.object({ lm: ToLeaderMessageSchema }),
-		z.object({ la: ToLeaderActionSchema }),
-
-		// Follower
-		z.object({ fcc: ToFollowerConnectionCloseSchema }),
-		z.object({ fm: ToFollowerMessageSchema }),
-		z.object({ far: ToFollowerActionResponseSchema }),
-
 		// Raw HTTP
 		z.object({ lf: ToLeaderFetchSchema }),
 		z.object({ ffr: ToFollowerFetchResponseSchema }),
@@ -237,6 +152,7 @@ export const NodeMessageSchema = z.object({
 		z.object({ lwo: ToLeaderWebSocketOpenSchema }),
 		z.object({ lwm: ToLeaderWebSocketMessageSchema }),
 		z.object({ lwc: ToLeaderWebSocketCloseSchema }),
+		z.object({ fwo: ToFollowerWebSocketOpenSchema }),
 		z.object({ fwm: ToFollowerWebSocketMessageSchema }),
 		z.object({ fwc: ToFollowerWebSocketCloseSchema }),
 	]),

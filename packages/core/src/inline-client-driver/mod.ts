@@ -10,6 +10,10 @@ import type {
 import type * as wsToServer from "@/actor/protocol/message/to-server";
 import type { Encoding } from "@/actor/protocol/serde";
 import {
+	PATH_CONNECT_WEBSOCKET,
+	PATH_RAW_WEBSOCKET_PREFIX,
+} from "@/actor/router";
+import {
 	HEADER_CONN_ID,
 	HEADER_CONN_PARAMS,
 	HEADER_CONN_TOKEN,
@@ -123,7 +127,7 @@ export function createInlineClientDriver(
 
 			// Open WebSocket
 			const ws = await managerDriver.openWebSocket(
-				"/connect/websocket",
+				PATH_CONNECT_WEBSOCKET,
 				actorId,
 				encodingKind,
 				params,
@@ -260,7 +264,7 @@ export function createInlineClientDriver(
 
 			// Open WebSocket
 			const ws = await managerDriver.openWebSocket(
-				`/raw/websocket/${normalizedPath}`,
+				`${PATH_RAW_WEBSOCKET_PREFIX}${normalizedPath}`,
 				actorId,
 				encoding,
 				params,

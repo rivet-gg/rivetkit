@@ -8,7 +8,7 @@ export { FileSystemGlobalState } from "./global-state";
 export { FileSystemManagerDriver } from "./manager";
 export { getStoragePath } from "./utils";
 
-export function createFileSystemDriver(
+export function createFileSystemOrMemoryDriver(
 	persist: boolean = true,
 	customPath?: string,
 ): DriverConfig {
@@ -25,4 +25,12 @@ export function createFileSystemDriver(
 				state,
 			),
 	};
+}
+
+export function createFileSystemDriver(opts?: { path?: string }): DriverConfig {
+	return createFileSystemOrMemoryDriver(true, opts?.path);
+}
+
+export function createMemoryDriver(): DriverConfig {
+	return createFileSystemOrMemoryDriver(false);
 }

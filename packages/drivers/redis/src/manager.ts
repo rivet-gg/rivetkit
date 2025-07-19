@@ -4,35 +4,35 @@ import {
 	createClientWithDriver,
 	createInlineClientDriver,
 	type Encoding,
-	handleRawWebSocketHandler,
-	handleWebSocketConnect,
-	InlineWebSocketAdapter2,
-	noopNext,
 	type RegistryConfig,
 	type RunConfig,
 } from "@rivetkit/core";
-import type {
-	ActorDriver,
-	ActorOutput,
-	CreateInput,
-	GetForIdInput,
-	GetOrCreateWithKeyInput,
-	GetWithKeyInput,
-	ManagerDriver,
+import {
+	type ActorDriver,
+	type ActorOutput,
+	type CreateInput,
+	type GetForIdInput,
+	type GetOrCreateWithKeyInput,
+	type GetWithKeyInput,
+	type ManagerDriver,
+	serializeEmptyPersistData,
 } from "@rivetkit/core/driver-helpers";
+import { ActorAlreadyExists } from "@rivetkit/core/errors";
+import * as cbor from "cbor-x";
 import type { Context as HonoContext } from "hono";
 import invariant from "invariant";
-import type { RedisGlobalState } from "./global-state";
+import type Redis from "ioredis";
+import type { RedisDriverConfig } from "./config";
+import type { Node } from "./coordinate/node/mod";
+import { KEYS } from "./keys";
 import { logger } from "./log";
 import { generateActorId } from "./utils";
 
 export class RedisManagerDriver implements ManagerDriver {
 	#registryConfig: RegistryConfig;
-	#runConfig: RunConfig;
-	#state: RedisGlobalState;
-
-	#actorDriver: ActorDriver;
-	#actorRouter: ActorRouter;
+	#driverConfig: RedisDriverConfig;
+	#redis: Redis;
+	#node!: Node;
 
 	// inspector: ManagerInspector = new ManagerInspector(this, {
 	// 	getAllActors: () => this.#state.getAllActors(),
@@ -41,62 +41,184 @@ export class RedisManagerDriver implements ManagerDriver {
 
 	constructor(
 		registryConfig: RegistryConfig,
-		runConfig: RunConfig,
-		state: RedisGlobalState,
+		driverConfig: RedisDriverConfig,
+		redis: Redis,
 	) {
 		this.#registryConfig = registryConfig;
-		this.#runConfig = runConfig;
-		this.#state = state;
+		this.#driverConfig = driverConfig;
+		this.#redis = redis;
+	}
 
-		// Actors run on the same node as the manager, so we create a dummy actor router that we route requests to
-		const inlineClient = createClientWithDriver(createInlineClientDriver(this));
-		this.#actorDriver = runConfig.driver.actor(
-			registryConfig,
-			runConfig,
-			this,
-			inlineClient,
+	get node(): Node {
+		invariant(this.#node, "node should exist");
+		return this.#node;
+	}
+
+	set node(node: Node) {
+		invariant(!this.#node, "node cannot be set twice");
+		this.#node = node;
+	}
+
+	async getForId({ actorId }: GetForIdInput): Promise<ActorOutput | undefined> {
+		// Get metadata from Redis
+		const metadataRaw = await this.#redis.getBuffer(
+			KEYS.ACTOR.metadata(this.#driverConfig.keyPrefix, actorId),
 		);
-		this.#actorRouter = createActorRouter(this.#runConfig, this.#actorDriver);
+
+		// If the actor doesn't exist, return undefined
+		if (!metadataRaw) {
+			return undefined;
+		}
+
+		const metadata = cbor.decode(metadataRaw);
+		const { name, key } = metadata;
+
+		return {
+			actorId,
+			name,
+			key,
+		};
+	}
+
+	async getWithKey({
+		name,
+		key,
+	}: GetWithKeyInput): Promise<ActorOutput | undefined> {
+		// Since keys are 1:1 with actor IDs, we can directly look up by key
+		const lookupKey = KEYS.actorByKey(this.#driverConfig.keyPrefix, name, key);
+		const actorId = await this.#redis.get(lookupKey);
+
+		if (!actorId) {
+			return undefined;
+		}
+
+		return this.getForId({ actorId });
+	}
+
+	async getOrCreateWithKey(
+		input: GetOrCreateWithKeyInput,
+	): Promise<ActorOutput> {
+		const { name, key } = input;
+		const actorId = generateActorId(input.name, input.key);
+
+		// Write actor
+		const pipeline = this.#redis.multi();
+		pipeline.setnx(
+			KEYS.actorByKey(this.#driverConfig.keyPrefix, name, key),
+			actorId,
+		);
+		pipeline.setnx(
+			KEYS.ACTOR.metadata(this.#driverConfig.keyPrefix, actorId),
+			cbor.encode({ name, key }),
+		);
+		pipeline.setnx(
+			KEYS.ACTOR.persistedData(this.#driverConfig.keyPrefix, actorId),
+			Buffer.from(serializeEmptyPersistData(input.input)),
+		);
+
+		const results = await pipeline.exec();
+		if (!results) {
+			throw new Error("redis pipeline execution failed");
+		}
+
+		const keyCreated = results[0]?.[1] as number;
+		const metadataCreated = results[1]?.[1] as number;
+		const persistedDataCreated = results[2]?.[1] as number;
+		invariant(
+			metadataCreated === keyCreated,
+			"metadataCreated inconsistent with keyCreated",
+		);
+		invariant(
+			persistedDataCreated === keyCreated,
+			"persistedDataCreated inconsistent with keyCreated",
+		);
+
+		// If we created the actor, we have the metadata
+		if (keyCreated === 1) {
+			logger().debug("actor created", { actorId });
+		} else {
+			logger().debug("actor already exists", { actorId });
+		}
+
+		return {
+			actorId,
+			name: input.name,
+			key: input.key,
+		};
+	}
+
+	async createActor({ name, key, input }: CreateInput): Promise<ActorOutput> {
+		const actorId = generateActorId(name, key);
+
+		// Write actor
+		const pipeline = this.#redis.multi();
+		pipeline.setnx(
+			KEYS.actorByKey(this.#driverConfig.keyPrefix, name, key),
+			actorId,
+		);
+		pipeline.setnx(
+			KEYS.ACTOR.metadata(this.#driverConfig.keyPrefix, actorId),
+			cbor.encode({ name, key }),
+		);
+		pipeline.setnx(
+			KEYS.ACTOR.persistedData(this.#driverConfig.keyPrefix, actorId),
+			Buffer.from(serializeEmptyPersistData(input)),
+		);
+		const results = await pipeline.exec();
+		if (!results) {
+			throw new Error("redis pipeline execution failed");
+		}
+
+		// Check all SETNX results
+		const keyResult = results[0]?.[1];
+		const metadataResult = results[1]?.[1];
+		const persistedDataResult = results[2]?.[1];
+		invariant(
+			metadataResult === keyResult,
+			"metadataResult inconsistent with keyResult",
+		);
+		invariant(
+			persistedDataResult === keyResult,
+			"metadataResult inconsistent with keyResult",
+		);
+
+		// If the actor key already existed, it's an error
+		if (keyResult === 0) {
+			throw new ActorAlreadyExists(name, key);
+		}
+
+		// Notify inspector of actor creation
+		// this.inspector.onActorsChange([
+		// 	{
+		// 		id: actorId,
+		// 		name,
+		// 		key,
+		// 	},
+		// ]);
+
+		return {
+			actorId,
+			name,
+			key,
+		};
 	}
 
 	async sendRequest(actorId: string, actorRequest: Request): Promise<Response> {
-		return await this.#actorRouter.fetch(actorRequest, {
-			actorId,
-		});
+		return await this.#node.sendRequest(actorId, actorRequest);
 	}
 
 	async openWebSocket(
 		path: string,
 		actorId: string,
 		encoding: Encoding,
-		params: unknown,
+		connParams: unknown,
 	): Promise<WebSocket> {
-		// Handle different WebSocket paths
-		if (path === "/connect/websocket") {
-			// Handle standard /connect/websocket
-			const wsHandler = handleWebSocketConnect(
-				undefined,
-				this.#runConfig,
-				this.#actorDriver,
-				actorId,
-				encoding,
-				params,
-				undefined,
-			);
-			return new InlineWebSocketAdapter2(wsHandler);
-		} else if (path.startsWith("/raw/websocket/")) {
-			// Handle websocket proxy (/raw/websocket/*)
-			const wsHandler = await handleRawWebSocketHandler(
-				undefined,
-				path,
-				this.#actorDriver,
-				actorId,
-				undefined,
-			);
-			return new InlineWebSocketAdapter2(wsHandler);
-		} else {
-			throw new Error(`Unreachable path: ${path}`);
-		}
+		logger().debug("RedisManagerDriver.openWebSocket called", {
+			path,
+			actorId,
+			encoding,
+		});
+		return await this.#node.openWebSocket(path, actorId, encoding, connParams);
 	}
 
 	async proxyRequest(
@@ -104,9 +226,7 @@ export class RedisManagerDriver implements ManagerDriver {
 		actorRequest: Request,
 		actorId: string,
 	): Promise<Response> {
-		return await this.#actorRouter.fetch(actorRequest, {
-			actorId,
-		});
+		return await this.#node.proxyRequest(c, actorRequest, actorId);
 	}
 
 	async proxyWebSocket(
@@ -117,114 +237,13 @@ export class RedisManagerDriver implements ManagerDriver {
 		connParams: unknown,
 		authData: unknown,
 	): Promise<Response> {
-		const upgradeWebSocket = this.#runConfig.getUpgradeWebSocket?.();
-		invariant(upgradeWebSocket, "missing getUpgradeWebSocket");
-
-		// Handle raw WebSocket paths
-		if (path === "/connect/websocket") {
-			// Handle standard /connect/websocket
-			const wsHandler = handleWebSocketConnect(
-				undefined,
-				this.#runConfig,
-				this.#actorDriver,
-				actorId,
-				encoding,
-				connParams,
-				authData,
-			);
-
-			return upgradeWebSocket(() => wsHandler)(c, noopNext());
-		} else if (path.startsWith("/raw/websocket/")) {
-			// Handle websocket proxy (/raw/websocket/*)
-			const wsHandler = await handleRawWebSocketHandler(
-				c,
-				path,
-				this.#actorDriver,
-				actorId,
-				authData,
-			);
-
-			return upgradeWebSocket(() => wsHandler)(c, noopNext());
-		} else {
-			throw new Error(`Unreachable path: ${path}`);
-		}
-	}
-
-	async getForId({ actorId }: GetForIdInput): Promise<ActorOutput | undefined> {
-		// Validate the actor exists
-		const actor = await this.#state.loadActor(actorId);
-		if (!actor.state) {
-			return undefined;
-		}
-
-		try {
-			// Load actor state
-			return {
-				actorId,
-				name: actor.state.name,
-				key: actor.state.key,
-			};
-		} catch (error) {
-			logger().error("failed to read actor state", { actorId, error });
-			return undefined;
-		}
-	}
-
-	async getWithKey({
-		name,
-		key,
-	}: GetWithKeyInput): Promise<ActorOutput | undefined> {
-		// Generate the deterministic actor ID
-		const actorId = generateActorId(name, key);
-
-		// Check if actor exists
-		const actor = await this.#state.loadActor(actorId);
-		if (actor.state) {
-			return {
-				actorId,
-				name,
-				key,
-			};
-		}
-
-		return undefined;
-	}
-
-	async getOrCreateWithKey(
-		input: GetOrCreateWithKeyInput,
-	): Promise<ActorOutput> {
-		// Generate the deterministic actor ID
-		const actorId = generateActorId(input.name, input.key);
-
-		// Use the atomic loadOrCreateActor method
-		const actorEntry = await this.#state.loadOrCreateActor(
+		return await this.#node.proxyWebSocket(
+			c,
+			path,
 			actorId,
-			input.name,
-			input.key,
-			input.input,
+			encoding,
+			connParams,
+			authData,
 		);
-		invariant(actorEntry.state, "must have state");
-
-		return {
-			actorId: actorEntry.state.id,
-			name: actorEntry.state.name,
-			key: actorEntry.state.key,
-		};
-	}
-
-	async createActor({ name, key, input }: CreateInput): Promise<ActorOutput> {
-		// Generate the deterministic actor ID
-		const actorId = generateActorId(name, key);
-
-		await this.#state.createActor(actorId, name, key, input);
-
-		// Notify inspector about actor changes
-		// this.inspector.onActorsChange(this.#state.getAllActors());
-
-		return {
-			actorId,
-			name,
-			key,
-		};
 	}
 }

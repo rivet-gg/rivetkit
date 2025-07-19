@@ -222,10 +222,6 @@ export function runActorConnTests(driverTestConfig: DriverTestConfig) {
 			test("should trigger lifecycle hooks", async (c) => {
 				const { client } = await setupDriverTest(c, driverTestConfig);
 
-				const handle = client.counterWithLifecycle.getOrCreate([
-					"test-lifecycle",
-				]);
-
 				// Create and connect
 				const connHandle = client.counterWithLifecycle.getOrCreate(
 					["test-lifecycle"],
@@ -243,17 +239,22 @@ export function runActorConnTests(driverTestConfig: DriverTestConfig) {
 				await connection.dispose();
 
 				// Reconnect to check if onDisconnect was called
-				const newConnection = handle.connect();
-				//await vi.waitFor(async () => {
-				const finalEvents = await newConnection.getEvents();
-				expect(finalEvents).toEqual([
-					"onStart",
-					"onBeforeConnect",
-					"onConnect",
-					"onDisconnect",
+				const handle = client.counterWithLifecycle.getOrCreate([
+					"test-lifecycle",
 				]);
-				//});
-				await newConnection.dispose();
+				const finalEvents = await handle.getEvents();
+				expect(finalEvents).toBeOneOf([
+					// Still active
+					["onStart", "onBeforeConnect", "onConnect", "onDisconnect"],
+					// Went to sleep and woke back up
+					[
+						"onStart",
+						"onBeforeConnect",
+						"onConnect",
+						"onDisconnect",
+						"onStart",
+					],
+				]);
 			});
 		});
 	});

@@ -26,6 +26,10 @@ import { runRawHttpRequestPropertiesTests } from "./tests/raw-http-request-prope
 import { runRawWebSocketTests } from "./tests/raw-websocket";
 import { runRawWebSocketDirectRegistryTests } from "./tests/raw-websocket-direct-registry";
 
+export interface SkipTests {
+	schedule?: boolean;
+}
+
 export interface DriverTestConfig {
 	/** Deploys an registry and returns the connection endpoint. */
 	start(projectDir: string): Promise<DriverDeployOutput>;
@@ -38,6 +42,8 @@ export interface DriverTestConfig {
 
 	/** Cloudflare Workers has some bugs with cleanup. */
 	HACK_skipCleanupNet?: boolean;
+
+	skip?: SkipTests;
 
 	transport?: Transport;
 

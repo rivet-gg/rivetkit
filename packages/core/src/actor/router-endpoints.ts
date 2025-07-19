@@ -42,9 +42,9 @@ export interface ConnectWebSocketOpts {
 }
 
 export interface ConnectWebSocketOutput {
-	onOpen: (ws: WSContext) => Promise<void>;
-	onMessage: (message: messageToServer.ToServer) => Promise<void>;
-	onClose: () => Promise<void>;
+	onOpen: (ws: WSContext) => void;
+	onMessage: (message: messageToServer.ToServer) => void;
+	onClose: () => void;
 }
 
 export interface ConnectSseOpts {
@@ -56,7 +56,7 @@ export interface ConnectSseOpts {
 }
 
 export interface ConnectSseOutput {
-	onOpen: (stream: SSEStreamingApi) => Promise<void>;
+	onOpen: (stream: SSEStreamingApi) => void;
 	onClose: () => Promise<void>;
 }
 
@@ -97,7 +97,7 @@ export interface WebSocketOpts {
 /**
  * Creates a WebSocket connection handler
  */
-export function handleWebSocketConnect(
+export async function handleWebSocketConnect(
 	c: HonoContext | undefined,
 	runConfig: RunConfig,
 	actorDriver: ActorDriver,
@@ -105,112 +105,143 @@ export function handleWebSocketConnect(
 	encoding: Encoding,
 	parameters: unknown,
 	authData: unknown,
-): UpgradeWebSocketArgs {
+): Promise<UpgradeWebSocketArgs> {
 	const exposeInternalError = c ? getRequestExposeInternalError(c.req) : false;
 
-	// Setup promise for the init message since all other behavior depends on this
+	// Setup promise for the init handlers since all other behavior depends on this
 	const {
-		promise: wsHandlerPromise,
-		resolve: wsHandlerResolve,
-		reject: wsHandlerReject,
-	} = Promise.withResolvers<ConnectWebSocketOutput>();
+		promise: handlersPromise,
+		resolve: handlersResolve,
+		reject: handlersReject,
+	} = Promise.withResolvers<{
+		conn: AnyConn;
+		actor: AnyActorInstance;
+		connId: string;
+	}>();
+
+	// Pre-load the actor to catch errors early
+	let actor: AnyActorInstance;
+	try {
+		actor = await actorDriver.loadActor(actorId);
+	} catch (error) {
+		// Return handler that immediately closes with error
+		return {
+			onOpen: (_evt: any, ws: WSContext) => {
+				const { code } = deconstructError(
+					error,
+					logger(),
+					{
+						wsEvent: "open",
+					},
+					exposeInternalError,
+				);
+				ws.close(1011, code);
+			},
+			onMessage: (_evt: { data: any }, ws: WSContext) => {
+				ws.close(1011, "Actor not loaded");
+			},
+			onClose: (_event: any, _ws: WSContext) => {},
+			onError: (_error: unknown) => {},
+		};
+	}
 
 	return {
-		onOpen: async (_evt: any, ws: WSContext) => {
+		onOpen: (_evt: any, ws: WSContext) => {
 			logger().debug("websocket open");
 
-			try {
-				// Create connection handler
-				const actor = await actorDriver.loadActor(actorId);
+			// Run async operations in background
+			(async () => {
+				try {
+					const connId = generateConnId();
+					const connToken = generateConnToken();
+					const connState = await actor.prepareConn(parameters, c?.req.raw);
 
-				const connId = generateConnId();
-				const connToken = generateConnToken();
-				const connState = await actor.prepareConn(parameters, c?.req.raw);
+					// Save socket
+					const connGlobalState =
+						actorDriver.getGenericConnGlobalState(actorId);
+					connGlobalState.websockets.set(connId, ws);
+					logger().info("registered websocket for conn", {
+						actorId,
+						totalCount: connGlobalState.websockets.size,
+					});
 
-				let conn: AnyConn | undefined;
-				const wsHandler: ConnectWebSocketOutput = {
-					onOpen: async (ws) => {
-						// Save socket
-						actorDriver
-							.getGenericConnGlobalState(actorId)
-							.websockets.set(connId, ws);
+					// Create connection
+					const conn = await actor.createConn(
+						connId,
+						connToken,
+						parameters,
+						connState,
+						CONN_DRIVER_GENERIC_WEBSOCKET,
+						{ encoding } satisfies GenericWebSocketDriverState,
+						authData,
+					);
 
-						// Create connection
-						conn = await actor.createConn(
-							connId,
-							connToken,
-							parameters,
-							connState,
-							CONN_DRIVER_GENERIC_WEBSOCKET,
-							{ encoding } satisfies GenericWebSocketDriverState,
-							authData,
-						);
-					},
-					onMessage: async (message) => {
-						logger().debug("received message");
+					// Unblock other handlers
+					handlersResolve({ conn, actor, connId });
+				} catch (error) {
+					handlersReject(error);
 
-						if (!conn) {
-							logger().warn("`conn` does not exist");
-							return;
-						}
-
-						await actor.processMessage(message, conn);
-					},
-					onClose: async () => {
-						actorDriver
-							.getGenericConnGlobalState(actorId)
-							.websockets.delete(connId);
-
-						if (conn) {
-							actor.__removeConn(conn);
-						}
-					},
-				};
-
-				// Notify socket open
-				// TODO: Add timeout to this
-				await wsHandler.onOpen(ws);
-
-				// Unblock other uses of WS handler
-				wsHandlerResolve(wsHandler);
-			} catch (error) {
-				wsHandlerReject(error);
-
-				const { code } = deconstructError(
-					error,
-					logger(),
-					{
-						wsEvent: "message",
-					},
-					exposeInternalError,
-				);
-				ws.close(1011, code);
-			}
+					const { code } = deconstructError(
+						error,
+						logger(),
+						{
+							wsEvent: "open",
+						},
+						exposeInternalError,
+					);
+					ws.close(1011, code);
+				}
+			})();
 		},
-		onMessage: async (evt: { data: any }, ws: WSContext) => {
-			try {
-				const wsHandler = await wsHandlerPromise;
+		onMessage: (evt: { data: any }, ws: WSContext) => {
+			// Handle message asynchronously
+			handlersPromise
+				.then(({ conn, actor }) => {
+					logger().debug("received message");
 
-				const value = evt.data.valueOf() as InputData;
-				const message = await parseMessage(value, {
-					encoding: encoding,
-					maxIncomingMessageSize: runConfig.maxIncomingMessageSize,
+					const value = evt.data.valueOf() as InputData;
+					parseMessage(value, {
+						encoding: encoding,
+						maxIncomingMessageSize: runConfig.maxIncomingMessageSize,
+					})
+						.then((message) => {
+							actor.processMessage(message, conn).catch((error) => {
+								const { code } = deconstructError(
+									error,
+									logger(),
+									{
+										wsEvent: "message",
+									},
+									exposeInternalError,
+								);
+								ws.close(1011, code);
+							});
+						})
+						.catch((error) => {
+							const { code } = deconstructError(
+								error,
+								logger(),
+								{
+									wsEvent: "message",
+								},
+								exposeInternalError,
+							);
+							ws.close(1011, code);
+						});
+				})
+				.catch((error) => {
+					const { code } = deconstructError(
+						error,
+						logger(),
+						{
+							wsEvent: "message",
+						},
+						exposeInternalError,
+					);
+					ws.close(1011, code);
 				});
-
-				await wsHandler.onMessage(message);
-			} catch (error) {
-				const { code } = deconstructError(
-					error,
-					logger(),
-					{
-						wsEvent: "message",
-					},
-					exposeInternalError,
-				);
-				ws.close(1011, code);
-			}
 		},
-		onClose: async (
+		onClose: (
 			event: {
 				wasClean: boolean;
 				code: number;
@@ -236,19 +267,35 @@ export function handleWebSocketConnect(
 			// https://github.com/cloudflare/workerd/issues/2569
 			ws.close(1000, "hack_force_close");
 
-			try {
-				const wsHandler = await wsHandlerPromise;
-				await wsHandler.onClose();
-			} catch (error) {
-				deconstructError(
-					error,
-					logger(),
-					{ wsEvent: "close" },
-					exposeInternalError,
-				);
-			}
+			// Handle cleanup asynchronously
+			handlersPromise
+				.then(({ conn, actor, connId }) => {
+					const connGlobalState =
+						actorDriver.getGenericConnGlobalState(actorId);
+					const didDelete = connGlobalState.websockets.delete(connId);
+					if (didDelete) {
+						logger().info("removing websocket for conn", {
+							totalCount: connGlobalState.websockets.size,
+						});
+					} else {
+						logger().warn("websocket does not exist for conn", {
+							actorId,
+							totalCount: connGlobalState.websockets.size,
+						});
+					}
+
+					actor.__removeConn(conn);
+				})
+				.catch((error) => {
+					deconstructError(
+						error,
+						logger(),
+						{ wsEvent: "close" },
+						exposeInternalError,
+					);
+				});
 		},
-		onError: async (_error: unknown) => {
+		onError: (_error: unknown) => {
 			try {
 				// Actors don't need to know about this, since it's abstracted away
 				logger().warn("websocket error");
@@ -277,16 +324,24 @@ export async function handleSseConnect(
 	const encoding = getRequestEncoding(c.req);
 	const parameters = getRequestConnParams(c.req);
 
-	const actor = await actorDriver.loadActor(actorId);
+	// Return the main handler with all async work inside
+	return streamSSE(c, async (stream) => {
+		let actor: AnyActorInstance | undefined;
+		let connId: string | undefined;
+		let connToken: string | undefined;
+		let connState: unknown;
+		let conn: AnyConn | undefined;
 
-	const connId = generateConnId();
-	const connToken = generateConnToken();
-	const connState = await actor.prepareConn(parameters, c.req.raw);
+		try {
+			// Do all async work inside the handler
+			actor = await actorDriver.loadActor(actorId);
+			connId = generateConnId();
+			connToken = generateConnToken();
+			connState = await actor.prepareConn(parameters, c.req.raw);
 
-	let conn: AnyConn | undefined;
-	const sseHandler = {
-		onOpen: async (stream: SSEStreamingApi) => {
-			// Save socket
+			logger().debug("sse open");
+
+			// Save stream
 			actorDriver
 				.getGenericConnGlobalState(actorId)
 				.sseStreams.set(connId, stream);
@@ -301,20 +356,6 @@ export async function handleSseConnect(
 				{ encoding } satisfies GenericSseDriverState,
 				authData,
 			);
-		},
-		onClose: async () => {
-			actorDriver.getGenericConnGlobalState(actorId).sseStreams.delete(connId);
-
-			if (conn) {
-				actor.__removeConn(conn);
-			}
-		},
-	};
-
-	return streamSSE(c, async (stream) => {
-		try {
-			await sseHandler.onOpen(stream);
-			logger().debug("sse open");
 
 			// HACK: This is required so the abort handler below works
 			//
@@ -326,7 +367,17 @@ export async function handleSseConnect(
 			c.req.raw.signal.addEventListener("abort", async () => {
 				try {
 					logger().debug("sse shutting down");
-					await sseHandler.onClose();
+
+					// Cleanup
+					if (connId) {
+						actorDriver
+							.getGenericConnGlobalState(actorId)
+							.sseStreams.delete(connId);
+					}
+					if (conn && actor) {
+						actor.__removeConn(conn);
+					}
+
 					abortResolver.resolve(undefined);
 				} catch (error) {
 					logger().error("error closing sse connection", { error });
@@ -341,8 +392,20 @@ export async function handleSseConnect(
 			// Wait until connection aborted
 			await abortResolver.promise;
 		} catch (error) {
-			logger().error("error opening sse connection", { error });
-			throw error;
+			logger().error("error in sse connection", { error });
+
+			// Cleanup on error
+			if (connId !== undefined) {
+				actorDriver
+					.getGenericConnGlobalState(actorId)
+					.sseStreams.delete(connId);
+			}
+			if (conn && actor !== undefined) {
+				actor.__removeConn(conn);
+			}
+
+			// Close the stream on error
+			stream.close();
 		}
 	});
 }
@@ -512,7 +575,7 @@ export async function handleRawWebSocketHandler(
 	actorDriver: ActorDriver,
 	actorId: string,
 	authData: unknown,
-) {
+): Promise<UpgradeWebSocketArgs> {
 	const actor = await actorDriver.loadActor(actorId);
 
 	// Return WebSocket event handlers
@@ -524,7 +587,7 @@ export async function handleRawWebSocketHandler(
 			// Store adapter reference on the WebSocket for event handlers
 			(ws as any).__adapter = adapter;
 
-			// Extract the path after /raw/websocket and preserve query parameters
+			// Extract the path after prefix and preserve query parameters
 			// Use URL API for cleaner parsing
 			const url = new URL(path, "http://actor");
 			const pathname = url.pathname.replace(/^\/raw\/websocket/, "") || "/";
@@ -550,21 +613,21 @@ export async function handleRawWebSocketHandler(
 				auth: authData,
 			});
 		},
-		onMessage: async (event: any, ws: any) => {
+		onMessage: (event: any, ws: any) => {
 			// Find the adapter for this WebSocket
 			const adapter = (ws as any).__adapter;
 			if (adapter) {
 				adapter._handleMessage(event);
 			}
 		},
-		onClose: async (evt: any, ws: any) => {
+		onClose: (evt: any, ws: any) => {
 			// Find the adapter for this WebSocket
 			const adapter = (ws as any).__adapter;
 			if (adapter) {
 				adapter._handleClose(evt?.code || 1006, evt?.reason || "");
 			}
 		},
-		onError: async (error: any, ws: any) => {
+		onError: (error: any, ws: any) => {
 			// Find the adapter for this WebSocket
 			const adapter = (ws as any).__adapter;
 			if (adapter) {

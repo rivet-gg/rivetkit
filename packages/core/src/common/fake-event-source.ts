@@ -171,37 +171,11 @@ export class FakeEventSource implements UniversalEventSource {
 			this.#listeners[type] = new Set();
 		}
 		this.#listeners[type].add(listener);
-
-		// Map to onX properties as well
-		if (type === "open" && typeof listener === "function" && !this.onopen) {
-			this.onopen = listener as any;
-		} else if (
-			type === "message" &&
-			typeof listener === "function" &&
-			!this.onmessage
-		) {
-			this.onmessage = listener as any;
-		} else if (
-			type === "error" &&
-			typeof listener === "function" &&
-			!this.onerror
-		) {
-			this.onerror = listener as any;
-		}
 	}
 
 	removeEventListener(type: string, listener: EventListener): void {
 		if (this.#listeners[type]) {
 			this.#listeners[type].delete(listener);
-		}
-
-		// Unset onX property if it matches
-		if (type === "open" && this.onopen === listener) {
-			this.onopen = null;
-		} else if (type === "message" && this.onmessage === listener) {
-			this.onmessage = null;
-		} else if (type === "error" && this.onerror === listener) {
-			this.onerror = null;
 		}
 	}
 
@@ -212,36 +186,38 @@ export class FakeEventSource implements UniversalEventSource {
 
 	// Internal method to dispatch events
 	#dispatchEvent(type: string, detail?: Record<string, any>): void {
-		// Create appropriate event
-		let event: Event;
-		if (type === "message" || detail) {
-			event = new MessageEvent(type, detail);
+		// Create appropriate event object
+		let event: any;
+		if (type === "message") {
+			event = {
+				type: "message",
+				target: this,
+				data: detail?.data || "",
+				origin: "",
+				lastEventId: "",
+			};
+		} else if (type === "close") {
+			event = {
+				type: "close",
+				target: this,
+				code: detail?.code || 1000,
+				reason: detail?.reason || "",
+				wasClean: detail?.wasClean ?? true,
+			};
+		} else if (type === "error") {
+			event = {
+				type: "error",
+				target: this,
+				error: detail?.error,
+			};
 		} else {
-			event = new Event(type);
+			event = {
+				type: type,
+				target: this,
+			};
 		}
 
-		// Call specific handler
-		if (type === "open" && this.onopen) {
-			try {
-				this.onopen.call(this as any, event);
-			} catch (err) {
-				logger().error("error in onopen handler", { error: err });
-			}
-		} else if (type === "message" && this.onmessage) {
-			try {
-				this.onmessage.call(this as any, event as MessageEvent);
-			} catch (err) {
-				logger().error("error in onmessage handler", { error: err });
-			}
-		} else if (type === "error" && this.onerror) {
-			try {
-				this.onerror.call(this as any, event);
-			} catch (err) {
-				logger().error("error in onerror handler", { error: err });
-			}
-		}
-
-		// Call all listeners
+		// Call all listeners first
 		if (this.#listeners[type]) {
 			for (const listener of this.#listeners[type]) {
 				try {
@@ -250,6 +226,41 @@ export class FakeEventSource implements UniversalEventSource {
 					logger().error(`error in ${type} event listener`, { error: err });
 				}
 			}
+		}
+
+		// Then call specific handler
+		switch (type) {
+			case "open":
+				if (this.onopen) {
+					try {
+						this.onopen.call(this as any, event);
+					} catch (err) {
+						logger().error("error in onopen handler", { error: err });
+					}
+				}
+				break;
+			case "message":
+				if (this.onmessage) {
+					try {
+						this.onmessage.call(this as any, event);
+					} catch (err) {
+						logger().error("error in onmessage handler", { error: err });
+					}
+				}
+				break;
+			case "error":
+				if (this.onerror) {
+					try {
+						this.onerror.call(this as any, event);
+					} catch (err) {
+						logger().error("error in onerror handler", { error: err });
+					}
+				}
+				break;
+			case "close":
+				// Note: EventSource doesn't have onclose in the standard API
+				// but we handle it here for consistency
+				break;
 		}
 	}
 }

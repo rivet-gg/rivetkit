@@ -14,20 +14,6 @@ const LOG_LEVEL_COLORS: Record<number, string> = {
 
 const RESET_COLOR = "\x1b[0m";
 
-/** Builds the full entries for a log. */
-export function buildLogEntries(
-	level: LogLevel,
-	message: string,
-	...data: LogEntry[]
-): LogEntry[] {
-	return [
-		["ts", formatTimestamp(new Date())],
-		["level", level],
-		["msg", message],
-		...data,
-	];
-}
-
 /**
  * Serializes logfmt line using orderer parameters.
  *
@@ -59,6 +45,8 @@ export function stringify(...data: LogEntry[]) {
 		} else {
 			valueString = valueRaw.toString();
 		}
+		if (valueString.length > 512)
+			valueString = `${valueString.slice(0, 512)}...`;
 
 		const needsQuoting =
 			valueString.indexOf(" ") > -1 || valueString.indexOf("=") > -1;

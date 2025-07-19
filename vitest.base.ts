@@ -12,6 +12,8 @@ export default {
 		env: {
 			// Enable logging
 			_LOG_LEVEL: "DEBUG",
+			_LOG_TARGET: "1",
+			_LOG_TIMESTAMP: "1",
 			_RIVETKIT_ERROR_STACK: "1",
 		},
 	},

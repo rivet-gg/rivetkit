@@ -5,7 +5,12 @@ import {
 	type LogLevel,
 	LogLevels,
 } from "./log-levels";
-import { castToLogValue, type LogEntry, stringify } from "./logfmt";
+import {
+	castToLogValue,
+	formatTimestamp,
+	type LogEntry,
+	stringify,
+} from "./logfmt";
 
 interface LogRecord {
 	args: unknown[];
@@ -104,10 +109,13 @@ function formatter(log: LogRecord): string {
 		}
 	}
 
+	const logTs = getEnvUniversal("_LOG_TIMESTAMP") === "1";
+	const logTarget = getEnvUniversal("_LOG_TARGET") === "1";
+
 	return stringify(
-		//["ts", formatTimestamp(log.datetime)],
+		...(logTs ? [["ts", formatTimestamp(new Date())] as LogEntry] : []),
 		["level", LevelNameMap[log.level]],
-		// ["target", log.loggerName],
+		...(logTarget ? [["target", log.loggerName] as LogEntry] : []),
 		["msg", log.msg],
 		...args,
 	);
