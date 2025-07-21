@@ -155,15 +155,15 @@ export class InlineWebSocketAdapter2 implements UniversalWebSocket {
 	 */
 	async #initialize(): Promise<void> {
 		try {
-			logger().info("fake websocket initializing");
+			logger().debug("fake websocket initializing");
 
 			// Call the handler's onOpen method
-			logger().info("calling handler.onOpen with WSContext");
+			logger().debug("calling handler.onOpen with WSContext");
 			this.#handler.onOpen(undefined, this.#wsContext);
 
 			// Update the ready state and fire events
 			this.#readyState = this.OPEN;
-			logger().info("fake websocket initialized and now OPEN");
+			logger().debug("fake websocket initialized and now OPEN");
 
 			// Fire the open event
 			this.#fireOpen();
@@ -175,7 +175,7 @@ export class InlineWebSocketAdapter2 implements UniversalWebSocket {
 					return;
 				}
 
-				logger().info(
+				logger().debug(
 					`now processing ${this.#queuedMessages.length} queued messages`,
 				);
 

@@ -3,17 +3,7 @@ import { cors } from "hono/cors";
 import { registry } from "./registry";
 
 // Start RivetKit
-const { client, serve } = registry.createServer({
-	cors: {
-		// IMPORTANT: Configure origins in production
-		origin: "*",
-		// allowHeaders: ["*"],
-		// allowMethods: ["*"],
-		// exposeHeaders: ["*"],
-		credentials: true,
-		maxAge: 86400,
-	},
-});
+const { client, serve } = registry.createServer();
 
 // Setup router
 const app = new Hono();
@@ -22,11 +12,6 @@ app.use(
 	cors({
 		// IMPORTANT: Configure origins in production
 		origin: "*",
-		// allowHeaders: ["*"],
-		// allowMethods: ["*"],
-		// exposeHeaders: ["*"],
-		credentials: true,
-		maxAge: 86400,
 	}),
 );
 

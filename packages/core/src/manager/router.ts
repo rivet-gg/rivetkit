@@ -508,7 +508,7 @@ export function createManagerRouter(
 			const { encoding, transport, method, args }: TestInlineDriverCallRequest =
 				cbor.decode(new Uint8Array(buffer));
 
-			logger().info("received inline request", {
+			logger().debug("received inline request", {
 				encoding,
 				transport,
 				method,

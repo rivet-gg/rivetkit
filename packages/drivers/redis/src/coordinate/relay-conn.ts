@@ -92,7 +92,7 @@ export class RelayConn {
 		this.#connId = connId;
 		this.#connToken = connToken;
 
-		logger().info("starting relay connection", {
+		logger().debug("starting relay connection", {
 			actorId: this.#actorId,
 			connId: this.#connId,
 		});

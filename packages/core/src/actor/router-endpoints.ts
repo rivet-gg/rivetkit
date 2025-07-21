@@ -160,7 +160,7 @@ export async function handleWebSocketConnect(
 					const connGlobalState =
 						actorDriver.getGenericConnGlobalState(actorId);
 					connGlobalState.websockets.set(connId, ws);
-					logger().info("registered websocket for conn", {
+					logger().debug("registered websocket for conn", {
 						actorId,
 						totalCount: connGlobalState.websockets.size,
 					});

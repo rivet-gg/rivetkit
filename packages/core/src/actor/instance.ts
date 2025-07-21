@@ -830,7 +830,7 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 		fromPersist: boolean,
 	) {
 		if (connection.subscriptions.has(eventName)) {
-			logger().info("connection already has subscription", { eventName });
+			logger().debug("connection already has subscription", { eventName });
 			return;
 		}
 

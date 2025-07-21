@@ -69,7 +69,7 @@ export function createTestInlineClientDriver(
 		): Promise<WebSocket> => {
 			const WebSocket = await importWebSocket();
 
-			logger().info("creating websocket connection via test inline driver", {
+			logger().debug("creating websocket connection via test inline driver", {
 				actorQuery,
 				encodingKind,
 			});
@@ -105,7 +105,7 @@ export function createTestInlineClientDriver(
 			encodingKind: Encoding,
 			params: unknown,
 		): Promise<UniversalEventSource> => {
-			logger().info("creating sse connection via test inline driver", {
+			logger().debug("creating sse connection via test inline driver", {
 				actorQuery,
 				encodingKind,
 				params,
@@ -170,7 +170,7 @@ export function createTestInlineClientDriver(
 			connectionToken: string,
 			message: wsToServer.ToServer,
 		): Promise<Response> => {
-			logger().info("sending http message via test inline driver", {
+			logger().debug("sending http message via test inline driver", {
 				actorId,
 				encoding,
 				connectionId,
@@ -223,7 +223,7 @@ export function createTestInlineClientDriver(
 			// Normalize path to match other drivers
 			const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
 
-			logger().info("sending raw http request via test inline driver", {
+			logger().debug("sending raw http request via test inline driver", {
 				actorQuery,
 				encoding,
 				path: normalizedPath,
@@ -300,7 +300,7 @@ export function createTestInlineClientDriver(
 			// Normalize path to match other drivers
 			const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
 
-			logger().info(
+			logger().debug(
 				"creating raw websocket connection via test inline driver",
 				{
 					actorQuery,
@@ -357,7 +357,7 @@ async function makeInlineRequest<T>(
 	method: string,
 	args: unknown[],
 ): Promise<T> {
-	logger().info("sending inline request", {
+	logger().debug("sending inline request", {
 		encoding,
 		transport,
 		method,

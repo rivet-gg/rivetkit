@@ -1,35 +1,30 @@
 import { type ActorContextOf, actor, setup } from "@rivetkit/actor";
 import { Hono } from "hono";
-import { cors } from "hono/cors";
 
 export const counter = actor({
 	state: {
 		count: 0,
 	},
 	onAuth: () => {
+		// Skip auth, make onFetch public
 		return {};
 	},
 	createVars: () => {
+		// Setup router
 		return { router: createCounterRouter() };
 	},
 	onFetch: (c, request) => {
-		console.log("url", request.url);
 		return c.vars.router.fetch(request, { actor: c });
 	},
-	actions: {},
+	actions: {
+		// ...actions...
+	},
 });
 
-interface RouterEnv {
-	actor: ActorContextOf<typeof counter>;
-}
-
 function createCounterRouter(): Hono<any> {
-	const app = new Hono<{ Bindings: RouterEnv }>();
-
-	app.use("*", (c, next) => {
-		console.log("path", c.req.path);
-		return next();
-	});
+	const app = new Hono<{
+		Bindings: { actor: ActorContextOf<typeof counter> };
+	}>();
 
 	app.get("/count", (c) => {
 		const { actor } = c.env;
