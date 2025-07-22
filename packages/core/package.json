@@ -151,7 +151,9 @@
     "invariant": "^2.2.4",
     "on-change": "^5.0.1",
     "p-retry": "^6.2.1",
-    "zod": "^3.25.76"
+    "zod": "^3.25.76",
+    "@hono/zod-openapi": "^0.19.10",
+    "hono": "^4.7.0"
   },
   "devDependencies": {
     "@hono/node-server": "^1.14.0",
@@ -167,9 +169,7 @@
     "tsx": "^4.19.4",
     "typescript": "^5.7.3",
     "vitest": "^3.1.1",
-    "ws": "^8.18.1",
-    "@hono/zod-openapi": "^0.19.10",
-    "hono": "^4.7.0"
+    "ws": "^8.18.1"
   },
   "peerDependencies": {
     "@hono/node-server": "^1.14.0",
@@ -184,13 +184,7 @@
     "@hono/node-ws": {
       "optional": true
     },
-    "@hono/zod-openapi": {
-      "optional": true
-    },
     "eventsource": {
-      "optional": true
-    },
-    "hono": {
       "optional": true
     },
     "ws": {
