@@ -1,4 +1,3 @@
-/// <reference types="node" />
 import { createClient } from "@rivetkit/actor/client";
 import type { Registry } from "../src/registry";
 
