@@ -57,6 +57,7 @@ export function createRedisDriver(
 
 	// TODO: Do not create duplicate nodes
 	return {
+		name: "redis",
 		manager: (registryConfig, runConfig) => {
 			const manager = new RedisManagerDriver(
 				registryConfig,

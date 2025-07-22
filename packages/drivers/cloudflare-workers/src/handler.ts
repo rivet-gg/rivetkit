@@ -58,6 +58,7 @@ export function createServer<R extends Registry<any>>(
 	// Create config
 	const runConfig = {
 		driver: {
+			name: "cloudflare-workers",
 			manager: () => new CloudflareActorsManagerDriver(),
 			// HACK: We can't build the actor driver until we're inside the Durable Object
 			actor: undefined as any,
