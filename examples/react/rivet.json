@@ -1,6 +1,0 @@
-{
-  "rivetkit": {
-    "registry": "./src/backend/registry.ts",
-    "server": "./src/backend/server.ts"
-  }
-}
