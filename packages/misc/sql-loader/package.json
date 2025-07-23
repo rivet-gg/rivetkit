@@ -23,6 +23,7 @@
     "check-types": "tsc --noEmit"
   },
   "devDependencies": {
+    "@types/node": "^22.10.5",
     "tsup": "^8.5.0"
   }
 }
