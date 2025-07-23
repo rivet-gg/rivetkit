@@ -120,7 +120,10 @@ export class FileSystemGlobalState {
 	async *getActorsIterator(params: {
 		cursor?: string;
 	}): AsyncGenerator<ActorState> {
-		const actorIds = fsSync.readdirSync(this.#actorsDir).sort();
+		const actorIds = fsSync
+			.readdirSync(this.#actorsDir)
+			.filter((id) => !id.includes(".tmp"))
+			.sort();
 		const startIndex = params.cursor ? actorIds.indexOf(params.cursor) + 1 : 0;
 
 		for (let i = startIndex; i < actorIds.length; i++) {
@@ -221,6 +224,9 @@ export class FileSystemGlobalState {
 		try {
 			const stateData = await fs.readFile(stateFilePath);
 			const state = cbor.decode(stateData) as ActorState;
+
+			const stats = await fs.stat(stateFilePath);
+			state.createdAt = stats.birthtime;
 
 			// Cache the loaded state in handler
 			entry.state = state;

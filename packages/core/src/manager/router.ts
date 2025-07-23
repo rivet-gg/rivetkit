@@ -148,9 +148,7 @@ export function createManagerRouter(
 
 	router.use("*", loggerMiddleware(logger()));
 
-	if (runConfig.cors) {
-		const corsConfig = runConfig.cors;
-
+	if (runConfig.cors || runConfig.studio?.cors) {
 		router.use("*", async (c, next) => {
 			// Don't apply to WebSocket routes
 			// HACK: This could be insecure if we had a varargs path. We have to check the path suffix for WS since we don't know the path that this router was mounted.
@@ -168,9 +166,56 @@ export function createManagerRouter(
 			}
 
 			return cors({
-				...corsConfig,
+				...(runConfig.cors ?? {}),
+				...(runConfig.studio?.cors ?? {}),
+				origin: (origin, c) => {
+					const studioOrigin = runConfig.studio?.cors?.origin;
+
+					if (studioOrigin !== undefined) {
+						let allowed: string | undefined | null = null;
+						if (typeof studioOrigin === "function") {
+							allowed = studioOrigin(origin, c);
+						} else if (Array.isArray(studioOrigin)) {
+							allowed = studioOrigin.includes(origin) ? origin : undefined;
+						} else {
+							allowed = studioOrigin;
+						}
+
+						if (allowed) {
+							return allowed;
+						}
+					}
+
+					if (runConfig.cors?.origin) {
+						if (typeof runConfig.cors.origin === "function") {
+							return runConfig.cors.origin(origin, c);
+						}
+						return runConfig.cors.origin as string;
+					}
+
+					return null;
+				},
+				allowMethods: (origin, c) => {
+					const studioMethods = runConfig.studio?.cors?.allowMethods;
+					if (studioMethods) {
+						if (typeof studioMethods === "function") {
+							return studioMethods(origin, c);
+						}
+						return studioMethods;
+					}
+
+					if (runConfig.cors?.allowMethods) {
+						if (typeof runConfig.cors.allowMethods === "function") {
+							return runConfig.cors.allowMethods(origin, c);
+						}
+						return runConfig.cors.allowMethods;
+					}
+
+					return [];
+				},
 				allowHeaders: [
-					...(corsConfig?.allowHeaders ?? []),
+					...(runConfig.cors?.allowHeaders ?? []),
+					...(runConfig.studio?.cors?.allowHeaders ?? []),
 					...ALLOWED_PUBLIC_HEADERS,
 					"Content-Type",
 					"User-Agent",

@@ -191,7 +191,7 @@ export class ActorInstance<
 			},
 			setState: async (state: unknown) => {
 				this.#validateStateEnabled();
-				this.#persist.s = state as S;
+				this.#persistRaw.s = state as S;
 				await this.saveState({ immediate: true });
 			},
 		};

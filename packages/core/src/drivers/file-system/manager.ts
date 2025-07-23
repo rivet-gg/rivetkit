@@ -81,12 +81,29 @@ export class FileSystemManagerDriver implements ManagerDriver {
 						const actors: Actor[] = [];
 						for await (const actor of itr) {
 							actors.push(transformActor(actor));
+							if (limit && actors.length >= limit) {
+								break;
+							}
 						}
 						return actors;
 					},
 					getActorById: async (id) => {
 						try {
 							const result = await this.#state.loadActorStateOrError(id);
+							return transformActor(result);
+						} catch {
+							return null;
+						}
+					},
+					getBuilds: async () => {
+						return Object.keys(this.#registryConfig.use).map((name) => ({
+							name,
+						}));
+					},
+					createActor: async (input) => {
+						const { actorId } = await this.createActor(input);
+						try {
+							const result = await this.#state.loadActorStateOrError(actorId);
 							return transformActor(result);
 						} catch {
 							return null;

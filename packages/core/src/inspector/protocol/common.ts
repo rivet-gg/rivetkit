@@ -1,4 +1,5 @@
 import z from "zod/v4";
+import { ActorKeySchema, MAX_ACTOR_KEY_SIZE } from "@/manager/protocol/query";
 
 export const ActorId = z.string().brand("ActorId");
 export type ActorId = z.infer<typeof ActorId>;
@@ -174,3 +175,22 @@ export type ForeignKey = z.infer<typeof ForeignKeySchema>;
 
 export const ForeignKeysSchema = z.array(ForeignKeySchema);
 export type ForeignKeys = z.infer<typeof ForeignKeysSchema>;
+
+// MARK: Builds
+
+export const BuildSchema = z.object({
+	name: z.string(),
+	createdAt: z.string().optional(),
+	tags: z.record(z.string(), z.string()).optional(),
+});
+export type Build = z.infer<typeof BuildSchema>;
+export const BuildsSchema = z.array(BuildSchema);
+export type Builds = z.infer<typeof BuildsSchema>;
+
+export const CreateActorSchema = z.object({
+	name: z.string(),
+	// FIXME: Replace with ActorKeySchema when ready
+	key: z.array(z.string().max(MAX_ACTOR_KEY_SIZE)),
+	input: z.any(),
+});
+export type CreateActor = z.infer<typeof CreateActorSchema>;

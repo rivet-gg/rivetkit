@@ -53,7 +53,7 @@ export function getStoragePath(customPath?: string): string {
 }
 
 export function getActorsDir(baseDir: string): string {
-	return path.join(baseDir, "actors");
+	return path.join(baseDir, "state");
 }
 
 export function getActorStatePath(baseDir: string, actorId: string): string {

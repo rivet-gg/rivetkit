@@ -27,9 +27,14 @@ const defaultCors: CorsOptions = {
 		["http://localhost:43708", "https://studio.rivet.gg"].includes(origin) ||
 		(origin.startsWith("https://") && origin.endsWith("rivet-gg.vercel.app"))
 			? origin
-			: "https://studio.rivet.gg",
-	allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-	allowHeaders: ["Content-Type", "Authorization", HEADER_ACTOR_QUERY],
+			: null,
+	allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+	allowHeaders: [
+		"Content-Type",
+		"Authorization",
+		HEADER_ACTOR_QUERY,
+		"last-event-id",
+	],
 	maxAge: 3600,
 	credentials: true,
 };
