@@ -1,9 +1,13 @@
 import { actor, setup } from "@rivetkit/actor";
 import { db } from "@rivetkit/db/drizzle";
+import migrations from "../drizzle/migrations";
 import * as schema from "./schema";
 
 const counter = actor({
-	db: db({ schema }),
+	db: db({
+		schema,
+		migrations,
+	}),
 	state: {
 		count: 0,
 		boolean: false,
@@ -60,6 +64,51 @@ const counter = actor({
 		},
 		getCount: (c) => {
 			return c.state.count;
+		},
+		addRecords: async (c) => {
+			const user = {
+				name: "John",
+				age: 30,
+				email: `john+${Date.now()}@example.com`,
+			};
+
+			const returned = await c.db
+				.insert(schema.usersTable)
+				.values(user)
+				.returning();
+			console.log("New user created!");
+
+			await Promise.all(
+				Array.from({ length: 10 })
+					.fill("")
+					.map(async (_, i) => {
+						const post = {
+							title: `My ${i} post`,
+							content: "Hello world!",
+							userId: returned[0].id,
+						};
+						await c.db.insert(schema.postsTable).values(post);
+						console.log("New post created!");
+					}),
+			);
+
+			const all: typeof schema.allTypesTable.$inferInsert = {
+				text: "Hello",
+				blob: new Uint8Array([1, 2, 3]),
+				numeric: "123.45",
+				real: 123.45,
+				int: 123,
+				text_json: { key: "value" },
+				text_enum: "value1",
+				blob_buffer: Buffer.from([1, 2, 3]),
+				blob_bigint: BigInt("1234567890123456789"),
+				blob_json: { key: "value" },
+				numeric_number: 123.45,
+				numeric_bigint: BigInt("1234567890123456789"),
+				notnull_int: 0,
+			};
+			await c.db.insert(schema.allTypesTable).values(all);
+			console.log("New all types created!");
 		},
 	},
 });

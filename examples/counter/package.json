@@ -4,13 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx src/server.ts",
+    "dev": "tsx --loader=@rivetkit/sql-loader src/server.ts",
     "check-types": "tsc --noEmit",
     "test": "vitest run"
   },
   "devDependencies": {
     "@rivetkit/actor": "workspace:*",
     "@rivetkit/db": "workspace:*",
+    "@rivetkit/sql-loader": "workspace:*",
     "@types/node": "^22.13.9",
     "tsx": "^3.12.7",
     "typescript": "^5.7.3",
