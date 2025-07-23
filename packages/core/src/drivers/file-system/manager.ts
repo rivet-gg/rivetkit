@@ -79,6 +79,7 @@ export class FileSystemManagerDriver implements ManagerDriver {
 					getAllActors: async ({ cursor, limit }) => {
 						const itr = this.#state.getActorsIterator({ cursor });
 						const actors: Actor[] = [];
+
 						for await (const actor of itr) {
 							actors.push(transformActor(actor));
 							if (limit && actors.length >= limit) {

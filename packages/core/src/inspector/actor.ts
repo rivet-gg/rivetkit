@@ -3,7 +3,7 @@ import jsonPatch from "fast-json-patch";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { createNanoEvents, type Unsubscribe } from "nanoevents";
-import z from "zod";
+import z from "zod/v4";
 import type {
 	AnyDatabaseProvider,
 	InferDatabaseClient,
@@ -45,22 +45,42 @@ export function createActorInspectorRouter() {
 			}
 			return c.json({ enabled: false, state: null }, 200);
 		})
-		.patch("/state", sValidator("json", PatchSchema), async (c) => {
-			if (!(await c.var.inspector.accessors.isStateEnabled())) {
-				return c.json({ enabled: false }, 200);
-			}
+		.patch(
+			"/state",
+			sValidator(
+				"json",
+				z.object({ patch: PatchSchema }).or(z.object({ replace: z.any() })),
+			),
+			async (c) => {
+				if (!(await c.var.inspector.accessors.isStateEnabled())) {
+					return c.json({ enabled: false }, 200);
+				}
 
-			const patch = c.req.valid("json");
-			const state = await c.var.inspector.accessors.getState();
+				const body = c.req.valid("json");
+				if ("replace" in body) {
+					await c.var.inspector.accessors.setState(body.replace);
+					return c.json(
+						{
+							enabled: true,
+							state: await c.var.inspector.accessors.getState(),
+						},
+						200,
+					);
+				}
+				const state = await c.var.inspector.accessors.getState();
 
-			const { newDocument: newState } = jsonPatch.applyPatch(state, patch);
-			await c.var.inspector.accessors.setState(newState);
+				const { newDocument: newState } = jsonPatch.applyPatch(
+					state,
+					body.patch,
+				);
+				await c.var.inspector.accessors.setState(newState);
 
-			return c.json(
-				{ enabled: true, state: await c.var.inspector.accessors.getState() },
-				200,
-			);
-		})
+				return c.json(
+					{ enabled: true, state: await c.var.inspector.accessors.getState() },
+					200,
+				);
+			},
+		)
 		.get("/state/stream", async (c) => {
 			if (!(await c.var.inspector.accessors.isStateEnabled())) {
 				return c.json({ enabled: false }, 200);
@@ -71,9 +91,9 @@ export function createActorInspectorRouter() {
 			return streamSSE(
 				c,
 				async (stream) => {
-					unsub = c.var.inspector.emitter.on("stateUpdated", (state) => {
+					unsub = c.var.inspector.emitter.on("stateUpdated", async (state) => {
 						stream.writeSSE({
-							data: JSON.stringify(state),
+							data: JSON.stringify(state) || "",
 							event: "state-update",
 							id: String(id++),
 						});

@@ -266,23 +266,10 @@ importers:
         version: 4.22.0(@cloudflare/workers-types@4.20250619.0)
 
   examples/counter:
-    dependencies:
-      better-sqlite3:
-        specifier: ^11.10.0
-        version: 11.10.0
-      drizzle-kit:
-        specifier: ^0.31.2
-        version: 0.31.2
-      drizzle-orm:
-        specifier: ^0.44.2
-        version: 0.44.2(@cloudflare/workers-types@4.20250619.0)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@11.10.0)(kysely@0.28.2)
     devDependencies:
       '@rivetkit/actor':
         specifier: workspace:*
         version: link:../../packages/actor
-      '@rivetkit/db':
-        specifier: workspace:*
-        version: link:../../packages/db
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32

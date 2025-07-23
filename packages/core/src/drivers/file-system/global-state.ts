@@ -37,7 +37,7 @@ interface ActorEntry {
 
 	state?: ActorState;
 	/** Promise for loading the actor state. */
-	loadPromise?: PromiseWithResolvers<void>;
+	loadPromise?: Promise<ActorEntry>;
 
 	actor?: AnyActorInstance;
 	/** Promise for starting the actor. */
@@ -202,23 +202,17 @@ export class FileSystemGlobalState {
 
 		// If state is currently being loaded, wait for it
 		if (entry.loadPromise) {
-			await entry.loadPromise.promise;
+			await entry.loadPromise;
 			return entry;
 		}
 
 		// Start loading state
-		entry.loadPromise = Promise.withResolvers();
+		entry.loadPromise = this.loadActorState(entry);
+		return entry.loadPromise;
+	}
 
+	private async loadActorState(entry: ActorEntry) {
 		const stateFilePath = getActorDataPath(this.#storagePath, entry.id);
-
-		// Check if file exists
-		try {
-			await fs.access(stateFilePath);
-		} catch {
-			// Actor does not exist
-			entry.loadPromise.resolve(undefined);
-			return entry;
-		}
 
 		// Read & parse file
 		try {
@@ -230,15 +224,11 @@ export class FileSystemGlobalState {
 
 			// Cache the loaded state in handler
 			entry.state = state;
-			entry.loadPromise.resolve();
-			entry.loadPromise = undefined;
 
 			return entry;
 		} catch (innerError) {
 			// Failed to read actor, so reset promise to retry next time
 			const error = new Error(`Failed to load actor state: ${innerError}`);
-			entry.loadPromise?.reject(error);
-			entry.loadPromise = undefined;
 			throw error;
 		}
 	}

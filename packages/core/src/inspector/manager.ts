@@ -26,11 +26,16 @@ export function createManagerInspectorRouter() {
 
 			invariant(limit && limit > 0, "Limit must be a positive integer");
 
-			const actors = await c.var.inspector.accessors.getAllActors({
-				limit,
-				cursor,
-			});
-			return c.json(actors, 200);
+			try {
+				const actors = await c.var.inspector.accessors.getAllActors({
+					limit,
+					cursor,
+				});
+				return c.json(actors, 200);
+			} catch (error) {
+				inspectorLogger().error("Failed to fetch actors", error);
+				return c.json("Failed to fetch actors", 500);
+			}
 		})
 
 		.post("/actors", sValidator("json", CreateActorSchema), async (c) => {
