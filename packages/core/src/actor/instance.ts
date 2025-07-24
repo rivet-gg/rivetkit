@@ -175,7 +175,9 @@ export class ActorInstance<
 			},
 			getState: async () => {
 				this.#validateStateEnabled();
-				return this.#persistRaw.s as unknown;
+
+				// Must return from `#persistRaw` in order to not return the `onchange` proxy
+				return this.#persistRaw.s as Record<string, any> as unknown;
 			},
 			getRpcs: async () => {
 				return Object.keys(this.#config.actions);
@@ -191,7 +193,13 @@ export class ActorInstance<
 			},
 			setState: async (state: unknown) => {
 				this.#validateStateEnabled();
-				this.#persistRaw.s = state as S;
+
+				// Must set on `#persist` instead of `#persistRaw` in order to ensure that the `Proxy` is correctly configured
+				//
+				// We have to use `...` so `on-change` recognizes the changes to `state` (i.e. set #persistChanged` to true). This is because:
+				// 1. In `getState`, we returned the value from `persistRaw`, which does not have the Proxy to monitor state changes
+				// 2. If we were to assign `state` to `#persist.s`, `on-change` would assume nothing changed since `state` is still === `#persist.s` since we returned a reference in `getState`
+				this.#persist.s = { ...(state as S) };
 				await this.saveState({ immediate: true });
 			},
 		};
