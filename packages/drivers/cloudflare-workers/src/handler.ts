@@ -80,9 +80,7 @@ export function createServer<R extends Registry<any>>(
 			const app = hono ?? new Hono();
 
 			// Mount registry router at /registry
-			if (!hono) {
-				app.route("/registry", serverOutput.hono);
-			}
+			app.route("/registry", serverOutput.hono);
 
 			// Create Cloudflare handler
 			const handler = {
