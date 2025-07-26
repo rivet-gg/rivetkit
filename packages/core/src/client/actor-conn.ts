@@ -110,6 +110,7 @@ export class ActorConnRaw {
 	#params: unknown;
 	#encodingKind: Encoding;
 	#actorQuery: ActorQuery;
+	#removeFromHandleTracking?: () => void;
 
 	// TODO: ws message queue
 
@@ -126,12 +127,14 @@ export class ActorConnRaw {
 		private params: unknown,
 		private encodingKind: Encoding,
 		private actorQuery: ActorQuery,
+		removeFromHandleTracking?: () => void,
 	) {
 		this.#client = client;
 		this.#driver = driver;
 		this.#params = params;
 		this.#encodingKind = encodingKind;
 		this.#actorQuery = actorQuery;
+		this.#removeFromHandleTracking = removeFromHandleTracking;
 
 		this.#keepNodeAliveInterval = setInterval(() => 60_000);
 	}
@@ -755,6 +758,11 @@ enc
 
 		// Remove from registry
 		this.#client[ACTOR_CONNS_SYMBOL].delete(this);
+
+		// Remove from connection tracking
+		if (this.#removeFromHandleTracking) {
+			this.#removeFromHandleTracking();
+		}
 
 		// Disconnect transport cleanly
 		if (!this.#transport) {
