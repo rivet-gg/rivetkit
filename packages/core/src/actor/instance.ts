@@ -1001,14 +1001,17 @@ export class ActorInstance<
 		// Prevent calling private or reserved methods
 		if (!(actionName in this.#config.actions)) {
 			logger().warn("action does not exist", { actionName });
-			throw new errors.ActionNotFound();
+			throw new errors.ActionNotFound(actionName);
 		}
 
 		// Check if the method exists on this object
 		const actionFunction = this.#config.actions[actionName];
 		if (typeof actionFunction !== "function") {
-			logger().warn("action not found", { actionName: actionName });
-			throw new errors.ActionNotFound();
+			logger().warn("action is not a function", {
+				actionName: actionName,
+				type: typeof actionFunction,
+			});
+			throw new errors.ActionNotFound(actionName);
 		}
 
 		// TODO: pass abortable to the action to decide when to abort

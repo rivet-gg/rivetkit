@@ -219,6 +219,8 @@ export function deconstructError(
 		logger.info("public error", {
 			code,
 			message,
+			issues: "https://github.com/rivet-gg/rivetkit/issues",
+			support: "https://rivet.gg/discord",
 			...extraLog,
 		});
 	} else if (exposeInternalError) {
@@ -232,6 +234,8 @@ export function deconstructError(
 			logger.info("internal error", {
 				code,
 				message,
+				issues: "https://github.com/rivet-gg/rivetkit/issues",
+				support: "https://rivet.gg/discord",
 				...extraLog,
 			});
 		} else {
@@ -243,6 +247,8 @@ export function deconstructError(
 			logger.info("internal error", {
 				code,
 				message,
+				issues: "https://github.com/rivet-gg/rivetkit/issues",
+				support: "https://rivet.gg/discord",
 				...extraLog,
 			});
 		}
@@ -258,6 +264,8 @@ export function deconstructError(
 		logger.warn("internal error", {
 			error: getErrorMessage(error),
 			stack: (error as Error)?.stack,
+			issues: "https://github.com/rivet-gg/rivetkit/issues",
+			support: "https://rivet.gg/discord",
 			...extraLog,
 		});
 	}

@@ -15,7 +15,6 @@ export type { Encoding } from "@/actor/protocol/serde";
 export {
 	ActorClientError,
 	ActorError,
-	ConnParamsTooLong,
 	InternalError,
 	MalformedResponseMessage,
 	ManagerError,

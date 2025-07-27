@@ -66,7 +66,7 @@ export async function authenticateRequest(
 ): Promise<unknown> {
 	if (!("onAuth" in actorDefinition.config)) {
 		throw new errors.Forbidden(
-			"Actor requires authentication but no onAuth handler is defined",
+			"Actor requires authentication but no onAuth handler is defined (https://rivet.gg/docs/actors/authentication/). Provide an empty handler to disable auth: `onAuth: () => {}`",
 		);
 	}
 

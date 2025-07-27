@@ -2,7 +2,7 @@ import type { DeconstructedError } from "@/common/utils";
 
 export const INTERNAL_ERROR_CODE = "internal_error";
 export const INTERNAL_ERROR_DESCRIPTION =
-	"Internal error. Read the actor logs for more details.";
+	"Internal error. Read the server logs for more details.";
 export type InternalErrorMetadata = {};
 
 export const USER_ERROR_CODE = "user_error";
@@ -78,7 +78,7 @@ export class StateNotEnabled extends ActorError {
 	constructor() {
 		super(
 			"state_not_enabled",
-			"State not enabled. Must implement `createState` or `state` to use state.",
+			"State not enabled. Must implement `createState` or `state` to use state. (https://www.rivet.gg/docs/actors/state/#initializing-state)",
 		);
 	}
 }
@@ -87,7 +87,7 @@ export class ConnStateNotEnabled extends ActorError {
 	constructor() {
 		super(
 			"conn_state_not_enabled",
-			"Connection state not enabled. Must implement `createConnectionState` or `connectionState` to use connection state.",
+			"Connection state not enabled. Must implement `createConnectionState` or `connectionState` to use connection state. (https://www.rivet.gg/docs/actors/connections/#connection-state)",
 		);
 	}
 }
@@ -96,34 +96,46 @@ export class VarsNotEnabled extends ActorError {
 	constructor() {
 		super(
 			"vars_not_enabled",
-			"Variables not enabled. Must implement `createVars` or `vars` to use state.",
+			"Variables not enabled. Must implement `createVars` or `vars` to use state. (https://www.rivet.gg/docs/actors/ephemeral-variables/#initializing-variables)",
 		);
 	}
 }
 
 export class ActionTimedOut extends ActorError {
 	constructor() {
-		super("action_timed_out", "Action timed out.", { public: true });
+		super(
+			"action_timed_out",
+			"Action timed out. This can be increased with: `actor({ options: { action: { timeout: ... } } })`",
+			{ public: true },
+		);
 	}
 }
 
 export class ActionNotFound extends ActorError {
-	constructor() {
-		super("action_not_found", "Action not found.", { public: true });
+	constructor(name: string) {
+		super(
+			"action_not_found",
+			`Action '${name}' not found. Validate the action exists on your actor.`,
+			{ public: true },
+		);
 	}
 }
 
 export class InvalidEncoding extends ActorError {
 	constructor(format?: string) {
-		super("invalid_encoding", `Invalid encoding \`${format}\`.`, {
-			public: true,
-		});
+		super(
+			"invalid_encoding",
+			`Invalid encoding \`${format}\`. (https://www.rivet.gg/docs/actors/clients/#actor-client)`,
+			{
+				public: true,
+			},
+		);
 	}
 }
 
 export class ConnNotFound extends ActorError {
 	constructor(id?: string) {
-		super("conn_not_found", `Connection not found for ID \`${id}\`.`, {
+		super("conn_not_found", `Connection not found for ID: ${id}`, {
 			public: true,
 		});
 	}
@@ -137,27 +149,13 @@ export class IncorrectConnToken extends ActorError {
 	}
 }
 
-export class ConnParamsTooLong extends ActorError {
-	constructor() {
-		super("conn_params_too_long", "Connection parameters too long.", {
-			public: true,
-		});
-	}
-}
-
-export class MalformedConnParams extends ActorError {
-	constructor(cause: unknown) {
-		super(
-			"malformed_conn_params",
-			`Malformed connection parameters: ${cause}`,
-			{ public: true, cause },
-		);
-	}
-}
-
 export class MessageTooLong extends ActorError {
 	constructor() {
-		super("message_too_long", "Message too long.", { public: true });
+		super(
+			"message_too_long",
+			"Message too long. This can be configured with: `registry.runServer({ maxIncomingMessageSize: ... })`",
+			{ public: true },
+		);
 	}
 }
 
@@ -183,14 +181,8 @@ export class InvalidStateType extends ActorError {
 			msg += "Attempted to set invalid state.";
 		}
 		msg +=
-			" State must be CBOR serializable. Valid types include: null, undefined, boolean, string, number, BigInt, Date, RegExp, Error, typed arrays (Uint8Array, Int8Array, Float32Array, etc.), Map, Set, Array, and plain objects.";
+			" State must be CBOR serializable. Valid types include: null, undefined, boolean, string, number, BigInt, Date, RegExp, Error, typed arrays (Uint8Array, Int8Array, Float32Array, etc.), Map, Set, Array, and plain objects. (https://www.rivet.gg/docs/actors/state/#limitations)";
 		super("invalid_state_type", msg);
-	}
-}
-
-export class StateTooLarge extends ActorError {
-	constructor() {
-		super("state_too_large", "State too large.");
 	}
 }
 
@@ -253,7 +245,9 @@ export class ActorNotFound extends ActorError {
 	constructor(identifier?: string) {
 		super(
 			"actor_not_found",
-			identifier ? `Actor not found: ${identifier}` : "Actor not found",
+			identifier
+				? `Actor not found: ${identifier} (https://www.rivet.gg/docs/actors/clients/#actor-client)`
+				: "Actor not found (https://www.rivet.gg/docs/actors/clients/#actor-client)",
 			{ public: true },
 		);
 	}
@@ -263,7 +257,7 @@ export class ActorAlreadyExists extends ActorError {
 	constructor(name: string, key: string[]) {
 		super(
 			"actor_already_exists",
-			`Actor already exists with name "${name}" and key ${JSON.stringify(key)}`,
+			`Actor already exists with name '${name}' and key '${JSON.stringify(key)}' (https://www.rivet.gg/docs/actors/clients/#actor-client)`,
 			{ public: true },
 		);
 	}
@@ -271,10 +265,14 @@ export class ActorAlreadyExists extends ActorError {
 
 export class ProxyError extends ActorError {
 	constructor(operation: string, error?: unknown) {
-		super("proxy_error", `Error proxying ${operation}: ${error}`, {
-			public: true,
-			cause: error,
-		});
+		super(
+			"proxy_error",
+			`Error proxying ${operation}, this is likely an internal error: ${error}`,
+			{
+				public: true,
+				cause: error,
+			},
+		);
 	}
 }
 
@@ -292,18 +290,29 @@ export class InvalidParams extends ActorError {
 
 export class Unauthorized extends ActorError {
 	constructor(message?: string) {
-		super("unauthorized", message ?? "Unauthorized. Access denied.", {
-			public: true,
-		});
+		super(
+			"unauthorized",
+			message ??
+				"Unauthorized. Access denied. (https://www.rivet.gg/docs/actors/authentication/)",
+			{
+				public: true,
+			},
+		);
 		this.statusCode = 401;
 	}
 }
 
 export class Forbidden extends ActorError {
-	constructor(message?: string) {
-		super("forbidden", message ?? "Forbidden. Access denied.", {
-			public: true,
-		});
+	constructor(message?: string, opts?: { metadata?: unknown }) {
+		super(
+			"forbidden",
+			message ??
+				"Forbidden. Access denied. (https://www.rivet.gg/docs/actors/authentication/)",
+			{
+				public: true,
+				metadata: opts?.metadata,
+			},
+		);
 		this.statusCode = 403;
 	}
 }
@@ -321,7 +330,7 @@ export class FetchHandlerNotDefined extends ActorError {
 	constructor() {
 		super(
 			"fetch_handler_not_defined",
-			"Raw HTTP handler not defined. Actor must implement `onFetch` to handle raw HTTP requests.",
+			"Raw HTTP handler not defined. Actor must implement `onFetch` to handle raw HTTP requests. (https://www.rivet.gg/docs/actors/fetch-and-websocket-handler/)",
 			{ public: true },
 		);
 		this.statusCode = 404;
@@ -332,7 +341,7 @@ export class WebSocketHandlerNotDefined extends ActorError {
 	constructor() {
 		super(
 			"websocket_handler_not_defined",
-			"Raw WebSocket handler not defined. Actor must implement `onWebSocket` to handle raw WebSocket connections.",
+			"Raw WebSocket handler not defined. Actor must implement `onWebSocket` to handle raw WebSocket connections. (https://www.rivet.gg/docs/actors/fetch-and-websocket-handler/)",
 			{ public: true },
 		);
 		this.statusCode = 404;
@@ -343,7 +352,7 @@ export class InvalidFetchResponse extends ActorError {
 	constructor() {
 		super(
 			"invalid_fetch_response",
-			"Actor's onFetch handler must return a Response object. Returning void/undefined is not allowed.",
+			"Actor's onFetch handler must return a Response object. Returning void/undefined is not allowed. (https://www.rivet.gg/docs/actors/fetch-and-websocket-handler/)",
 			{ public: true },
 		);
 		this.statusCode = 500;
