@@ -1,5 +1,5 @@
 import { sValidator } from "@hono/standard-validator";
-import jsonPatch from "fast-json-patch";
+import jsonPatch from "@rivetkit/fast-json-patch";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { createNanoEvents, type Unsubscribe } from "nanoevents";

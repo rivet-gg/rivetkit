@@ -52,22 +52,6 @@ export function getStoragePath(customPath?: string): string {
 	return path.join(dataPath, dirHash);
 }
 
-export function getActorsDir(baseDir: string): string {
-	return path.join(baseDir, "state");
-}
-
-export function getActorStatePath(baseDir: string, actorId: string): string {
-	return path.join(baseDir, "state", actorId);
-}
-
-export function getActorsDbsPath(baseDir: string): string {
-	return path.join(baseDir, "databases");
-}
-
-export function getActorDbPath(baseDir: string, actorId: string): string {
-	return path.join(getActorsDbsPath(baseDir), `${actorId}.db`);
-}
-
 /**
  * Check if a path exists
  */

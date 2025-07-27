@@ -1,3 +1,4 @@
+import * as crypto from "node:crypto";
 import * as fsSync from "node:fs";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
@@ -23,10 +24,6 @@ import { logger } from "./log";
 import {
 	ensureDirectoryExists,
 	ensureDirectoryExistsSync,
-	getActorStatePath as getActorDataPath,
-	getActorDbPath,
-	getActorsDbsPath,
-	getActorsDir,
 	getStoragePath,
 } from "./utils";
 
@@ -65,6 +62,9 @@ export interface ActorState {
  */
 export class FileSystemGlobalState {
 	#storagePath: string;
+	#stateDir: string;
+	#dbsDir: string;
+
 	#persist: boolean;
 	#actors = new Map<string, ActorEntry>();
 	#actorCountOnStartup: number = 0;
@@ -77,25 +77,19 @@ export class FileSystemGlobalState {
 		return this.#actorCountOnStartup;
 	}
 
-	get #actorsDir(): string {
-		return getActorsDir(this.#storagePath);
-	}
-
-	get #dbsDir(): string {
-		return getActorsDbsPath(this.#storagePath);
-	}
-
 	constructor(persist: boolean = true, customPath?: string) {
 		this.#persist = persist;
-		this.#storagePath = persist ? getStoragePath(customPath) : ":memory:";
+		this.#storagePath = persist ? getStoragePath(customPath) : "/tmp";
+		this.#stateDir = path.join(this.#storagePath, "state");
+		this.#dbsDir = path.join(this.#storagePath, "databases");
 
 		if (this.#persist) {
 			// Ensure storage directories exist synchronously during initialization
-			ensureDirectoryExistsSync(this.#actorsDir);
+			ensureDirectoryExistsSync(this.#stateDir);
 			ensureDirectoryExistsSync(this.#dbsDir);
 
 			try {
-				const actorIds = fsSync.readdirSync(this.#actorsDir);
+				const actorIds = fsSync.readdirSync(this.#stateDir);
 				this.#actorCountOnStartup = actorIds.length;
 			} catch (error) {
 				logger().error("failed to count actors", { error });
@@ -117,11 +111,19 @@ export class FileSystemGlobalState {
 		}
 	}
 
+	getActorStatePath(actorId: string): string {
+		return path.join(this.#stateDir, actorId);
+	}
+
+	getActorDbPath(actorId: string): string {
+		return path.join(this.#dbsDir, `${actorId}.db`);
+	}
+
 	async *getActorsIterator(params: {
 		cursor?: string;
 	}): AsyncGenerator<ActorState> {
 		const actorIds = fsSync
-			.readdirSync(this.#actorsDir)
+			.readdirSync(this.#stateDir)
 			.filter((id) => !id.includes(".tmp"))
 			.sort();
 		const startIndex = params.cursor ? actorIds.indexOf(params.cursor) + 1 : 0;
@@ -212,7 +214,7 @@ export class FileSystemGlobalState {
 	}
 
 	private async loadActorState(entry: ActorEntry) {
-		const stateFilePath = getActorDataPath(this.#storagePath, entry.id);
+		const stateFilePath = this.getActorStatePath(entry.id);
 
 		// Read & parse file
 		try {
@@ -226,8 +228,14 @@ export class FileSystemGlobalState {
 			entry.state = state;
 
 			return entry;
-		} catch (innerError) {
-			// Failed to read actor, so reset promise to retry next time
+		} catch (innerError: any) {
+			// File does not exist, meaning the actor does not exist
+			if (innerError.code === "ENOENT") {
+				entry.loadPromise = undefined;
+				return entry;
+			}
+
+			// For other errors, throw
 			const error = new Error(`Failed to load actor state: ${innerError}`);
 			throw error;
 		}
@@ -297,7 +305,7 @@ export class FileSystemGlobalState {
 	 * Perform the actual write operation with atomic writes
 	 */
 	async #performWrite(actorId: string, state: ActorState): Promise<void> {
-		const dataPath = getActorDataPath(this.#storagePath, actorId);
+		const dataPath = this.getActorStatePath(actorId);
 		// Generate unique temp filename to prevent any race conditions
 		const tempPath = `${dataPath}.tmp.${crypto.randomUUID()}`;
 
@@ -396,7 +404,7 @@ export class FileSystemGlobalState {
 	}
 
 	async createDatabase(actorId: string): Promise<string | undefined> {
-		return getActorDbPath(this.#storagePath, actorId);
+		return this.getActorDbPath(actorId);
 	}
 
 	getOrCreateInspectorAccessToken(): string {
@@ -415,14 +423,14 @@ export class FileSystemGlobalState {
 	 */
 	#cleanupTempFilesSync(): void {
 		try {
-			const files = fsSync.readdirSync(this.#actorsDir);
+			const files = fsSync.readdirSync(this.#stateDir);
 			const tempFiles = files.filter((f) => f.includes(".tmp."));
 
 			const oneHourAgo = Date.now() - 3600000; // 1 hour in ms
 
 			for (const tempFile of tempFiles) {
 				try {
-					const fullPath = path.join(this.#actorsDir, tempFile);
+					const fullPath = path.join(this.#stateDir, tempFile);
 					const stat = fsSync.statSync(fullPath);
 
 					// Remove if older than 1 hour
