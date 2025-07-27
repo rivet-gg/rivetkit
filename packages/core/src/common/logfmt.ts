@@ -45,7 +45,9 @@ export function stringify(...data: LogEntry[]) {
 		} else {
 			valueString = valueRaw.toString();
 		}
-		if (valueString.length > 512)
+
+		// Clip value unless specifically the error message
+		if (valueString.length > 512 && key !== "msg" && key !== "error")
 			valueString = `${valueString.slice(0, 512)}...`;
 
 		const needsQuoting =
