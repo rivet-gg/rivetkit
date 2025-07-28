@@ -220,6 +220,10 @@ export function createManagerRouter(
 					"Content-Type",
 					"User-Agent",
 				],
+				credentials:
+					runConfig.cors?.credentials ??
+					runConfig.studio?.cors?.credentials ??
+					true,
 			})(c, next);
 		});
 	}
