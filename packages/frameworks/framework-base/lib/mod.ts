@@ -173,7 +173,7 @@ export function createRivetKit<
 					const handle = client.getOrCreate(
 						actor.opts.name as string,
 						actor.opts.key,
-						actor.opts.params,
+						{ params: actor.opts.params },
 					);
 
 					const connection = handle.connect();
