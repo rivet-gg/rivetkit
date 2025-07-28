@@ -60,6 +60,10 @@ interface ActorStateReference<AD extends AnyActorDefinition> {
 		 * These are additional options that can be passed to the actor.
 		 */
 		params?: Record<string, string>;
+		/** Region to create the actor in if it doesn't exist. */
+		createInRegion?: string;
+		/** Input data to pass to the actor. */
+		createWithInput?: unknown;
 		/**
 		 * Whether the actor is enabled.
 		 * Defaults to true.
@@ -98,6 +102,10 @@ export interface ActorOptions<
 	 * Parameters for the actor.
 	 */
 	params?: Registry[ExtractActorsFromRegistry<Registry>]["params"];
+	/** Region to create the actor in if it doesn't exist. */
+	createInRegion?: string;
+	/** Input data to pass to the actor. */
+	createWithInput?: unknown;
 	/**
 	 * Whether the actor is enabled.
 	 * Defaults to true.
@@ -173,7 +181,11 @@ export function createRivetKit<
 					const handle = client.getOrCreate(
 						actor.opts.name as string,
 						actor.opts.key,
-						{ params: actor.opts.params },
+						{
+							params: actor.opts.params,
+							createInRegion: actor.opts.createInRegion,
+							createWithInput: actor.opts.createWithInput,
+						},
 					);
 
 					const connection = handle.connect();
