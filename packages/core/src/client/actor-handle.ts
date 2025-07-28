@@ -48,6 +48,8 @@ export class ActorHandleRaw {
 		this.#params = params;
 	}
 
+	#eventListeners = new Map<string, Set<Function>>();
+
 	/**
 	 * Call a raw action. This method sends an HTTP request to invoke the named action.
 	 *

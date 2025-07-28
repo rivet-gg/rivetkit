@@ -259,6 +259,7 @@ enc
 			this.#actorQuery,
 			this.#encodingKind,
 			this.#params,
+			["innit"],
 			signal ? { signal } : undefined,
 		);
 		this.#transport = { websocket: ws };

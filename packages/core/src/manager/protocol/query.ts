@@ -64,6 +64,7 @@ export const ConnectWebSocketRequestSchema = z.object({
 	query: ActorQuerySchema.describe("query"),
 	encoding: EncodingSchema.describe("encoding"),
 	connParams: z.unknown().optional().describe("conn_params"),
+	subs: z.array(z.string()).optional().describe("subs"),
 });
 
 export const ConnMessageRequestSchema = z.object({

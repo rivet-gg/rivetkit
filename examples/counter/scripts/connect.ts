@@ -8,6 +8,7 @@ async function main() {
 
 	const counter = await client.counter.getOrCreate().connect();
 
+	counter.on("innit", () => console.log("Connected to counter actor"));
 	counter.on("newCount", (count: number) => console.log("Event:", count));
 
 	for (let i = 0; i < 5; i++) {

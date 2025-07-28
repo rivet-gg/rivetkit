@@ -12,6 +12,7 @@ import {
 	HEADER_AUTH_DATA,
 	HEADER_CONN_ID,
 	HEADER_CONN_PARAMS,
+	HEADER_CONN_SUBS,
 	HEADER_CONN_TOKEN,
 	HEADER_ENCODING,
 	handleAction,
@@ -83,12 +84,14 @@ export function createActorRouter(
 				const encodingRaw = c.req.header(HEADER_ENCODING);
 				const connParamsRaw = c.req.header(HEADER_CONN_PARAMS);
 				const authDataRaw = c.req.header(HEADER_AUTH_DATA);
+				const subsRaw = c.req.header(HEADER_CONN_SUBS);
 
 				const encoding = EncodingSchema.parse(encodingRaw);
 				const connParams = connParamsRaw
 					? JSON.parse(connParamsRaw)
 					: undefined;
 				const authData = authDataRaw ? JSON.parse(authDataRaw) : undefined;
+				const subs = subsRaw ? JSON.parse(subsRaw) : undefined;
 
 				return await handleWebSocketConnect(
 					c as HonoContext,
@@ -97,6 +100,7 @@ export function createActorRouter(
 					c.env.actorId,
 					encoding,
 					connParams,
+					subs,
 					authData,
 				);
 			})(c, noopNext());
@@ -114,8 +118,20 @@ export function createActorRouter(
 		if (authDataRaw) {
 			authData = JSON.parse(authDataRaw);
 		}
+		const subsRaw = c.req.header(HEADER_CONN_SUBS);
+		let subs: string[] | undefined;
+		if (subsRaw) {
+			subs = JSON.parse(subsRaw);
+		}
 
-		return handleSseConnect(c, runConfig, actorDriver, c.env.actorId, authData);
+		return handleSseConnect(
+			c,
+			runConfig,
+			actorDriver,
+			c.env.actorId,
+			subs,
+			authData,
+		);
 	});
 
 	router.post("/action/:action", async (c) => {

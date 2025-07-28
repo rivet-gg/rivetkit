@@ -136,6 +136,7 @@ export class FileSystemManagerDriver implements ManagerDriver {
 		actorId: string,
 		encoding: Encoding,
 		params: unknown,
+		subs?: string[],
 	): Promise<WebSocket> {
 		// TODO:
 
@@ -149,6 +150,7 @@ export class FileSystemManagerDriver implements ManagerDriver {
 				actorId,
 				encoding,
 				params,
+				subs,
 				undefined,
 			);
 			return new InlineWebSocketAdapter2(wsHandler);
@@ -183,6 +185,7 @@ export class FileSystemManagerDriver implements ManagerDriver {
 		actorId: string,
 		encoding: Encoding,
 		connParams: unknown,
+		subs: string[] | undefined,
 		authData: unknown,
 	): Promise<Response> {
 		const upgradeWebSocket = this.#runConfig.getUpgradeWebSocket?.();
@@ -198,6 +201,7 @@ export class FileSystemManagerDriver implements ManagerDriver {
 				actorId,
 				encoding,
 				connParams,
+				subs,
 				authData,
 			);
 
