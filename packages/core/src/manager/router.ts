@@ -69,10 +69,12 @@ function parseWebSocketProtocols(protocols: string | undefined): {
 	queryRaw: string | undefined;
 	encodingRaw: string | undefined;
 	connParamsRaw: string | undefined;
+	subsRaw: string | undefined;
 } {
 	let queryRaw: string | undefined;
 	let encodingRaw: string | undefined;
 	let connParamsRaw: string | undefined;
+	let subsRaw: string | undefined;
 
 	if (protocols) {
 		const protocolList = protocols.split(",").map((p) => p.trim());
@@ -85,11 +87,15 @@ function parseWebSocketProtocols(protocols: string | undefined): {
 				connParamsRaw = decodeURIComponent(
 					protocol.substring("conn_params.".length),
 				);
+			} else if (protocol.startsWith("subs.")) {
+				// subs are not used in the manager, but we can parse them if needed
+				// this is just for compatibility with the inline client driver
+				subsRaw = decodeURIComponent(protocol.substring("subs.".length));
 			}
 		}
 	}
 
-	return { queryRaw, encodingRaw, connParamsRaw };
+	return { queryRaw, encodingRaw, connParamsRaw, subsRaw };
 }
 
 const OPENAPI_ENCODING = z.string().openapi({
@@ -1211,7 +1217,7 @@ async function handleWebSocketConnectRequest(
 		// Browsers don't support using headers, so this is the only way to
 		// pass data securely.
 		const protocols = c.req.header("sec-websocket-protocol");
-		const { queryRaw, encodingRaw, connParamsRaw } =
+		const { queryRaw, encodingRaw, connParamsRaw, subsRaw } =
 			parseWebSocketProtocols(protocols);
 
 		// Parse query
@@ -1236,6 +1242,22 @@ async function handleWebSocketConnectRequest(
 			);
 		}
 
+		// Parse subscriptions
+		let subs: string[] | undefined;
+		if (subsRaw) {
+			try {
+				subs = JSON.parse(subsRaw!);
+				if (!Array.isArray(subs)) {
+					throw new Error("Subscriptions must be an array");
+				}
+			} catch (error) {
+				logger().error("invalid subscriptions json", { error });
+				throw new errors.InvalidRequest(
+					`Invalid subscriptions JSON: ${stringifyError(error)}`,
+				);
+			}
+		}
+
 		// We can't use the standard headers with WebSockets
 		//
 		// All other information will be sent over the socket itself, since that data needs to be E2EE
@@ -1243,6 +1265,7 @@ async function handleWebSocketConnectRequest(
 			query: queryUnvalidated,
 			encoding: encodingRaw,
 			connParams: connParamsUnvalidated,
+			subs,
 		});
 		if (!params.success) {
 			logger().error("invalid connection parameters", {
@@ -1281,6 +1304,7 @@ async function handleWebSocketConnectRequest(
 			actorId,
 			params.data.encoding,
 			params.data.connParams,
+			params.data.subs,
 			authData,
 		);
 	} catch (error) {
@@ -1623,6 +1647,7 @@ async function handleRawWebSocketRequest(
 		const {
 			queryRaw: queryFromProtocol,
 			connParamsRaw: connParamsFromProtocol,
+			subsRaw: subsFromProtocol,
 		} = parseWebSocketProtocols(protocols);
 
 		if (!queryFromProtocol) {
@@ -1634,6 +1659,11 @@ async function handleRawWebSocketRequest(
 		let connParams: unknown;
 		if (connParamsFromProtocol) {
 			connParams = JSON.parse(connParamsFromProtocol);
+		}
+
+		let subs: string[] | undefined;
+		if (subsFromProtocol) {
+			subs = JSON.parse(subsFromProtocol);
 		}
 
 		// Authenticate the request
@@ -1671,6 +1701,7 @@ async function handleRawWebSocketRequest(
 			actorId,
 			"json", // Default encoding for raw WebSocket
 			connParams,
+			subs,
 			authData,
 		);
 	} catch (error) {

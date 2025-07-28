@@ -8,6 +8,7 @@ export const counter = actor({
 	actions: {
 		increment: (c, x: number) => {
 			c.state.count += x;
+			console.log("increment", c.state.count);
 			c.broadcast("newCount", c.state.count);
 			return c.state.count;
 		},

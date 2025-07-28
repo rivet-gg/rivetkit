@@ -181,6 +181,7 @@ export interface ClientDriver {
 		actorQuery: ActorQuery,
 		encodingKind: Encoding,
 		params: unknown,
+		subs: string[] | undefined,
 		opts: { signal?: AbortSignal } | undefined,
 	): Promise<WebSocket>;
 	connectSse(

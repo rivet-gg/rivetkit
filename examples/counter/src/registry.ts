@@ -7,6 +7,9 @@ const counter = actor({
 	onAuth: () => {
 		return true;
 	},
+	onConnect: (c) => {
+		c.broadcast("innit", "Connected to counter actor");
+	},
 	actions: {
 		increment: (c, x: number) => {
 			c.state.count += x;

@@ -121,6 +121,7 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 			actorQuery: ActorQuery,
 			encodingKind: Encoding,
 			params: unknown,
+			subs: string[] | undefined,
 		): Promise<WebSocket> => {
 			const { WebSocket } = await dynamicImports;
 
@@ -133,6 +134,7 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 			const protocol = [
 				`query.${encodeURIComponent(JSON.stringify(actorQuery))}`,
 				`encoding.${encodingKind}`,
+				`subs.${encodeURIComponent(JSON.stringify(subs))}`,
 			];
 			if (params)
 				protocol.push(
