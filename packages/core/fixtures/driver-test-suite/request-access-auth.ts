@@ -6,25 +6,25 @@ import { actor } from "@rivetkit/core";
  */
 export const requestAccessAuthActor = actor({
 	onAuth: ({
-		req,
+		request,
 		intents,
 		params,
 	}: {
-		req: Request;
+		request: Request;
 		intents: Set<string>;
 		params?: { trackRequest?: boolean };
 	}) => {
 		if (params?.trackRequest) {
 			// Extract request info and return it as auth data
 			const headers: Record<string, string> = {};
-			req.headers.forEach((value, key) => {
+			request.headers.forEach((value, key) => {
 				headers[key] = value;
 			});
 
 			return {
 				hasRequest: true,
-				requestUrl: req.url,
-				requestMethod: req.method,
+				requestUrl: request.url,
+				requestMethod: request.method,
 				requestHeaders: headers,
 				intents: Array.from(intents),
 			};

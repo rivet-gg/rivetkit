@@ -171,12 +171,14 @@ export function runRequestAccessTests(driverTestConfig: DriverTestConfig) {
 			const data = await response.json();
 
 			// Verify request info from onFetch
-			expect(data.hasRequest).toBe(true);
-			expect(data.requestUrl).toContain("/test-path");
-			expect(data.requestMethod).toBe("POST");
-			expect(data.requestHeaders).toBeDefined();
-			expect(data.requestHeaders["content-type"]).toBe("application/json");
-			expect(data.requestHeaders["x-test-header"]).toBe("test-value");
+			expect((data as any).hasRequest).toBe(true);
+			expect((data as any).requestUrl).toContain("/test-path");
+			expect((data as any).requestMethod).toBe("POST");
+			expect((data as any).requestHeaders).toBeDefined();
+			expect((data as any).requestHeaders["content-type"]).toBe(
+				"application/json",
+			);
+			expect((data as any).requestHeaders["x-test-header"]).toBe("test-value");
 		});
 
 		test("should have access to request object in onWebSocket", async (c) => {

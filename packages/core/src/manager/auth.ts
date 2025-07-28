@@ -72,7 +72,7 @@ export async function authenticateRequest(
 
 	try {
 		const dataOrPromise = actorDefinition.config.onAuth({
-			req: c.req.raw,
+			request: c.req.raw,
 			intents,
 			params,
 		});

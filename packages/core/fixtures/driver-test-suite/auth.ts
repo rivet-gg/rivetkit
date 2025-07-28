@@ -4,7 +4,7 @@ import { actor, UserError } from "@rivetkit/core";
 export const authActor = actor({
 	state: { requests: 0 },
 	onAuth: (opts) => {
-		const { req, intents, params } = opts;
+		const { request, intents, params } = opts;
 		const apiKey = (params as any)?.apiKey;
 		if (!apiKey) {
 			throw new UserError("API key required", { code: "missing_auth" });
@@ -29,7 +29,7 @@ export const authActor = actor({
 export const intentAuthActor = actor({
 	state: { value: 0 },
 	onAuth: (opts) => {
-		const { req, intents, params } = opts;
+		const { request, intents, params } = opts;
 		console.log("intents", intents, params);
 		const role = (params as any)?.role;
 

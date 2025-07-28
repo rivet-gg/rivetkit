@@ -228,7 +228,7 @@ export interface Actions<S, CP, CS, V, I, AD, DB extends AnyDatabaseProvider> {
 export type AuthIntent = "get" | "create" | "connect" | "action" | "message";
 
 export interface OnAuthOptions<CP = unknown> {
-	req: Request;
+	request: Request;
 	/**
 	 * @experimental
 	 */

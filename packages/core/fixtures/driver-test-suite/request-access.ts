@@ -39,22 +39,26 @@ export const requestAccessActor = actor({
 			request,
 		}: { params?: { trackRequest?: boolean }; request?: Request },
 	) => {
-		if (params?.trackRequest && request) {
-			c.state.createConnStateRequest.hasRequest = true;
-			c.state.createConnStateRequest.requestUrl = request.url;
-			c.state.createConnStateRequest.requestMethod = request.method;
-
-			// Store select headers
-			const headers: Record<string, string> = {};
-			request.headers.forEach((value, key) => {
-				headers[key] = value;
-			});
-			c.state.createConnStateRequest.requestHeaders = headers;
-		}
+		// In createConnState, the state isn't available yet.
 
 		return {
 			trackRequest: params?.trackRequest || false,
+			requestInfo:
+				params?.trackRequest && request
+					? {
+							hasRequest: true,
+							requestUrl: request.url,
+							requestMethod: request.method,
+							requestHeaders: Object.fromEntries(request.headers.entries()),
+						}
+					: null,
 		};
+	},
+	onConnect: (c, conn) => {
+		// Copy request info from connection state if it was tracked
+		if (conn.state.requestInfo) {
+			c.state.createConnStateRequest = conn.state.requestInfo;
+		}
 	},
 	onBeforeConnect: (c, { request, params }) => {
 		if (params?.trackRequest) {
