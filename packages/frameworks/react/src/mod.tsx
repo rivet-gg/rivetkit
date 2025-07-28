@@ -5,8 +5,8 @@ import {
 	type CreateRivetKitOptions,
 	createRivetKit as createVanillaRivetKit,
 } from "@rivetkit/framework-base";
+import { useEffect, useRef } from "react";
 import { useStore } from "@tanstack/react-store";
-import { useEffect } from "react";
 
 export { createClient } from "@rivetkit/core/client";
 
@@ -57,19 +57,29 @@ export function createRivetKit<Registry extends AnyActorRegistry>(
 		 * @param eventName The name of the event to listen for.
 		 * @param handler The function to call when the event is emitted.
 		 */
-		const useEvent = (
+		function useEvent(
 			eventName: string,
 			// biome-ignore lint/suspicious/noExplicitAny: strong typing of handler is not supported yet
 			handler: (...args: any[]) => void,
-		) => {
+		) {
+			const ref = useRef(handler);
+			const actorState = useStore(state) || {};
+
+			useEffect(() => {
+				ref.current = handler;
+			}, [handler]);
+
 			// biome-ignore lint/correctness/useExhaustiveDependencies: it's okay to not include all dependencies here
 			useEffect(() => {
 				if (!actorState?.connection) return;
 
-				const connection = actorState.connection;
-				return connection.on(eventName, handler);
-			}, [actorState.connection, actorState.isConnected, eventName, handler]);
+				function eventHandler(...args: any[]) {
+					ref.current(...args);
+				}
+				return actorState.connection.on(eventName, eventHandler);
+			}, [actorState.connection, actorState.isConnected, actorState.hash, eventName]);
 		};
+
 		return {
 			...actorState,
 			useEvent,
