@@ -51,7 +51,7 @@ function serve(registry: Registry<any>, inputConfig?: InputConfig): ServerType {
 	logger().info("rivetkit started", {
 		hostname: config.hostname,
 		port: config.port,
-		studio: getStudioUrl(config),
+		definitions: Object.keys(registry.config.use).length,
 	});
 
 	return server;

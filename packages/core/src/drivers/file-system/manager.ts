@@ -295,7 +295,7 @@ export class FileSystemManagerDriver implements ManagerDriver {
 
 	extraStartupLog() {
 		return {
-			actors: this.#state.actorCountOnStartup,
+			instances: this.#state.actorCountOnStartup,
 			data: this.#state.storagePath,
 		};
 	}

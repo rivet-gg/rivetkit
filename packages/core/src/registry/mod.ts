@@ -69,11 +69,16 @@ export class Registry<A extends RegistryActors> {
 		const client = createClientWithDriver<this>(clientDriver);
 
 		const driverLog = managerDriver.extraStartupLog?.() ?? {};
-		logger().info("rivetkit started", {
+		logger().info("rivetkit ready", {
 			driver: config.driver.name,
-			studio: getStudioUrl(config),
+			definitions: Object.keys(this.#config.use).length,
 			...driverLog,
 		});
+		if (config.studio?.enabled) {
+			logger().info("studio ready", {
+				url: getStudioUrl(config),
+			});
+		}
 
 		return {
 			client,
