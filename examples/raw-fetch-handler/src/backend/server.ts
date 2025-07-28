@@ -10,8 +10,7 @@ const app = new Hono();
 
 app.use(
 	cors({
-		// IMPORTANT: Configure origins in production
-		origin: "*",
+		origin: "http://localhost:5173",
 	}),
 );
 

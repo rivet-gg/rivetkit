@@ -3,8 +3,7 @@ import { registry } from "./registry";
 
 const { client, serve } = registry.createServer({
 	cors: {
-		// IMPORTANT: Configure origins in production
-		origin: "*",
+		origin: "http://localhost:5173",
 	},
 });
 

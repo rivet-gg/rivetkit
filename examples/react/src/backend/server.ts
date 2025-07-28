@@ -2,7 +2,6 @@ import { registry } from "./registry";
 
 registry.runServer({
 	cors: {
-		// IMPORTANT: Configure origins in production
-		origin: "*",
+		origin: "http://localhost:5173",
 	},
 });
