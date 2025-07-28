@@ -47,6 +47,8 @@ import {
 	rawWebSocketNoAuthActor,
 	rawWebSocketPublicActor,
 } from "./raw-websocket-auth";
+import { requestAccessActor } from "./request-access";
+import { requestAccessAuthActor } from "./request-access-auth";
 import { scheduled } from "./scheduled";
 import {
 	driverCtxActor,
@@ -119,5 +121,8 @@ export const registry = setup({
 		rawWebSocketNoAuthActor,
 		rawWebSocketPublicActor,
 		rawWebSocketCustomAuthActor,
+		// From request-access.ts
+		requestAccessActor,
+		requestAccessAuthActor,
 	},
 });

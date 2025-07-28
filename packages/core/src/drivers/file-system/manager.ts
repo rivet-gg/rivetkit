@@ -192,7 +192,7 @@ export class FileSystemManagerDriver implements ManagerDriver {
 		if (path === PATH_CONNECT_WEBSOCKET) {
 			// Handle standard connect
 			const wsHandler = await handleWebSocketConnect(
-				undefined,
+				c,
 				this.#runConfig,
 				this.#actorDriver,
 				actorId,

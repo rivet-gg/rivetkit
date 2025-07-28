@@ -25,6 +25,7 @@ import { runRawHttpDirectRegistryTests } from "./tests/raw-http-direct-registry"
 import { runRawHttpRequestPropertiesTests } from "./tests/raw-http-request-properties";
 import { runRawWebSocketTests } from "./tests/raw-websocket";
 import { runRawWebSocketDirectRegistryTests } from "./tests/raw-websocket-direct-registry";
+import { runRequestAccessTests } from "./tests/request-access";
 
 export interface SkipTests {
 	schedule?: boolean;
@@ -90,6 +91,8 @@ export function runDriverTests(
 					});
 
 					runActorConnStateTests({ ...driverTestConfig, transport });
+
+					runRequestAccessTests({ ...driverTestConfig, transport });
 				});
 			}
 
