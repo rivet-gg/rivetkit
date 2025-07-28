@@ -22,12 +22,22 @@ const defaultEnabled = () => {
 	);
 };
 
+const defaultStudioOrigins = [
+	"http://localhost:43708",
+	"https://studio.rivet.gg",
+];
+
 const defaultCors: CorsOptions = {
-	origin: (origin) =>
-		["http://localhost:43708", "https://studio.rivet.gg"].includes(origin) ||
-		(origin.startsWith("https://") && origin.endsWith("rivet-gg.vercel.app"))
-			? origin
-			: null,
+	origin: (origin) => {
+		if (
+			defaultStudioOrigins.includes(origin) ||
+			(origin.startsWith("https://") && origin.endsWith("rivet-gg.vercel.app"))
+		) {
+			return origin;
+		} else {
+			return null;
+		}
+	},
 	allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 	allowHeaders: [
 		"Content-Type",

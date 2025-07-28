@@ -172,25 +172,24 @@ export function createManagerRouter(
 					const studioOrigin = runConfig.studio?.cors?.origin;
 
 					if (studioOrigin !== undefined) {
-						let allowed: string | undefined | null = null;
 						if (typeof studioOrigin === "function") {
-							allowed = studioOrigin(origin, c);
+							const allowed = studioOrigin(origin, c);
+							if (allowed) return allowed;
+							// Proceed to next CORS config if none provided
 						} else if (Array.isArray(studioOrigin)) {
-							allowed = studioOrigin.includes(origin) ? origin : undefined;
+							return studioOrigin.includes(origin) ? origin : undefined;
 						} else {
-							allowed = studioOrigin;
-						}
-
-						if (allowed) {
-							return allowed;
+							return studioOrigin;
 						}
 					}
 
-					if (runConfig.cors?.origin) {
+					if (runConfig.cors?.origin !== undefined) {
 						if (typeof runConfig.cors.origin === "function") {
-							return runConfig.cors.origin(origin, c);
+							const allowed = runConfig.cors.origin(origin, c);
+							if (allowed) return allowed;
+						} else {
+							return runConfig.cors.origin as string;
 						}
-						return runConfig.cors.origin as string;
 					}
 
 					return null;
