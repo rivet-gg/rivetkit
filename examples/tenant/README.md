@@ -16,8 +16,9 @@ Example project demonstrating multi-tenant organization management with role-bas
 
 ```sh
 git clone https://github.com/rivet-gg/rivetkit
+pnpm install
+pnpm run build
 cd rivetkit/examples/tenant
-npm install
 ```
 
 ### Development

@@ -16,8 +16,9 @@ Example project demonstrating Elysia web framework integration with [RivetKit](h
 
 ```sh
 git clone https://github.com/rivet-gg/rivetkit
+pnpm install
+pnpm run build
 cd rivetkit/examples/elysia
-npm install
 ```
 
 ### Development

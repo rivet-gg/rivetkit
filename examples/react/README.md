@@ -16,8 +16,9 @@ Example project demonstrating full-stack Hono backend with React frontend integr
 
 ```sh
 git clone https://github.com/rivet-gg/rivetkit
+pnpm install
+pnpm run build
 cd rivetkit/examples/hono-react
-npm install
 ```
 
 ### Development
