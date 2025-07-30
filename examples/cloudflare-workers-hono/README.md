@@ -18,8 +18,9 @@ Example project demonstrating Cloudflare Workers deployment with Hono router usi
 
 ```sh
 git clone https://github.com/rivet-gg/rivetkit
+pnpm install
+pnpm run build
 cd rivetkit/examples/cloudflare-workers-hono
-npm install
 ```
 
 ### Development

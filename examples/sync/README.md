@@ -16,8 +16,9 @@ Example project demonstrating offline-first contact synchronization with conflic
 
 ```sh
 git clone https://github.com/rivet-gg/rivetkit
+pnpm install
+pnpm run build
 cd rivetkit/examples/sync
-npm install
 ```
 
 ### Development

@@ -16,8 +16,9 @@ Example project demonstrating Express web framework integration with [RivetKit](
 
 ```sh
 git clone https://github.com/rivet-gg/rivetkit
+pnpm install
+pnpm run build
 cd rivetkit/examples/express
-npm install
 ```
 
 ### Development

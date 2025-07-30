@@ -18,8 +18,9 @@ Example project demonstrating Rivet cloud platform deployment with [RivetKit](ht
 
 ```sh
 git clone https://github.com/rivet-gg/rivetkit
+pnpm install
+pnpm run build
 cd rivetkit/examples/rivet
-npm install
 ```
 
 ### Configuration

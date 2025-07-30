@@ -17,8 +17,9 @@ Example project demonstrating authentication integration with [RivetKit](https:/
 
 ```sh
 git clone https://github.com/rivet-gg/rivetkit
+pnpm install
+pnpm run build
 cd rivetkit/examples/better-auth-external-db
-npm install
 ```
 
 ### Development

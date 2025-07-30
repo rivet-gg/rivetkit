@@ -16,8 +16,9 @@ Example project demonstrating various RivetKit patterns and integrations with [R
 
 ```sh
 git clone https://github.com/rivet-gg/rivetkit
+pnpm install
+pnpm run build
 cd rivetkit/examples/snippets
-npm install
 ```
 
 ### Development

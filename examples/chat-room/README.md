@@ -16,8 +16,9 @@ Example project demonstrating real-time messaging and actor state management wit
 
 ```sh
 git clone https://github.com/rivet-gg/rivetkit
+pnpm install
+pnpm run build
 cd rivetkit/examples/chat-room
-npm install
 ```
 
 ### Development
