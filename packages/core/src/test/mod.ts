@@ -5,10 +5,8 @@ import { type TestContext, vi } from "vitest";
 import { type Client, createClient } from "@/client/mod";
 import { createFileSystemOrMemoryDriver } from "@/drivers/file-system/mod";
 import { createInlineClientDriver } from "@/inline-client-driver/mod";
-import { getStudioUrl } from "@/inspector/utils";
 import { createManagerRouter } from "@/manager/router";
 import type { Registry } from "@/registry/mod";
-import { RunConfigSchema } from "@/registry/run-config";
 import { ConfigSchema, type InputConfig } from "./config";
 import { logger } from "./log";
 
@@ -27,12 +25,11 @@ function serve(registry: Registry<any>, inputConfig?: InputConfig): ServerType {
 	}
 
 	// Create router
-	const runConfig = RunConfigSchema.parse(inputConfig);
 	const managerDriver = config.driver.manager(registry.config, config);
 	const inlineClientDriver = createInlineClientDriver(managerDriver);
 	const { router } = createManagerRouter(
 		registry.config,
-		runConfig,
+		config,
 		inlineClientDriver,
 		managerDriver,
 	);

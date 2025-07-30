@@ -3,7 +3,9 @@ import { createNodeWebSocket } from "@hono/node-ws";
 import { Hono } from "hono";
 import { registry } from "./registry.js";
 
-const { client } = registry.createServer();
+const { client, hono } = registry.createServer({
+	getUpgradeWebSocket: () => upgradeWebSocket,
+});
 
 const app = new Hono();
 const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
@@ -44,6 +46,9 @@ app.get(
 		};
 	}),
 );
+
+// Mount RivetKit's registry (optional, but required for Studio integration)
+app.route("/registry", hono);
 
 const server = serve({ port: 8080, fetch: app.fetch });
 injectWebSocket(server);
