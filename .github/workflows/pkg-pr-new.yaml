@@ -10,4 +10,4 @@ jobs:
       - uses: actions/setup-node@v4
       - run: pnpm install
       - run: pnpm build
-      - run: pnpm dlx pkg-pr-new publish 'packages/*' 'packages/**/platforms/*' 'packages/frameworks/*' 'packages/drivers/*' --packageManager pnpm
+      - run: pnpm dlx pkg-pr-new publish 'packages/*' 'packages/**/platforms/*' 'packages/frameworks/*' 'packages/drivers/*' --packageManager pnpm --template './examples/*'
