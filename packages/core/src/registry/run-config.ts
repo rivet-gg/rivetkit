@@ -36,6 +36,13 @@ export const RunConfigSchema = z
 		maxIncomingMessageSize: z.number().optional().default(65_536),
 
 		studio: InspectorConfigSchema,
+
+		/**
+		 * Base path for the router. This is used to prefix all routes.
+		 * For example, if the base path is `/api`, then the route `/actors` will be
+		 * available at `/api/actors`.
+		 */
+		basePath: z.string().optional().default("/"),
 	})
 	.default({});
 

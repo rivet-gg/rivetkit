@@ -1,14 +1,20 @@
 {
-  "name": "@rivetkit/react",
+  "name": "@rivetkit/next-js",
   "version": "0.9.8",
   "license": "Apache-2.0",
   "keywords": [
     "rivetkit",
+    "nextjs",
+    "next",
+    "nextjs-framework",
+    "next-js",
     "react",
-    "hooks",
-    "components",
-    "frontend",
-    "ui"
+    "framework",
+    "web",
+    "serverless",
+    "edge",
+    "actor",
+    "microservices"
   ],
   "sideEffects": false,
   "files": [
@@ -25,16 +31,26 @@
         "types": "./dist/mod.d.ts",
         "default": "./dist/mod.js"
       }
+    },
+    "./client": {
+      "import": {
+        "types": "./dist/client/mod.d.mts",
+        "default": "./dist/client/mod.mjs"
+      },
+      "require": {
+        "types": "./dist/client/mod.d.ts",
+        "default": "./dist/client/mod.js"
+      }
     }
   },
   "scripts": {
-    "build": "tsup src/mod.ts",
+    "build": "tsup src/mod.ts src/client/mod.ts",
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@rivetkit/framework-base": "workspace:*",
-    "@tanstack/react-store": "^0.7.1",
-    "@rivetkit/core": "workspace:^"
+    "@rivetkit/react": "workspace:*",
+    "@rivetkit/core": "workspace:^",
+    "hono": "^4.8.3"
   },
   "peerDependencies": {
     "react": "^18 || ^19",

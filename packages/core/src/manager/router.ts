@@ -144,7 +144,9 @@ export function createManagerRouter(
 	inlineClientDriver: ClientDriver,
 	managerDriver: ManagerDriver,
 ): { router: Hono; openapi: OpenAPIHono } {
-	const router = new OpenAPIHono({ strict: false });
+	const router = new OpenAPIHono({ strict: false }).basePath(
+		runConfig.basePath,
+	);
 
 	router.use("*", loggerMiddleware(logger()));
 
@@ -1378,6 +1380,7 @@ async function handleMessageRequest(
 		const proxyRequest = new Request(url, {
 			method: "POST",
 			body: c.req.raw.body,
+			duplex: "half",
 		});
 		proxyRequest.headers.set(HEADER_ENCODING, encoding);
 		proxyRequest.headers.set(HEADER_CONN_ID, connId);
@@ -1709,13 +1712,16 @@ function universalActorProxy({
 				throw new errors.InvalidRequest("Missing actor query header");
 			}
 			const query = ActorQuerySchema.parse(JSON.parse(queryHeader));
+
 			const { actorId } = await queryActor(c, query, driver);
 
 			const url = new URL(c.req.url);
 			url.hostname = "actor";
 			url.pathname = url.pathname
+				.replace(new RegExp(`^${runConfig.basePath}`, ""), "")
 				.replace(/^\/registry\/actors/, "")
 				.replace(/^\/actors/, ""); // Remove /registry prefix if present
+
 			const proxyRequest = new Request(url, {
 				method: c.req.method,
 				headers: c.req.raw.headers,
