@@ -12,21 +12,24 @@
     "test": "vitest run"
   },
   "devDependencies": {
+    "@rivetkit/actor": "workspace:*",
     "@types/node": "^22.13.9",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@vitejs/plugin-react": "^4.2.0",
     "concurrently": "^8.2.2",
-    "@rivetkit/actor": "workspace:*",
     "tsx": "^3.12.7",
     "typescript": "^5.5.2",
     "vite": "^5.0.0",
     "vitest": "^3.1.1"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^0.0.66",
+    "@ai-sdk/openai": "^2.0.0",
+    "@hono/node-server": "^1.13.7",
+    "@hono/node-ws": "^1.0.4",
     "@rivetkit/react": "workspace:*",
-    "ai": "^4.0.38",
+    "ai": "^5.0.0",
+    "dotenv": "^16.4.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "zod": "^3.25.69"

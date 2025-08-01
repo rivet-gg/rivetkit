@@ -14,7 +14,7 @@ vi.mock("ai", () => ({
 	tool: vi.fn().mockImplementation(({ execute }) => ({ execute })),
 }));
 
-vi.mock("../src/backend/my-utils", () => ({
+vi.mock("../src/backend/utils", () => ({
 	getWeather: vi.fn().mockResolvedValue({
 		location: "San Francisco",
 		temperature: 72,
@@ -38,7 +38,6 @@ test("AI Agent can handle basic actions without connection", async (ctx) => {
 	expect(response).toMatchObject({
 		role: "assistant",
 		content: expect.stringContaining("AI response to: Hello, how are you?"),
-		timestamp: expect.any(Number),
 	});
 
 	// Verify messages are stored
@@ -47,7 +46,6 @@ test("AI Agent can handle basic actions without connection", async (ctx) => {
 	expect(messages[0]).toMatchObject({
 		role: "user",
 		content: userMessage,
-		timestamp: expect.any(Number),
 	});
 	expect(messages[1]).toEqual(response);
 });
