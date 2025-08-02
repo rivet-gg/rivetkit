@@ -202,6 +202,12 @@
     },
     "ws": {
       "optional": true
+    },
+    "@hono/zod-openapi": {
+      "optional": false
+    },
+    "hono": {
+      "optional": false
     }
   },
   "stableVersion": "0.8.0"
