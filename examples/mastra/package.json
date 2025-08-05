@@ -1,0 +1,29 @@
+{
+  "name": "example-mastra",
+  "version": "0.9.5",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx --watch src/server.ts",
+    "check-types": "tsc --noEmit",
+    "test": "tsx scripts/test-client.ts"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^0.0.66",
+    "@hono/node-server": "^1.17.1",
+    "@hono/node-ws": "^1.2.0",
+    "@hono/zod-openapi": "^0.16.0",
+    "@mastra/core": "^0.10.15",
+    "ai": "^4.0.0",
+    "dotenv": "^16.0.0",
+    "hono": "^4.0.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.9",
+    "@rivetkit/actor": "workspace:*",
+    "tsx": "^3.12.7",
+    "typescript": "^5.7.3"
+  },
+  "stableVersion": "0.8.0"
+}
