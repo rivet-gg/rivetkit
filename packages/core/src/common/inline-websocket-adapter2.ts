@@ -53,6 +53,7 @@ export class InlineWebSocketAdapter2 implements UniversalWebSocket {
 
 		// Create a fake WSContext to pass to the handler
 		this.#wsContext = new WSContext({
+			raw: this,
 			send: (data: string | ArrayBuffer | Uint8Array) => {
 				logger().debug("WSContext.send called");
 				this.#handleMessage(data);

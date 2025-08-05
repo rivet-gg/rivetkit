@@ -1,25 +1,10 @@
 import * as fs from "node:fs/promises";
 import { resolve } from "node:path";
-import { Context } from "hono";
-import WebSocket from "ws";
 import type { ClientDriver } from "@/client/client";
 import { createFileSystemOrMemoryDriver } from "@/drivers/file-system/mod";
-import type {
-	ActorOutput,
-	CreateInput,
-	GetForIdInput,
-	GetOrCreateWithKeyInput,
-	GetWithKeyInput,
-	ManagerDriver,
-} from "@/manager/driver";
-import { ActorQuery } from "@/manager/protocol/query";
+import type { ManagerDriver } from "@/manager/driver";
 import { createManagerRouter } from "@/manager/router";
-import {
-	Encoding,
-	type RegistryConfig,
-	RegistryConfigSchema,
-	setup,
-} from "@/mod";
+import { type RegistryConfig, RegistryConfigSchema, setup } from "@/mod";
 import { type RunConfig, RunConfigSchema } from "@/registry/run-config";
 import { VERSION } from "@/utils";
 
