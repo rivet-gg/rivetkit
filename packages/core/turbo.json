@@ -9,6 +9,10 @@
       "dependsOn": ["^build", "dump-openapi"],
       "inputs": ["src/**", "tsconfig.json", "tsup.config.ts", "package.json"],
       "outputs": ["dist/**"]
+    },
+    "test": {
+      "dependsOn": ["^test", "build"],
+      "inputs": ["src/**", "tests/**", "fixtures/**"]
     }
   }
 }

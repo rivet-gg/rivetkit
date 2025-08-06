@@ -19,6 +19,7 @@ import {
 	noAuthActor,
 	publicActor,
 } from "./auth";
+import { connLivenessActor } from "./conn-liveness";
 import { counterWithParams } from "./conn-params";
 import { connStateActor } from "./conn-state";
 // Import actors from individual files
@@ -87,6 +88,8 @@ export const registry = setup({
 		counterWithParams,
 		// From conn-state.ts
 		connStateActor,
+		// From actor-conn.ts
+		connLivenessActor,
 		// From metadata.ts
 		metadataActor,
 		// From vars.ts

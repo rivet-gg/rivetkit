@@ -9,23 +9,28 @@ import type { Logger } from "@/common/log";
 import { isCborSerializable, stringifyError } from "@/common/utils";
 import type { UniversalWebSocket } from "@/common/websocket-interface";
 import { ActorInspector } from "@/inspector/actor";
-import type { Registry, RegistryConfig } from "@/mod";
+import type { Registry } from "@/mod";
 import type { ActionContext } from "./action";
 import type { ActorConfig } from "./config";
-import { Conn, type ConnId } from "./connection";
+import {
+	CONNECTION_CHECK_LIVENESS_SYMBOL,
+	Conn,
+	type ConnectionDriver,
+	type ConnId,
+} from "./connection";
 import { ActorContext } from "./context";
 import type { AnyDatabaseProvider, InferDatabaseClient } from "./database";
-import type { ActorDriver, ConnDriver, ConnDrivers } from "./driver";
+import type { ActorDriver, ConnDriver, ConnectionDriversMap } from "./driver";
 import * as errors from "./errors";
 import { instanceLogger, logger } from "./log";
 import type {
 	PersistedActor,
 	PersistedConn,
-	PersistedScheduleEvents,
+	PersistedScheduleEvent,
 } from "./persisted";
 import { processMessage } from "./protocol/message/mod";
 import { CachedSerializer } from "./protocol/serde";
-import { Schedule } from "./schedule";
+import { Schedule, type ScheduledEvent } from "./schedule";
 import { DeadlineError, deadline, Lock } from "./utils";
 
 /**
@@ -147,7 +152,7 @@ export class ActorInstance<
 
 	#backgroundPromises: Promise<void>[] = [];
 	#config: ActorConfig<S, CP, CS, V, I, AD, DB>;
-	#connectionDrivers!: ConnDrivers;
+	#connectionDrivers!: ConnectionDriversMap;
 	#actorDriver!: ActorDriver;
 	#inlineClient!: Client<Registry<any>>;
 	#actorId!: string;
@@ -230,7 +235,7 @@ export class ActorInstance<
 	}
 
 	async start(
-		connectionDrivers: ConnDrivers,
+		connectionDrivers: ConnectionDriversMap,
 		actorDriver: ActorDriver,
 		inlineClient: Client<Registry<any>>,
 		actorId: string,
@@ -311,27 +316,38 @@ export class ActorInstance<
 
 		logger().info("actor ready");
 		this.#ready = true;
+
+		this.#scheduleLivenessCheck();
 	}
 
-	async scheduleEvent(
-		timestamp: number,
-		fn: string,
-		args: unknown[],
-	): Promise<void> {
+	async #scheduleEventInner(timestamp: number, event: ScheduledEvent) {
 		// Build event
-		const eventId = crypto.randomUUID();
-		const newEvent: PersistedScheduleEvents = {
-			e: eventId,
-			t: timestamp,
-			a: fn,
-			ar: args,
-		};
+		let newEvent: PersistedScheduleEvent;
+		if ("checkConnectionLiveness" in event) {
+			newEvent = {
+				ccl: event.checkConnectionLiveness,
+				t: timestamp,
+			};
+		} else {
+			newEvent = {
+				e: crypto.randomUUID(),
+				t: timestamp,
+				a: event.fn,
+				ar: event.args,
+			};
+		}
 
-		this.actorContext.log.info("scheduling event", {
-			event: eventId,
-			timestamp,
-			action: fn,
-		});
+		this.actorContext.log.info("scheduling event", newEvent);
+
+		// remove old ccl event
+		if ("ccl" in newEvent) {
+			const existingIndex = this.#persist.e.findIndex(
+				(event) => "ccl" in event,
+			);
+			if (existingIndex !== -1) {
+				this.#persist.e.splice(existingIndex, 1);
+			}
+		}
 
 		// Insert event in to index
 		const insertIndex = this.#persist.e.findIndex((x) => x.t > newEvent.t);
@@ -376,43 +392,53 @@ export class ActorInstance<
 		// Iterate by event key in order to ensure we call the events in order
 		for (const event of scheduleEvents) {
 			try {
-				this.actorContext.log.info("running action for event", {
-					event: event.e,
-					timestamp: event.t,
-					action: event.a,
-					args: event.ar,
-				});
-
-				// Look up function
-				const fn: unknown = this.#config.actions[event.a];
-				if (!fn) throw new Error(`Missing action for alarm ${event.a}`);
-				if (typeof fn !== "function")
-					throw new Error(
-						`Alarm function lookup for ${event.a} returned ${typeof fn}`,
-					);
-
-				// Call function
-				try {
-					await fn.call(undefined, this.actorContext, ...event.ar);
-				} catch (error) {
-					this.actorContext.log.error("error while running event", {
-						error: stringifyError(error),
+				if ("ccl" in event) {
+					this.#checkConnectionsLiveness();
+				} else {
+					this.actorContext.log.info("running action for event", {
 						event: event.e,
 						timestamp: event.t,
 						action: event.a,
 						args: event.ar,
 					});
+
+					// Look up function
+					const fn: unknown = this.#config.actions[event.a];
+
+					if (!fn) throw new Error(`Missing action for alarm ${event.a}`);
+					if (typeof fn !== "function")
+						throw new Error(
+							`Alarm function lookup for ${event.a} returned ${typeof fn}`,
+						);
+
+					// Call function
+					try {
+						await fn.call(undefined, this.actorContext, ...(event.ar || []));
+					} catch (error) {
+						this.actorContext.log.error("error while running event", {
+							error: stringifyError(error),
+							event: event.e,
+							timestamp: event.t,
+							action: event.a,
+							args: event.ar,
+						});
+					}
 				}
 			} catch (error) {
 				this.actorContext.log.error("internal error while running event", {
 					error: stringifyError(error),
-					event: event.e,
-					timestamp: event.t,
-					action: event.a,
-					args: event.ar,
+					...event,
 				});
 			}
 		}
+	}
+
+	async scheduleEvent(
+		timestamp: number,
+		fn: string,
+		args: unknown[],
+	): Promise<void> {
+		return this.#scheduleEventInner(timestamp, { fn, args });
 	}
 
 	get stateEnabled() {
@@ -769,7 +795,7 @@ export class ActorInstance<
 		return connState as CS;
 	}
 
-	__getConnDriver(driverId: string): ConnDriver {
+	__getConnDriver(driverId: ConnectionDriver): ConnDriver {
 		// Get driver
 		const driver = this.#connectionDrivers[driverId];
 		if (!driver) throw new Error(`No connection driver: ${driverId}`);
@@ -784,7 +810,7 @@ export class ActorInstance<
 		connectionToken: string,
 		params: CP,
 		state: CS,
-		driverId: string,
+		driverId: ConnectionDriver,
 		driverState: unknown,
 		authData: unknown,
 	): Promise<Conn<S, CP, CS, V, I, AD, DB>> {
@@ -804,6 +830,7 @@ export class ActorInstance<
 			p: params,
 			s: state,
 			a: authData,
+			l: Date.now(),
 			su: [],
 		};
 		const conn = new Conn<S, CP, CS, V, I, AD, DB>(
@@ -967,6 +994,63 @@ export class ActorInstance<
 	}
 
 	/**
+	 * Check the liveness of all connections.
+	 * Sets up a recurring check based on the configured interval.
+	 * @internal
+	 */
+	#checkConnectionsLiveness() {
+		logger().debug("checking connections liveness");
+
+		for (const conn of this.#connections.values()) {
+			const liveness = conn[CONNECTION_CHECK_LIVENESS_SYMBOL]();
+			if (liveness.status === "connected") {
+				logger().debug("connection is alive", { connId: conn.id });
+			} else {
+				const lastSeen = liveness.lastSeen;
+				const sinceLastSeen = Date.now() - lastSeen;
+				if (
+					sinceLastSeen <
+					this.#config.options.lifecycle.connectionLivenessTimeout
+				) {
+					logger().debug("connection might be alive, will check later", {
+						connId: conn.id,
+						lastSeen,
+						sinceLastSeen,
+					});
+					continue;
+				}
+				// Connection is dead, remove it
+				logger().warn("connection is dead, removing", {
+					connId: conn.id,
+					lastSeen,
+				});
+				// we might disconnect the connection here?
+				// conn.disconnect("liveness check failed");
+				this.__removeConn(conn);
+			}
+		}
+
+		this.#scheduleLivenessCheck();
+	}
+
+	/**
+	 * Schedule a liveness check for the connections.
+	 * This will check if the liveness check is already scheduled and skip scheduling if it is.
+	 * @internal
+	 */
+	#scheduleLivenessCheck() {
+		if (this.isStopping) {
+			logger().debug("actor is stopping, skipping liveness check");
+			return;
+		}
+
+		this.#scheduleEventInner(
+			Date.now() + this.#config.options.lifecycle.connectionLivenessInterval,
+			{ checkConnectionLiveness: true },
+		);
+	}
+
+	/**
 	 * Check if the actor is ready to handle requests.
 	 */
 	isReady(): boolean {
@@ -996,7 +1080,7 @@ export class ActorInstance<
 		actionName: string,
 		args: unknown[],
 	): Promise<unknown> {
-		invariant(this.#ready, "exucuting action before ready");
+		invariant(this.#ready, "executing action before ready");
 
 		// Prevent calling private or reserved methods
 		if (!(actionName in this.#config.actions)) {

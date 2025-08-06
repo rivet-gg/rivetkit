@@ -1,15 +1,14 @@
 import type * as messageToClient from "@/actor/protocol/message/to-client";
 import type { CachedSerializer } from "@/actor/protocol/serde";
 import type { AnyClient } from "@/client/client";
-import type { ActorInspector } from "@/inspector/actor";
 import type { ManagerDriver } from "@/manager/driver";
 import type { RegistryConfig } from "@/registry/config";
 import type { RunConfig } from "@/registry/run-config";
-import type { AnyConn } from "./connection";
+import type { AnyConn, ConnectionDriver } from "./connection";
 import type { GenericConnGlobalState } from "./generic-conn-driver";
 import type { AnyActorInstance } from "./instance";
 
-export type ConnDrivers = Record<string, ConnDriver>;
+export type ConnectionDriversMap = Record<ConnectionDriver, ConnDriver>;
 
 export type ActorDriverBuilder = (
 	registryConfig: RegistryConfig,
@@ -45,6 +44,14 @@ export interface ActorDriver {
 	//readState(): void;
 }
 
+export enum ConnectionReadyState {
+	UNKNOWN = -1,
+	CONNECTING = 0,
+	OPEN = 1,
+	CLOSING = 2,
+	CLOSED = 3,
+}
+
 export interface ConnDriver<ConnDriverState = unknown> {
 	sendMessage?(
 		actor: AnyActorInstance,
@@ -62,4 +69,13 @@ export interface ConnDriver<ConnDriverState = unknown> {
 		state: ConnDriverState,
 		reason?: string,
 	): Promise<void>;
+
+	/**
+	 * Returns the ready state of the connection.
+	 * This is used to determine if the connection is ready to send messages, or if the connection is stale.
+	 */
+	getConnectionReadyState?(
+		actor: AnyActorInstance,
+		conn: AnyConn,
+	): ConnectionReadyState | undefined;
 }

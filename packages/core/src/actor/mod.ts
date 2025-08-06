@@ -47,7 +47,18 @@ export type {
 export type { ActorKey } from "@/manager/protocol/query";
 export type { ActionContext } from "./action";
 export type * from "./config";
-export type { Conn, generateConnId, generateConnToken } from "./connection";
+export type {
+	Conn,
+	ConnectionDriver,
+	ConnectionStatus,
+	generateConnId,
+	generateConnToken,
+} from "./connection";
+export {
+	CONNECTION_DRIVER_HTTP,
+	CONNECTION_DRIVER_SSE,
+	CONNECTION_DRIVER_WEBSOCKET,
+} from "./connection";
 export type { ActorContext } from "./context";
 export type {
 	ActionContextOf,

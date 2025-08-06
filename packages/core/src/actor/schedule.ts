@@ -15,3 +15,16 @@ export class Schedule {
 		await this.#actor.scheduleEvent(timestamp, fn, args);
 	}
 }
+
+export interface GenericScheduledEvent {
+	fn: string;
+	args: unknown[];
+	id?: string;
+}
+export interface ScheduledLivenessCheckEvent {
+	checkConnectionLiveness: {};
+}
+
+export type ScheduledEvent =
+	| GenericScheduledEvent
+	| ScheduledLivenessCheckEvent;

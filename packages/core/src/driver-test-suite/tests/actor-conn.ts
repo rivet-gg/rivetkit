@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { DriverTestConfig } from "../mod";
-import { setupDriverTest } from "../utils";
+import { FAKE_TIME, setupDriverTest, waitFor } from "../utils";
 
 export function runActorConnTests(driverTestConfig: DriverTestConfig) {
 	describe("Actor Connection Tests", () => {
@@ -255,6 +255,87 @@ export function runActorConnTests(driverTestConfig: DriverTestConfig) {
 						"onStart",
 					],
 				]);
+			});
+		});
+
+		describe("Connection Liveness", () => {
+			test("should return correct liveness status for connections", async (c) => {
+				const { client } = await setupDriverTest(c, driverTestConfig);
+
+				// Create actor and connection
+				const handle = client.connLivenessActor.getOrCreate([
+					"test-liveness-status",
+				]);
+				const connA = handle.connect();
+				const connB = handle.connect();
+
+				const connAId = await connA.getConnectionId();
+				const connBId = await connB.getConnectionId();
+
+				// Verify connection works initially
+				await connA.increment(5);
+				await connB.increment(5);
+
+				const counter = await handle.getCounter();
+				expect(counter).toBe(10);
+
+				const connectionsStatusBeforeKill =
+					await handle.getWsConnectionsLiveness();
+				expect(connectionsStatusBeforeKill).toHaveLength(2);
+				expect(connectionsStatusBeforeKill).toContainEqual(
+					expect.objectContaining({
+						id: connAId,
+						status: "connected",
+						lastSeen: FAKE_TIME.getTime(),
+					}),
+				);
+				expect(connectionsStatusBeforeKill).toContainEqual(
+					expect.objectContaining({
+						id: connBId,
+						status: "connected",
+						lastSeen: FAKE_TIME.getTime(),
+					}),
+				);
+
+				// Kill one connection
+				await handle.kill(connAId); // instead of dispose, we use kill to simulate a disconnection (e.g. network failure)
+				// connA.dispose();
+				// we killed the connection, but the actor instance does not know about it yet
+				// it should still be in the list of connections, but with a status of "reconnecting"
+				const connectionsStatusAfterKill =
+					await handle.getWsConnectionsLiveness();
+				expect(connectionsStatusAfterKill).toEqual(
+					expect.arrayContaining([
+						expect.objectContaining({
+							id: connAId,
+							status: "reconnecting",
+							lastSeen: FAKE_TIME.getTime(),
+						}),
+						expect.objectContaining({
+							id: connBId,
+							status: "connected",
+							lastSeen: FAKE_TIME.getTime(),
+						}),
+					]),
+				);
+
+				// default time to wait for cleanup is 5 seconds
+				// check actor options
+				await waitFor(driverTestConfig, 5_000);
+
+				// After timeout, the killed connection should be unavailable, since the manager has cleaned it up
+				const connectionsStatusAfterCleanup =
+					await handle.getWsConnectionsLiveness();
+				expect(connectionsStatusAfterCleanup).not.toContainEqual(
+					expect.objectContaining({
+						id: connAId,
+					}),
+				);
+				expect(connectionsStatusAfterCleanup).toContainEqual(
+					expect.objectContaining({
+						id: connBId,
+					}),
+				);
 			});
 		});
 	});

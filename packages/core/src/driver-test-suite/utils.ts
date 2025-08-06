@@ -7,6 +7,8 @@ import type { registry } from "../../fixtures/driver-test-suite/registry";
 import type { DriverTestConfig } from "./mod";
 import { createTestInlineClientDriver } from "./test-inline-client-driver";
 
+export const FAKE_TIME = new Date("2024-01-01T00:00:00.000Z");
+
 // Must use `TestContext` since global hooks do not work when running concurrently
 export async function setupDriverTest(
 	c: TestContext,
@@ -17,6 +19,7 @@ export async function setupDriverTest(
 }> {
 	if (!driverTestConfig.useRealTimers) {
 		vi.useFakeTimers();
+		vi.setSystemTime(FAKE_TIME);
 	}
 
 	// Build drivers

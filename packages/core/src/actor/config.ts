@@ -37,6 +37,8 @@ export const ActorConfigSchema = z
 						createVarsTimeout: z.number().positive().default(5000),
 						createConnStateTimeout: z.number().positive().default(5000),
 						onConnectTimeout: z.number().positive().default(5000),
+						connectionLivenessTimeout: z.number().positive().default(2500),
+						connectionLivenessInterval: z.number().positive().default(5000),
 					})
 					.strict()
 					.default({}),

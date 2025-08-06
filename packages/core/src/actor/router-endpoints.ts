@@ -3,7 +3,13 @@ import { type SSEStreamingApi, streamSSE } from "hono/streaming";
 import type { WSContext } from "hono/ws";
 import { ActionContext } from "@/actor/action";
 import type { AnyConn } from "@/actor/connection";
-import { generateConnId, generateConnToken } from "@/actor/connection";
+import {
+	CONNECTION_DRIVER_HTTP,
+	CONNECTION_DRIVER_SSE,
+	CONNECTION_DRIVER_WEBSOCKET,
+	generateConnId,
+	generateConnToken,
+} from "@/actor/connection";
 import * as errors from "@/actor/errors";
 import type { AnyActorInstance } from "@/actor/instance";
 import * as protoHttpAction from "@/actor/protocol/http/action";
@@ -22,13 +28,10 @@ import type { UniversalWebSocket } from "@/common/websocket-interface";
 import { HonoWebSocketAdapter } from "@/manager/hono-websocket-adapter";
 import type { RunConfig } from "@/registry/run-config";
 import type { ActorDriver } from "./driver";
-import {
-	CONN_DRIVER_GENERIC_HTTP,
-	CONN_DRIVER_GENERIC_SSE,
-	CONN_DRIVER_GENERIC_WEBSOCKET,
-	type GenericHttpDriverState,
-	type GenericSseDriverState,
-	type GenericWebSocketDriverState,
+import type {
+	GenericHttpDriverState,
+	GenericSseDriverState,
+	GenericWebSocketDriverState,
 } from "./generic-conn-driver";
 import { logger } from "./log";
 import { assertUnreachable } from "./utils";
@@ -171,7 +174,7 @@ export async function handleWebSocketConnect(
 						connToken,
 						parameters,
 						connState,
-						CONN_DRIVER_GENERIC_WEBSOCKET,
+						CONNECTION_DRIVER_WEBSOCKET,
 						{ encoding } satisfies GenericWebSocketDriverState,
 						authData,
 					);
@@ -352,7 +355,7 @@ export async function handleSseConnect(
 				connToken,
 				parameters,
 				connState,
-				CONN_DRIVER_GENERIC_SSE,
+				CONNECTION_DRIVER_SSE,
 				{ encoding } satisfies GenericSseDriverState,
 				authData,
 			);
@@ -480,7 +483,7 @@ export async function handleAction(
 			generateConnToken(),
 			parameters,
 			connState,
-			CONN_DRIVER_GENERIC_HTTP,
+			CONNECTION_DRIVER_HTTP,
 			{} satisfies GenericHttpDriverState,
 			authData,
 		);
