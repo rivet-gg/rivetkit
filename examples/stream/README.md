@@ -16,8 +16,9 @@ Example project demonstrating real-time top-K stream processing with [RivetKit](
 
 ```sh
 git clone https://github.com/rivet-gg/rivetkit
+pnpm install
+pnpm run build
 cd rivetkit/examples/stream
-npm install
 ```
 
 ### Development

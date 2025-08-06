@@ -16,8 +16,9 @@ Example project demonstrating real-time collaborative editing using Conflict-fre
 
 ```sh
 git clone https://github.com/rivet-gg/rivetkit
+pnpm install
+pnpm run build
 cd rivetkit/examples/crdt
-npm install
 ```
 
 ### Development

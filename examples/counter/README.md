@@ -16,8 +16,9 @@ Example project demonstrating basic actor state management and RPC calls with [R
 
 ```sh
 git clone https://github.com/rivet-gg/rivetkit
+pnpm install
+pnpm run build
 cd rivetkit/examples/counter
-npm install
 ```
 
 ### Development

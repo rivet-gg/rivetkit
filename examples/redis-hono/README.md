@@ -17,8 +17,9 @@ Example project demonstrating Redis persistence with Hono web framework and [Riv
 
 ```sh
 git clone https://github.com/rivet-gg/rivetkit
+pnpm install
+pnpm run build
 cd rivetkit/examples/redis-hono
-npm install
 ```
 
 ### Development

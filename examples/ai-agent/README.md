@@ -17,8 +17,9 @@ Example project demonstrating AI agent integration with [RivetKit](https://rivet
 
 ```sh
 git clone https://github.com/rivet-gg/rivetkit
+pnpm install
+pnpm run build
 cd rivetkit/examples/ai-agent
-npm install
 ```
 
 ### Development

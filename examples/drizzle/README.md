@@ -16,8 +16,11 @@ Example project demonstrating Hono web framework integration with [RivetKit](htt
 
 ```sh
 git clone https://github.com/rivet-gg/rivetkit
-cd rivetkit/examples/hono
-npm install
+
+pnpm install
+pnpm run build
+cd rivetkit/examples/drizzle
+
 ```
 
 ### Development

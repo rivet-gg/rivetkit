@@ -17,8 +17,9 @@ Example project demonstrating Redis persistence and coordinate topology with [Ri
 
 ```sh
 git clone https://github.com/rivet-gg/rivetkit
+pnpm install
+pnpm run build
 cd rivetkit/examples/redis
-npm install
 ```
 
 ### Development

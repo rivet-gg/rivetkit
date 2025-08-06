@@ -16,8 +16,9 @@ Example project demonstrating persistent data storage and real-time updates with
 
 ```sh
 git clone https://github.com/rivet-gg/rivetkit
+pnpm install
+pnpm run build
 cd rivetkit/examples/database
-npm install
 ```
 
 ### Development

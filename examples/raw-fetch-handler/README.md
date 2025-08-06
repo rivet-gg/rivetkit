@@ -36,8 +36,9 @@ raw-fetch-handler/
 
 ```sh
 git clone https://github.com/rivet-gg/rivetkit
-cd rivetkit/examples/raw-fetch-handler
 pnpm install
+pnpm run build
+cd rivetkit/examples/raw-fetch-handler
 ```
 
 ### Development

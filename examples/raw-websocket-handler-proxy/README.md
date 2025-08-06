@@ -17,8 +17,9 @@ Example project demonstrating raw WebSocket handling with [RivetKit](https://riv
 
 ```sh
 git clone https://github.com/rivet-gg/rivetkit
+pnpm install
+pnpm run build
 cd rivetkit/examples/raw-websocket-handler-proxy
-npm install
 ```
 
 ### Development
