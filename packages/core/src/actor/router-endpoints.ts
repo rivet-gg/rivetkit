@@ -430,15 +430,20 @@ export async function handleAction(
 	let actionArgs: unknown[];
 	if (encoding === "json") {
 		try {
-			actionArgs = await c.req.json();
-		} catch (err) {
-			throw new errors.InvalidActionRequest("Invalid JSON");
-		}
+			const body = await c.req.json();
 
-		if (!Array.isArray(actionArgs)) {
-			throw new errors.InvalidActionRequest(
-				"Action arguments must be an array",
-			);
+			// Validate using the action schema
+			const result = protoHttpAction.ActionRequestSchema.safeParse(body);
+			if (!result.success) {
+				throw new errors.InvalidActionRequest("Invalid action request format");
+			}
+
+			actionArgs = result.data.a;
+		} catch (err) {
+			if (err instanceof errors.InvalidActionRequest) {
+				throw err;
+			}
+			throw new errors.InvalidActionRequest("Invalid JSON");
 		}
 	} else if (encoding === "cbor") {
 		try {
@@ -496,7 +501,10 @@ export async function handleAction(
 
 	// Encode the response
 	if (encoding === "json") {
-		return c.json(output as Record<string, unknown>);
+		const responseData = {
+			o: output, // Use the format expected by ResponseOkSchema
+		};
+		return c.json(responseData);
 	} else if (encoding === "cbor") {
 		// Use serialize from serde.ts instead of custom encoder
 		const responseData = {
