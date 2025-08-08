@@ -20,8 +20,9 @@ import { logger } from "./log";
 // Define AnyClient locally since it's not exported
 type AnyClient = any;
 
-export interface ActorDriverContext {
+export interface DriverContext {
 	redis: Redis;
+	keyPrefix: string;
 }
 
 /**
@@ -54,8 +55,8 @@ export class RedisActorDriver implements ActorDriver {
 		return peer.genericConnGlobalState;
 	}
 
-	getContext(_actorId: string): ActorDriverContext {
-		return { redis: this.#redis };
+	getContext(_actorId: string): DriverContext {
+		return { redis: this.#redis, keyPrefix: this.#driverConfig.keyPrefix };
 	}
 
 	async readPersistedData(actorId: string): Promise<Uint8Array | undefined> {

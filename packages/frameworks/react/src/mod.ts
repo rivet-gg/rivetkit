@@ -5,8 +5,8 @@ import {
 	type CreateRivetKitOptions,
 	createRivetKit as createVanillaRivetKit,
 } from "@rivetkit/framework-base";
-import { useEffect, useRef } from "react";
 import { useStore } from "@tanstack/react-store";
+import { useEffect, useRef } from "react";
 
 export { createClient } from "@rivetkit/core/client";
 
@@ -77,8 +77,13 @@ export function createRivetKit<Registry extends AnyActorRegistry>(
 					ref.current(...args);
 				}
 				return actorState.connection.on(eventName, eventHandler);
-			}, [actorState.connection, actorState.isConnected, actorState.hash, eventName]);
-		};
+			}, [
+				actorState.connection,
+				actorState.isConnected,
+				actorState.hash,
+				eventName,
+			]);
+		}
 
 		return {
 			...actorState,

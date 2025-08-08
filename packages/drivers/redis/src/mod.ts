@@ -18,7 +18,7 @@ import { Node } from "./coordinate/node/mod";
 import type { GlobalState } from "./coordinate/types";
 import { RedisManagerDriver } from "./manager";
 
-export { RedisActorDriver } from "./actor";
+export { type DriverContext, RedisActorDriver } from "./actor";
 export { RedisManagerDriver } from "./manager";
 
 export function createRedisDriver(

@@ -161,7 +161,7 @@ type CreateVars<S, CP, CS, V, I, AD, DB> =
 			/**
 			 * @experimental
 			 */
-			createVars: (
+			createVars: <DC = unknown>(
 				c: ActorContext<
 					undefined,
 					undefined,
@@ -171,7 +171,7 @@ type CreateVars<S, CP, CS, V, I, AD, DB> =
 					undefined,
 					undefined
 				>,
-				driverCtx: unknown,
+				driverCtx: DC,
 			) => V | Promise<V>;
 	  }
 	| Record<never, never>;

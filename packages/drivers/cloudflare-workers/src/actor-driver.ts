@@ -42,9 +42,8 @@ export class CloudflareDurableObjectGlobalState {
 	}
 }
 
-export interface ActorDriverContext {
-	ctx: DurableObjectState;
-	env: unknown;
+export interface DriverContext {
+	state: DurableObjectState;
 }
 
 // Actor handler to track running instances
@@ -143,9 +142,9 @@ export class CloudflareActorsActorDriver implements ActorDriver {
 		return handler.genericConnGlobalState;
 	}
 
-	getContext(actorId: string): ActorDriverContext {
+	getContext(actorId: string): DriverContext {
 		const state = this.#globalState.getDOState(actorId);
-		return { ctx: state.ctx, env: state.env };
+		return { state: state.ctx };
 	}
 
 	async readPersistedData(actorId: string): Promise<Uint8Array | undefined> {
