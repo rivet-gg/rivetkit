@@ -1,4 +1,4 @@
-import { ActorContext, actor, setup } from "@rivetkit/actor";
+import { actor, setup } from "@rivetkit/actor";
 
 export const counter = actor({
 	onAuth: () => {

@@ -3,30 +3,57 @@ import {
 	type ActorConfig,
 	type ActorConfigInput,
 	ActorConfigSchema,
+	ActorTypes,
 } from "./config";
 import type { AnyDatabaseProvider } from "./database";
 import { ActorDefinition } from "./definition";
 
 export function actor<
-	S,
-	CP,
-	CS,
-	V,
-	I,
-	AD,
-	DB extends AnyDatabaseProvider,
-	R extends Actions<S, CP, CS, V, I, AD, DB>,
+	TState,
+	TConnParams,
+	TConnState,
+	TVars,
+	TInput,
+	TAuthData,
+	TDatabase extends AnyDatabaseProvider,
+	TActions extends Actions<
+		TState,
+		TConnParams,
+		TConnState,
+		TVars,
+		TInput,
+		TAuthData,
+		TDatabase
+	>,
 >(
-	input: ActorConfigInput<S, CP, CS, V, I, AD, DB, R>,
-): ActorDefinition<S, CP, CS, V, I, AD, DB, R> {
+	input: ActorConfigInput<
+		TState,
+		TConnParams,
+		TConnState,
+		TVars,
+		TInput,
+		TAuthData,
+		TDatabase,
+		TActions
+	>,
+): ActorDefinition<
+	TState,
+	TConnParams,
+	TConnState,
+	TVars,
+	TInput,
+	TAuthData,
+	TDatabase,
+	TActions
+> {
 	const config = ActorConfigSchema.parse(input) as ActorConfig<
-		S,
-		CP,
-		CS,
-		V,
-		I,
-		AD,
-		DB
+		TState,
+		TConnParams,
+		TConnState,
+		TVars,
+		TInput,
+		TAuthData,
+		TDatabase
 	>;
 	return new ActorDefinition(config);
 }

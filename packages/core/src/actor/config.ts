@@ -5,6 +5,34 @@ import type { Conn } from "./connection";
 import type { ActorContext } from "./context";
 import type { AnyDatabaseProvider } from "./database";
 
+export type InitContext = ActorContext<
+	undefined,
+	undefined,
+	undefined,
+	undefined,
+	undefined,
+	undefined,
+	undefined
+>;
+
+export interface ActorTypes<
+	TState,
+	TConnParams,
+	TConnState,
+	TVars,
+	TInput,
+	TAuthData,
+	TDatabase extends AnyDatabaseProvider,
+> {
+	state?: TState;
+	connParams?: TConnParams;
+	connState?: TConnState;
+	vars?: TVars;
+	input?: TInput;
+	authData?: TAuthData;
+	database?: TDatabase;
+}
+
 // This schema is used to validate the input at runtime. The generic types are defined below in `ActorConfig`.
 //
 // We don't use Zod generics with `z.custom` because:
@@ -22,7 +50,7 @@ export const ActorConfigSchema = z
 		onBeforeActionResponse: z.function().optional(),
 		onFetch: z.function().optional(),
 		onWebSocket: z.function().optional(),
-		actions: z.record(z.function()),
+		actions: z.record(z.function()).default({}),
 		state: z.any().optional(),
 		createState: z.function().optional(),
 		connState: z.any().optional(),
@@ -80,106 +108,92 @@ export const ActorConfigSchema = z
 		},
 	);
 
-export interface OnCreateOptions<I> {
-	input?: I;
-}
-
-export interface CreateStateOptions<I> {
-	input?: I;
-}
-
-export interface OnConnectOptions<CP> {
+export interface OnConnectOptions {
 	/**
 	 * The request object associated with the connection.
 	 *
 	 * @experimental
 	 */
 	request?: Request;
-	params: CP;
 }
 
 // Creates state config
 //
-// This must have only one or the other or else S will not be able to be inferred
+// This must have only one or the other or else TState will not be able to be inferred
 //
 // Data returned from this handler will be available on `c.state`.
-type CreateState<S, CP, CS, V, I, AD, DB> =
-	| { state: S }
+type CreateState<
+	TState,
+	TConnParams,
+	TConnState,
+	TVars,
+	TInput,
+	TAuthData,
+	TDatabase,
+> =
+	| { state: TState }
 	| {
-			createState: (
-				c: ActorContext<
-					undefined,
-					undefined,
-					undefined,
-					undefined,
-					undefined,
-					undefined,
-					undefined
-				>,
-				opts: CreateStateOptions<I>,
-			) => S | Promise<S>;
+			createState: (c: InitContext, input: TInput) => TState | Promise<TState>;
 	  }
 	| Record<never, never>;
 
 // Creates connection state config
 //
-// This must have only one or the other or else S will not be able to be inferred
+// This must have only one or the other or else TState will not be able to be inferred
 //
 // Data returned from this handler will be available on `c.conn.state`.
-type CreateConnState<S, CP, CS, V, I, AD, DB> =
-	| { connState: CS }
+type CreateConnState<
+	TState,
+	TConnParams,
+	TConnState,
+	TVars,
+	TInput,
+	TAuthData,
+	TDatabase,
+> =
+	| { connState: TConnState }
 	| {
 			createConnState: (
-				c: ActorContext<
-					undefined,
-					undefined,
-					undefined,
-					undefined,
-					undefined,
-					undefined,
-					undefined
-				>,
-				opts: OnConnectOptions<CP>,
-			) => CS | Promise<CS>;
+				c: InitContext,
+				params: TConnParams,
+				opts: OnConnectOptions,
+			) => TConnState | Promise<TConnState>;
 	  }
 	| Record<never, never>;
 
 // Creates vars config
 //
-// This must have only one or the other or else S will not be able to be inferred
+// This must have only one or the other or else TState will not be able to be inferred
 /**
  * @experimental
  */
-type CreateVars<S, CP, CS, V, I, AD, DB> =
+type CreateVars<
+	TState,
+	TConnParams,
+	TConnState,
+	TVars,
+	TInput,
+	TAuthData,
+	TDatabase,
+> =
 	| {
 			/**
 			 * @experimental
 			 */
-			vars: V;
+			vars: TVars;
 	  }
 	| {
 			/**
 			 * @experimental
 			 */
-			createVars: <DC = unknown>(
-				c: ActorContext<
-					undefined,
-					undefined,
-					undefined,
-					undefined,
-					undefined,
-					undefined,
-					undefined
-				>,
-				driverCtx: DC,
-			) => V | Promise<V>;
+			createVars: (c: InitContext, driverCtx: any) => TVars | Promise<TVars>;
 	  }
 	| Record<never, never>;
 
 // Creates auth config
 //
-// This must have only one or the other or else AD will not be able to be inferred
-type OnAuth<CP, AD> =
+// This must have only one or the other or else TAuthData will not be able to be inferred
+type OnAuth<TConnParams, TAuthData> =
 	| {
 			/**
 			 * Called on the HTTP server before clients can interact with the actor.
@@ -206,45 +220,71 @@ type OnAuth<CP, AD> =
 			 * @returns Authentication data to attach to connections (must be serializable)
 			 * @throws Throw an error to deny access to the actor
 			 */
-			onAuth: (opts: OnAuthOptions<CP>) => AD | Promise<AD>;
+			onAuth: (
+				params: TConnParams,
+				opts: OnAuthOptions,
+			) => TAuthData | Promise<TAuthData>;
 	  }
 	| Record<never, never>;
 
-export interface Actions<S, CP, CS, V, I, AD, DB extends AnyDatabaseProvider> {
+export interface Actions<
+	TState,
+	TConnParams,
+	TConnState,
+	TVars,
+	TInput,
+	TAuthData,
+	TDatabase extends AnyDatabaseProvider,
+> {
 	[Action: string]: (
-		c: ActionContext<S, CP, CS, V, I, AD, DB>,
+		c: ActionContext<
+			TState,
+			TConnParams,
+			TConnState,
+			TVars,
+			TInput,
+			TAuthData,
+			TDatabase
+		>,
 		...args: any[]
 	) => any;
 }
 
-//export type ActorConfig<S, CP, CS, V, I, AD> = BaseActorConfig<S, CP, CS, V, I, AD> &
-//	ActorConfigLifecycle<S, CP, CS, V, I, AD> &
-//	CreateState<S, CP, CS, V, I, AD> &
-//	CreateConnState<S, CP, CS, V, I, AD>;
+//export type ActorConfig<TState, TConnParams, TConnState, TVars, TInput, TAuthData> = BaseActorConfig<TState, TConnParams, TConnState, TVars, TInput, TAuthData> &
+//	ActorConfigLifecycle<TState, TConnParams, TConnState, TVars, TInput, TAuthData> &
+//	CreateState<TState, TConnParams, TConnState, TVars, TInput, TAuthData> &
+//	CreateConnState<TState, TConnParams, TConnState, TVars, TInput, TAuthData>;
 
 /**
  * @experimental
  */
 export type AuthIntent = "get" | "create" | "connect" | "action" | "message";
 
-export interface OnAuthOptions<CP = unknown> {
+export interface OnAuthOptions {
 	request: Request;
 	/**
 	 * @experimental
 	 */
 	intents: Set<AuthIntent>;
-	params: CP;
 }
 
 interface BaseActorConfig<
-	S,
-	CP,
-	CS,
-	V,
-	I,
-	AD,
-	DB extends AnyDatabaseProvider,
-	R extends Actions<S, CP, CS, V, I, AD, DB>,
+	TState,
+	TConnParams,
+	TConnState,
+	TVars,
+	TInput,
+	TAuthData,
+	TDatabase extends AnyDatabaseProvider,
+	TActions extends Actions<
+		TState,
+		TConnParams,
+		TConnState,
+		TVars,
+		TInput,
+		TAuthData,
+		TDatabase
+	>,
 > {
 	/**
 	 * Called when the actor is first initialized.
@@ -253,8 +293,16 @@ interface BaseActorConfig<
 	 * This is called before any other lifecycle hooks.
 	 */
 	onCreate?: (
-		c: ActorContext<S, CP, CS, V, I, AD, DB>,
-		opts: OnCreateOptions<I>,
+		c: ActorContext<
+			TState,
+			TConnParams,
+			TConnState,
+			TVars,
+			TInput,
+			TAuthData,
+			TDatabase
+		>,
+		input: TInput,
 	) => void | Promise<void>;
 
 	/**
@@ -265,7 +313,17 @@ interface BaseActorConfig<
 	 *
 	 * @returns Void or a Promise that resolves when startup is complete
 	 */
-	onStart?: (c: ActorContext<S, CP, CS, V, I, AD, DB>) => void | Promise<void>;
+	onStart?: (
+		c: ActorContext<
+			TState,
+			TConnParams,
+			TConnState,
+			TVars,
+			TInput,
+			TAuthData,
+			TDatabase
+		>,
+	) => void | Promise<void>;
 
 	/**
 	 * Called when the actor's state changes.
@@ -276,8 +334,16 @@ interface BaseActorConfig<
 	 * @param newState The updated state
 	 */
 	onStateChange?: (
-		c: ActorContext<S, CP, CS, V, I, AD, DB>,
-		newState: S,
+		c: ActorContext<
+			TState,
+			TConnParams,
+			TConnState,
+			TVars,
+			TInput,
+			TAuthData,
+			TDatabase
+		>,
+		newState: TState,
 	) => void;
 
 	/**
@@ -301,8 +367,17 @@ interface BaseActorConfig<
 	 * @throws Throw an error to reject the connection
 	 */
 	onBeforeConnect?: (
-		c: ActorContext<S, CP, CS, V, I, AD, DB>,
-		opts: OnConnectOptions<CP>,
+		c: ActorContext<
+			TState,
+			TConnParams,
+			TConnState,
+			TVars,
+			TInput,
+			TAuthData,
+			TDatabase
+		>,
+		params: TConnParams,
+		opts: OnConnectOptions,
 	) => void | Promise<void>;
 
 	/**
@@ -315,8 +390,24 @@ interface BaseActorConfig<
 	 * @returns Void or a Promise that resolves when connection handling is complete
 	 */
 	onConnect?: (
-		c: ActorContext<S, CP, CS, V, I, AD, DB>,
-		conn: Conn<S, CP, CS, V, I, AD, DB>,
+		c: ActorContext<
+			TState,
+			TConnParams,
+			TConnState,
+			TVars,
+			TInput,
+			TAuthData,
+			TDatabase
+		>,
+		conn: Conn<
+			TState,
+			TConnParams,
+			TConnState,
+			TVars,
+			TInput,
+			TAuthData,
+			TDatabase
+		>,
 	) => void | Promise<void>;
 
 	/**
@@ -329,8 +420,24 @@ interface BaseActorConfig<
 	 * @returns Void or a Promise that resolves when disconnect handling is complete
 	 */
 	onDisconnect?: (
-		c: ActorContext<S, CP, CS, V, I, AD, DB>,
-		conn: Conn<S, CP, CS, V, I, AD, DB>,
+		c: ActorContext<
+			TState,
+			TConnParams,
+			TConnState,
+			TVars,
+			TInput,
+			TAuthData,
+			TDatabase
+		>,
+		conn: Conn<
+			TState,
+			TConnParams,
+			TConnState,
+			TVars,
+			TInput,
+			TAuthData,
+			TDatabase
+		>,
 	) => void | Promise<void>;
 
 	/**
@@ -346,7 +453,15 @@ interface BaseActorConfig<
 	 * @returns The modified output to send to the client
 	 */
 	onBeforeActionResponse?: <Out>(
-		c: ActorContext<S, CP, CS, V, I, AD, DB>,
+		c: ActorContext<
+			TState,
+			TConnParams,
+			TConnState,
+			TVars,
+			TInput,
+			TAuthData,
+			TDatabase
+		>,
 		name: string,
 		args: unknown[],
 		output: Out,
@@ -362,9 +477,17 @@ interface BaseActorConfig<
 	 * @returns A Response object to send back, or void to continue with default routing
 	 */
 	onFetch?: (
-		c: ActorContext<S, CP, CS, V, I, AD, DB>,
+		c: ActorContext<
+			TState,
+			TConnParams,
+			TConnState,
+			TVars,
+			TInput,
+			TAuthData,
+			TDatabase
+		>,
 		request: Request,
-		opts: { auth: AD },
+		opts: { auth: TAuthData },
 	) => Response | Promise<Response>;
 
 	/**
@@ -377,20 +500,28 @@ interface BaseActorConfig<
 	 * @param request The original HTTP upgrade request
 	 */
 	onWebSocket?: (
-		c: ActorContext<S, CP, CS, V, I, AD, DB>,
+		c: ActorContext<
+			TState,
+			TConnParams,
+			TConnState,
+			TVars,
+			TInput,
+			TAuthData,
+			TDatabase
+		>,
 		websocket: UniversalWebSocket,
-		opts: { request: Request; auth: AD },
+		opts: { request: Request; auth: TAuthData },
 	) => void | Promise<void>;
 
-	actions: R;
+	actions: TActions;
 }
 
-type ActorDatabaseConfig<DB extends AnyDatabaseProvider> =
+type ActorDatabaseConfig<TDatabase extends AnyDatabaseProvider> =
 	| {
 			/**
 			 * @experimental
 			 */
-			db: DB;
+			db: TDatabase;
 	  }
 	| Record<never, never>;
 
@@ -398,13 +529,13 @@ type ActorDatabaseConfig<DB extends AnyDatabaseProvider> =
 // 2. Omit keys that we'll manually define (because of generics)
 // 3. Define our own types that have generic constraints
 export type ActorConfig<
-	S,
-	CP,
-	CS,
-	V,
-	I,
-	AD,
-	DB extends AnyDatabaseProvider,
+	TState,
+	TConnParams,
+	TConnState,
+	TVars,
+	TInput,
+	TAuthData,
+	TDatabase extends AnyDatabaseProvider,
 > = Omit<
 	z.infer<typeof ActorConfigSchema>,
 	| "actions"
@@ -426,24 +557,83 @@ export type ActorConfig<
 	| "createVars"
 	| "db"
 > &
-	BaseActorConfig<S, CP, CS, V, I, AD, DB, Actions<S, CP, CS, V, I, AD, DB>> &
-	OnAuth<CP, AD> &
-	CreateState<S, CP, CS, V, I, AD, DB> &
-	CreateConnState<S, CP, CS, V, I, AD, DB> &
-	CreateVars<S, CP, CS, V, I, AD, DB> &
-	ActorDatabaseConfig<DB>;
+	BaseActorConfig<
+		TState,
+		TConnParams,
+		TConnState,
+		TVars,
+		TInput,
+		TAuthData,
+		TDatabase,
+		Actions<
+			TState,
+			TConnParams,
+			TConnState,
+			TVars,
+			TInput,
+			TAuthData,
+			TDatabase
+		>
+	> &
+	OnAuth<TConnParams, TAuthData> &
+	CreateState<
+		TState,
+		TConnParams,
+		TConnState,
+		TVars,
+		TInput,
+		TAuthData,
+		TDatabase
+	> &
+	CreateConnState<
+		TState,
+		TConnParams,
+		TConnState,
+		TVars,
+		TInput,
+		TAuthData,
+		TDatabase
+	> &
+	CreateVars<
+		TState,
+		TConnParams,
+		TConnState,
+		TVars,
+		TInput,
+		TAuthData,
+		TDatabase
+	> &
+	ActorDatabaseConfig<TDatabase>;
 
 // See description on `ActorConfig`
 export type ActorConfigInput<
-	S,
-	CP,
-	CS,
-	V,
-	I,
-	AD,
-	DB extends AnyDatabaseProvider,
-	R extends Actions<S, CP, CS, V, I, AD, DB>,
-> = Omit<
+	TState = undefined,
+	TConnParams = undefined,
+	TConnState = undefined,
+	TVars = undefined,
+	TInput = undefined,
+	TAuthData = undefined,
+	TDatabase extends AnyDatabaseProvider = undefined,
+	TActions extends Actions<
+		TState,
+		TConnParams,
+		TConnState,
+		TVars,
+		TInput,
+		TAuthData,
+		TDatabase
+	> = Record<never, never>,
+> = {
+	types?: ActorTypes<
+		TState,
+		TConnParams,
+		TConnState,
+		TVars,
+		TInput,
+		TAuthData,
+		TDatabase
+	>;
+} & Omit<
 	z.input<typeof ActorConfigSchema>,
 	| "actions"
 	| "onAuth"
@@ -464,34 +654,92 @@ export type ActorConfigInput<
 	| "createVars"
 	| "db"
 > &
-	BaseActorConfig<S, CP, CS, V, I, AD, DB, R> &
-	OnAuth<CP, AD> &
-	CreateState<S, CP, CS, V, I, AD, DB> &
-	CreateConnState<S, CP, CS, V, I, AD, DB> &
-	CreateVars<S, CP, CS, V, I, AD, DB> &
-	ActorDatabaseConfig<DB>;
+	BaseActorConfig<
+		TState,
+		TConnParams,
+		TConnState,
+		TVars,
+		TInput,
+		TAuthData,
+		TDatabase,
+		TActions
+	> &
+	OnAuth<TConnParams, TAuthData> &
+	CreateState<
+		TState,
+		TConnParams,
+		TConnState,
+		TVars,
+		TInput,
+		TAuthData,
+		TDatabase
+	> &
+	CreateConnState<
+		TState,
+		TConnParams,
+		TConnState,
+		TVars,
+		TInput,
+		TAuthData,
+		TDatabase
+	> &
+	CreateVars<
+		TState,
+		TConnParams,
+		TConnState,
+		TVars,
+		TInput,
+		TAuthData,
+		TDatabase
+	> &
+	ActorDatabaseConfig<TDatabase>;
 
 // For testing type definitions:
 export function test<
-	S,
-	CP,
-	CS,
-	V,
-	I,
-	AD,
-	DB extends AnyDatabaseProvider,
-	R extends Actions<S, CP, CS, V, I, AD, DB>,
+	TState,
+	TConnParams,
+	TConnState,
+	TVars,
+	TInput,
+	TAuthData,
+	TDatabase extends AnyDatabaseProvider,
+	TActions extends Actions<
+		TState,
+		TConnParams,
+		TConnState,
+		TVars,
+		TInput,
+		TAuthData,
+		TDatabase
+	>,
 >(
-	input: ActorConfigInput<S, CP, CS, V, I, AD, DB, R>,
-): ActorConfig<S, CP, CS, V, I, AD, DB> {
+	input: ActorConfigInput<
+		TState,
+		TConnParams,
+		TConnState,
+		TVars,
+		TInput,
+		TAuthData,
+		TDatabase,
+		TActions
+	>,
+): ActorConfig<
+	TState,
+	TConnParams,
+	TConnState,
+	TVars,
+	TInput,
+	TAuthData,
+	TDatabase
+> {
 	const config = ActorConfigSchema.parse(input) as ActorConfig<
-		S,
-		CP,
-		CS,
-		V,
-		I,
-		AD,
-		DB
+		TState,
+		TConnParams,
+		TConnState,
+		TVars,
+		TInput,
+		TAuthData,
+		TDatabase
 	>;
 	return config;
 }

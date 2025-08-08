@@ -9,9 +9,9 @@ export const rawWebSocketActor = actor({
 		connectionCount: 0,
 		messageCount: 0,
 	},
-	onAuth(opts) {
+	onAuth(params) {
 		// Allow all connections and pass through connection params
-		return { connParams: opts.params };
+		return { connParams: params };
 	},
 	onWebSocket(ctx, websocket, opts) {
 		ctx.state.connectionCount = ctx.state.connectionCount + 1;

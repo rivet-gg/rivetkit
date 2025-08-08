@@ -5,8 +5,7 @@ export const rawHttpAuthActor = actor({
 	state: {
 		requestCount: 0,
 	},
-	onAuth: (opts) => {
-		const { params } = opts;
+	onAuth: (params) => {
 		const apiKey = (params as any)?.apiKey;
 		if (!apiKey) {
 			throw new UserError("API key required", { code: "missing_auth" });

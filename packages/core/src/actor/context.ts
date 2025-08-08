@@ -10,24 +10,50 @@ import type { Schedule } from "./schedule";
 /**
  * ActorContext class that provides access to actor methods and state
  */
-export class ActorContext<S, CP, CS, V, I, AD, DB extends AnyDatabaseProvider> {
-	#actor: ActorInstance<S, CP, CS, V, I, AD, DB>;
+export class ActorContext<
+	TState,
+	TConnParams,
+	TConnState,
+	TVars,
+	TInput,
+	TAuthData,
+	TDatabase extends AnyDatabaseProvider,
+> {
+	#actor: ActorInstance<
+		TState,
+		TConnParams,
+		TConnState,
+		TVars,
+		TInput,
+		TAuthData,
+		TDatabase
+	>;
 
-	constructor(actor: ActorInstance<S, CP, CS, V, I, AD, DB>) {
+	constructor(
+		actor: ActorInstance<
+			TState,
+			TConnParams,
+			TConnState,
+			TVars,
+			TInput,
+			TAuthData,
+			TDatabase
+		>,
+	) {
 		this.#actor = actor;
 	}
 
 	/**
 	 * Get the actor state
 	 */
-	get state(): S {
+	get state(): TState {
 		return this.#actor.state;
 	}
 
 	/**
 	 * Get the actor variables
 	 */
-	get vars(): V {
+	get vars(): TVars {
 		return this.#actor.vars;
 	}
 
@@ -86,7 +112,10 @@ export class ActorContext<S, CP, CS, V, I, AD, DB extends AnyDatabaseProvider> {
 	/**
 	 * Gets the map of connections.
 	 */
-	get conns(): Map<ConnId, Conn<S, CP, CS, V, I, AD, DB>> {
+	get conns(): Map<
+		ConnId,
+		Conn<TState, TConnParams, TConnState, TVars, TInput, TAuthData, TDatabase>
+	> {
 		return this.#actor.conns;
 	}
 
@@ -102,7 +131,7 @@ export class ActorContext<S, CP, CS, V, I, AD, DB extends AnyDatabaseProvider> {
 	 * @experimental
 	 * @throws {DatabaseNotEnabled} If the database is not enabled.
 	 */
-	get db(): InferDatabaseClient<DB> {
+	get db(): InferDatabaseClient<TDatabase> {
 		return this.#actor.db;
 	}
 

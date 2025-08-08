@@ -11,7 +11,7 @@ import type { UniversalWebSocket } from "@/common/websocket-interface";
 import { ActorInspector } from "@/inspector/actor";
 import type { Registry, RegistryConfig } from "@/mod";
 import type { ActionContext } from "./action";
-import type { ActorConfig } from "./config";
+import type { ActorConfig, OnConnectOptions } from "./config";
 import { Conn, type ConnId } from "./connection";
 import { ActorContext } from "./context";
 import type { AnyDatabaseProvider, InferDatabaseClient } from "./database";
@@ -630,7 +630,7 @@ export class ActorInstance<
 							undefined,
 							undefined
 						>,
-						{ input: persistData.i },
+						persistData.i!,
 					);
 				} else if ("state" in this.#config) {
 					stateData = structuredClone(this.#config.state);
@@ -656,9 +656,7 @@ export class ActorInstance<
 
 			// Notify creation
 			if (this.#config.onCreate) {
-				await this.#config.onCreate(this.actorContext, {
-					input: persistData.i,
-				});
+				await this.#config.onCreate(this.actorContext, persistData.i!);
 			}
 		}
 	}
@@ -725,12 +723,12 @@ export class ActorInstance<
 
 		const onBeforeConnectOpts = {
 			request,
-			params,
-		};
+		} satisfies OnConnectOptions;
 
 		if (this.#config.onBeforeConnect) {
 			await this.#config.onBeforeConnect(
 				this.actorContext,
+				params,
 				onBeforeConnectOpts,
 			);
 		}
@@ -747,6 +745,7 @@ export class ActorInstance<
 						undefined,
 						undefined
 					>,
+					params,
 					onBeforeConnectOpts,
 				);
 				if (dataOrPromise instanceof Promise) {

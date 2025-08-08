@@ -14,15 +14,23 @@ import type { Schedule } from "./schedule";
  * @typeParam A Actor this action belongs to
  */
 export class ActionContext<
-	S,
-	CP,
-	CS,
-	V,
-	I,
-	AD,
-	DB extends AnyDatabaseProvider,
+	TState,
+	TConnParams,
+	TConnState,
+	TVars,
+	TInput,
+	TAuthData,
+	TDatabase extends AnyDatabaseProvider,
 > {
-	#actorContext: ActorContext<S, CP, CS, V, I, AD, DB>;
+	#actorContext: ActorContext<
+		TState,
+		TConnParams,
+		TConnState,
+		TVars,
+		TInput,
+		TAuthData,
+		TDatabase
+	>;
 
 	/**
 	 * Should not be called directly.
@@ -31,8 +39,24 @@ export class ActionContext<
 	 * @param conn - The connection associated with the action
 	 */
 	constructor(
-		actorContext: ActorContext<S, CP, CS, V, I, AD, DB>,
-		public readonly conn: Conn<S, CP, CS, V, I, AD, DB>,
+		actorContext: ActorContext<
+			TState,
+			TConnParams,
+			TConnState,
+			TVars,
+			TInput,
+			TAuthData,
+			TDatabase
+		>,
+		public readonly conn: Conn<
+			TState,
+			TConnParams,
+			TConnState,
+			TVars,
+			TInput,
+			TAuthData,
+			TDatabase
+		>,
 	) {
 		this.#actorContext = actorContext;
 	}
@@ -40,14 +64,14 @@ export class ActionContext<
 	/**
 	 * Get the actor state
 	 */
-	get state(): S {
+	get state(): TState {
 		return this.#actorContext.state;
 	}
 
 	/**
 	 * Get the actor variables
 	 */
-	get vars(): V {
+	get vars(): TVars {
 		return this.#actorContext.vars;
 	}
 
@@ -103,7 +127,10 @@ export class ActionContext<
 	/**
 	 * Gets the map of connections.
 	 */
-	get conns(): Map<ConnId, Conn<S, CP, CS, V, I, AD, DB>> {
+	get conns(): Map<
+		ConnId,
+		Conn<TState, TConnParams, TConnState, TVars, TInput, TAuthData, TDatabase>
+	> {
 		return this.#actorContext.conns;
 	}
 
@@ -117,7 +144,7 @@ export class ActionContext<
 	/**
 	 * @experimental
 	 */
-	get db(): InferDatabaseClient<DB> {
+	get db(): InferDatabaseClient<TDatabase> {
 		return this.#actorContext.db;
 	}
 
