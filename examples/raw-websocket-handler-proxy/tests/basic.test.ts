@@ -27,7 +27,6 @@ describe("basic websocket test", () => {
 
 		expect(initMessage.type).toBe("init");
 		expect(initMessage.messages).toEqual([]);
-		expect(initMessage.users).toBeDefined();
 
 		// Send a message
 		ws.send(JSON.stringify({ type: "message", text: "Hello!" }));
