@@ -181,7 +181,7 @@ export class InvalidStateType extends ActorError {
 			msg += "Attempted to set invalid state.";
 		}
 		msg +=
-			" State must be CBOR serializable. Valid types include: null, undefined, boolean, string, number, BigInt, Date, RegExp, Error, typed arrays (Uint8Array, Int8Array, Float32Array, etc.), Map, Set, Array, and plain objects. (https://www.rivet.gg/docs/actors/state/#limitations)";
+			" Valid types include: null, undefined, boolean, string, number, BigInt, Date, RegExp, Error, typed arrays (Uint8Array, Int8Array, Float32Array, etc.), Map, Set, Array, and plain objects. (https://www.rivet.gg/docs/actors/state/#limitations)";
 		super("invalid_state_type", msg);
 	}
 }

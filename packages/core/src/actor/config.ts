@@ -155,8 +155,8 @@ type CreateConnState<
 	| {
 			createConnState: (
 				c: InitContext,
-				params: TConnParams,
 				opts: OnConnectOptions,
+				params: TConnParams,
 			) => TConnState | Promise<TConnState>;
 	  }
 	| Record<never, never>;
@@ -221,8 +221,8 @@ type OnAuth<TConnParams, TAuthData> =
 			 * @throws Throw an error to deny access to the actor
 			 */
 			onAuth: (
-				params: TConnParams,
 				opts: OnAuthOptions,
+				params: TConnParams,
 			) => TAuthData | Promise<TAuthData>;
 	  }
 	| Record<never, never>;
@@ -376,8 +376,8 @@ interface BaseActorConfig<
 			TAuthData,
 			TDatabase
 		>,
-		params: TConnParams,
 		opts: OnConnectOptions,
+		params: TConnParams,
 	) => void | Promise<void>;
 
 	/**

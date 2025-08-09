@@ -3,8 +3,8 @@ import { actor, UserError } from "@rivetkit/core";
 // Basic auth actor - requires API key
 export const authActor = actor({
 	state: { requests: 0 },
-	onAuth: (params) => {
-		const apiKey = (params as any)?.apiKey;
+	onAuth: (opts, params: { apiKey?: string } | undefined) => {
+		const apiKey = params?.apiKey;
 		if (!apiKey) {
 			throw new UserError("API key required", { code: "missing_auth" });
 		}
@@ -27,9 +27,9 @@ export const authActor = actor({
 // Intent-specific auth actor - checks different permissions for different intents
 export const intentAuthActor = actor({
 	state: { value: 0 },
-	onAuth: (params, { request, intents }) => {
+	onAuth: ({ request, intents }, params: { role: string }) => {
 		console.log("intents", intents, params);
-		const role = (params as any)?.role;
+		const role = params.role;
 
 		if (intents.has("create") && role !== "admin") {
 			throw new UserError("Admin role required for create operations", {
@@ -80,8 +80,8 @@ export const noAuthActor = actor({
 // Async auth actor - tests promise-based authentication
 export const asyncAuthActor = actor({
 	state: { count: 0 },
-	onAuth: async (params) => {
-		const token = (params as any)?.token;
+	onAuth: async (opts, params: { token?: string } | undefined) => {
+		const token = params?.token;
 		if (!token) {
 			throw new UserError("Token required", { code: "missing_token" });
 		}

@@ -11,8 +11,8 @@ export const rawWebSocketAuthActor = actor({
 		connectionCount: 0,
 		messageCount: 0,
 	},
-	onAuth: (params) => {
-		const apiKey = (params as any)?.apiKey;
+	onAuth: (opts, params: { apiKey?: string }) => {
+		const apiKey = params.apiKey;
 		if (!apiKey) {
 			throw new UserError("API key required", { code: "missing_auth" });
 		}

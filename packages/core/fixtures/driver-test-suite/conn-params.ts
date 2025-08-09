@@ -3,9 +3,9 @@ import { actor } from "@rivetkit/core";
 export const counterWithParams = actor({
 	onAuth: () => {},
 	state: { count: 0, initializers: [] as string[] },
-	createConnState: (c, { params }: { params: { name?: string } }) => {
+	createConnState: (c, opts, params: { name?: string }) => {
 		return {
-			name: params?.name || "anonymous",
+			name: params.name || "anonymous",
 		};
 	},
 	onConnect: (c, conn) => {

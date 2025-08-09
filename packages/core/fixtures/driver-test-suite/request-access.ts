@@ -32,13 +32,7 @@ export const requestAccessActor = actor({
 			requestHeaders: {} as Record<string, string>,
 		},
 	},
-	createConnState: (
-		c,
-		{
-			params,
-			request,
-		}: { params?: { trackRequest?: boolean }; request?: Request },
-	) => {
+	createConnState: (c, { request }, params: { trackRequest?: boolean }) => {
 		// In createConnState, the state isn't available yet.
 
 		return {
@@ -60,7 +54,7 @@ export const requestAccessActor = actor({
 			c.state.createConnStateRequest = conn.state.requestInfo;
 		}
 	},
-	onBeforeConnect: (c, { request, params }) => {
+	onBeforeConnect: (c, { request }, params) => {
 		if (params?.trackRequest) {
 			if (request) {
 				c.state.onBeforeConnectRequest.hasRequest = true;

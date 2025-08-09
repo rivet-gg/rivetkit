@@ -5,15 +5,7 @@ import { actor } from "@rivetkit/core";
  * onAuth runs on the HTTP server, not in the actor, so we test it separately
  */
 export const requestAccessAuthActor = actor({
-	onAuth: ({
-		request,
-		intents,
-		params,
-	}: {
-		request: Request;
-		intents: Set<string>;
-		params?: { trackRequest?: boolean };
-	}) => {
+	onAuth: ({ request, intents }, params: { trackRequest?: boolean }) => {
 		if (params?.trackRequest) {
 			// Extract request info and return it as auth data
 			const headers: Record<string, string> = {};

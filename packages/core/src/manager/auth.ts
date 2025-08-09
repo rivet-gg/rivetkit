@@ -71,10 +71,13 @@ export async function authenticateRequest(
 	}
 
 	try {
-		const dataOrPromise = actorDefinition.config.onAuth(params, {
-			request: c.req.raw,
-			intents,
-		});
+		const dataOrPromise = actorDefinition.config.onAuth(
+			{
+				request: c.req.raw,
+				intents,
+			},
+			params,
+		);
 		if (dataOrPromise instanceof Promise) {
 			return await dataOrPromise;
 		} else {

@@ -728,8 +728,8 @@ export class ActorInstance<
 		if (this.#config.onBeforeConnect) {
 			await this.#config.onBeforeConnect(
 				this.actorContext,
-				params,
 				onBeforeConnectOpts,
+				params,
 			);
 		}
 
@@ -745,8 +745,8 @@ export class ActorInstance<
 						undefined,
 						undefined
 					>,
-					params,
 					onBeforeConnectOpts,
+					params,
 				);
 				if (dataOrPromise instanceof Promise) {
 					connState = await deadline(
