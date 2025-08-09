@@ -1,13 +1,12 @@
 import { openai } from "@ai-sdk/openai";
 import { actor, setup } from "@rivetkit/actor";
-import { generateText, tool } from "ai";
+import { generateText, stepCountIs, tool } from "ai";
 import { z } from "zod";
-import { getWeather } from "./my-utils";
+import { getWeather } from "./utils";
 
 export type Message = {
 	role: "user" | "assistant";
 	content: string;
-	timestamp: number;
 };
 
 export const aiAgent = actor({
@@ -25,19 +24,17 @@ export const aiAgent = actor({
 			const userMsg: Message = {
 				role: "user",
 				content: userMessage,
-				timestamp: Date.now(),
 			};
 			// State changes are automatically persisted
 			c.state.messages.push(userMsg);
 
-			const { text } = await generateText({
-				model: openai("gpt-4o-mini"),
-				prompt: userMessage,
+			const result = await generateText({
+				model: openai("gpt-4o"),
 				messages: c.state.messages,
 				tools: {
 					weather: tool({
 						description: "Get the weather in a location",
-						parameters: z.object({
+						inputSchema: z.object({
 							location: z
 								.string()
 								.describe("The location to get the weather for"),
@@ -47,12 +44,18 @@ export const aiAgent = actor({
 						},
 					}),
 				},
+				stopWhen: stepCountIs(5), // Allow multiple steps for tool use and response generation
 			});
+
+			if (!result.text) {
+				throw new Error(
+					`Failed to generate response. Model: gpt-4o, Steps: ${result.steps?.length || 0}`,
+				);
+			}
 
 			const assistantMsg: Message = {
 				role: "assistant",
-				content: text,
-				timestamp: Date.now(),
+				content: result.text,
 			};
 			c.state.messages.push(assistantMsg);
 

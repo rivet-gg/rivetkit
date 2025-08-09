@@ -29,7 +29,7 @@ export function App() {
 		if (aiAgent.connection && input.trim()) {
 			setIsLoading(true);
 
-			const userMessage = { role: "user", content: input, timestamp: Date.now() } as Message;
+			const userMessage = { role: "user", content: input } as Message;
 			setMessages((prev) => [...prev, userMessage]);
 
 			await aiAgent.connection.sendMessage(input);

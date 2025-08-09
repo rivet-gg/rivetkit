@@ -1,6 +1,6 @@
-# AI Agent Chat for RivetKit
+# AI Agent for RivetKit
 
-Example project demonstrating AI agent integration with [RivetKit](https://rivetkit.org).
+Example project demonstrating AI-powered chat with tools and persistent conversation history using [RivetKit](https://rivetkit.org).
 
 [Learn More →](https://github.com/rivet-gg/rivetkit)
 
@@ -11,7 +11,7 @@ Example project demonstrating AI agent integration with [RivetKit](https://rivet
 ### Prerequisites
 
 - Node.js 18+
-- OpenAI API key
+- OpenAI API key ([Get one here](https://platform.openai.com/api-keys))
 
 ### Installation
 
@@ -21,19 +21,29 @@ cd rivetkit/examples/ai-agent
 npm install
 ```
 
-### Development
+### Configuration
 
-1. Set your OpenAI API key:
-```sh
-export OPENAI_API_KEY=your-api-key-here
+Create a `.env` file in the project root:
+```env
+OPENAI_API_KEY=sk-your-api-key-here
 ```
 
-2. Start the development server:
+### Development
+
+Start both frontend and backend servers:
+
 ```sh
 npm run dev
 ```
 
-3. Open your browser to `http://localhost:3000`
+Open your browser to `http://localhost:5173` to use the AI chat interface.
+
+## Features
+
+- AI-powered chat using OpenAI's GPT-4 mini
+- Real-time messaging with WebSocket support
+- Persistent conversation history with Rivet Actors
+- Built-in weather tool example
 
 ## License
 
