@@ -185,6 +185,10 @@ export function runRawHttpRequestPropertiesTests(
 					expect(response.status).toBe(200);
 					const text = await response.text();
 					expect(text).toBe("");
+				} else if (method === "OPTIONS") {
+					expect(response.status).toBe(204);
+					const text = await response.text();
+					expect(text).toBe("");
 				} else {
 					expect(response.ok).toBe(true);
 					const data = (await response.json()) as any;
