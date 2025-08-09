@@ -60,6 +60,7 @@ function main() {
 		driverConfig,
 		inlineClientDriver,
 		managerDriver,
+		true,
 	);
 
 	const openApiDoc = openapi.getOpenAPIDocument({

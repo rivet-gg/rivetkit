@@ -164,6 +164,7 @@ export async function createTestRuntime(
 		config,
 		inlineDriver,
 		managerDriver,
+		false,
 	);
 
 	// Inject WebSocket

@@ -63,6 +63,7 @@ export class Registry<A extends RegistryActors> {
 			config,
 			clientDriver,
 			managerDriver,
+			false,
 		);
 
 		// Create client

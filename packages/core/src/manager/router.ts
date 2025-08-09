@@ -119,15 +119,17 @@ const OPENAPI_CONN_TOKEN = z.string().openapi({
 	description: "Connection token",
 });
 
-function buildOpenApiResponses<T>(schema: T) {
+function buildOpenApiResponses<T>(schema: T, validateBody: boolean) {
 	return {
 		200: {
 			description: "Success",
-			content: {
-				"application/json": {
-					schema,
-				},
-			},
+			content: validateBody
+				? {
+						"application/json": {
+							schema,
+						},
+					}
+				: {},
 		},
 		400: {
 			description: "User error",
@@ -138,11 +140,19 @@ function buildOpenApiResponses<T>(schema: T) {
 	};
 }
 
+/**
+ * Only use `validateBody` to `true` if you need to export OpenAPI JSON.
+ *
+ * If left enabled for production, this will cause errors. We disable JSON validation since:
+ * - It prevents us from proxying requests, since validating the body requires consuming the body so we can't forward the body
+ * - We validate all types at the actor router layer since most requests are proxied
+ */
 export function createManagerRouter(
 	registryConfig: RegistryConfig,
 	runConfig: RunConfig,
 	inlineClientDriver: ClientDriver,
 	managerDriver: ManagerDriver,
+	validateBody: boolean,
 ): { router: Hono; openapi: OpenAPIHono } {
 	const router = new OpenAPIHono({ strict: false }).basePath(
 		runConfig.basePath,
@@ -259,17 +269,19 @@ export function createManagerRouter(
 			path: "/actors/resolve",
 			request: {
 				body: {
-					content: {
-						"application/json": {
-							schema: ResolveQuerySchema,
-						},
-					},
+					content: validateBody
+						? {
+								"application/json": {
+									schema: ResolveQuerySchema,
+								},
+							}
+						: {},
 				},
 				headers: z.object({
 					[HEADER_ACTOR_QUERY]: OPENAPI_ACTOR_QUERY,
 				}),
 			},
-			responses: buildOpenApiResponses(ResolveResponseSchema),
+			responses: buildOpenApiResponses(ResolveResponseSchema, validateBody),
 		});
 
 		router.openapi(resolveRoute, (c) =>
@@ -374,18 +386,20 @@ export function createManagerRouter(
 			request: {
 				params: ActionParamsSchema,
 				body: {
-					content: {
-						"application/json": {
-							schema: ActionRequestSchema,
-						},
-					},
+					content: validateBody
+						? {
+								"application/json": {
+									schema: ActionRequestSchema,
+								},
+							}
+						: {},
 				},
 				headers: z.object({
 					[HEADER_ENCODING]: OPENAPI_ENCODING,
 					[HEADER_CONN_PARAMS]: OPENAPI_CONN_PARAMS.optional(),
 				}),
 			},
-			responses: buildOpenApiResponses(ActionResponseSchema),
+			responses: buildOpenApiResponses(ActionResponseSchema, validateBody),
 		});
 
 		router.openapi(actionRoute, (c) =>
@@ -412,11 +426,13 @@ export function createManagerRouter(
 			path: "/actors/message",
 			request: {
 				body: {
-					content: {
-						"application/json": {
-							schema: ConnectionMessageRequestSchema,
-						},
-					},
+					content: validateBody
+						? {
+								"application/json": {
+									schema: ConnectionMessageRequestSchema,
+								},
+							}
+						: {},
 				},
 				headers: z.object({
 					[HEADER_ACTOR_ID]: OPENAPI_ACTOR_ID,
@@ -425,7 +441,10 @@ export function createManagerRouter(
 					[HEADER_CONN_TOKEN]: OPENAPI_CONN_TOKEN,
 				}),
 			},
-			responses: buildOpenApiResponses(ConnectionMessageResponseSchema),
+			responses: buildOpenApiResponses(
+				ConnectionMessageResponseSchema,
+				validateBody,
+			),
 		});
 
 		router.openapi(messageRoute, (c) =>
@@ -768,19 +787,10 @@ export function createManagerRouter(
 		});
 	}
 
-	router.doc("/openapi.json", {
-		openapi: "3.0.0",
-		info: {
-			version: VERSION,
-			title: "RivetKit API",
-		},
-	});
-
 	managerDriver.modifyManagerRouter?.(
 		registryConfig,
 		router as unknown as Hono,
 	);
-
 
 	// Mount on both / and /registry
 	//
