@@ -781,8 +781,6 @@ export function createManagerRouter(
 		router as unknown as Hono,
 	);
 
-	router.notFound(handleRouteNotFound);
-	router.onError(handleRouteError.bind(undefined, {}));
 
 	// Mount on both / and /registry
 	//
@@ -795,6 +793,10 @@ export function createManagerRouter(
 	const mountedRouter = new Hono();
 	mountedRouter.route("/", router);
 	mountedRouter.route("/registry", router);
+
+	// IMPORTANT: These must be on `mountedRouter` instead of `router` or else they will not be called.
+	mountedRouter.notFound(handleRouteNotFound);
+	mountedRouter.onError(handleRouteError.bind(undefined, {}));
 
 	return { router: mountedRouter, openapi: router };
 }
