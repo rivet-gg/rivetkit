@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import type { DriverTestConfig } from "../mod";
 import { setupDriverTest } from "../utils";
 
@@ -181,6 +181,33 @@ export function runActorConnTests(driverTestConfig: DriverTestConfig) {
 				expect(receivedEvents).toEqual([5]);
 				expect(receivedEvents).not.toContain(8);
 
+				// Clean up
+				await connection.dispose();
+			});
+
+			test("should handle events sent during onConnect", async (c) => {
+				const { client } = await setupDriverTest(c, driverTestConfig);
+
+				// Create actor with onConnect event
+				const connection = client.counter
+					.getOrCreate(["test-onconnect"])
+					.create();
+
+				// Set up event listener for onConnect
+				const onBroadcastFn = vi.fn();
+				connection.on("onconnect:broadcast", onBroadcastFn);
+
+				// Set up event listener for onConnect message
+				const onMsgFn = vi.fn();
+				connection.on("onconnect:msg", onMsgFn);
+
+				connection.connect();
+
+				// Verify the onConnect event was received
+				await vi.waitFor(() => {
+					expect(onBroadcastFn).toHaveBeenCalled();
+					expect(onMsgFn).toHaveBeenCalled();
+				});
 				// Clean up
 				await connection.dispose();
 			});

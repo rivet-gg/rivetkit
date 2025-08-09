@@ -98,7 +98,7 @@ export class ActorConnRaw {
 	/**
 	 * Interval that keeps the NodeJS process alive if this is the only thing running.
 	 *
-	 * See ttps://github.com/nodejs/node/issues/22088
+	 * @see https://github.com/nodejs/node/issues/22088
 	 */
 	#keepNodeAliveInterval: NodeJS.Timeout;
 
@@ -110,8 +110,6 @@ export class ActorConnRaw {
 	#params: unknown;
 	#encodingKind: Encoding;
 	#actorQuery: ActorQuery;
-
-	// TODO: ws message queue
 
 	/**
 	 * Do not call this directly.
@@ -187,7 +185,6 @@ export class ActorConnRaw {
 
 	/**
 	 * Do not call this directly.
-enc
 	 * Establishes a connection to the server using the specified endpoint & encoding & driver.
 	 *
 	 * @protected
@@ -259,6 +256,7 @@ enc
 			this.#actorQuery,
 			this.#encodingKind,
 			this.#params,
+			Array.from(this.#eventSubscriptions.keys()),
 			signal ? { signal } : undefined,
 		);
 		this.#transport = { websocket: ws };
@@ -282,6 +280,7 @@ enc
 			this.#actorQuery,
 			this.#encodingKind,
 			this.#params,
+			Array.from(this.#eventSubscriptions.keys()),
 			signal ? { signal } : undefined,
 		);
 		this.#transport = { sse: eventSource };
@@ -807,3 +806,15 @@ enc
  */
 export type ActorConn<AD extends AnyActorDefinition> = ActorConnRaw &
 	ActorDefinitionActions<AD>;
+
+/**
+ * Connection to a actor. Allows calling actor's remote procedure calls with inferred types. See {@link ActorConnRaw} for underlying methods.
+ * Needs to be established manually using #connect.
+ *
+ * @template AD The actor class that this connection is for.
+ * @see {@link ActorConnRaw}
+ * @see {@link ActorConn}
+ */
+export type ActorManualConn<AD extends AnyActorDefinition> = ActorConnRaw & {
+	connect: () => void;
+} & ActorDefinitionActions<AD>;

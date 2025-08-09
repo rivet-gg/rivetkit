@@ -785,6 +785,7 @@ export class ActorInstance<
 		state: CS,
 		driverId: string,
 		driverState: unknown,
+		subscriptions: string[],
 		authData: unknown,
 	): Promise<Conn<S, CP, CS, V, I, AD, DB>> {
 		this.#assertReady();
@@ -812,6 +813,12 @@ export class ActorInstance<
 			this.#connStateEnabled,
 		);
 		this.#connections.set(conn.id, conn);
+
+		if (subscriptions) {
+			for (const sub of subscriptions) {
+				this.#addSubscription(sub, conn, true);
+			}
+		}
 
 		// Add to persistence & save immediately
 		this.#persist.c.push(persist);
@@ -874,6 +881,7 @@ export class ActorInstance<
 				return await this.executeAction(ctx, name, args);
 			},
 			onSubscribe: async (eventName, conn) => {
+				console.log("subscribing to event", { eventName, connId: conn.id });
 				this.inspector.emitter.emit("eventFired", {
 					type: "subscribe",
 					eventName,
@@ -1250,6 +1258,13 @@ export class ActorInstance<
 	_broadcast<Args extends Array<unknown>>(name: string, ...args: Args) {
 		this.#assertReady();
 
+		console.log("broadcasting event", {
+			name,
+			args,
+			actorId: this.id,
+			subscriptions: this.#subscriptionIndex.size,
+			connections: this.conns.size,
+		});
 		this.inspector.emitter.emit("eventFired", {
 			type: "broadcast",
 			eventName: name,

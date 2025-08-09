@@ -16,6 +16,7 @@ import {
 import {
 	HEADER_CONN_ID,
 	HEADER_CONN_PARAMS,
+	HEADER_CONN_SUBS,
 	HEADER_CONN_TOKEN,
 	HEADER_ENCODING,
 	HEADER_EXPOSE_INTERNAL_ERROR,
@@ -116,6 +117,7 @@ export function createInlineClientDriver(
 			actorQuery: ActorQuery,
 			encodingKind: Encoding,
 			params?: unknown,
+			subscriptions?: string[],
 		): Promise<WebSocket> => {
 			// Get the actor ID
 			const { actorId } = await queryActor(c, actorQuery, managerDriver);
@@ -131,6 +133,7 @@ export function createInlineClientDriver(
 				actorId,
 				encodingKind,
 				params,
+				subscriptions,
 			);
 
 			// Node & browser WebSocket types are incompatible
@@ -142,6 +145,7 @@ export function createInlineClientDriver(
 			actorQuery: ActorQuery,
 			encodingKind: Encoding,
 			params: unknown,
+			subscriptions?: string[],
 		): Promise<UniversalEventSource> => {
 			// Get the actor ID
 			const { actorId } = await queryActor(c, actorQuery, managerDriver);
@@ -167,6 +171,9 @@ export function createInlineClientDriver(
 								? { [HEADER_CONN_PARAMS]: JSON.stringify(params) }
 								: {}),
 							[HEADER_EXPOSE_INTERNAL_ERROR]: "true",
+							...(subscriptions !== undefined && subscriptions.length > 0
+								? { [HEADER_CONN_SUBS]: JSON.stringify(subscriptions) }
+								: {}),
 						},
 					});
 				},
