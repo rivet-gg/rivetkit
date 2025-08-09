@@ -427,41 +427,23 @@ export async function handleAction(
 	logger().debug("handling action", { actionName, encoding });
 
 	// Validate incoming request
-	let actionArgs: unknown[];
+	let body: unknown;
 	if (encoding === "json") {
 		try {
-			const body = await c.req.json();
-
-			// Validate using the action schema
-			const result = protoHttpAction.ActionRequestSchema.safeParse(body);
-			if (!result.success) {
-				throw new errors.InvalidActionRequest("Invalid action request format");
-			}
-
-			actionArgs = result.data.a;
+			body = await c.req.json();
 		} catch (err) {
 			if (err instanceof errors.InvalidActionRequest) {
 				throw err;
 			}
-			throw new errors.InvalidActionRequest("Invalid JSON");
+			throw new errors.InvalidActionRequest(
+				`Invalid JSON: ${stringifyError(err)}`,
+			);
 		}
 	} else if (encoding === "cbor") {
 		try {
 			const value = await c.req.arrayBuffer();
 			const uint8Array = new Uint8Array(value);
-			const deserialized = await deserialize(
-				uint8Array as unknown as InputData,
-				encoding,
-			);
-
-			// Validate using the action schema
-			const result =
-				protoHttpAction.ActionRequestSchema.safeParse(deserialized);
-			if (!result.success) {
-				throw new errors.InvalidActionRequest("Invalid action request format");
-			}
-
-			actionArgs = result.data.a;
+			body = await deserialize(uint8Array as unknown as InputData, encoding);
 		} catch (err) {
 			throw new errors.InvalidActionRequest(
 				`Invalid binary format: ${stringifyError(err)}`,
@@ -469,6 +451,21 @@ export async function handleAction(
 		}
 	} else {
 		return assertUnreachable(encoding);
+	}
+
+	// Validate using the action schema
+	let actionArgs: unknown[];
+	try {
+		const result = protoHttpAction.ActionRequestSchema.safeParse(body);
+		if (!result.success) {
+			throw new errors.InvalidActionRequest("Invalid action request format");
+		}
+
+		actionArgs = result.data.a;
+	} catch (err) {
+		throw new errors.InvalidActionRequest(
+			`Invalid schema: ${stringifyError(err)}`,
+		);
 	}
 
 	// Invoke the action
