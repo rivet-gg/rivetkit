@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { createClient, createRivetKit } from "../src/mod";
-  
+  import {createClient, createRivetKit } from "../src/mod.svelte";
+
+
   // Example registry type - in real usage this would be imported
   interface CounterActor {
     state: { count: number };
@@ -15,7 +16,7 @@
       reset: { count: number };
     };
   }
-  
+
   interface Registry {
     counter: CounterActor;
   }
@@ -25,54 +26,48 @@
   const { useActor } = createRivetKit(client);
 
   // Connect to the counter actor
-  const counter = useActor({
+  const { actorState, useEvent } = useActor({
     name: "counter",
     key: ["demo-counter"],
     enabled: true
   });
 
   // Listen for events
-  counter.useEvent("incremented", (data) => {
+  useEvent("incremented", (data) => {
     console.log("Counter incremented to:", data.count);
   });
 
-  counter.useEvent("decremented", (data) => {
+  useEvent("decremented", (data) => {
     console.log("Counter decremented to:", data.count);
   });
 
-  counter.useEvent("reset", (data) => {
+  useEvent("reset", (data) => {
     console.log("Counter reset to:", data.count);
   });
 
-  // Action handlers
+  // Action actorStaters
   async function increment() {
-    if (counter.handle) {
-      await counter.handle.increment();
-    }
+      await actorState?.increment();
   }
 
   async function decrement() {
-    if (counter.handle) {
-      await counter.handle.decrement();
-    }
+      await actorState?.decrement();
   }
 
   async function reset() {
-    if (counter.handle) {
-      await counter.handle.reset();
-    }
+      await actorState?.reset();
   }
 </script>
 
 <div class="counter-container">
   <h1>RivetKit Svelte Counter</h1>
-  
+
   <div class="status">
-    {#if counter.isConnecting}
+    {#if actorState.isConnecting}
       <p class="status-connecting">🔄 Connecting to actor...</p>
-    {:else if counter.isError}
-      <p class="status-error">❌ Error: {counter.error?.message}</p>
-    {:else if counter.isConnected}
+    {:else if actorState.isError}
+    <p class="status-error">❌ Error: {actorState.error?.message}</p>
+    {:else if actorState.isConnected}
       <p class="status-connected">✅ Connected to actor</p>
     {:else}
       <p class="status-disconnected">⚪ Disconnected</p>
@@ -80,29 +75,29 @@
   </div>
 
   <div class="counter-display">
-    <h2>Count: {counter.state?.count ?? 0}</h2>
+    <h2>Count: {actorState.state?.count ?? 0}</h2>
   </div>
 
   <div class="controls">
-    <button 
-      onclick={decrement} 
-      disabled={!counter.isConnected}
+    <button
+      onclick={decrement}
+      disabled={!actorState.isConnected}
       class="btn btn-decrement"
     >
       -1
     </button>
-    
-    <button 
-      onclick={reset} 
-      disabled={!counter.isConnected}
+
+    <button
+      onclick={reset}
+      disabled={!actorState.isConnected}
       class="btn btn-reset"
     >
       Reset
     </button>
-    
-    <button 
-      onclick={increment} 
-      disabled={!counter.isConnected}
+
+    <button
+      onclick={increment}
+      disabled={!actorState.isConnected}
       class="btn btn-increment"
     >
       +1

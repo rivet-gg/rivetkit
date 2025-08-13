@@ -1,13 +1,13 @@
+import type { Client, ExtractActorsFromRegistry } from "@rivetkit/actor/client";
 import {
+	type ActorOptions,
 	type AnyActorRegistry,
 	type CreateRivetKitOptions,
-	type ActorOptions,
 	createRivetKit as createVanillaRivetKit,
-} from "@rivetkit/framework-base"
-import type { Client, ExtractActorsFromRegistry } from "@rivetkit/core/client"
-import { onMount, onDestroy } from "svelte"
+} from "@rivetkit/framework-base";
+import { useStore } from "@tanstack/svelte-store";
 
-export { createClient } from "@rivetkit/core/client"
+export { createClient } from "@rivetkit/actor/client";
 
 export function createRivetKit<Registry extends AnyActorRegistry>(
 	client: Client<Registry>,
@@ -17,7 +17,7 @@ export function createRivetKit<Registry extends AnyActorRegistry>(
 		Registry,
 		ExtractActorsFromRegistry<Registry>,
 		keyof ExtractActorsFromRegistry<Registry>
-	>(client, opts)
+	>(client, opts);
 
 	/**
 	 * Svelte 5 rune-based function to connect to an actor and retrieve its state.
@@ -27,73 +27,43 @@ export function createRivetKit<Registry extends AnyActorRegistry>(
 	 * @param opts - Options for the actor, including its name, key, and parameters.
 	 * @returns An object containing reactive state and event listener function.
 	 */
-	function useActor<
-		ActorName extends keyof ExtractActorsFromRegistry<Registry>,
-	>(opts: ActorOptions<Registry, ActorName>) {
-		const { mount, setState, state } = getOrCreateActor<ActorName>(opts)
+	function useActor<ActorName extends keyof ExtractActorsFromRegistry<any>>(
+		opts: ActorOptions<Registry, ActorName>,
+	) {
+		const { mount, setState, state } = getOrCreateActor<ActorName>(opts);
 
 		// Create reactive state using Svelte 5 runes
-		let actorState = $state<any>({})
-		let isConnected = $state(false)
-		let isConnecting = $state(false)
-		let isError = $state(false)
-		let error = $state<Error | null>(null)
-		let connection = $state<any>(null)
-		let handle = $state<any>(null)
-
+		let actorStoreState = useStore(state) || {};
 		// Track cleanup functions
-		let unsubscribe: (() => void) | null = null
-		let storeUnsubscribe: (() => void) | null = null
+		let storeUnsubscribe: any;
 
 		// Update options reactively
 		$effect.root(() => {
-			setState((prev: any) => {
+			setState((prev) => {
 				prev.opts = {
 					...opts,
 					enabled: opts.enabled ?? true,
-				}
-				return prev
-			})
-		})
+				} as any;
+				return prev;
+			});
+		});
 
 		// Mount and subscribe to state changes
 		$effect.root(() => {
-			// Clean up previous subscription
-			if (unsubscribe) {
-				unsubscribe()
-			}
-			if (storeUnsubscribe) {
-				storeUnsubscribe()
-			}
-
-			// Mount the actor
-			unsubscribe = mount()
-
+			storeUnsubscribe?.();
+			mount();
 			// Subscribe to state changes
-			storeUnsubscribe = state.subscribe((newState: any) => {
-				if (newState) {
-					actorState = newState
-					isConnected = newState.isConnected ?? false
-					isConnecting = newState.isConnecting ?? false
-					isError = newState.isError ?? false
-					error = newState.error ?? null
-					connection = newState.connection ?? null
-					handle = newState.handle ?? null
+			storeUnsubscribe = state.subscribe((changes) => {
+				if (changes) {
+					actorStoreState = changes.currentVal as any;
 				}
-			})
+			});
 
 			// Cleanup function
 			return () => {
-				if (unsubscribe) {
-					unsubscribe()
-					unsubscribe = null
-				}
-				if (storeUnsubscribe) {
-					storeUnsubscribe()
-					storeUnsubscribe = null
-				}
-			}
-		})
+				storeUnsubscribe?.();
+			};
+		});
 
 		/**
 		 * Function to listen for events emitted by the actor.
@@ -108,47 +78,33 @@ export function createRivetKit<Registry extends AnyActorRegistry>(
 			// biome-ignore lint/suspicious/noExplicitAny: strong typing of handler is not supported yet
 			handler: (...args: any[]) => void,
 		) {
-			let eventUnsubscribe: (() => void) | null = null
+			let eventUnsubscribe: (() => void) | null = null;
 
 			$effect.root(() => {
 				// Clean up previous event listener
-				if (eventUnsubscribe) {
-					eventUnsubscribe()
-					eventUnsubscribe = null
-				}
+				eventUnsubscribe?.();
+				if (!actorStoreState.current?.connection) return;
 
+				const connection = actorStoreState.current?.connection;
 				// Set up new event listener if connection exists
-				if (connection && isConnected) {
-					eventUnsubscribe = connection.on(eventName, handler)
-				}
+
+				eventUnsubscribe = connection.on(eventName, handler);
 
 				// Cleanup function
 				return () => {
-					if (eventUnsubscribe) {
-						eventUnsubscribe()
-						eventUnsubscribe = null
-					}
-				}
-			})
+					eventUnsubscribe?.();
+				};
+			});
 		}
-
+		const actorState = $derived.by(() => actorStoreState.current);
 		// Return reactive state and utilities
 		return {
-			// Reactive state properties
-			get isConnected() { return isConnected },
-			get isConnecting() { return isConnecting },
-			get isError() { return isError },
-			get error() { return error },
-			get connection() { return connection },
-			get handle() { return handle },
-			get state() { return actorState },
-
-			// Event listener function
+			actorState,
 			useEvent,
-		}
+		};
 	}
 
 	return {
 		useActor,
-	}
+	};
 }

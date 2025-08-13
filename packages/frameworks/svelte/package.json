@@ -2,7 +2,14 @@
   "name": "@rivetkit/svelte",
   "version": "0.9.0-rc.1",
   "license": "Apache-2.0",
-  "keywords": ["rivetkit", "svelte", "framework", "actors", "stateful", "serverless"],
+  "keywords": [
+    "rivetkit",
+    "svelte",
+    "framework",
+    "actors",
+    "stateful",
+    "serverless"
+  ],
   "sideEffects": false,
   "type": "module",
   "files": [
@@ -27,14 +34,15 @@
     "check-types": "tsc --noEmit"
   },
   "peerDependencies": {
-    "@rivetkit/core": "*",
+    "@rivetkit/actor": "*",
     "svelte": "^5.0.0"
   },
   "dependencies": {
-    "@rivetkit/framework-base": "workspace:*"
+    "@rivetkit/framework-base": "workspace:*",
+    "@tanstack/svelte-store": "^0.7.3"
   },
   "devDependencies": {
-    "@rivetkit/core": "workspace:*",
+    "@rivetkit/actor": "workspace:*",
     "svelte": "^5.0.0",
     "typescript": "^5.5.2",
     "vite": "^6.3.5",
