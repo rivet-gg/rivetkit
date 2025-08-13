@@ -8,6 +8,7 @@ export {
 } from "@/client/client";
 export { InlineWebSocketAdapter2 } from "@/common/inline-websocket-adapter2";
 export { noopNext } from "@/common/utils";
+export { createEngineDriver } from "@/drivers/engine/mod";
 export {
 	createFileSystemDriver,
 	createMemoryDriver,

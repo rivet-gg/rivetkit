@@ -220,13 +220,17 @@ export function createInlineClientDriver(
 				const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
 				const url = new URL(`http://actor/raw/http/${normalizedPath}`);
 
-				// Forward the request to the actor
-				const proxyRequest = new Request(url, init);
-
 				// Forward conn params if provided
+				const proxyRequestHeaders = new Headers(init.headers);
 				if (params) {
-					proxyRequest.headers.set(HEADER_CONN_PARAMS, JSON.stringify(params));
+					proxyRequestHeaders.set(HEADER_CONN_PARAMS, JSON.stringify(params));
 				}
+
+				// Forward the request to the actor
+				const proxyRequest = new Request(url, {
+					...init,
+					headers: proxyRequestHeaders,
+				});
 
 				return await managerDriver.sendRequest(actorId, proxyRequest);
 			} catch (err) {
@@ -291,6 +295,7 @@ export async function queryActor(
 	if ("getForId" in query) {
 		const output = await driver.getForId({
 			c,
+			name: query.getForId.name,
 			actorId: query.getForId.actorId,
 		});
 		if (!output) throw new errors.ActorNotFound(query.getForId.actorId);

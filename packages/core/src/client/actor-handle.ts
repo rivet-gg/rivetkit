@@ -149,6 +149,15 @@ export class ActorHandleRaw {
 			"getOrCreateForKey" in this.#actorQuery
 		) {
 			// TODO:
+			let name: string;
+			if ("getForKey" in this.#actorQuery) {
+				name = this.#actorQuery.getForKey.name;
+			} else if ("getOrCreateForKey" in this.#actorQuery) {
+				name = this.#actorQuery.getOrCreateForKey.name;
+			} else {
+				assertUnreachable(this.#actorQuery);
+			}
+
 			const actorId = await this.#driver.resolveActorId(
 				undefined,
 				this.#actorQuery,
@@ -156,7 +165,9 @@ export class ActorHandleRaw {
 				this.#params,
 				signal ? { signal } : undefined,
 			);
-			this.#actorQuery = { getForId: { actorId } };
+
+			this.#actorQuery = { getForId: { actorId, name } };
+
 			return actorId;
 		} else if ("getForId" in this.#actorQuery) {
 			// SKip since it's already resolved

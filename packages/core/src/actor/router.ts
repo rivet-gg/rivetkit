@@ -91,7 +91,7 @@ export function createActorRouter(
 				const authData = authDataRaw ? JSON.parse(authDataRaw) : undefined;
 
 				return await handleWebSocketConnect(
-					c as HonoContext,
+					c.req.raw,
 					runConfig,
 					actorDriver,
 					c.env.actorId,
@@ -220,7 +220,7 @@ export function createActorRouter(
 				});
 
 				return await handleRawWebSocketHandler(
-					c,
+					c.req.raw,
 					pathWithQuery,
 					actorDriver,
 					c.env.actorId,

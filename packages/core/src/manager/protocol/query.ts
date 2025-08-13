@@ -40,6 +40,7 @@ export const GetOrCreateRequestSchema = z.object({
 export const ActorQuerySchema = z.union([
 	z.object({
 		getForId: z.object({
+			name: z.string(),
 			actorId: z.string(),
 		}),
 	}),

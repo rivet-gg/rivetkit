@@ -164,7 +164,6 @@ export class CloudflareActorsManagerDriver implements ManagerDriver {
 			});
 		}
 
-		// TODO: strip headers
 		const newUrl = new URL(`http://actor${path}`);
 		const actorRequest = new Request(newUrl, c.req.raw);
 
