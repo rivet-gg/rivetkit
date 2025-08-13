@@ -1,113 +1,58 @@
-# RivetKit Svelte
+# Svelte library
 
-_Lightweight Libraries for Backends_
+Everything you need to build a Svelte library, powered by [`sv`](https://npmjs.com/package/sv).
 
-Svelte 5 integration for RivetKit with full runes support.
+Read more about creating a library [in the docs](https://svelte.dev/docs/kit/packaging).
 
-[Learn More →](https://github.com/rivet-gg/rivetkit)
+## Creating a project
 
-[Discord](https://rivet.gg/discord) — [Documentation](https://rivetkit.org) — [Issues](https://github.com/rivet-gg/rivetkit/issues)
+If you're seeing this, you've probably already done this step. Congrats!
 
-## Installation
+```sh
+# create a new project in the current directory
+npx sv create
 
-```bash
-pnpm add @rivetkit/svelte @rivetkit/core
+# create a new project in my-app
+npx sv create my-app
 ```
 
-## Quick Start
+## Developing
 
-```typescript
-// lib/rivetkit.ts
-import { createClient, createRivetKit } from "@rivetkit/svelte";
-import type { Registry } from "./actors/registry";
+Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
 
-const client = createClient<Registry>("http://localhost:8080");
-export const { useActor } = createRivetKit(client);
+```sh
+npm run dev
+
+# or start the server and open the app in a new browser tab
+npm run dev -- --open
 ```
 
-```svelte
-<!-- App.svelte -->
-<script lang="ts">
-  import { useActor } from "./lib/rivetkit";
+Everything inside `src/lib` is part of your library, everything inside `src/routes` can be used as a showcase or preview app.
 
-  const actor = useActor({
-    name: "counter",
-    key: ["my-counter"],
-    enabled: true
-  });
+## Building
 
-  // Listen for events
-  actor.useEvent("increment", (data) => {
-    console.log("Counter incremented:", data);
-  });
+To build your library:
 
-  async function increment() {
-    if (actor.handle) {
-      await actor.handle.increment();
-    }
-  }
-</script>
-
-<div>
-  <h1>Counter: {actor.state?.count ?? 0}</h1>
-  
-  {#if actor.isConnecting}
-    <p>Connecting...</p>
-  {:else if actor.isError}
-    <p>Error: {actor.error?.message}</p>
-  {:else if actor.isConnected}
-    <button onclick={increment}>Increment</button>
-  {/if}
-</div>
+```sh
+npm pack
 ```
 
-## Features
+To create a production version of your showcase app:
 
-- **Svelte 5 Runes**: Full support for Svelte 5's new reactivity system
-- **Type Safety**: Complete TypeScript support with actor type inference
-- **Automatic Cleanup**: Handles connection lifecycle automatically
-- **Event Handling**: Built-in event listener management
-- **Reactive State**: All actor state is automatically reactive
+```sh
+npm run build
+```
 
-## API Reference
+You can preview the production build with `npm run preview`.
 
-### `createRivetKit(client, options?)`
+> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
 
-Creates the RivetKit functions for Svelte integration.
+## Publishing
 
-#### Parameters
+Go into the `package.json` and give your package the desired name through the `"name"` option. Also consider adding a `"license"` field and point it to a `LICENSE` file which you can create from a template (one popular option is the [MIT license](https://opensource.org/license/mit/)).
 
-- `client`: The RivetKit client created with `createClient`
-- `options`: Optional configuration object
+To publish your library to [npm](https://www.npmjs.com):
 
-#### Returns
-
-An object containing:
-- `useActor`: Function for connecting to actors
-
-### `useActor(options)`
-
-Function that connects to an actor and manages the connection lifecycle with Svelte 5 runes.
-
-#### Parameters
-
-- `name`: Actor name (type-safe)
-- `key`: Unique key for the actor instance
-- `params`: Optional parameters for the actor
-- `enabled`: Whether the actor is enabled (defaults to true)
-
-#### Returns
-
-An object with reactive properties:
-- `isConnected`: Whether the actor is connected
-- `isConnecting`: Whether the actor is currently connecting
-- `isError`: Whether there was an error
-- `error`: The error object (if any)
-- `connection`: The actor connection
-- `handle`: The actor handle for calling actions
-- `state`: The current actor state
-- `useEvent`: Function to listen for actor events
-
-## License
-
-Apache 2.0
+```sh
+npm publish
+```

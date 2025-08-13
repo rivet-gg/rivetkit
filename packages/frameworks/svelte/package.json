@@ -1,53 +1,52 @@
 {
   "name": "@rivetkit/svelte",
-  "version": "0.9.0-rc.1",
-  "license": "Apache-2.0",
-  "keywords": [
-    "rivetkit",
-    "svelte",
-    "framework",
-    "actors",
-    "stateful",
-    "serverless"
-  ],
-  "sideEffects": false,
-  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build && npm run prepack",
+    "preview": "vite preview",
+    "prepare": "svelte-kit sync || echo ''",
+    "prepack": "svelte-kit sync && svelte-package && publint",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
+  },
   "files": [
     "dist",
-    "package.json"
+    "!dist/**/*.test.*",
+    "!dist/**/*.spec.*"
   ],
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "svelte": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "type": "module",
   "exports": {
     ".": {
-      "import": {
-        "types": "./dist/mod.d.ts",
-        "default": "./dist/mod.js"
-      },
-      "require": {
-        "types": "./dist/mod.d.cts",
-        "default": "./dist/mod.cjs"
-      }
+      "types": "./dist/index.d.ts",
+      "svelte": "./dist/index.js"
     }
   },
-  "scripts": {
-    "dev": "vite build --watch",
-    "build": "tsc && vite build",
-    "check-types": "tsc --noEmit"
-  },
   "peerDependencies": {
-    "@rivetkit/actor": "*",
     "svelte": "^5.0.0"
   },
-  "dependencies": {
-    "@rivetkit/framework-base": "workspace:*",
-    "@tanstack/svelte-store": "^0.7.3"
-  },
   "devDependencies": {
-    "@rivetkit/actor": "workspace:*",
-    "svelte": "^5.0.0",
-    "typescript": "^5.5.2",
-    "vite": "^6.3.5",
-    "vite-plugin-dts": "^4.5.4",
-    "vitest": "^3.1.1"
+    "@rivetkit/core": "workspace:^",
+    "@rivetkit/framework-base": "workspace:*",
+    "@sveltejs/adapter-auto": "^6.0.0",
+    "@sveltejs/kit": "^2.22.0",
+    "@sveltejs/package": "^2.0.0",
+    "@sveltejs/vite-plugin-svelte": "^6.0.0",
+    "publint": "^0.3.2",
+    "svelte": "^5.38.1",
+    "svelte-check": "^4.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^7.0.4"
   },
-  "stableVersion": "0.8.0"
+  "keywords": [
+    "svelte"
+  ],
+  "dependencies": {
+    "esm-env": "^1.2.2"
+  }
 }
