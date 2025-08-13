@@ -4,7 +4,7 @@ export const counter = actor({
 	onAuth: () => {
 		// Configure auth here
 	},
-	state: { count: 0 },
+	state: { count: 0, connectionCount: 0, messageCount: 0 },
 	actions: {
 		increment: (c, x: number) => {
 			c.state.count += x;

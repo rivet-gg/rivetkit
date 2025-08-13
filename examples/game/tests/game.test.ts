@@ -9,7 +9,7 @@ global.setInterval = vi.fn((fn: () => void, delay: number) => {
 	const id = originalSetInterval(fn, delay);
 	mockIntervals.push(id);
 	return id;
-});
+}) as any;
 
 // Cleanup function for intervals
 const clearTestIntervals = () => {

@@ -31,8 +31,10 @@ describe("ActorDefinition", () => {
 			}
 
 			interface TestDatabase {
+				createClient: (ctx: {
+					getDatabase: () => Promise<string | unknown>;
+				}) => Promise<{ execute: (query: string) => any }>;
 				onMigrate: () => void;
-				client: object;
 			}
 
 			// For testing type utilities, we don't need a real actor instance

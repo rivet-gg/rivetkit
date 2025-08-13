@@ -1,6 +1,6 @@
 {
   "name": "counter",
-  "version": "0.9.1",
+  "version": "0.9.9",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,8 +9,8 @@
     "test": "vitest run"
   },
   "devDependencies": {
-    "@types/node": "^22.13.9",
     "@rivetkit/actor": "workspace:*",
+    "@types/node": "^22.13.9",
     "tsx": "^3.12.7",
     "typescript": "^5.7.3",
     "vitest": "^3.1.1"

@@ -1,6 +1,8 @@
+import type { RegistryConfig } from "@/registry/config";
 import type { ActionContext } from "./action";
 import type { Actions, ActorConfig } from "./config";
 import type { ActorContext } from "./context";
+import type { AnyDatabaseProvider } from "./database";
 import { ActorInstance } from "./instance";
 
 export type AnyActorDefinition = ActorDefinition<
@@ -55,7 +57,7 @@ export class ActorDefinition<
 	V,
 	I,
 	AD,
-	DB,
+	DB extends AnyDatabaseProvider,
 	R extends Actions<S, CP, CS, V, I, AD, DB>,
 > {
 	#config: ActorConfig<S, CP, CS, V, I, AD, DB>;
@@ -71,4 +73,14 @@ export class ActorDefinition<
 	instantiate(): ActorInstance<S, CP, CS, V, I, AD, DB> {
 		return new ActorInstance(this.#config);
 	}
+}
+
+export function lookupInRegistry(
+	registryConfig: RegistryConfig,
+	name: string,
+): AnyActorDefinition {
+	// Build actor
+	const definition = registryConfig.use[name];
+	if (!definition) throw new Error(`no actor in registry for name ${name}`);
+	return definition;
 }

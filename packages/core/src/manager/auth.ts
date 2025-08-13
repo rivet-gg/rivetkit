@@ -66,16 +66,18 @@ export async function authenticateRequest(
 ): Promise<unknown> {
 	if (!("onAuth" in actorDefinition.config)) {
 		throw new errors.Forbidden(
-			"Actor requires authentication but no onAuth handler is defined",
+			"Actor requires authentication but no onAuth handler is defined (https://rivet.gg/docs/actors/authentication/). Provide an empty handler to disable auth: `onAuth: () => {}`",
 		);
 	}
 
 	try {
-		const dataOrPromise = actorDefinition.config.onAuth({
-			req: c.req.raw,
-			intents,
+		const dataOrPromise = actorDefinition.config.onAuth(
+			{
+				request: c.req.raw,
+				intents,
+			},
 			params,
-		});
+		);
 		if (dataOrPromise instanceof Promise) {
 			return await dataOrPromise;
 		} else {

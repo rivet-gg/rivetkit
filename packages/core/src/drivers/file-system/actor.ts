@@ -1,4 +1,11 @@
-import type { ActorDriver, AnyActorInstance } from "@/driver-helpers/mod";
+import type { GenericConnGlobalState } from "@/actor/generic-conn-driver";
+import type { AnyClient } from "@/client/client";
+import type {
+	ActorDriver,
+	AnyActorInstance,
+	ManagerDriver,
+} from "@/driver-helpers/mod";
+import type { RegistryConfig, RunConfig } from "@/mod";
 import type { FileSystemGlobalState } from "./global-state";
 
 export type ActorDriverContext = Record<never, never>;
@@ -7,10 +14,38 @@ export type ActorDriverContext = Record<never, never>;
  * File System implementation of the Actor Driver
  */
 export class FileSystemActorDriver implements ActorDriver {
+	#registryConfig: RegistryConfig;
+	#runConfig: RunConfig;
+	#managerDriver: ManagerDriver;
+	#inlineClient: AnyClient;
 	#state: FileSystemGlobalState;
 
-	constructor(state: FileSystemGlobalState) {
+	constructor(
+		registryConfig: RegistryConfig,
+		runConfig: RunConfig,
+		managerDriver: ManagerDriver,
+		inlineClient: AnyClient,
+		state: FileSystemGlobalState,
+	) {
+		this.#registryConfig = registryConfig;
+		this.#runConfig = runConfig;
+		this.#managerDriver = managerDriver;
+		this.#inlineClient = inlineClient;
 		this.#state = state;
+	}
+
+	async loadActor(actorId: string): Promise<AnyActorInstance> {
+		return this.#state.startActor(
+			this.#registryConfig,
+			this.#runConfig,
+			this.#inlineClient,
+			this,
+			actorId,
+		);
+	}
+
+	getGenericConnGlobalState(actorId: string): GenericConnGlobalState {
+		return this.#state.getActorOrError(actorId).genericConnGlobalState;
 	}
 
 	/**
@@ -25,14 +60,15 @@ export class FileSystemActorDriver implements ActorDriver {
 	}
 
 	async readPersistedData(actorId: string): Promise<Uint8Array | undefined> {
-		return this.#state.readPersistedData(actorId);
+		return (await this.#state.loadActorStateOrError(actorId)).persistedData;
 	}
 
 	async writePersistedData(actorId: string, data: Uint8Array): Promise<void> {
-		this.#state.writePersistedData(actorId, data);
+		const entry = await this.#state.loadActorStateOrError(actorId);
+		entry.persistedData = data;
 
 		// Save state to disk
-		await this.#state.saveActorState(actorId);
+		await this.#state.writeActor(actorId);
 	}
 
 	async setAlarm(actor: AnyActorInstance, timestamp: number): Promise<void> {
@@ -43,6 +79,6 @@ export class FileSystemActorDriver implements ActorDriver {
 	}
 
 	getDatabase(actorId: string): Promise<unknown | undefined> {
-		return Promise.resolve(undefined);
+		return this.#state.createDatabase(actorId);
 	}
 }

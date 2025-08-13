@@ -8,11 +8,30 @@ export { FileSystemGlobalState } from "./global-state";
 export { FileSystemManagerDriver } from "./manager";
 export { getStoragePath } from "./utils";
 
-export function createFileSystemDriver(): DriverConfig {
-	const state = new FileSystemGlobalState();
+export function createFileSystemOrMemoryDriver(
+	persist: boolean = true,
+	customPath?: string,
+): DriverConfig {
+	const state = new FileSystemGlobalState(persist, customPath);
 	return {
-		topology: "standalone",
-		manager: new FileSystemManagerDriver(state),
-		actor: new FileSystemActorDriver(state),
+		name: persist ? "file-system" : "memory",
+		manager: (registryConfig, runConfig) =>
+			new FileSystemManagerDriver(registryConfig, runConfig, state),
+		actor: (registryConfig, runConfig, managerDriver, inlineClient) =>
+			new FileSystemActorDriver(
+				registryConfig,
+				runConfig,
+				managerDriver,
+				inlineClient,
+				state,
+			),
 	};
+}
+
+export function createFileSystemDriver(opts?: { path?: string }): DriverConfig {
+	return createFileSystemOrMemoryDriver(true, opts?.path);
+}
+
+export function createMemoryDriver(): DriverConfig {
+	return createFileSystemOrMemoryDriver(false);
 }

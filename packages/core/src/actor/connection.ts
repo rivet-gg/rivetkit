@@ -1,5 +1,6 @@
 import type * as messageToClient from "@/actor/protocol/message/to-client";
 import type * as wsToClient from "@/actor/protocol/message/to-client";
+import type { AnyDatabaseProvider } from "./database";
 import type { ConnDriver } from "./driver";
 import * as errors from "./errors";
 import type { ActorInstance } from "./instance";
@@ -26,7 +27,7 @@ export type AnyConn = Conn<any, any, any, any, any, any, any>;
  *
  * @see {@link https://rivet.gg/docs/connections|Connection Documentation}
  */
-export class Conn<S, CP, CS, V, I, AD, DB> {
+export class Conn<S, CP, CS, V, I, AD, DB extends AnyDatabaseProvider> {
 	subscriptions: Set<string> = new Set<string>();
 
 	#stateEnabled: boolean;
@@ -139,6 +140,12 @@ export class Conn<S, CP, CS, V, I, AD, DB> {
 	 * @see {@link https://rivet.gg/docs/events|Events Documentation}
 	 */
 	public send(eventName: string, ...args: unknown[]) {
+		this.#actor.inspector.emitter.emit("eventFired", {
+			type: "event",
+			eventName,
+			args,
+			connId: this.id,
+		});
 		this._sendMessage(
 			new CachedSerializer<wsToClient.ToClient>({
 				b: {

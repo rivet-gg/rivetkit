@@ -10,14 +10,6 @@ export class ManagerError extends ActorClientError {
 	}
 }
 
-export class ConnParamsTooLong extends ActorClientError {
-	constructor() {
-		super(
-			`Connection parameters must be less than ${MAX_CONN_PARAMS_SIZE} bytes`,
-		);
-	}
-}
-
 export class MalformedResponseMessage extends ActorClientError {
 	constructor(cause?: unknown) {
 		super(`Malformed response message: ${cause}`, { cause });

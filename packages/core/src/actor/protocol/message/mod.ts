@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { AnyDatabaseProvider } from "@/actor/database";
 import type * as wsToClient from "@/actor/protocol/message/to-client";
 import * as wsToServer from "@/actor/protocol/message/to-server";
 import {
@@ -67,7 +68,15 @@ export async function parseMessage(
 	return message;
 }
 
-export interface ProcessMessageHandler<S, CP, CS, V, I, AD, DB> {
+export interface ProcessMessageHandler<
+	S,
+	CP,
+	CS,
+	V,
+	I,
+	AD,
+	DB extends AnyDatabaseProvider,
+> {
 	onExecuteAction?: (
 		ctx: ActionContext<S, CP, CS, V, I, AD, DB>,
 		name: string,
@@ -83,7 +92,15 @@ export interface ProcessMessageHandler<S, CP, CS, V, I, AD, DB> {
 	) => Promise<void>;
 }
 
-export async function processMessage<S, CP, CS, V, I, AD, DB>(
+export async function processMessage<
+	S,
+	CP,
+	CS,
+	V,
+	I,
+	AD,
+	DB extends AnyDatabaseProvider,
+>(
 	message: wsToServer.ToServer,
 	actor: ActorInstance<S, CP, CS, V, I, AD, DB>,
 	conn: Conn<S, CP, CS, V, I, AD, DB>,

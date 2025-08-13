@@ -1,3 +1,7 @@
+import * as cbor from "cbor-x";
+import dedent from "dedent";
+import type Redis from "ioredis";
+import type { RedisDriverConfig } from "./config";
 import type {
 	AttemptAcquireLease,
 	CoordinateDriver,
@@ -5,9 +9,8 @@ import type {
 	GetActorLeaderOutput,
 	NodeMessageCallback,
 	StartActorAndAcquireLeaseOutput,
-} from "@rivetkit/core/driver-helpers";
-import dedent from "dedent";
-import type Redis from "ioredis";
+} from "./coordinate/driver";
+import type { NodeMessage } from "./coordinate/node/protocol";
 import { KEYS, PUBSUB } from "./keys";
 
 // Define custom commands for ioredis
@@ -36,10 +39,12 @@ declare module "ioredis" {
 }
 
 export class RedisCoordinateDriver implements CoordinateDriver {
+	#driverConfig: RedisDriverConfig;
 	#redis: Redis;
 	#nodeSub?: Redis;
 
-	constructor(redis: Redis) {
+	constructor(driverConfig: RedisDriverConfig, redis: Redis) {
+		this.#driverConfig = driverConfig;
 		this.#redis = redis;
 
 		// Define Redis Lua scripts for atomic operations
@@ -54,26 +59,39 @@ export class RedisCoordinateDriver implements CoordinateDriver {
 		this.#nodeSub = this.#redis.duplicate();
 
 		// Configure message handler
-		this.#nodeSub.on("message", (_channel: string, message: string) => {
-			callback(message);
-		});
+		this.#nodeSub.on(
+			"messageBuffer",
+			(_channel: string, messageRaw: Buffer) => {
+				const message = cbor.decode(messageRaw);
+				callback(message);
+			},
+		);
 
 		// Subscribe to node-specific channel
-		await this.#nodeSub.subscribe(PUBSUB.node(selfNodeId));
+		await this.#nodeSub.subscribe(
+			PUBSUB.node(this.#driverConfig.keyPrefix, selfNodeId),
+		);
 	}
 
-	async publishToNode(targetNodeId: string, message: string): Promise<void> {
-		await this.#redis.publish(PUBSUB.node(targetNodeId), message);
+	async publishToNode(
+		targetNodeId: string,
+		message: NodeMessage,
+	): Promise<void> {
+		await this.#redis.publish(
+			PUBSUB.node(this.#driverConfig.keyPrefix, targetNodeId),
+			cbor.encode(message),
+		);
 	}
 
 	async getActorLeader(actorId: string): Promise<GetActorLeaderOutput> {
 		// Get current leader from Redis
-		const [initialized, nodeId] = await this.#redis.mget([
-			KEYS.ACTOR.initialized(actorId),
-			KEYS.ACTOR.LEASE.node(actorId),
+		const [metadata, nodeId] = await this.#redis.mget([
+			// TODO: Use exists in pipeline instead of getting all data
+			KEYS.ACTOR.metadata(this.#driverConfig.keyPrefix, actorId),
+			KEYS.ACTOR.LEASE.node(this.#driverConfig.keyPrefix, actorId),
 		]);
 
-		if (!initialized) {
+		if (!metadata) {
 			return { actor: undefined };
 		}
 
@@ -92,9 +110,9 @@ export class RedisCoordinateDriver implements CoordinateDriver {
 		// Execute multi to get actor info and attempt to acquire lease in a single operation
 		const execRes = await this.#redis
 			.multi()
-			.mget([KEYS.ACTOR.initialized(actorId), KEYS.ACTOR.metadata(actorId)])
+			.getBuffer(KEYS.ACTOR.metadata(this.#driverConfig.keyPrefix, actorId))
 			.actorPeerAcquireLease(
-				KEYS.ACTOR.LEASE.node(actorId),
+				KEYS.ACTOR.LEASE.node(this.#driverConfig.keyPrefix, actorId),
 				selfNodeId,
 				leaseDuration,
 			)
@@ -104,25 +122,22 @@ export class RedisCoordinateDriver implements CoordinateDriver {
 			throw new Error("Redis transaction failed");
 		}
 
-		const [[mgetErr, mgetRes], [leaseErr, leaseRes]] = execRes;
+		const [[getErr, getRes], [leaseErr, leaseRes]] = execRes;
 
-		if (mgetErr) throw new Error(`Redis MGET error: ${mgetErr}`);
+		if (getErr) throw new Error(`Redis GET error: ${getErr}`);
 		if (leaseErr) throw new Error(`Redis acquire lease error: ${leaseErr}`);
 
-		const [initialized, metadataRaw] = mgetRes as [
-			string | null,
-			string | null,
-		];
+		const metadataRaw = getRes as Buffer | null;
 		const leaderNodeId = leaseRes as unknown as string;
 
-		if (!initialized) {
+		if (!metadataRaw) {
 			return { actor: undefined };
 		}
 
 		// Parse metadata if present
 		if (!metadataRaw)
 			throw new Error("Actor should have metadata if initialized.");
-		const metadata = JSON.parse(metadataRaw);
+		const metadata = cbor.decode(metadataRaw);
 
 		return {
 			actor: {
@@ -139,7 +154,7 @@ export class RedisCoordinateDriver implements CoordinateDriver {
 		leaseDuration: number,
 	): Promise<ExtendLeaseOutput> {
 		const res = await this.#redis.actorPeerExtendLease(
-			KEYS.ACTOR.LEASE.node(actorId),
+			KEYS.ACTOR.LEASE.node(this.#driverConfig.keyPrefix, actorId),
 			selfNodeId,
 			leaseDuration,
 		);
@@ -155,7 +170,7 @@ export class RedisCoordinateDriver implements CoordinateDriver {
 		leaseDuration: number,
 	): Promise<AttemptAcquireLease> {
 		const newLeaderNodeId = await this.#redis.actorPeerAcquireLease(
-			KEYS.ACTOR.LEASE.node(actorId),
+			KEYS.ACTOR.LEASE.node(this.#driverConfig.keyPrefix, actorId),
 			selfNodeId,
 			leaseDuration,
 		);
@@ -167,7 +182,7 @@ export class RedisCoordinateDriver implements CoordinateDriver {
 
 	async releaseLease(actorId: string, nodeId: string): Promise<void> {
 		await this.#redis.actorPeerReleaseLease(
-			KEYS.ACTOR.LEASE.node(actorId),
+			KEYS.ACTOR.LEASE.node(this.#driverConfig.keyPrefix, actorId),
 			nodeId,
 		);
 	}

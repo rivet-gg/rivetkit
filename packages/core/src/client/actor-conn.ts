@@ -1,11 +1,15 @@
 import * as cbor from "cbor-x";
-import type { EventSource } from "eventsource";
 import pRetry from "p-retry";
 import type { CloseEvent, WebSocket } from "ws";
 import type { AnyActorDefinition } from "@/actor/definition";
 import type * as wsToClient from "@/actor/protocol/message/to-client";
 import type * as wsToServer from "@/actor/protocol/message/to-server";
 import type { Encoding } from "@/actor/protocol/serde";
+import type {
+	UniversalErrorEvent,
+	UniversalEventSource,
+	UniversalMessageEvent,
+} from "@/common/eventsource-interface";
 import { assertUnreachable, stringifyError } from "@/common/utils";
 import type { ActorQuery } from "@/manager/protocol/query";
 import type { ActorDefinitionActions } from "./actor-common";
@@ -17,6 +21,7 @@ import {
 } from "./client";
 import * as errors from "./errors";
 import { logger } from "./log";
+import { rawHttpFetch, rawWebSocket } from "./raw-utils";
 import {
 	type WebSocketMessage as ConnMessage,
 	messageLength,
@@ -53,7 +58,9 @@ export interface SendHttpMessageOpts {
 	signal?: AbortSignal;
 }
 
-export type ConnTransport = { websocket: WebSocket } | { sse: EventSource };
+export type ConnTransport =
+	| { websocket: WebSocket }
+	| { sse: UniversalEventSource };
 
 export const CONNECT_SYMBOL = Symbol("connect");
 
@@ -282,13 +289,13 @@ enc
 			logger().debug("eventsource open");
 			// #handleOnOpen is called on "i" event
 		};
-		eventSource.onmessage = (ev) => {
+		eventSource.onmessage = (ev: UniversalMessageEvent) => {
 			this.#handleOnMessage(ev.data);
 		};
-		eventSource.onerror = (ev) => {
+		eventSource.onerror = (ev: UniversalErrorEvent) => {
 			if (eventSource.readyState === eventSource.CLOSED) {
 				// This error indicates a close event
-				this.#handleOnClose(ev);
+				this.#handleOnClose(new Event("error"));
 			} else {
 				// Log error since event source is still open
 				this.#handleOnError();

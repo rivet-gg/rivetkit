@@ -13,7 +13,7 @@ const app = new Hono();
 app.use(
 	"*",
 	cors({
-		origin: ["http://localhost:5173"],
+		origin: "http://localhost:5173",
 		// Need to allow custom headers used in RivetKit
 		allowHeaders: ["Authorization", ...ALLOWED_PUBLIC_HEADERS],
 		allowMethods: ["POST", "GET", "OPTIONS"],

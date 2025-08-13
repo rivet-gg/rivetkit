@@ -1,19 +1,16 @@
 import type { Hono } from "hono";
-import invariant from "invariant";
-import {
-	type Client,
-	type ClientDriver,
-	createClientWithDriver,
-} from "@/client/client";
-import { PartitionTopologyActor, PartitionTopologyManager } from "@/mod";
-import { StandaloneTopology } from "@/topologies/standalone/mod";
-import { assertUnreachable } from "@/utils";
+import { createActorRouter } from "@/actor/router";
+import { type Client, createClientWithDriver } from "@/client/client";
+import { createInlineClientDriver } from "@/inline-client-driver/mod";
+import { getStudioUrl } from "@/inspector/utils";
+import { createManagerRouter } from "@/manager/router";
 import {
 	type RegistryActors,
 	type RegistryConfig,
 	type RegistryConfigInput,
 	RegistryConfigSchema,
 } from "./config";
+import { logger } from "./log";
 import {
 	type DriverConfig,
 	type RunConfig,
@@ -30,7 +27,7 @@ interface ServerOutput<A extends Registry<any>> {
 }
 
 interface ActorNodeOutput {
-	hono: Hono;
+	hono: Hono<any>;
 	handler: (req: Request) => Promise<Response>;
 	serve: (hono?: Hono) => void;
 }
@@ -58,27 +55,31 @@ export class Registry<A extends RegistryActors> {
 			config.getUpgradeWebSocket = () => upgradeWebSocket!;
 		}
 
-		// Setup topology
-		let hono: Hono;
-		let clientDriver: ClientDriver;
-		if (config.driver.topology === "standalone") {
-			const topology = new StandaloneTopology(this.#config, config);
-			hono = topology.router;
-			clientDriver = topology.clientDriver;
-		} else if (config.driver.topology === "partition") {
-			const topology = new PartitionTopologyManager(this.#config, config);
-			hono = topology.router;
-			clientDriver = topology.clientDriver;
-		} else if (config.driver.topology === "coordinate") {
-			const topology = new StandaloneTopology(this.#config, config);
-			hono = topology.router;
-			clientDriver = topology.clientDriver;
-		} else {
-			assertUnreachable(config.driver.topology);
-		}
+		// Create router
+		const managerDriver = config.driver.manager(this.#config, config);
+		const clientDriver = createInlineClientDriver(managerDriver);
+		const { router: hono } = createManagerRouter(
+			this.#config,
+			config,
+			clientDriver,
+			managerDriver,
+			false,
+		);
 
 		// Create client
 		const client = createClientWithDriver<this>(clientDriver);
+
+		const driverLog = managerDriver.extraStartupLog?.() ?? {};
+		logger().info("rivetkit ready", {
+			driver: config.driver.name,
+			definitions: Object.keys(this.#config.use).length,
+			...driverLog,
+		});
+		if (config.studio?.enabled) {
+			logger().info("studio ready", {
+				url: getStudioUrl(config),
+			});
+		}
 
 		return {
 			client,
@@ -111,18 +112,18 @@ export class Registry<A extends RegistryActors> {
 			config.getUpgradeWebSocket = () => upgradeWebSocket!;
 		}
 
-		// Setup topology
-		let hono: Hono;
-		if (config.driver.topology === "standalone") {
-			invariant(false, "cannot run actor node for standalone topology");
-		} else if (config.driver.topology === "partition") {
-			const topology = new PartitionTopologyActor(this.#config, config);
-			hono = topology.router;
-		} else if (config.driver.topology === "coordinate") {
-			invariant(false, "cannot run actor node for coordinate topology");
-		} else {
-			assertUnreachable(config.driver.topology);
-		}
+		// Create router
+		const managerDriver = config.driver.manager(this.#config, config);
+		const inlineClient = createClientWithDriver(
+			createInlineClientDriver(managerDriver),
+		);
+		const actorDriver = config.driver.actor(
+			this.#config,
+			config,
+			managerDriver,
+			inlineClient,
+		);
+		const hono = createActorRouter(config, actorDriver);
 
 		return {
 			hono,

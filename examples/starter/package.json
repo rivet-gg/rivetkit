@@ -1,6 +1,6 @@
 {
-  "name": "example-rivet",
-  "version": "0.9.1",
+  "name": "starter",
+  "version": "0.9.9",
   "private": true,
   "scripts": {
     "dev": "tsx --watch src/server.ts",
@@ -14,7 +14,7 @@
     "typescript": "^5.5.2"
   },
   "dependencies": {
-    "@rivetkit/actor": "https://pkg.pr.new/rivet-gg/rivetkit/@rivetkit/actor@7e018f2"
+    "@rivetkit/actor": "workspace:*"
   },
   "stableVersion": "0.8.0"
 }

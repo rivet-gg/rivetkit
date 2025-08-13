@@ -1,6 +1,6 @@
 import { createClient, createRivetKit } from "@rivetkit/react";
 import { useEffect, useState } from "react";
-import type { Member, Invoice, registry } from "../backend/registry";
+import type { Member, registry } from "../backend/registry";
 
 const client = createClient<typeof registry>("http://localhost:8080");
 const { useActor } = createRivetKit(client);
@@ -10,12 +10,10 @@ const ORG_ID = "org-1";
 export function App() {
 	// Authentication state
 	const [token, setToken] = useState<string>("");
-	const [currentUser, setCurrentUser] = useState<Member | null>(null);
 	
 	// Data state
 	const [organization, setOrganization] = useState<any>(null);
 	const [members, setMembers] = useState<Member[]>([]);
-	const [invoices, setInvoices] = useState<Invoice[]>([]);
 	const [dashboardStats, setDashboardStats] = useState<any>(null);
 	const [error, setError] = useState<string>("");
 	const [loading, setLoading] = useState(false);
@@ -45,10 +43,8 @@ export function App() {
 
 	const logout = () => {
 		setToken("");
-		setCurrentUser(null);
 		setOrganization(null);
 		setMembers([]);
-		setInvoices([]);
 		setDashboardStats(null);
 		setError("");
 	};
@@ -60,10 +56,6 @@ export function App() {
 		const loadData = async () => {
 			setLoading(true);
 			try {
-				// Get current user info
-				const user = await tenant.connection!.getCurrentUser();
-				setCurrentUser(user);
-
 				// Get organization info
 				const org = await tenant.connection!.getOrganization();
 				setOrganization(org);
@@ -75,16 +67,6 @@ export function App() {
 				// Get dashboard stats
 				const stats = await tenant.connection!.getDashboardStats();
 				setDashboardStats(stats);
-
-				// Try to get invoices (only available to admins)
-				try {
-					const invoicesList = await tenant.connection!.getInvoices();
-					setInvoices(invoicesList);
-					setError("");
-				} catch (err: any) {
-					setError(err.message || "Failed to load invoices");
-					setInvoices([]);
-				}
 			} catch (err: any) {
 				setError(err.message || "Failed to load data");
 			} finally {
@@ -104,54 +86,7 @@ export function App() {
 		setMembers(prev => prev.map(m => m.id === member.id ? member : m));
 	});
 
-	tenant.useEvent("invoiceUpdated", ({ invoice }: { invoice: Invoice }) => {
-		setInvoices(prev => prev.map(inv => inv.id === invoice.id ? invoice : inv));
-	});
 
-	// Admin functions
-	const markInvoicePaid = async (invoiceId: string) => {
-		if (!tenant.connection) return;
-		
-		try {
-			await tenant.connection.markInvoicePaid(invoiceId);
-			setError("");
-		} catch (err: any) {
-			setError(err.message || "Failed to mark invoice as paid");
-		}
-	};
-
-	const addMember = async () => {
-		if (!tenant.connection) return;
-		
-		const name = prompt("Enter member name:");
-		const email = prompt("Enter member email:");
-		
-		if (!name || !email) return;
-		
-		try {
-			await tenant.connection.addMember({
-				name,
-				email,
-				role: "member",
-			});
-			setError("");
-		} catch (err: any) {
-			setError(err.message || "Failed to add member");
-		}
-	};
-
-	const updateMemberRole = async (memberId: string, currentRole: string) => {
-		if (!tenant.connection) return;
-		
-		const newRole = currentRole === "admin" ? "member" : "admin";
-		
-		try {
-			await tenant.connection.updateMemberRole(memberId, newRole);
-			setError("");
-		} catch (err: any) {
-			setError(err.message || "Failed to update member role");
-		}
-	};
 
 	// Login screen when not authenticated
 	if (!token) {
@@ -198,19 +133,14 @@ export function App() {
 			</div>
 
 			{/* User Info */}
-			{currentUser && (
-				<div className="user-info">
-					<div className="user-details">
-						<span>Logged in as: <strong>{currentUser.name}</strong></span>
-						<span className={`user-badge ${currentUser.role}`}>
-							{currentUser.role}
-						</span>
-					</div>
-					<button className="logout-button" onClick={logout}>
-						Logout
-					</button>
+			<div className="user-info">
+				<div className="user-details">
+					<span>Logged in</span>
 				</div>
-			)}
+				<button className="logout-button" onClick={logout}>
+					Logout
+				</button>
+			</div>
 
 			{/* Organization Header */}
 			{organization && (
@@ -254,14 +184,6 @@ export function App() {
 							</div>
 							<div style={{ color: "#6c757d" }}>Members</div>
 						</div>
-						{dashboardStats.totalRevenue !== undefined && (
-							<div style={{ padding: "20px", backgroundColor: "#f8f9fa", borderRadius: "6px", textAlign: "center" }}>
-								<div style={{ fontSize: "24px", fontWeight: "bold", color: "#6f42c1" }}>
-									${dashboardStats.totalRevenue.toFixed(2)}
-								</div>
-								<div style={{ color: "#6c757d" }}>Total Revenue</div>
-							</div>
-						)}
 					</div>
 				</div>
 			)}
@@ -270,21 +192,6 @@ export function App() {
 			<div className="section">
 				<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
 					<h3>Team Members</h3>
-					{currentUser?.role === "admin" && (
-						<button 
-							onClick={addMember}
-							style={{
-								padding: "8px 16px",
-								backgroundColor: "#28a745",
-								color: "white",
-								border: "none",
-								borderRadius: "4px",
-								cursor: "pointer"
-							}}
-						>
-							Add Member
-						</button>
-					)}
 				</div>
 
 				{members.length === 0 ? (
@@ -296,7 +203,6 @@ export function App() {
 								<th>Name</th>
 								<th>Email</th>
 								<th>Role</th>
-								{currentUser?.role === "admin" && <th>Actions</th>}
 							</tr>
 						</thead>
 						<tbody>
@@ -309,24 +215,6 @@ export function App() {
 											{member.role}
 										</span>
 									</td>
-									{currentUser?.role === "admin" && (
-										<td>
-											<button
-												onClick={() => updateMemberRole(member.id, member.role)}
-												style={{
-													padding: "4px 8px",
-													backgroundColor: "#6c757d",
-													color: "white",
-													border: "none",
-													borderRadius: "4px",
-													cursor: "pointer",
-													fontSize: "12px"
-												}}
-											>
-												Toggle Role
-											</button>
-										</td>
-									)}
 								</tr>
 							))}
 						</tbody>
@@ -334,61 +222,6 @@ export function App() {
 				)}
 			</div>
 
-			{/* Invoices Section - only displayed to admins */}
-			{currentUser?.role === "admin" && (
-				<div className="section">
-					<h3>Invoices (Admin Only)</h3>
-					{invoices.length === 0 ? (
-						<div className="empty-state">No invoices found</div>
-					) : (
-						<table className="data-table">
-							<thead>
-								<tr>
-									<th>Invoice #</th>
-									<th>Description</th>
-									<th>Date</th>
-									<th>Amount</th>
-									<th>Status</th>
-									<th>Actions</th>
-								</tr>
-							</thead>
-							<tbody>
-								{invoices.map((invoice) => (
-									<tr key={invoice.id}>
-										<td>{invoice.id}</td>
-										<td>{invoice.description}</td>
-										<td>{new Date(invoice.date).toLocaleDateString()}</td>
-										<td>${invoice.amount.toFixed(2)}</td>
-										<td>
-											<span className={`status-badge ${invoice.paid ? 'paid' : 'unpaid'}`}>
-												{invoice.paid ? "Paid" : "Unpaid"}
-											</span>
-										</td>
-										<td>
-											{!invoice.paid && (
-												<button
-													onClick={() => markInvoicePaid(invoice.id)}
-													style={{
-														padding: "4px 8px",
-														backgroundColor: "#28a745",
-														color: "white",
-														border: "none",
-														borderRadius: "4px",
-														cursor: "pointer",
-														fontSize: "12px"
-													}}
-												>
-													Mark Paid
-												</button>
-											)}
-										</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-					)}
-				</div>
-			)}
 		</div>
 	);
 }

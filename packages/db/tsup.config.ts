@@ -3,5 +3,4 @@ import defaultConfig from "../../tsup.base.ts";
 
 export default defineConfig({
 	...defaultConfig,
-	external: ["better-sqlite3"],
 });

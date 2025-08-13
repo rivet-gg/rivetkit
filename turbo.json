@@ -26,6 +26,7 @@
       "dependsOn": ["^check-types", "check-types", "build"]
     },
     "test": {
+      "inputs": ["src/**", "tests/**", "package.json"],
       "dependsOn": ["^build", "check-types"]
     }
   }

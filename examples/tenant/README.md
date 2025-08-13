@@ -70,29 +70,6 @@ This tenant system demonstrates:
 - **Dashboard Stats**: Access to basic member statistics only
 - **No Invoice Access**: Cannot view or manage billing information
 
-## Security Features
-
-### Authentication
-```typescript
-// Token-based authentication
-createConnState: async (c, { params }) => {
-  const token = params.token;
-  const { userId, role } = await authenticate(token);
-  return { userId, role };
-}
-```
-
-### Authorization
-```typescript
-// Server-side permission checks
-getInvoices: (c) => {
-  if (c.conn.role !== "admin") {
-    throw new UserError("Permission denied: Admin role required");
-  }
-  return c.state.invoices;
-}
-```
-
 ### Data Isolation
 - Organization-scoped data using actor keys
 - User context stored in connection state

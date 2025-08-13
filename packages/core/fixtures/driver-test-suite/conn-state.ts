@@ -16,7 +16,8 @@ export const connStateActor = actor({
 	// Define connection state
 	createConnState: (
 		c,
-		{ params }: { params?: { username?: string; role?: string } },
+		opts,
+		params: { username?: string; role?: string },
 	): ConnState => {
 		return {
 			username: params?.username || "anonymous",

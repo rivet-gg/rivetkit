@@ -3,7 +3,7 @@ import { getEnvUniversal } from "@/utils";
 import { logger } from "./log";
 
 export async function crossPlatformServe(
-	rivetKitRouter: Hono,
+	rivetKitRouter: Hono<any>,
 	userRouter: Hono | undefined,
 ) {
 	const app = userRouter ?? new Hono();
@@ -45,7 +45,7 @@ export async function crossPlatformServe(
 		getEnvUniversal("PORT") ?? getEnvUniversal("PORT_HTTP") ?? "8080",
 	);
 	const server = serve({ fetch: app.fetch, port }, () =>
-		logger().info(`listening on port ${port}`),
+		logger().info("server listening", { port }),
 	);
 	injectWebSocket(server);
 

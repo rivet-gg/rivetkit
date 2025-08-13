@@ -7,7 +7,6 @@ import type {
 } from "@rivetkit/core/client";
 import { Derived, Effect, Store, type Updater } from "@tanstack/store";
 
-// biome-ignore lint/suspicious/noExplicitAny: its a generic actor registry
 export type AnyActorRegistry = Registry<any>;
 
 interface ActorStateReference<AD extends AnyActorDefinition> {
@@ -60,6 +59,10 @@ interface ActorStateReference<AD extends AnyActorDefinition> {
 		 * These are additional options that can be passed to the actor.
 		 */
 		params?: Record<string, string>;
+		/** Region to create the actor in if it doesn't exist. */
+		createInRegion?: string;
+		/** Input data to pass to the actor. */
+		createWithInput?: unknown;
 		/**
 		 * Whether the actor is enabled.
 		 * Defaults to true.
@@ -98,6 +101,10 @@ export interface ActorOptions<
 	 * Parameters for the actor.
 	 */
 	params?: Registry[ExtractActorsFromRegistry<Registry>]["params"];
+	/** Region to create the actor in if it doesn't exist. */
+	createInRegion?: string;
+	/** Input data to pass to the actor. */
+	createWithInput?: unknown;
 	/**
 	 * Whether the actor is enabled.
 	 * Defaults to true.
@@ -105,11 +112,27 @@ export interface ActorOptions<
 	enabled?: boolean;
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: actor name can be anything
+export type ActorsStateDerived<
+	Registry extends AnyActorRegistry,
+	WorkerName extends keyof ExtractActorsFromRegistry<Registry>,
+> = Derived<
+	Omit<
+		InternalRivetKitStore<
+			Registry,
+			ExtractActorsFromRegistry<Registry>
+		>["actors"][string],
+		"handle" | "connection"
+	> & {
+		handle: ActorHandle<ExtractActorsFromRegistry<Registry>[WorkerName]> | null;
+		connection: ActorConn<
+			ExtractActorsFromRegistry<Registry>[WorkerName]
+		> | null;
+	}
+>;
+
 export type AnyActorOptions = ActorOptions<AnyActorRegistry, any>;
 
 export interface CreateRivetKitOptions<Registry extends AnyActorRegistry> {
-	// biome-ignore lint/suspicious/noExplicitAny: actor name can be anything
 	hashFunction?: (opts: ActorOptions<Registry, any>) => string;
 }
 
@@ -136,7 +159,6 @@ export function createRivetKit<
 			create: () => void;
 			addEventListener?: (
 				event: string,
-				// biome-ignore lint/suspicious/noExplicitAny: need any specific type here
 				handler: (...args: any[]) => void,
 			) => void;
 		}
@@ -150,12 +172,7 @@ export function createRivetKit<
 		if (cached) {
 			return {
 				...cached,
-				state: cached.state as Derived<
-					Omit<RivetKitStore["actors"][string], "handle" | "connection"> & {
-						handle: ActorHandle<Actors[ActorName]> | null;
-						connection: ActorConn<Actors[ActorName]> | null;
-					}
-				>,
+				state: cached.state as ActorsStateDerived<Registry, ActorName>,
 			};
 		}
 
@@ -173,7 +190,11 @@ export function createRivetKit<
 					const handle = client.getOrCreate(
 						actor.opts.name as string,
 						actor.opts.key,
-						actor.opts.params,
+						{
+							params: actor.opts.params,
+							createInRegion: actor.opts.createInRegion,
+							createWithInput: actor.opts.createWithInput,
+						},
 					);
 
 					const connection = handle.connect();
@@ -316,12 +337,7 @@ export function createRivetKit<
 		return {
 			mount,
 			setState,
-			state: derived as Derived<
-				Omit<RivetKitStore["actors"][string], "handle" | "connection"> & {
-					handle: ActorHandle<Actors[ActorName]> | null;
-					connection: ActorConn<Actors[ActorName]> | null;
-				}
-			>,
+			state: derived as ActorsStateDerived<Registry, ActorName>,
 			create,
 			key,
 		};

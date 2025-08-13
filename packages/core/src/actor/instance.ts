@@ -7,11 +7,14 @@ import type * as wsToServer from "@/actor/protocol/message/to-server";
 import type { Client } from "@/client/client";
 import type { Logger } from "@/common/log";
 import { isCborSerializable, stringifyError } from "@/common/utils";
-import type { Registry } from "@/mod";
+import type { UniversalWebSocket } from "@/common/websocket-interface";
+import { ActorInspector } from "@/inspector/actor";
+import type { Registry, RegistryConfig } from "@/mod";
 import type { ActionContext } from "./action";
-import type { ActorConfig } from "./config";
+import type { ActorConfig, OnConnectOptions } from "./config";
 import { Conn, type ConnId } from "./connection";
 import { ActorContext } from "./context";
+import type { AnyDatabaseProvider, InferDatabaseClient } from "./database";
 import type { ActorDriver, ConnDriver, ConnDrivers } from "./driver";
 import * as errors from "./errors";
 import { instanceLogger, logger } from "./log";
@@ -110,7 +113,15 @@ export type ExtractActorConnState<A extends AnyActorInstance> =
 		? ConnState
 		: never;
 
-export class ActorInstance<S, CP, CS, V, I, AD, DB> {
+export class ActorInstance<
+	S,
+	CP,
+	CS,
+	V,
+	I,
+	AD,
+	DB extends AnyDatabaseProvider,
+> {
 	// Shared actor context for this instance
 	actorContext: ActorContext<S, CP, CS, V, I, AD, DB>;
 	isStopping = false;
@@ -149,9 +160,50 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 	#subscriptionIndex = new Map<string, Set<Conn<S, CP, CS, V, I, AD, DB>>>();
 
 	#schedule!: Schedule;
+	#db!: InferDatabaseClient<DB>;
 
-	// inspector!: ActorInspector;
-	#db!: DB;
+	#inspector = new ActorInspector(() => {
+		return {
+			isDbEnabled: async () => {
+				return this.#db !== undefined;
+			},
+			getDb: async () => {
+				return this.db;
+			},
+			isStateEnabled: async () => {
+				return this.stateEnabled;
+			},
+			getState: async () => {
+				this.#validateStateEnabled();
+
+				// Must return from `#persistRaw` in order to not return the `onchange` proxy
+				return this.#persistRaw.s as Record<string, any> as unknown;
+			},
+			getRpcs: async () => {
+				return Object.keys(this.#config.actions);
+			},
+			getConnections: async () => {
+				return Array.from(this.#connections.entries()).map(([id, conn]) => ({
+					id,
+					stateEnabled: conn._stateEnabled,
+					params: conn.params as {},
+					state: conn._stateEnabled ? conn.state : undefined,
+					auth: conn.auth as {},
+				}));
+			},
+			setState: async (state: unknown) => {
+				this.#validateStateEnabled();
+
+				// Must set on `#persist` instead of `#persistRaw` in order to ensure that the `Proxy` is correctly configured
+				//
+				// We have to use `...` so `on-change` recognizes the changes to `state` (i.e. set #persistChanged` to true). This is because:
+				// 1. In `getState`, we returned the value from `persistRaw`, which does not have the Proxy to monitor state changes
+				// 2. If we were to assign `state` to `#persist.s`, `on-change` would assume nothing changed since `state` is still === `#persist.s` since we returned a reference in `getState`
+				this.#persist.s = { ...(state as S) };
+				await this.saveState({ immediate: true });
+			},
+		};
+	});
 
 	get id() {
 		return this.#actorId;
@@ -159,6 +211,10 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 
 	get inlineClient(): Client<Registry<any>> {
 		return this.#inlineClient;
+	}
+
+	get inspector() {
+		return this.#inspector;
 	}
 
 	/**
@@ -190,7 +246,6 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 		this.#key = key;
 		this.#region = region;
 		this.#schedule = new Schedule(this);
-		// this.inspector = new ActorInspector(this);
 
 		// Initialize server
 		//
@@ -209,7 +264,7 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 						undefined,
 						undefined,
 						undefined,
-						undefined
+						any
 					>,
 					this.#actorDriver.getContext(this.#actorId),
 				);
@@ -239,14 +294,14 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 		}
 
 		// Setup Database
-		if ("db" in this.#config) {
-			const db = await this.#config.db({
-				createDatabase: () => actorDriver.getDatabase(this.#actorId),
+		if ("db" in this.#config && this.#config.db) {
+			const client = await this.#config.db.createClient({
+				getDatabase: () => actorDriver.getDatabase(this.#actorId),
 			});
-
 			logger().info("database migration starting");
-			await db.onMigrate?.();
+			await this.#config.db.onMigrate?.(client);
 			logger().info("database migration complete");
+			this.#db = client;
 		}
 
 		// Set alarm for next scheduled event if any exist after finishing initiation sequence
@@ -492,8 +547,8 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 				}
 				this.#persistChanged = true;
 
-				// Call inspect handler
-				// this.inspector.onStateChange(this.#persistRaw.s);
+				// Inform the inspector about state changes
+				this.inspector.emitter.emit("stateUpdated", this.#persist.s);
 
 				// Call onStateChange if it exists
 				if (this.#config.onStateChange && this.#ready) {
@@ -575,7 +630,7 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 							undefined,
 							undefined
 						>,
-						{ input: persistData.i },
+						persistData.i!,
 					);
 				} else if ("state" in this.#config) {
 					stateData = structuredClone(this.#config.state);
@@ -601,9 +656,7 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 
 			// Notify creation
 			if (this.#config.onCreate) {
-				await this.#config.onCreate(this.actorContext, {
-					input: persistData.i,
-				});
+				await this.#config.onCreate(this.actorContext, persistData.i!);
 			}
 		}
 	}
@@ -640,7 +693,7 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 			this.#removeSubscription(eventName, conn, true);
 		}
 
-		// this.inspector.onConnChange(this.#connections);
+		this.inspector.emitter.emit("connectionUpdated");
 		if (this.#config.onDisconnect) {
 			try {
 				const result = this.#config.onDisconnect(this.actorContext, conn);
@@ -670,13 +723,13 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 
 		const onBeforeConnectOpts = {
 			request,
-			params,
-		};
+		} satisfies OnConnectOptions;
 
 		if (this.#config.onBeforeConnect) {
 			await this.#config.onBeforeConnect(
 				this.actorContext,
 				onBeforeConnectOpts,
+				params,
 			);
 		}
 
@@ -693,6 +746,7 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 						undefined
 					>,
 					onBeforeConnectOpts,
+					params,
 				);
 				if (dataOrPromise instanceof Promise) {
 					connState = await deadline(
@@ -733,6 +787,8 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 		driverState: unknown,
 		authData: unknown,
 	): Promise<Conn<S, CP, CS, V, I, AD, DB>> {
+		this.#assertReady();
+
 		if (this.#connections.has(connectionId)) {
 			throw new Error(`Connection already exists: ${connectionId}`);
 		}
@@ -761,8 +817,6 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 		this.#persist.c.push(persist);
 		this.saveState({ immediate: true });
 
-		// this.inspector.onConnChange(this.#connections);
-
 		// Handle connection
 		if (this.#config.onConnect) {
 			try {
@@ -785,6 +839,8 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 				conn?.disconnect("`onConnect` failed");
 			}
 		}
+
+		this.inspector.emitter.emit("connectionUpdated");
 
 		// Send init message
 		conn._sendMessage(
@@ -809,12 +865,28 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 	) {
 		await processMessage(message, this, conn, {
 			onExecuteAction: async (ctx, name, args) => {
+				this.inspector.emitter.emit("eventFired", {
+					type: "action",
+					name,
+					args,
+					connId: conn.id,
+				});
 				return await this.executeAction(ctx, name, args);
 			},
 			onSubscribe: async (eventName, conn) => {
+				this.inspector.emitter.emit("eventFired", {
+					type: "subscribe",
+					eventName,
+					connId: conn.id,
+				});
 				this.#addSubscription(eventName, conn, false);
 			},
 			onUnsubscribe: async (eventName, conn) => {
+				this.inspector.emitter.emit("eventFired", {
+					type: "unsubscribe",
+					eventName,
+					connId: conn.id,
+				});
 				this.#removeSubscription(eventName, conn, false);
 			},
 		});
@@ -827,7 +899,7 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 		fromPersist: boolean,
 	) {
 		if (connection.subscriptions.has(eventName)) {
-			logger().info("connection already has subscription", { eventName });
+			logger().debug("connection already has subscription", { eventName });
 			return;
 		}
 
@@ -928,14 +1000,17 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 		// Prevent calling private or reserved methods
 		if (!(actionName in this.#config.actions)) {
 			logger().warn("action does not exist", { actionName });
-			throw new errors.ActionNotFound();
+			throw new errors.ActionNotFound(actionName);
 		}
 
 		// Check if the method exists on this object
 		const actionFunction = this.#config.actions[actionName];
 		if (typeof actionFunction !== "function") {
-			logger().warn("action not found", { actionName: actionName });
-			throw new errors.ActionNotFound();
+			logger().warn("action is not a function", {
+				actionName: actionName,
+				type: typeof actionFunction,
+			});
+			throw new errors.ActionNotFound(actionName);
 		}
 
 		// TODO: pass abortable to the action to decide when to abort
@@ -1021,6 +1096,69 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 		return Object.keys(this.#config.actions);
 	}
 
+	/**
+	 * Handles raw HTTP requests to the actor.
+	 */
+	async handleFetch(request: Request, opts: { auth: AD }): Promise<Response> {
+		this.#assertReady();
+
+		if (!this.#config.onFetch) {
+			throw new errors.FetchHandlerNotDefined();
+		}
+
+		try {
+			const response = await this.#config.onFetch(
+				this.actorContext,
+				request,
+				opts,
+			);
+			if (!response) {
+				throw new errors.InvalidFetchResponse();
+			}
+			return response;
+		} catch (error) {
+			logger().error("onFetch error", {
+				error: stringifyError(error),
+			});
+			throw error;
+		} finally {
+			this.#savePersistThrottled();
+		}
+	}
+
+	/**
+	 * Handles raw WebSocket connections to the actor.
+	 */
+	async handleWebSocket(
+		websocket: UniversalWebSocket,
+		opts: { request: Request; auth: AD },
+	): Promise<void> {
+		this.#assertReady();
+
+		if (!this.#config.onWebSocket) {
+			throw new errors.InternalError("onWebSocket handler not defined");
+		}
+
+		try {
+			// Set up state tracking to detect changes during WebSocket handling
+			const stateBeforeHandler = this.#persistChanged;
+
+			await this.#config.onWebSocket(this.actorContext, websocket, opts);
+
+			// If state changed during the handler, save it
+			if (this.#persistChanged && !stateBeforeHandler) {
+				await this.saveState({ immediate: true });
+			}
+		} catch (error) {
+			logger().error("onWebSocket error", {
+				error: stringifyError(error),
+			});
+			throw error;
+		} finally {
+			this.#savePersistThrottled();
+		}
+	}
+
 	// MARK: Lifecycle hooks
 
 	// MARK: Exposed methods
@@ -1081,7 +1219,7 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 	 * @experimental
 	 * @throws {DatabaseNotEnabled} If the database is not enabled.
 	 */
-	get db(): DB {
+	get db(): InferDatabaseClient<DB> {
 		if (!this.#db) {
 			throw new errors.DatabaseNotEnabled();
 		}
@@ -1111,6 +1249,12 @@ export class ActorInstance<S, CP, CS, V, I, AD, DB> {
 	 */
 	_broadcast<Args extends Array<unknown>>(name: string, ...args: Args) {
 		this.#assertReady();
+
+		this.inspector.emitter.emit("eventFired", {
+			type: "broadcast",
+			eventName: name,
+			args,
+		});
 
 		// Send to all connected clients
 		const subscriptions = this.#subscriptionIndex.get(name);

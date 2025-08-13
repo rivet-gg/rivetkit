@@ -2,7 +2,8 @@ import type { ViteUserConfig } from "vitest/config";
 
 export default {
 	test: {
-		testTimeout: 500,
+		testTimeout: 2_000,
+		hookTimeout: 2_000,
 		// Enable parallelism
 		sequence: {
 			// TODO: This breaks fake timers, unsure how to make tests run in parallel within the same file
@@ -11,6 +12,8 @@ export default {
 		env: {
 			// Enable logging
 			_LOG_LEVEL: "DEBUG",
+			_LOG_TARGET: "1",
+			_LOG_TIMESTAMP: "1",
 			_RIVETKIT_ERROR_STACK: "1",
 		},
 	},

@@ -3,46 +3,47 @@ import { serve as honoServe, type ServerType } from "@hono/node-server";
 import { createNodeWebSocket } from "@hono/node-ws";
 import { type TestContext, vi } from "vitest";
 import { type Client, createClient } from "@/client/mod";
-import { createMemoryDriver } from "@/drivers/memory/mod";
-import { type Registry, StandaloneTopology } from "@/mod";
+import { createFileSystemOrMemoryDriver } from "@/drivers/file-system/mod";
+import { createInlineClientDriver } from "@/inline-client-driver/mod";
+import { getStudioUrl } from "@/inspector/utils";
+import { createManagerRouter } from "@/manager/router";
+import type { Registry } from "@/registry/mod";
 import { RunConfigSchema } from "@/registry/run-config";
-import { CoordinateTopology } from "@/topologies/coordinate/mod";
-import { assertUnreachable } from "@/utils";
 import { ConfigSchema, type InputConfig } from "./config";
 import { logger } from "./log";
 
 function serve(registry: Registry<any>, inputConfig?: InputConfig): ServerType {
-	const config = ConfigSchema.parse(inputConfig);
-
 	// Configure default configuration
-	if (!config.driver) {
-		config.driver = createMemoryDriver();
+	inputConfig ??= {};
+	if (!inputConfig.driver) {
+		inputConfig.driver = createFileSystemOrMemoryDriver(false);
 	}
+
+	const config = ConfigSchema.parse(inputConfig);
 
 	let upgradeWebSocket: any;
 	if (!config.getUpgradeWebSocket) {
 		config.getUpgradeWebSocket = () => upgradeWebSocket!;
 	}
 
-	// Setup topology
-	const runConfig = RunConfigSchema.parse(config);
-	let topology: StandaloneTopology | CoordinateTopology;
-	if (config.driver.topology === "standalone") {
-		topology = new StandaloneTopology(registry.config, runConfig);
-	} else if (config.driver.topology === "partition") {
-		throw new Error("Node.js only supports standalone & coordinate topology.");
-	} else if (config.driver.topology === "coordinate") {
-		topology = new CoordinateTopology(registry.config, runConfig);
-	} else {
-		assertUnreachable(config.driver.topology);
-	}
+	// Create router
+	const runConfig = RunConfigSchema.parse(inputConfig);
+	const managerDriver = config.driver.manager(registry.config, config);
+	const inlineClientDriver = createInlineClientDriver(managerDriver);
+	const { router } = createManagerRouter(
+		registry.config,
+		runConfig,
+		inlineClientDriver,
+		managerDriver,
+		false,
+	);
 
 	// Inject WebSocket
-	const nodeWebSocket = createNodeWebSocket({ app: topology.router });
+	const nodeWebSocket = createNodeWebSocket({ app: router });
 	upgradeWebSocket = nodeWebSocket.upgradeWebSocket;
 
 	const server = honoServe({
-		fetch: topology.router.fetch,
+		fetch: router.fetch,
 		hostname: config.hostname,
 		port: config.port,
 	});
@@ -51,6 +52,7 @@ function serve(registry: Registry<any>, inputConfig?: InputConfig): ServerType {
 	logger().info("rivetkit started", {
 		hostname: config.hostname,
 		port: config.port,
+		definitions: Object.keys(registry.config.use).length,
 	});
 
 	return server;

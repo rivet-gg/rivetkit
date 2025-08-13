@@ -1,4 +1,3 @@
-import type { EventSource } from "eventsource";
 import type { Context as HonoContext } from "hono";
 import type { WebSocket } from "ws";
 import type { ActionRequest } from "@/actor/protocol/http/action";
@@ -15,6 +14,7 @@ import {
 	HEADER_ENCODING,
 } from "@/actor/router-endpoints";
 import { importEventSource } from "@/common/eventsource";
+import type { UniversalEventSource } from "@/common/eventsource-interface";
 import { importWebSocket } from "@/common/websocket";
 import type { ActorQuery } from "@/manager/protocol/query";
 import { assertUnreachable, httpUserAgent } from "@/utils";
@@ -139,7 +139,7 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 					`conn_params.${encodeURIComponent(JSON.stringify(params))}`,
 				);
 
-			// HACK: See packages/platforms/cloudflare-workers/src/websocket.ts
+			// HACK: See packages/drivers/cloudflare-workers/src/websocket.ts
 			protocol.push("rivetkit");
 
 			logger().debug("connecting to websocket", { url });
@@ -164,7 +164,7 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 			actorQuery: ActorQuery,
 			encodingKind: Encoding,
 			params: unknown,
-		): Promise<EventSource> => {
+		): Promise<UniversalEventSource> => {
 			const { EventSource } = await dynamicImports;
 
 			const url = `${managerEndpoint}/registry/actors/connect/sse`;
@@ -188,7 +188,7 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 				},
 			});
 
-			return eventSource;
+			return eventSource as UniversalEventSource;
 		},
 
 		sendHttpMessage: async (
@@ -215,6 +215,92 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 				credentials: "include",
 			});
 			return res;
+		},
+
+		rawHttpRequest: async (
+			_c: HonoContext | undefined,
+			actorQuery: ActorQuery,
+			encoding: Encoding,
+			params: unknown,
+			path: string,
+			init: RequestInit,
+		): Promise<Response> => {
+			// Build the full URL
+			// Remove leading slash from path to avoid double slashes
+			const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
+			const url = `${managerEndpoint}/registry/actors/raw/http/${normalizedPath}`;
+
+			logger().debug("rewriting http url", {
+				from: path,
+				to: url,
+			});
+
+			// Merge headers properly
+			const headers = new Headers(init.headers);
+			headers.set("User-Agent", httpUserAgent());
+			headers.set(HEADER_ACTOR_QUERY, JSON.stringify(actorQuery));
+			headers.set(HEADER_ENCODING, encoding);
+			if (params !== undefined) {
+				headers.set(HEADER_CONN_PARAMS, JSON.stringify(params));
+			}
+
+			// Forward the request with query in headers
+			return await fetch(url, {
+				...init,
+				headers,
+			});
+		},
+
+		rawWebSocket: async (
+			_c: HonoContext | undefined,
+			actorQuery: ActorQuery,
+			encoding: Encoding,
+			params: unknown,
+			path: string,
+			protocols: string | string[] | undefined,
+		): Promise<WebSocket> => {
+			const { WebSocket } = await dynamicImports;
+
+			// Build the WebSocket URL with normalized path
+			const wsEndpoint = managerEndpoint
+				.replace(/^http:/, "ws:")
+				.replace(/^https:/, "wss:");
+			// Normalize path to match raw HTTP behavior
+			const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
+			const url = `${wsEndpoint}/registry/actors/raw/websocket/${normalizedPath}`;
+
+			logger().debug("rewriting websocket url", {
+				from: path,
+				to: url,
+			});
+
+			// Pass data via WebSocket protocol subprotocols
+			const protocolList: string[] = [];
+			protocolList.push(
+				`query.${encodeURIComponent(JSON.stringify(actorQuery))}`,
+			);
+			protocolList.push(`encoding.${encoding}`);
+			if (params) {
+				protocolList.push(
+					`conn_params.${encodeURIComponent(JSON.stringify(params))}`,
+				);
+			}
+
+			// HACK: See packages/drivers/cloudflare-workers/src/websocket.ts
+			protocolList.push("rivetkit");
+
+			// Add user protocols
+			if (protocols) {
+				if (Array.isArray(protocols)) {
+					protocolList.push(...protocols);
+				} else {
+					protocolList.push(protocols);
+				}
+			}
+
+			// Create WebSocket connection
+			logger().debug("opening raw websocket", { url });
+			return new WebSocket(url, protocolList) as any;
 		},
 	};
 

@@ -1,6 +1,6 @@
 {
   "name": "example-better-auth-external-db",
-  "version": "0.9.1",
+  "version": "0.9.9",
   "private": true,
   "type": "module",
   "scripts": {

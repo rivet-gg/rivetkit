@@ -1,5 +1,4 @@
 import { actor, setup } from "@rivetkit/actor";
-import { UserError } from "@rivetkit/actor/errors";
 
 export type Member = {
 	id: string;
@@ -20,32 +19,6 @@ export type ConnState = {
 	userId: string;
 	role: "admin" | "member";
 };
-
-// Simple authentication function
-async function authenticate(
-	token: string,
-): Promise<{ userId: string; role: "admin" | "member" }> {
-	// Simple token parsing - in production, verify JWT or session
-	if (token.startsWith("auth:")) {
-		const userId = token.split(":")[1];
-
-		// Hardcoded user roles for demo
-		const userRoles: Record<string, "admin" | "member"> = {
-			"user-1": "admin", // Alice
-			"user-2": "member", // Bob
-			"user-3": "member", // Charlie
-		};
-
-		const role = userRoles[userId];
-		if (!role) {
-			throw new UserError("Invalid authentication token");
-		}
-
-		return { userId, role };
-	}
-
-	throw new UserError("Invalid authentication token format");
-}
 
 const tenant = actor({
 	onAuth: () => {},

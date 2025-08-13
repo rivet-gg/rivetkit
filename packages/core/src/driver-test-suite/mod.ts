@@ -4,13 +4,9 @@ import { bundleRequire } from "bundle-require";
 import invariant from "invariant";
 import { describe } from "vitest";
 import type { Transport } from "@/client/mod";
-import {
-	CoordinateTopology,
-	type DriverConfig,
-	type Registry,
-	type RunConfig,
-	StandaloneTopology,
-} from "@/mod";
+import { createInlineClientDriver } from "@/inline-client-driver/mod";
+import { createManagerRouter } from "@/manager/router";
+import type { DriverConfig, Registry, RunConfig } from "@/mod";
 import { RunConfigSchema } from "@/registry/run-config";
 import { getPort } from "@/test/mod";
 import { runActionFeaturesTests } from "./tests/action-features";
@@ -24,6 +20,16 @@ import { runActorInlineClientTests } from "./tests/actor-inline-client";
 import { runActorMetadataTests } from "./tests/actor-metadata";
 import { runActorVarsTests } from "./tests/actor-vars";
 import { runManagerDriverTests } from "./tests/manager-driver";
+import { runRawHttpTests } from "./tests/raw-http";
+import { runRawHttpDirectRegistryTests } from "./tests/raw-http-direct-registry";
+import { runRawHttpRequestPropertiesTests } from "./tests/raw-http-request-properties";
+import { runRawWebSocketTests } from "./tests/raw-websocket";
+import { runRawWebSocketDirectRegistryTests } from "./tests/raw-websocket-direct-registry";
+import { runRequestAccessTests } from "./tests/request-access";
+
+export interface SkipTests {
+	schedule?: boolean;
+}
 
 export interface DriverTestConfig {
 	/** Deploys an registry and returns the connection endpoint. */
@@ -38,9 +44,13 @@ export interface DriverTestConfig {
 	/** Cloudflare Workers has some bugs with cleanup. */
 	HACK_skipCleanupNet?: boolean;
 
+	skip?: SkipTests;
+
 	transport?: Transport;
 
 	clientType: ClientType;
+
+	cleanup?: () => Promise<void>;
 }
 
 /**
@@ -81,6 +91,8 @@ export function runDriverTests(
 					});
 
 					runActorConnStateTests({ ...driverTestConfig, transport });
+
+					runRequestAccessTests({ ...driverTestConfig, transport });
 				});
 			}
 
@@ -97,6 +109,16 @@ export function runDriverTests(
 			runActorAuthTests(driverTestConfig);
 
 			runActorInlineClientTests(driverTestConfig);
+
+			runRawHttpTests(driverTestConfig);
+
+			runRawHttpRequestPropertiesTests(driverTestConfig);
+
+			runRawWebSocketTests(driverTestConfig);
+
+			runRawHttpDirectRegistryTests(driverTestConfig);
+
+			runRawWebSocketDirectRegistryTests(driverTestConfig);
 		});
 	}
 }
@@ -134,21 +156,26 @@ export async function createTestRuntime(
 		getUpgradeWebSocket: () => upgradeWebSocket!,
 	});
 
-	// Build topology
-	const topology =
-		config.driver.topology === "coordinate"
-			? new CoordinateTopology(registry.config, config)
-			: new StandaloneTopology(registry.config, config);
+	// Create router
+	const managerDriver = config.driver.manager(registry.config, config);
+	const inlineDriver = createInlineClientDriver(managerDriver);
+	const { router } = createManagerRouter(
+		registry.config,
+		config,
+		inlineDriver,
+		managerDriver,
+		false,
+	);
 
 	// Inject WebSocket
-	const nodeWebSocket = createNodeWebSocket({ app: topology.router });
+	const nodeWebSocket = createNodeWebSocket({ app: router });
 	upgradeWebSocket = nodeWebSocket.upgradeWebSocket;
 	injectWebSocket = nodeWebSocket.injectWebSocket;
 
 	// Start server
 	const port = await getPort();
 	const server = honoServe({
-		fetch: topology.router.fetch,
+		fetch: router.fetch,
 		hostname: "127.0.0.1",
 		port,
 	});

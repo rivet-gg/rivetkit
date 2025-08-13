@@ -4,6 +4,7 @@ import type { Logger } from "@/common/log";
 import type { Registry } from "@/registry/mod";
 import type { Conn, ConnId } from "./connection";
 import type { ActorContext } from "./context";
+import type { AnyDatabaseProvider, InferDatabaseClient } from "./database";
 import type { SaveStateOptions } from "./instance";
 import type { Schedule } from "./schedule";
 
@@ -12,8 +13,24 @@ import type { Schedule } from "./schedule";
  *
  * @typeParam A Actor this action belongs to
  */
-export class ActionContext<S, CP, CS, V, I, AD, DB> {
-	#actorContext: ActorContext<S, CP, CS, V, I, AD, DB>;
+export class ActionContext<
+	TState,
+	TConnParams,
+	TConnState,
+	TVars,
+	TInput,
+	TAuthData,
+	TDatabase extends AnyDatabaseProvider,
+> {
+	#actorContext: ActorContext<
+		TState,
+		TConnParams,
+		TConnState,
+		TVars,
+		TInput,
+		TAuthData,
+		TDatabase
+	>;
 
 	/**
 	 * Should not be called directly.
@@ -22,8 +39,24 @@ export class ActionContext<S, CP, CS, V, I, AD, DB> {
 	 * @param conn - The connection associated with the action
 	 */
 	constructor(
-		actorContext: ActorContext<S, CP, CS, V, I, AD, DB>,
-		public readonly conn: Conn<S, CP, CS, V, I, AD, DB>,
+		actorContext: ActorContext<
+			TState,
+			TConnParams,
+			TConnState,
+			TVars,
+			TInput,
+			TAuthData,
+			TDatabase
+		>,
+		public readonly conn: Conn<
+			TState,
+			TConnParams,
+			TConnState,
+			TVars,
+			TInput,
+			TAuthData,
+			TDatabase
+		>,
 	) {
 		this.#actorContext = actorContext;
 	}
@@ -31,14 +64,14 @@ export class ActionContext<S, CP, CS, V, I, AD, DB> {
 	/**
 	 * Get the actor state
 	 */
-	get state(): S {
+	get state(): TState {
 		return this.#actorContext.state;
 	}
 
 	/**
 	 * Get the actor variables
 	 */
-	get vars(): V {
+	get vars(): TVars {
 		return this.#actorContext.vars;
 	}
 
@@ -94,7 +127,10 @@ export class ActionContext<S, CP, CS, V, I, AD, DB> {
 	/**
 	 * Gets the map of connections.
 	 */
-	get conns(): Map<ConnId, Conn<S, CP, CS, V, I, AD, DB>> {
+	get conns(): Map<
+		ConnId,
+		Conn<TState, TConnParams, TConnState, TVars, TInput, TAuthData, TDatabase>
+	> {
 		return this.#actorContext.conns;
 	}
 
@@ -108,7 +144,7 @@ export class ActionContext<S, CP, CS, V, I, AD, DB> {
 	/**
 	 * @experimental
 	 */
-	get db(): DB {
+	get db(): InferDatabaseClient<TDatabase> {
 		return this.#actorContext.db;
 	}
 

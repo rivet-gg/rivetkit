@@ -1,18 +1,25 @@
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
 import * as cbor from "cbor-x";
-import { Hono, type Context as HonoContext } from "hono";
+import {
+	Hono,
+	type Context as HonoContext,
+	type MiddlewareHandler,
+} from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
 import type { WSContext } from "hono/ws";
 import invariant from "invariant";
 import type { CloseEvent, MessageEvent, WebSocket } from "ws";
 import { z } from "zod";
-import type { ConnRoutingHandler } from "@/actor/conn-routing-handler";
 import * as errors from "@/actor/errors";
 import type * as protoHttpResolve from "@/actor/protocol/http/resolve";
 import type { Transport } from "@/actor/protocol/message/mod";
 import type { ToClient } from "@/actor/protocol/message/to-client";
 import { type Encoding, serialize } from "@/actor/protocol/serde";
+import {
+	PATH_CONNECT_WEBSOCKET,
+	PATH_RAW_WEBSOCKET_PREFIX,
+} from "@/actor/router";
 import {
 	ALLOWED_PUBLIC_HEADERS,
 	getRequestEncoding,
@@ -24,12 +31,7 @@ import {
 	HEADER_CONN_PARAMS,
 	HEADER_CONN_TOKEN,
 	HEADER_ENCODING,
-	handleAction,
-	handleConnectionMessage,
-	handleSseConnect,
-	handleWebSocketConnect,
 } from "@/actor/router-endpoints";
-import { assertUnreachable } from "@/actor/utils";
 import type { ClientDriver } from "@/client/client";
 import {
 	handleRouteError,
@@ -42,6 +44,9 @@ import {
 	noopNext,
 	stringifyError,
 } from "@/common/utils";
+import { createManagerInspectorRouter } from "@/inspector/manager";
+import { secureInspector } from "@/inspector/utils";
+import type { UpgradeWebSocketArgs } from "@/mod";
 import type { RegistryConfig } from "@/registry/config";
 import type { RunConfig } from "@/registry/run-config";
 import { VERSION } from "@/utils";
@@ -50,16 +55,42 @@ import type { ManagerDriver } from "./driver";
 import { logger } from "./log";
 import type { ActorQuery } from "./protocol/query";
 import {
+	ActorQuerySchema,
 	ConnectRequestSchema,
 	ConnectWebSocketRequestSchema,
 	ConnMessageRequestSchema,
 	ResolveRequestSchema,
 } from "./protocol/query";
 
-type ManagerRouterHandler = {
-	// onConnectInspector?: ManagerInspectorConnHandler;
-	routingHandler: ConnRoutingHandler;
-};
+/**
+ * Parse WebSocket protocol headers for query and connection parameters
+ */
+function parseWebSocketProtocols(protocols: string | undefined): {
+	queryRaw: string | undefined;
+	encodingRaw: string | undefined;
+	connParamsRaw: string | undefined;
+} {
+	let queryRaw: string | undefined;
+	let encodingRaw: string | undefined;
+	let connParamsRaw: string | undefined;
+
+	if (protocols) {
+		const protocolList = protocols.split(",").map((p) => p.trim());
+		for (const protocol of protocolList) {
+			if (protocol.startsWith("query.")) {
+				queryRaw = decodeURIComponent(protocol.substring("query.".length));
+			} else if (protocol.startsWith("encoding.")) {
+				encodingRaw = protocol.substring("encoding.".length);
+			} else if (protocol.startsWith("conn_params.")) {
+				connParamsRaw = decodeURIComponent(
+					protocol.substring("conn_params.".length),
+				);
+			}
+		}
+	}
+
+	return { queryRaw, encodingRaw, connParamsRaw };
+}
 
 const OPENAPI_ENCODING = z.string().openapi({
 	description: "The encoding format to use for the response (json, cbor)",
@@ -88,15 +119,17 @@ const OPENAPI_CONN_TOKEN = z.string().openapi({
 	description: "Connection token",
 });
 
-function buildOpenApiResponses<T>(schema: T) {
+function buildOpenApiResponses<T>(schema: T, validateBody: boolean) {
 	return {
 		200: {
 			description: "Success",
-			content: {
-				"application/json": {
-					schema,
-				},
-			},
+			content: validateBody
+				? {
+						"application/json": {
+							schema,
+						},
+					}
+				: {},
 		},
 		400: {
 			description: "User error",
@@ -107,39 +140,101 @@ function buildOpenApiResponses<T>(schema: T) {
 	};
 }
 
+/**
+ * Only use `validateBody` to `true` if you need to export OpenAPI JSON.
+ *
+ * If left enabled for production, this will cause errors. We disable JSON validation since:
+ * - It prevents us from proxying requests, since validating the body requires consuming the body so we can't forward the body
+ * - We validate all types at the actor router layer since most requests are proxied
+ */
 export function createManagerRouter(
 	registryConfig: RegistryConfig,
 	runConfig: RunConfig,
 	inlineClientDriver: ClientDriver,
-	handler: ManagerRouterHandler,
+	managerDriver: ManagerDriver,
+	validateBody: boolean,
 ): { router: Hono; openapi: OpenAPIHono } {
-	const driver = runConfig.driver.manager;
-	const router = new OpenAPIHono({ strict: false });
+	const router = new OpenAPIHono({ strict: false }).basePath(
+		runConfig.basePath,
+	);
 
 	router.use("*", loggerMiddleware(logger()));
 
-	if (runConfig.cors) {
-		const corsConfig = runConfig.cors;
-
+	if (runConfig.cors || runConfig.studio?.cors) {
 		router.use("*", async (c, next) => {
 			// Don't apply to WebSocket routes
 			// HACK: This could be insecure if we had a varargs path. We have to check the path suffix for WS since we don't know the path that this router was mounted.
+			// HACK: Checking "/websocket/" is not safe, but there is no other way to handle this if we don't know the base path this is
+			// mounted on
 			const path = c.req.path;
 			if (
 				path.endsWith("/actors/connect/websocket") ||
-				path.endsWith("/inspect")
+				path.includes("/actors/raw/websocket/") ||
+				// inspectors implement their own CORS handling
+				path.endsWith("/inspect") ||
+				path.endsWith("/actors/inspect")
 			) {
 				return next();
 			}
 
 			return cors({
-				...corsConfig,
+				...(runConfig.cors ?? {}),
+				...(runConfig.studio?.cors ?? {}),
+				origin: (origin, c) => {
+					const studioOrigin = runConfig.studio?.cors?.origin;
+
+					if (studioOrigin !== undefined) {
+						if (typeof studioOrigin === "function") {
+							const allowed = studioOrigin(origin, c);
+							if (allowed) return allowed;
+							// Proceed to next CORS config if none provided
+						} else if (Array.isArray(studioOrigin)) {
+							return studioOrigin.includes(origin) ? origin : undefined;
+						} else {
+							return studioOrigin;
+						}
+					}
+
+					if (runConfig.cors?.origin !== undefined) {
+						if (typeof runConfig.cors.origin === "function") {
+							const allowed = runConfig.cors.origin(origin, c);
+							if (allowed) return allowed;
+						} else {
+							return runConfig.cors.origin as string;
+						}
+					}
+
+					return null;
+				},
+				allowMethods: (origin, c) => {
+					const studioMethods = runConfig.studio?.cors?.allowMethods;
+					if (studioMethods) {
+						if (typeof studioMethods === "function") {
+							return studioMethods(origin, c);
+						}
+						return studioMethods;
+					}
+
+					if (runConfig.cors?.allowMethods) {
+						if (typeof runConfig.cors.allowMethods === "function") {
+							return runConfig.cors.allowMethods(origin, c);
+						}
+						return runConfig.cors.allowMethods;
+					}
+
+					return [];
+				},
 				allowHeaders: [
-					...(corsConfig?.allowHeaders ?? []),
+					...(runConfig.cors?.allowHeaders ?? []),
+					...(runConfig.studio?.cors?.allowHeaders ?? []),
 					...ALLOWED_PUBLIC_HEADERS,
 					"Content-Type",
 					"User-Agent",
 				],
+				credentials:
+					runConfig.cors?.credentials ??
+					runConfig.studio?.cors?.credentials ??
+					true,
 			})(c, next);
 		});
 	}
@@ -174,21 +269,23 @@ export function createManagerRouter(
 			path: "/actors/resolve",
 			request: {
 				body: {
-					content: {
-						"application/json": {
-							schema: ResolveQuerySchema,
-						},
-					},
+					content: validateBody
+						? {
+								"application/json": {
+									schema: ResolveQuerySchema,
+								},
+							}
+						: {},
 				},
 				headers: z.object({
 					[HEADER_ACTOR_QUERY]: OPENAPI_ACTOR_QUERY,
 				}),
 			},
-			responses: buildOpenApiResponses(ResolveResponseSchema),
+			responses: buildOpenApiResponses(ResolveResponseSchema, validateBody),
 		});
 
 		router.openapi(resolveRoute, (c) =>
-			handleResolveRequest(c, registryConfig, driver),
+			handleResolveRequest(c, registryConfig, managerDriver),
 		);
 	}
 
@@ -201,8 +298,7 @@ export function createManagerRouter(
 					c,
 					registryConfig,
 					runConfig,
-					driver,
-					handler,
+					managerDriver,
 				);
 			}
 
@@ -250,7 +346,7 @@ export function createManagerRouter(
 		});
 
 		router.openapi(sseRoute, (c) =>
-			handleSseConnectRequest(c, registryConfig, runConfig, driver, handler),
+			handleSseConnectRequest(c, registryConfig, runConfig, managerDriver),
 		);
 	}
 
@@ -290,22 +386,24 @@ export function createManagerRouter(
 			request: {
 				params: ActionParamsSchema,
 				body: {
-					content: {
-						"application/json": {
-							schema: ActionRequestSchema,
-						},
-					},
+					content: validateBody
+						? {
+								"application/json": {
+									schema: ActionRequestSchema,
+								},
+							}
+						: {},
 				},
 				headers: z.object({
 					[HEADER_ENCODING]: OPENAPI_ENCODING,
 					[HEADER_CONN_PARAMS]: OPENAPI_CONN_PARAMS.optional(),
 				}),
 			},
-			responses: buildOpenApiResponses(ActionResponseSchema),
+			responses: buildOpenApiResponses(ActionResponseSchema, validateBody),
 		});
 
 		router.openapi(actionRoute, (c) =>
-			handleActionRequest(c, registryConfig, runConfig, driver, handler),
+			handleActionRequest(c, registryConfig, runConfig, managerDriver),
 		);
 	}
 
@@ -328,11 +426,13 @@ export function createManagerRouter(
 			path: "/actors/message",
 			request: {
 				body: {
-					content: {
-						"application/json": {
-							schema: ConnectionMessageRequestSchema,
-						},
-					},
+					content: validateBody
+						? {
+								"application/json": {
+									schema: ConnectionMessageRequestSchema,
+								},
+							}
+						: {},
 				},
 				headers: z.object({
 					[HEADER_ACTOR_ID]: OPENAPI_ACTOR_ID,
@@ -341,24 +441,162 @@ export function createManagerRouter(
 					[HEADER_CONN_TOKEN]: OPENAPI_CONN_TOKEN,
 				}),
 			},
-			responses: buildOpenApiResponses(ConnectionMessageResponseSchema),
+			responses: buildOpenApiResponses(
+				ConnectionMessageResponseSchema,
+				validateBody,
+			),
 		});
 
 		router.openapi(messageRoute, (c) =>
-			handleMessageRequest(c, registryConfig, runConfig, handler),
+			handleMessageRequest(c, registryConfig, runConfig, managerDriver),
 		);
 	}
 
-	// if (registryConfig.inspector.enabled) {
-	// 	router.route(
-	// 		"/inspect",
-	// 		createManagerInspectorRouter(
-	// 			upgradeWebSocket,
-	// 			handler.onConnectInspector,
-	// 			registryConfig.inspector,
-	// 		),
-	// 	);
-	// }
+	// Raw HTTP endpoints - /actors/raw/http/*
+	{
+		const RawHttpRequestBodySchema = z.any().optional().openapi({
+			description: "Raw request body (can be any content type)",
+		});
+
+		const RawHttpResponseSchema = z.any().openapi({
+			description: "Raw response from actor's onFetch handler",
+		});
+
+		// Define common route config
+		const rawHttpRouteConfig = {
+			path: "/actors/raw/http/*",
+			request: {
+				headers: z.object({
+					[HEADER_ACTOR_QUERY]: OPENAPI_ACTOR_QUERY.optional(),
+					[HEADER_CONN_PARAMS]: OPENAPI_CONN_PARAMS.optional(),
+				}),
+				body: {
+					content: {
+						"*/*": {
+							schema: RawHttpRequestBodySchema,
+						},
+					},
+				},
+			},
+			responses: {
+				200: {
+					description: "Success - response from actor's onFetch handler",
+					content: {
+						"*/*": {
+							schema: RawHttpResponseSchema,
+						},
+					},
+				},
+				404: {
+					description: "Actor does not have an onFetch handler",
+				},
+				500: {
+					description: "Internal server error or invalid response from actor",
+				},
+			},
+		};
+
+		// Create routes for each HTTP method
+		const httpMethods = [
+			"get",
+			"post",
+			"put",
+			"delete",
+			"patch",
+			"head",
+			"options",
+		] as const;
+		for (const method of httpMethods) {
+			const route = createRoute({
+				method,
+				...rawHttpRouteConfig,
+			});
+
+			router.openapi(route, async (c) => {
+				return handleRawHttpRequest(
+					c,
+					registryConfig,
+					runConfig,
+					managerDriver,
+				);
+			});
+		}
+	}
+
+	// Raw WebSocket endpoint - /actors/raw/websocket/*
+	{
+		// HACK: WebSockets don't work with mounts, so we need to dynamically match the trailing path
+		router.use("*", async (c, next) => {
+			if (c.req.path.includes("/raw/websocket/")) {
+				return handleRawWebSocketRequest(
+					c,
+					registryConfig,
+					runConfig,
+					managerDriver,
+				);
+			}
+
+			return next();
+		});
+
+		// This route is a noop, just used to generate docs
+		const rawWebSocketRoute = createRoute({
+			method: "get",
+			path: "/actors/raw/websocket/*",
+			request: {},
+			responses: {
+				101: {
+					description: "WebSocket upgrade successful",
+				},
+				400: {
+					description: "WebSockets not enabled or invalid request",
+				},
+				404: {
+					description: "Actor does not have an onWebSocket handler",
+				},
+			},
+		});
+
+		router.openapi(rawWebSocketRoute, () => {
+			throw new Error("Should be unreachable");
+		});
+	}
+
+	if (runConfig.studio?.enabled) {
+		router.route(
+			"/actors/inspect",
+			new Hono()
+				.use(
+					cors(runConfig.studio.cors),
+					secureInspector(runConfig),
+					universalActorProxy({
+						registryConfig,
+						runConfig,
+						driver: managerDriver,
+					}),
+				)
+				.all("/", (c) =>
+					// this should be handled by the actor proxy, but just in case
+					c.text("Unreachable.", 404),
+				),
+		);
+		router.route(
+			"/inspect",
+			new Hono()
+				.use(
+					cors(runConfig.studio.cors),
+					secureInspector(runConfig),
+					async (c, next) => {
+						const inspector = managerDriver.inspector;
+						invariant(inspector, "inspector not supported on this platform");
+
+						c.set("inspector", inspector);
+						await next();
+					},
+				)
+				.route("/", createManagerInspectorRouter()),
+		);
+	}
 
 	if (registryConfig.test.enabled) {
 		// Add HTTP endpoint to test the inline client
@@ -370,7 +608,7 @@ export function createManagerRouter(
 			const { encoding, transport, method, args }: TestInlineDriverCallRequest =
 				cbor.decode(new Uint8Array(buffer));
 
-			logger().info("received inline request", {
+			logger().debug("received inline request", {
 				encoding,
 				transport,
 				method,
@@ -425,133 +663,134 @@ export function createManagerRouter(
 					undefined,
 				);
 
-				// Store a reference to the resolved WebSocket
-				let clientWs: WebSocket | null = null;
-
-				// Create WebSocket proxy handlers to relay messages between client and server
-				return {
-					onOpen: async (_evt: any, serverWs: WSContext) => {
-						logger().debug("test websocket connection opened");
-
-						try {
-							// Resolve the client WebSocket promise
-							clientWs = await clientWsPromise;
-
-							// Add message handler to forward messages from client to server
-							clientWs.addEventListener(
-								"message",
-								(clientEvt: MessageEvent) => {
-									logger().debug("test websocket connection message");
-
-									if (serverWs.readyState === 1) {
-										// OPEN
-										serverWs.send(clientEvt.data as any);
-									}
-								},
-							);
-
-							// Add close handler to close server when client closes
-							clientWs.addEventListener("close", (clientEvt: CloseEvent) => {
-								logger().debug("test websocket connection closed");
-
-								if (serverWs.readyState !== 3) {
-									// Not CLOSED
-									serverWs.close(clientEvt.code, clientEvt.reason);
-								}
-							});
-
-							// Add error handler
-							clientWs.addEventListener("error", () => {
-								logger().debug("test websocket connection error");
-
-								if (serverWs.readyState !== 3) {
-									// Not CLOSED
-									serverWs.close(1011, "Error in client websocket");
-								}
-							});
-						} catch (error) {
-							logger().error(
-								"failed to establish client websocket connection",
-								{ error },
-							);
-							serverWs.close(1011, "Failed to establish connection");
-						}
-					},
-					onMessage: async (evt: { data: any }, serverWs: WSContext) => {
-						// If clientWs hasn't been resolved yet, messages will be lost
-						if (!clientWs) {
-							logger().debug(
-								"received server message before client WebSocket connected",
-							);
-							return;
-						}
-
-						logger().debug("received message from server", {
-							dataType: typeof evt.data,
-						});
-
-						// Forward messages from server websocket to client websocket
-						if (clientWs.readyState === 1) {
-							// OPEN
-							clientWs.send(evt.data);
-						}
-					},
-					onClose: async (
-						event: {
-							wasClean: boolean;
-							code: number;
-							reason: string;
-						},
-						serverWs: WSContext,
-					) => {
-						logger().debug("server websocket closed", {
-							wasClean: event.wasClean,
-							code: event.code,
-							reason: event.reason,
-						});
-
-						// HACK: Close socket in order to fix bug with Cloudflare leaving WS in closing state
-						// https://github.com/cloudflare/workerd/issues/2569
-						serverWs.close(1000, "hack_force_close");
-
-						// Close the client websocket when the server websocket closes
-						if (
-							clientWs &&
-							clientWs.readyState !== clientWs.CLOSED &&
-							clientWs.readyState !== clientWs.CLOSING
-						) {
-							clientWs.close(event.code, event.reason);
-						}
-					},
-					onError: async (error: unknown) => {
-						logger().error("error in server websocket", { error });
-
-						// Close the client websocket on error
-						if (
-							clientWs &&
-							clientWs.readyState !== clientWs.CLOSED &&
-							clientWs.readyState !== clientWs.CLOSING
-						) {
-							clientWs.close(1011, "Error in server websocket");
-						}
-					},
-				};
+				return await createTestWebSocketProxy(clientWsPromise, "standard");
 			})(c, noopNext());
+		});
+
+		router.get(".test/inline-driver/raw-websocket", async (c) => {
+			const upgradeWebSocket = runConfig.getUpgradeWebSocket?.();
+			invariant(upgradeWebSocket, "websockets not supported on this platform");
+
+			return upgradeWebSocket(async (c: any) => {
+				const {
+					actorQuery: actorQueryRaw,
+					params: paramsRaw,
+					encodingKind,
+					path,
+					protocols: protocolsRaw,
+				} = c.req.query() as {
+					actorQuery: string;
+					params?: string;
+					encodingKind: Encoding;
+					path: string;
+					protocols?: string;
+				};
+				const actorQuery = JSON.parse(actorQueryRaw);
+				const params =
+					paramsRaw !== undefined ? JSON.parse(paramsRaw) : undefined;
+				const protocols =
+					protocolsRaw !== undefined ? JSON.parse(protocolsRaw) : undefined;
+
+				logger().debug("received test inline driver raw websocket", {
+					actorQuery,
+					params,
+					encodingKind,
+					path,
+					protocols,
+				});
+
+				// Connect to the actor using the inline client driver - this returns a Promise<WebSocket>
+				logger().debug("calling inlineClientDriver.rawWebSocket");
+				const clientWsPromise = inlineClientDriver.rawWebSocket(
+					undefined,
+					actorQuery,
+					encodingKind,
+					params,
+					path,
+					protocols,
+					undefined,
+				);
+
+				logger().debug("calling createTestWebSocketProxy");
+				return await createTestWebSocketProxy(clientWsPromise, "raw");
+			})(c, noopNext());
+		});
+
+		// Raw HTTP endpoint for test inline driver
+		router.all(".test/inline-driver/raw-http/*", async (c) => {
+			// Extract parameters from headers
+			const actorQueryHeader = c.req.header(HEADER_ACTOR_QUERY);
+			const paramsHeader = c.req.header(HEADER_CONN_PARAMS);
+			const encodingHeader = c.req.header(HEADER_ENCODING);
+
+			if (!actorQueryHeader || !encodingHeader) {
+				return c.text("Missing required headers", 400);
+			}
+
+			const actorQuery = JSON.parse(actorQueryHeader);
+			const params = paramsHeader ? JSON.parse(paramsHeader) : undefined;
+			const encoding = encodingHeader as Encoding;
+
+			// Extract the path after /raw-http/
+			const fullPath = c.req.path;
+			const pathOnly =
+				fullPath.split("/.test/inline-driver/raw-http/")[1] || "";
+
+			// Include query string
+			const url = new URL(c.req.url);
+			const pathWithQuery = pathOnly + url.search;
+
+			logger().debug("received test inline driver raw http", {
+				actorQuery,
+				params,
+				encoding,
+				path: pathWithQuery,
+				method: c.req.method,
+			});
+
+			try {
+				// Forward the request using the inline client driver
+				const response = await inlineClientDriver.rawHttpRequest(
+					undefined,
+					actorQuery,
+					encoding,
+					params,
+					pathWithQuery,
+					{
+						method: c.req.method,
+						headers: c.req.raw.headers,
+						body: c.req.raw.body,
+					},
+					undefined,
+				);
+
+				// Return the response directly
+				return response;
+			} catch (error) {
+				logger().error("error in test inline raw http", {
+					error: stringifyError(error),
+				});
+
+				// Return error response
+				const err = deconstructError(error, logger(), {}, true);
+				return c.json(
+					{
+						error: {
+							code: err.code,
+							message: err.message,
+							metadata: err.metadata,
+						},
+					},
+					err.statusCode,
+				);
+			}
 		});
 	}
 
-	router.doc("/openapi.json", {
-		openapi: "3.0.0",
-		info: {
-			version: VERSION,
-			title: "RivetKit API",
-		},
-	});
-
-	driver.modifyManagerRouter?.(registryConfig, router as unknown as Hono);
-
-	router.notFound(handleRouteNotFound);
-	router.onError(handleRouteError.bind(undefined, {}));
+	managerDriver.modifyManagerRouter?.(
+		registryConfig,
+		router as unknown as Hono,
+	);
 
 	// Mount on both / and /registry
 	//
@@ -564,6 +803,10 @@ export function createManagerRouter(
 	const mountedRouter = new Hono();
 	mountedRouter.route("/", router);
 	mountedRouter.route("/registry", router);
+
+	// IMPORTANT: These must be on `mountedRouter` instead of `router` or else they will not be called.
+	mountedRouter.notFound(handleRouteNotFound);
+	mountedRouter.onError(handleRouteError.bind(undefined, {}));
 
 	return { router: mountedRouter, openapi: router };
 }
@@ -645,6 +888,199 @@ export async function queryActor(
 }
 
 /**
+ * Creates a WebSocket proxy for test endpoints that forwards messages between server and client WebSockets
+ */
+async function createTestWebSocketProxy(
+	clientWsPromise: Promise<WebSocket>,
+	connectionType: string,
+): Promise<UpgradeWebSocketArgs> {
+	// Store a reference to the resolved WebSocket
+	let clientWs: WebSocket | null = null;
+	try {
+		// Resolve the client WebSocket promise
+		logger().debug("awaiting client websocket promise");
+		clientWs = await clientWsPromise;
+		logger().debug("client websocket promise resolved", {
+			constructor: clientWs?.constructor.name,
+		});
+	} catch (error) {
+		logger().error(
+			`failed to establish client ${connectionType} websocket connection`,
+			{ error },
+		);
+		return {
+			onOpen: (_evt, serverWs) => {
+				serverWs.close(1011, "Failed to establish connection");
+			},
+			onMessage: () => {},
+			onError: () => {},
+			onClose: () => {},
+		};
+	}
+
+	// Create WebSocket proxy handlers to relay messages between client and server
+	return {
+		onOpen: (_evt: any, serverWs: WSContext) => {
+			logger().debug(`test ${connectionType} websocket connection opened`);
+
+			// Check WebSocket type
+			logger().debug("clientWs info", {
+				constructor: clientWs.constructor.name,
+				hasAddEventListener: typeof clientWs.addEventListener === "function",
+				readyState: clientWs.readyState,
+			});
+
+			// Add message handler to forward messages from client to server
+			clientWs.addEventListener("message", (clientEvt: MessageEvent) => {
+				logger().debug(
+					`test ${connectionType} websocket connection message from client`,
+					{
+						dataType: typeof clientEvt.data,
+						isBlob: clientEvt.data instanceof Blob,
+						isArrayBuffer: clientEvt.data instanceof ArrayBuffer,
+						dataConstructor: clientEvt.data?.constructor?.name,
+						dataStr:
+							typeof clientEvt.data === "string"
+								? clientEvt.data.substring(0, 100)
+								: undefined,
+					},
+				);
+
+				if (serverWs.readyState === 1) {
+					// OPEN
+					// Handle Blob data
+					if (clientEvt.data instanceof Blob) {
+						clientEvt.data
+							.arrayBuffer()
+							.then((buffer) => {
+								logger().debug(
+									"converted client blob to arraybuffer, sending to server",
+									{
+										bufferSize: buffer.byteLength,
+									},
+								);
+								serverWs.send(buffer as any);
+							})
+							.catch((error) => {
+								logger().error("failed to convert blob to arraybuffer", {
+									error,
+								});
+							});
+					} else {
+						logger().debug("sending client data directly to server", {
+							dataType: typeof clientEvt.data,
+							dataLength:
+								typeof clientEvt.data === "string"
+									? clientEvt.data.length
+									: undefined,
+						});
+						serverWs.send(clientEvt.data as any);
+					}
+				}
+			});
+
+			// Add close handler to close server when client closes
+			clientWs.addEventListener("close", (clientEvt: CloseEvent) => {
+				logger().debug(`test ${connectionType} websocket connection closed`);
+
+				if (serverWs.readyState !== 3) {
+					// Not CLOSED
+					serverWs.close(clientEvt.code, clientEvt.reason);
+				}
+			});
+
+			// Add error handler
+			clientWs.addEventListener("error", () => {
+				logger().debug(`test ${connectionType} websocket connection error`);
+
+				if (serverWs.readyState !== 3) {
+					// Not CLOSED
+					serverWs.close(1011, "Error in client websocket");
+				}
+			});
+		},
+		onMessage: (evt: { data: any }) => {
+			logger().debug("received message from server", {
+				dataType: typeof evt.data,
+				isBlob: evt.data instanceof Blob,
+				isArrayBuffer: evt.data instanceof ArrayBuffer,
+				dataConstructor: evt.data?.constructor?.name,
+				dataStr:
+					typeof evt.data === "string" ? evt.data.substring(0, 100) : undefined,
+			});
+
+			// Forward messages from server websocket to client websocket
+			if (clientWs.readyState === 1) {
+				// OPEN
+				// Handle Blob data
+				if (evt.data instanceof Blob) {
+					evt.data
+						.arrayBuffer()
+						.then((buffer) => {
+							logger().debug("converted blob to arraybuffer, sending", {
+								bufferSize: buffer.byteLength,
+							});
+							clientWs.send(buffer);
+						})
+						.catch((error) => {
+							logger().error("failed to convert blob to arraybuffer", {
+								error,
+							});
+						});
+				} else {
+					logger().debug("sending data directly", {
+						dataType: typeof evt.data,
+						dataLength:
+							typeof evt.data === "string" ? evt.data.length : undefined,
+					});
+					clientWs.send(evt.data);
+				}
+			}
+		},
+		onClose: (
+			event: {
+				wasClean: boolean;
+				code: number;
+				reason: string;
+			},
+			serverWs: WSContext,
+		) => {
+			logger().debug(`server ${connectionType} websocket closed`, {
+				wasClean: event.wasClean,
+				code: event.code,
+				reason: event.reason,
+			});
+
+			// HACK: Close socket in order to fix bug with Cloudflare leaving WS in closing state
+			// https://github.com/cloudflare/workerd/issues/2569
+			serverWs.close(1000, "hack_force_close");
+
+			// Close the client websocket when the server websocket closes
+			if (
+				clientWs &&
+				clientWs.readyState !== clientWs.CLOSED &&
+				clientWs.readyState !== clientWs.CLOSING
+			) {
+				// Don't pass code/message since this may affect how close events are triggered
+				clientWs.close(1000, event.reason);
+			}
+		},
+		onError: (error: unknown) => {
+			logger().error(`error in server ${connectionType} websocket`, { error });
+
+			// Close the client websocket on error
+			if (
+				clientWs &&
+				clientWs.readyState !== clientWs.CLOSED &&
+				clientWs.readyState !== clientWs.CLOSING
+			) {
+				clientWs.close(1011, "Error in server websocket");
+			}
+		},
+	};
+}
+
+/**
  * Handle SSE connection request
  */
 async function handleSseConnectRequest(
@@ -652,7 +1088,6 @@ async function handleSseConnectRequest(
 	registryConfig: RegistryConfig,
 	runConfig: RunConfig,
 	driver: ManagerDriver,
-	handler: ManagerRouterHandler,
 ): Promise<Response> {
 	let encoding: Encoding | undefined;
 	try {
@@ -695,38 +1130,19 @@ async function handleSseConnectRequest(
 		logger().debug("sse connection to actor", { actorId });
 
 		// Handle based on mode
-		if ("inline" in handler.routingHandler) {
-			logger().debug("using inline proxy mode for sse connection");
-			// Use the shared SSE handler
-			return await handleSseConnect(
-				c,
-				registryConfig,
-				runConfig,
-				handler.routingHandler.inline.handlers.onConnectSse,
-				actorId,
-				authData,
-			);
-		} else if ("custom" in handler.routingHandler) {
-			logger().debug("using custom proxy mode for sse connection");
-			const url = new URL("http://actor/connect/sse");
+		logger().debug("using custom proxy mode for sse connection");
+		const url = new URL("http://actor/connect/sse");
 
-			// Always build fresh request to prevent forwarding unwanted headers
-			const proxyRequest = new Request(url);
-			proxyRequest.headers.set(HEADER_ENCODING, params.data.encoding);
-			if (params.data.connParams) {
-				proxyRequest.headers.set(HEADER_CONN_PARAMS, params.data.connParams);
-			}
-			if (authData) {
-				proxyRequest.headers.set(HEADER_AUTH_DATA, JSON.stringify(authData));
-			}
-			return await handler.routingHandler.custom.proxyRequest(
-				c,
-				proxyRequest,
-				actorId,
-			);
-		} else {
-			assertUnreachable(handler.routingHandler);
+		// Always build fresh request to prevent forwarding unwanted headers
+		const proxyRequest = new Request(url);
+		proxyRequest.headers.set(HEADER_ENCODING, params.data.encoding);
+		if (params.data.connParams) {
+			proxyRequest.headers.set(HEADER_CONN_PARAMS, params.data.connParams);
 		}
+		if (authData) {
+			proxyRequest.headers.set(HEADER_AUTH_DATA, JSON.stringify(authData));
+		}
+		return await driver.proxyRequest(c, proxyRequest, actorId);
 	} catch (error) {
 		// If we receive an error during setup, we send the error and close the socket immediately
 		//
@@ -788,7 +1204,6 @@ async function handleWebSocketConnectRequest(
 	registryConfig: RegistryConfig,
 	runConfig: RunConfig,
 	driver: ManagerDriver,
-	handler: ManagerRouterHandler,
 ): Promise<Response> {
 	const upgradeWebSocket = runConfig.getUpgradeWebSocket?.();
 	if (!upgradeWebSocket) {
@@ -810,25 +1225,8 @@ async function handleWebSocketConnectRequest(
 		// Browsers don't support using headers, so this is the only way to
 		// pass data securely.
 		const protocols = c.req.header("sec-websocket-protocol");
-		let queryRaw: string | undefined;
-		let encodingRaw: string | undefined;
-		let connParamsRaw: string | undefined;
-
-		if (protocols) {
-			// Parse protocols for conn_params.{token} pattern
-			const protocolList = protocols.split(",").map((p) => p.trim());
-			for (const protocol of protocolList) {
-				if (protocol.startsWith("query.")) {
-					queryRaw = decodeURIComponent(protocol.substring("query.".length));
-				} else if (protocol.startsWith("encoding.")) {
-					encodingRaw = protocol.substring("encoding.".length);
-				} else if (protocol.startsWith("conn_params.")) {
-					connParamsRaw = decodeURIComponent(
-						protocol.substring("conn_params.".length),
-					);
-				}
-			}
-		}
+		const { queryRaw, encodingRaw, connParamsRaw } =
+			parseWebSocketProtocols(protocols);
 
 		// Parse query
 		let queryUnvalidated: unknown;
@@ -885,48 +1283,20 @@ async function handleWebSocketConnectRequest(
 		});
 		invariant(actorId, "missing actor id");
 
-		if ("inline" in handler.routingHandler) {
-			logger().debug("using inline proxy mode for websocket connection");
-			invariant(
-				handler.routingHandler.inline.handlers.onConnectWebSocket,
-				"onConnectWebSocket not provided",
-			);
-
-			const onConnectWebSocket =
-				handler.routingHandler.inline.handlers.onConnectWebSocket;
-			return upgradeWebSocket((c) => {
-				return handleWebSocketConnect(
-					c,
-					registryConfig,
-					runConfig,
-					onConnectWebSocket,
-					actorId,
-					params.data.encoding,
-					params.data.connParams,
-					authData,
-				);
-			})(c, noopNext());
-		} else if ("custom" in handler.routingHandler) {
-			logger().debug("using custom proxy mode for websocket connection");
-
-			// Proxy the WebSocket connection to the actor
-			//
-			// The proxyWebSocket handler will:
-			// 1. Validate the WebSocket upgrade request
-			// 2. Forward the request to the actor with the appropriate path
-			// 3. Handle the WebSocket pair and proxy messages between client and actor
-			return await handler.routingHandler.custom.proxyWebSocket(
-				c,
-				"/connect/websocket",
-				actorId,
-				params.data.encoding,
-				params.data.connParams,
-				authData,
-				upgradeWebSocket,
-			);
-		} else {
-			assertUnreachable(handler.routingHandler);
-		}
+		// Proxy the WebSocket connection to the actor
+		//
+		// The proxyWebSocket handler will:
+		// 1. Validate the WebSocket upgrade request
+		// 2. Forward the request to the actor with the appropriate path
+		// 3. Handle the WebSocket pair and proxy messages between client and actor
+		return await driver.proxyWebSocket(
+			c,
+			PATH_CONNECT_WEBSOCKET,
+			actorId,
+			params.data.encoding,
+			params.data.connParams,
+			authData,
+		);
 	} catch (error) {
 		// If we receive an error during setup, we send the error and close the socket immediately
 		//
@@ -937,7 +1307,7 @@ async function handleWebSocketConnectRequest(
 		});
 
 		return await upgradeWebSocket(() => ({
-			onOpen: async (_evt: unknown, ws: WSContext) => {
+			onOpen: (_evt: unknown, ws: WSContext) => {
 				if (encoding) {
 					try {
 						// Serialize and send the connection error
@@ -982,7 +1352,7 @@ async function handleMessageRequest(
 	c: HonoContext,
 	registryConfig: RegistryConfig,
 	runConfig: RunConfig,
-	handler: ManagerRouterHandler,
+	driver: ManagerDriver,
 ): Promise<Response> {
 	logger().debug("connection message request received");
 	try {
@@ -1016,40 +1386,19 @@ async function handleMessageRequest(
 		// Currently, we assume this is not a critical problem because requests will likely get rate
 		// limited before enough messages are passed to the actor to exhaust resources.
 
-		// Handle based on mode
-		if ("inline" in handler.routingHandler) {
-			logger().debug("using inline proxy mode for connection message");
-			// Use shared connection message handler with direct parameters
-			return handleConnectionMessage(
-				c,
-				registryConfig,
-				runConfig,
-				handler.routingHandler.inline.handlers.onConnMessage,
-				connId,
-				connToken as string,
-				actorId,
-			);
-		} else if ("custom" in handler.routingHandler) {
-			logger().debug("using custom proxy mode for connection message");
-			const url = new URL("http://actor/connections/message");
+		const url = new URL("http://actor/connections/message");
 
-			// Always build fresh request to prevent forwarding unwanted headers
-			const proxyRequest = new Request(url, {
-				method: "POST",
-				body: c.req.raw.body,
-			});
-			proxyRequest.headers.set(HEADER_ENCODING, encoding);
-			proxyRequest.headers.set(HEADER_CONN_ID, connId);
-			proxyRequest.headers.set(HEADER_CONN_TOKEN, connToken);
+		// Always build fresh request to prevent forwarding unwanted headers
+		const proxyRequest = new Request(url, {
+			method: "POST",
+			body: c.req.raw.body,
+			duplex: "half",
+		});
+		proxyRequest.headers.set(HEADER_ENCODING, encoding);
+		proxyRequest.headers.set(HEADER_CONN_ID, connId);
+		proxyRequest.headers.set(HEADER_CONN_TOKEN, connToken);
 
-			return await handler.routingHandler.custom.proxyRequest(
-				c,
-				proxyRequest,
-				actorId,
-			);
-		} else {
-			assertUnreachable(handler.routingHandler);
-		}
+		return await driver.proxyRequest(c, proxyRequest, actorId);
 	} catch (error) {
 		logger().error("error proxying connection message", { error });
 
@@ -1070,7 +1419,6 @@ async function handleActionRequest(
 	registryConfig: RegistryConfig,
 	runConfig: RunConfig,
 	driver: ManagerDriver,
-	handler: ManagerRouterHandler,
 ): Promise<Response> {
 	try {
 		const actionName = c.req.param("action");
@@ -1109,47 +1457,24 @@ async function handleActionRequest(
 		logger().debug("found actor for action", { actorId });
 		invariant(actorId, "Missing actor ID");
 
-		// Handle based on mode
-		if ("inline" in handler.routingHandler) {
-			logger().debug("using inline proxy mode for action call");
-			// Use shared action handler with direct parameter
-			return handleAction(
-				c,
-				registryConfig,
-				runConfig,
-				handler.routingHandler.inline.handlers.onAction,
-				actionName,
-				actorId,
-				authData,
-			);
-		} else if ("custom" in handler.routingHandler) {
-			logger().debug("using custom proxy mode for action call");
+		const url = new URL(
+			`http://actor/action/${encodeURIComponent(actionName)}`,
+		);
 
-			const url = new URL(
-				`http://actor/action/${encodeURIComponent(actionName)}`,
-			);
-
-			// Always build fresh request to prevent forwarding unwanted headers
-			const proxyRequest = new Request(url, {
-				method: "POST",
-				body: c.req.raw.body,
-			});
-			proxyRequest.headers.set(HEADER_ENCODING, params.data.encoding);
-			if (params.data.connParams) {
-				proxyRequest.headers.set(HEADER_CONN_PARAMS, params.data.connParams);
-			}
-			if (authData) {
-				proxyRequest.headers.set(HEADER_AUTH_DATA, JSON.stringify(authData));
-			}
-
-			return await handler.routingHandler.custom.proxyRequest(
-				c,
-				proxyRequest,
-				actorId,
-			);
-		} else {
-			assertUnreachable(handler.routingHandler);
+		// Always build fresh request to prevent forwarding unwanted headers
+		const proxyRequest = new Request(url, {
+			method: "POST",
+			body: c.req.raw.body,
+		});
+		proxyRequest.headers.set(HEADER_ENCODING, params.data.encoding);
+		if (params.data.connParams) {
+			proxyRequest.headers.set(HEADER_CONN_PARAMS, params.data.connParams);
 		}
+		if (authData) {
+			proxyRequest.headers.set(HEADER_AUTH_DATA, JSON.stringify(authData));
+		}
+
+		return await driver.proxyRequest(c, proxyRequest, actorId);
 	} catch (error) {
 		logger().error("error in action handler", { error: stringifyError(error) });
 
@@ -1205,4 +1530,216 @@ async function handleResolveRequest(
 	};
 	const serialized = serialize(response, encoding);
 	return c.body(serialized);
+}
+
+/**
+ * Handle raw HTTP requests to an actor
+ */
+async function handleRawHttpRequest(
+	c: HonoContext,
+	registryConfig: RegistryConfig,
+	runConfig: RunConfig,
+	driver: ManagerDriver,
+): Promise<Response> {
+	try {
+		const subpath = c.req.path.split("/raw/http/")[1] || "";
+		logger().debug("raw http request received", { subpath });
+
+		// Get actor query from header (consistent with other endpoints)
+		const queryHeader = c.req.header(HEADER_ACTOR_QUERY);
+		if (!queryHeader) {
+			throw new errors.InvalidRequest("Missing actor query header");
+		}
+		const query: ActorQuery = JSON.parse(queryHeader);
+
+		// Parse connection parameters for authentication
+		const connParamsHeader = c.req.header(HEADER_CONN_PARAMS);
+		const connParams = connParamsHeader
+			? JSON.parse(connParamsHeader)
+			: undefined;
+
+		// Authenticate the request
+		const authData = await authenticateEndpoint(
+			c,
+			driver,
+			registryConfig,
+			query,
+			["action"],
+			connParams,
+		);
+
+		// Get the actor ID
+		const { actorId } = await queryActor(c, query, driver);
+		logger().debug("found actor for raw http", { actorId });
+		invariant(actorId, "Missing actor ID");
+
+		// Preserve the original URL's query parameters
+		const originalUrl = new URL(c.req.url);
+		const url = new URL(
+			`http://actor/raw/http/${subpath}${originalUrl.search}`,
+		);
+
+		// Forward the request to the actor
+		const proxyRequest = new Request(url, {
+			method: c.req.method,
+			headers: c.req.raw.headers,
+			body: c.req.raw.body,
+		});
+
+		logger().debug("rewriting http url", {
+			from: c.req.url,
+			to: proxyRequest.url,
+		});
+
+		// Forward conn params if provided
+		if (connParams) {
+			proxyRequest.headers.set(HEADER_CONN_PARAMS, JSON.stringify(connParams));
+		}
+		// Forward auth data to actor
+		if (authData) {
+			proxyRequest.headers.set(HEADER_AUTH_DATA, JSON.stringify(authData));
+		}
+
+		return await driver.proxyRequest(c, proxyRequest, actorId);
+	} catch (error) {
+		logger().error("error in raw http handler", {
+			error: stringifyError(error),
+		});
+
+		// Use ProxyError if it's not already an ActorError
+		if (!errors.ActorError.isActorError(error)) {
+			throw new errors.ProxyError("Raw HTTP request", error);
+		} else {
+			throw error;
+		}
+	}
+}
+
+/**
+ * Handle raw WebSocket requests to an actor
+ */
+async function handleRawWebSocketRequest(
+	c: HonoContext,
+	registryConfig: RegistryConfig,
+	runConfig: RunConfig,
+	driver: ManagerDriver,
+): Promise<Response> {
+	const upgradeWebSocket = runConfig.getUpgradeWebSocket?.();
+	if (!upgradeWebSocket) {
+		return c.text("WebSockets are not enabled for this driver.", 400);
+	}
+
+	try {
+		const subpath = c.req.path.split("/raw/websocket/")[1] || "";
+		logger().debug("raw websocket request received", { subpath });
+
+		// Parse protocols from Sec-WebSocket-Protocol header
+		const protocols = c.req.header("sec-websocket-protocol");
+		const {
+			queryRaw: queryFromProtocol,
+			connParamsRaw: connParamsFromProtocol,
+		} = parseWebSocketProtocols(protocols);
+
+		if (!queryFromProtocol) {
+			throw new errors.InvalidRequest("Missing query in WebSocket protocol");
+		}
+		const query = JSON.parse(queryFromProtocol);
+
+		// Parse connection parameters from protocol
+		let connParams: unknown;
+		if (connParamsFromProtocol) {
+			connParams = JSON.parse(connParamsFromProtocol);
+		}
+
+		// Authenticate the request
+		const authData = await authenticateEndpoint(
+			c,
+			driver,
+			registryConfig,
+			query,
+			["action"],
+			connParams,
+		);
+
+		// Get the actor ID
+		const { actorId } = await queryActor(c, query, driver);
+		logger().debug("found actor for raw websocket", { actorId });
+		invariant(actorId, "Missing actor ID");
+
+		logger().debug("using custom proxy mode for raw websocket");
+
+		// Preserve the original URL's query parameters
+		const originalUrl = new URL(c.req.url);
+		const proxyPath = `${PATH_RAW_WEBSOCKET_PREFIX}${subpath}${originalUrl.search}`;
+
+		logger().debug("manager router proxyWebSocket", {
+			originalUrl: c.req.url,
+			subpath,
+			search: originalUrl.search,
+			proxyPath,
+		});
+
+		// For raw WebSocket, we need to use proxyWebSocket instead of proxyRequest
+		return await driver.proxyWebSocket(
+			c,
+			proxyPath,
+			actorId,
+			"json", // Default encoding for raw WebSocket
+			connParams,
+			authData,
+		);
+	} catch (error) {
+		// If we receive an error during setup, we send the error and close the socket immediately
+		//
+		// We have to return the error over WS since WebSocket clients cannot read vanilla HTTP responses
+
+		const { code } = deconstructError(error, logger(), {
+			wsEvent: "setup",
+		});
+
+		return await upgradeWebSocket(() => ({
+			onOpen: (_evt: unknown, ws: WSContext) => {
+				// Close with message so we can see the error on the client
+				ws.close(1011, code);
+			},
+		}))(c, noopNext());
+	}
+}
+
+function universalActorProxy({
+	registryConfig,
+	runConfig,
+	driver,
+}: {
+	registryConfig: RegistryConfig;
+	runConfig: RunConfig;
+	driver: ManagerDriver;
+}): MiddlewareHandler {
+	return async (c, next) => {
+		if (c.req.header("upgrade") === "websocket") {
+			return handleRawWebSocketRequest(c, registryConfig, runConfig, driver);
+		} else {
+			const queryHeader = c.req.header(HEADER_ACTOR_QUERY);
+			if (!queryHeader) {
+				throw new errors.InvalidRequest("Missing actor query header");
+			}
+			const query = ActorQuerySchema.parse(JSON.parse(queryHeader));
+
+			const { actorId } = await queryActor(c, query, driver);
+
+			const url = new URL(c.req.url);
+			url.hostname = "actor";
+			url.pathname = url.pathname
+				.replace(new RegExp(`^${runConfig.basePath}`, ""), "")
+				.replace(/^\/registry\/actors/, "")
+				.replace(/^\/actors/, ""); // Remove /registry prefix if present
+
+			const proxyRequest = new Request(url, {
+				method: c.req.method,
+				headers: c.req.raw.headers,
+				body: c.req.raw.body,
+			});
+			return await driver.proxyRequest(c, proxyRequest, actorId);
+		}
+	};
 }

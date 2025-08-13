@@ -1,18 +1,16 @@
-import * as Database from "better-sqlite3";
+import Database from "better-sqlite3";
 import {
 	type BetterSQLite3Database,
 	drizzle as sqliteDrizzle,
 } from "drizzle-orm/better-sqlite3";
 import { drizzle as durableDrizzle } from "drizzle-orm/durable-sqlite";
-import {
-	migrate as durableMigrate,
-	migrate as sqliteMigrate,
-} from "drizzle-orm/durable-sqlite/migrator";
-import type { DatabaseFactory } from "@/config";
+import { migrate as durableMigrate } from "drizzle-orm/durable-sqlite/migrator";
+import type { DatabaseProvider, RawAccess } from "@/config";
 
 export * from "drizzle-orm/sqlite-core";
 
 import { type Config, defineConfig as originalDefineConfig } from "drizzle-kit";
+import type { SQLiteShim } from "@/utils";
 
 export function defineConfig(
 	config: Partial<Config & { driver: "durable-sqlite" }>,
@@ -40,38 +38,58 @@ export function db<
 	TSchema extends Record<string, unknown> = Record<string, never>,
 >(
 	config?: DatabaseFactoryConfig<TSchema>,
-): DatabaseFactory<BetterSQLite3Database<TSchema>> {
-	return async (ctx) => {
-		const conn = await ctx.createDatabase();
+): DatabaseProvider<BetterSQLite3Database<TSchema> & RawAccess> {
+	return {
+		createClient: async (ctx) => {
+			// Create a database connection using the provided context
+			if (!ctx.getDatabase) {
+				throw new Error("createDatabase method is not available in context.");
+			}
 
-		if (!conn) {
-			throw new Error(
-				"Cannot create database connection, or database feature is not enabled.",
-			);
-		}
+			const conn = await ctx.getDatabase();
 
-		if (typeof conn === "object" && conn && "exec" in conn) {
-			// If the connection is already an object with exec method, return it
-			// i.e. in serverless environments (Cloudflare Workers)
-			const client = durableDrizzle(conn, config);
-			return {
-				client,
-				onMigrate: async () => {
-					await durableMigrate(client, config?.migrations);
-				},
-			};
-		}
+			if (!conn) {
+				throw new Error(
+					"Cannot create database connection, or database feature is not enabled.",
+				);
+			}
 
-		const client = sqliteDrizzle({
-			client: new Database(conn as string),
-			...config,
-		});
+			if (isSQLiteShim(conn)) {
+				// If the connection is already an object with exec method, return it
+				// i.e. in serverless environments (Cloudflare Workers)
+				const client = durableDrizzle<TSchema, SQLiteShim>(conn, config);
+				return Object.assign(client, {
+					// client.$client.exec is the underlying SQLite client
+					execute: async (query, ...args) =>
+						client.$client.exec(query, ...args),
+				} satisfies RawAccess);
+			}
 
-		return {
-			client,
-			onMigrate: async () => {
-				await sqliteMigrate(client, config?.migrations);
-			},
-		};
+			// Create a database client using the connection
+			const client = sqliteDrizzle({
+				client: new Database(conn as string),
+				...config,
+			});
+
+			return Object.assign(client, {
+				execute: async (query, ...args) =>
+					client.$client.prepare(query).all(...args),
+			} satisfies RawAccess);
+		},
+		onMigrate: async (client) => {
+			// Run migrations if provided in the config
+			if (config?.migrations) {
+				await durableMigrate(client, config?.migrations);
+			}
+		},
 	};
+}
+
+function isSQLiteShim(conn: unknown): conn is SQLiteShim {
+	return (
+		typeof conn === "object" &&
+		conn !== null &&
+		"exec" in conn &&
+		typeof (conn as any).exec === "function"
+	);
 }
