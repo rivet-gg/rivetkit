@@ -1,20 +1,21 @@
 {
-  "name": "example-sqlite",
+  "name": "example-drizzle",
   "version": "0.9.9",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx --watch src/server.ts",
+    "dev": "tsx --loader @rivetkit/sql-loader --watch src/server.ts",
     "check-types": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/node": "^22.13.9",
-    "rivetkit": "workspace:*",
+    "@rivetkit/sql-loader": "workspace:*",
     "tsx": "^3.12.7",
     "typescript": "^5.5.2"
   },
   "dependencies": {
     "@rivetkit/db": "workspace:*",
+    "@rivetkit/actor": "workspace:*",
     "drizzle-kit": "^0.31.2",
     "drizzle-orm": "^0.44.2"
   },

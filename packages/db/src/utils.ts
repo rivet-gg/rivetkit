@@ -4,7 +4,7 @@
  * running raw SQL commands.
  */
 export type SQLiteShim = {
-	exec: (query: string, ...args: unknown[]) => unknown[];
+	exec: (query: string, ...args: unknown[]) => Promise<unknown[] | unknown>;
 };
 
 export function isSQLiteShim<T>(conn: unknown): conn is SQLiteShim & T {

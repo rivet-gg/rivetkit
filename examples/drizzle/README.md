@@ -1,6 +1,6 @@
-# Hono Integration for RivetKit
+# Drizzle Integration for RivetKit
 
-Example project demonstrating Hono web framework integration with [RivetKit](https://rivetkit.org).
+Example project demonstrating Drizzle ORM integration with [RivetKit](https://rivetkit.org).
 
 [Learn More →](https://github.com/rivet-gg/rivetkit)
 
@@ -16,17 +16,15 @@ Example project demonstrating Hono web framework integration with [RivetKit](htt
 
 ```sh
 git clone https://github.com/rivet-gg/rivetkit
-cd rivetkit/examples/hono
-npm install
+cd rivetkit/examples/drizzle
+pnpm install
 ```
 
 ### Development
-
 ```sh
-npm run dev
+pnpm run dev
 ```
-
-Open your browser to http://localhost:3000 to see the Hono server with RivetKit integration.
+Open your browser to https://studio.rivet.gg/ to see your RivetKit server.
 
 ## License
 
