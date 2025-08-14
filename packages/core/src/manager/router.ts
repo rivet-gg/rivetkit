@@ -1758,8 +1758,8 @@ function universalActorProxy({
 			url.hostname = "actor";
 			url.pathname = url.pathname
 				.replace(new RegExp(`^${runConfig.basePath}`, ""), "")
-				.replace(/^\/registry\/actors/, "")
-				.replace(/^\/actors/, ""); // Remove /registry prefix if present
+				.replace(/^\/?registry\/actors/, "")
+				.replace(/^\/?actors/, ""); // Remove /registry prefix if present
 
 			const proxyRequest = new Request(url, {
 				method: c.req.method,
