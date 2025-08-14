@@ -820,6 +820,25 @@ importers:
         specifier: ^5.7.3
         version: 5.8.3
 
+  examples/sqlite:
+    dependencies:
+      '@rivetkit/actor':
+        specifier: workspace:*
+        version: link:../../packages/actor
+      '@rivetkit/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+    devDependencies:
+      '@types/node':
+        specifier: ^22.13.9
+        version: 22.15.32
+      tsx:
+        specifier: ^3.12.7
+        version: 3.14.0
+      typescript:
+        specifier: ^5.5.2
+        version: 5.8.3
+
   examples/starter:
     dependencies:
       '@rivetkit/actor':
