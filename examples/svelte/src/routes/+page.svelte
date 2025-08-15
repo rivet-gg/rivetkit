@@ -1,16 +1,19 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import { useActor } from "../lib/actor-client";
 
+  let eventSub: any;
   let count = $state(0);
   const counter = useActor({ name: 'counter', key: ['test-counter'] });
 
 	$effect(()=>{
 		 console.log('status', counter?.isConnected);
-		 counter?.useEvent('newCount', (x: number) => {
+		 eventSub=counter?.useEvent('newCount', (x: number) => {
 	      console.log('new count event', x);
 	      count=x;
 	    });
+      return () => {
+        eventSub?.unsubscribe();
+      };
 			//also works
 			// counter.connection?.on('newCount', (x: number) => {
 	  		//     console.log('new count event', x);
