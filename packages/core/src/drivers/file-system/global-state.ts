@@ -44,6 +44,9 @@ interface ActorEntry {
 
 	/** Promise for ongoing write operations to prevent concurrent writes */
 	writePromise?: Promise<void>;
+
+	/** If the actor has been removed by destroy or sleep. */
+	removed: boolean;
 }
 
 /**
@@ -157,6 +160,7 @@ export class FileSystemGlobalState {
 		entry = {
 			id: actorId,
 			genericConnGlobalState: new GenericConnGlobalState(),
+			removed: false,
 		};
 		this.#actors.set(actorId, entry);
 		return entry;
@@ -171,6 +175,8 @@ export class FileSystemGlobalState {
 		key: ActorKey,
 		input: unknown | undefined,
 	): Promise<ActorEntry> {
+		// TODO: Does not check if actor already exists on fs
+
 		if (this.#actors.has(actorId)) {
 			throw new ActorAlreadyExists(name, key);
 		}
@@ -261,6 +267,28 @@ export class FileSystemGlobalState {
 			await this.writeActor(actorId);
 		}
 		return entry;
+	}
+
+	async sleepActor(actorId: string) {
+		invariant(
+			this.#persist,
+			"cannot sleep actor with memory driver, must use file system driver",
+		);
+
+		const actor = this.#actors.get(actorId);
+		invariant(actor, `tried to sleep ${actorId}, does not exist`);
+
+		// Wait for actor to fully start before stopping it to avoid race conditions
+		if (actor.loadPromise) await actor.loadPromise.catch();
+		if (actor.startPromise) await actor.startPromise.promise.catch();
+
+		// Remove from map
+		actor.removed = true;
+		this.#actors.delete(actorId);
+
+		// Stop actor
+		invariant(actor.actor, "actor should be loaded");
+		await actor.actor._stop();
 	}
 
 	/**

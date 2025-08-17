@@ -129,7 +129,12 @@ export class ActorInstance<
 > {
 	// Shared actor context for this instance
 	actorContext: ActorContext<S, CP, CS, V, I, AD, DB>;
-	isStopping = false;
+	#sleepCalled = false;
+	#stopCalled = false;
+
+	get isStopping() {
+		return this.#stopCalled || this.#sleepCalled;
+	}
 
 	#persistChanged = false;
 
@@ -163,6 +168,8 @@ export class ActorInstance<
 
 	#connections = new Map<ConnId, Conn<S, CP, CS, V, I, AD, DB>>();
 	#subscriptionIndex = new Map<string, Set<Conn<S, CP, CS, V, I, AD, DB>>>();
+
+	#sleepTimeout?: NodeJS.Timeout;
 
 	#schedule!: Schedule;
 	#db!: InferDatabaseClient<DB>;
@@ -222,6 +229,10 @@ export class ActorInstance<
 		return this.#inspector;
 	}
 
+	get #sleepingSupported(): boolean {
+		return this.#actorDriver.sleep !== undefined;
+	}
+
 	/**
 	 * This constructor should never be used directly.
 	 *
@@ -276,7 +287,7 @@ export class ActorInstance<
 				if (dataOrPromise instanceof Promise) {
 					vars = await deadline(
 						dataOrPromise,
-						this.#config.options.lifecycle.createVarsTimeout,
+						this.#config.options.createVarsTimeout,
 					);
 				} else {
 					vars = dataOrPromise;
@@ -316,6 +327,9 @@ export class ActorInstance<
 
 		logger().info("actor ready");
 		this.#ready = true;
+
+		// Must be called after setting `#ready` or else it will not schedule sleep
+		this.#resetSleepTimer();
 
 		this.#scheduleLivenessCheck();
 	}
@@ -366,12 +380,17 @@ export class ActorInstance<
 		}
 	}
 
-	async onAlarm() {
+	async _onAlarm() {
 		const now = Date.now();
 		this.actorContext.log.debug("alarm triggered", {
 			now,
 			events: this.#persist.e.length,
 		});
+
+		// Update sleep
+		//
+		// Do this before any async logic
+		this.#resetSleepTimer();
 
 		// Remove events from schedule that we're about to run
 		const runIndex = this.#persist.e.findIndex((x) => x.t <= now);
@@ -472,7 +491,7 @@ export class ActorInstance<
 	#savePersistThrottled() {
 		const now = Date.now();
 		const timeSinceLastSave = now - this.#lastSaveTime;
-		const saveInterval = this.#config.options.state.saveInterval;
+		const saveInterval = this.#config.options.stateSaveInterval;
 
 		// If we're within the throttle window and not already scheduled, schedule the next save.
 		if (timeSinceLastSave < saveInterval) {
@@ -737,6 +756,9 @@ export class ActorInstance<
 				});
 			}
 		}
+
+		// Update sleep
+		this.#resetSleepTimer();
 	}
 
 	async prepareConn(
@@ -777,7 +799,7 @@ export class ActorInstance<
 				if (dataOrPromise instanceof Promise) {
 					connState = await deadline(
 						dataOrPromise,
-						this.#config.options.lifecycle.createConnStateTimeout,
+						this.#config.options.createConnStateTimeout,
 					);
 				} else {
 					connState = dataOrPromise;
@@ -840,6 +862,11 @@ export class ActorInstance<
 		);
 		this.#connections.set(conn.id, conn);
 
+		// Update sleep
+		//
+		// Do this immediately after adding connection & before any async logic in order to avoid race conditions with sleep timeouts
+		this.#resetSleepTimer();
+
 		// Add to persistence & save immediately
 		this.#persist.c.push(persist);
 		this.saveState({ immediate: true });
@@ -849,15 +876,14 @@ export class ActorInstance<
 			try {
 				const result = this.#config.onConnect(this.actorContext, conn);
 				if (result instanceof Promise) {
-					deadline(
-						result,
-						this.#config.options.lifecycle.onConnectTimeout,
-					).catch((error) => {
-						logger().error("error in `onConnect`, closing socket", {
-							error,
-						});
-						conn?.disconnect("`onConnect` failed");
-					});
+					deadline(result, this.#config.options.onConnectTimeout).catch(
+						(error) => {
+							logger().error("error in `onConnect`, closing socket", {
+								error,
+							});
+							conn?.disconnect("`onConnect` failed");
+						},
+					);
 				}
 			} catch (error) {
 				logger().error("error in `onConnect`", {
@@ -995,7 +1021,6 @@ export class ActorInstance<
 	/**
 	 * Check the liveness of all connections.
 	 * Sets up a recurring check based on the configured interval.
-	 * @internal
 	 */
 	#checkConnectionsLiveness() {
 		logger().debug("checking connections liveness");
@@ -1007,10 +1032,7 @@ export class ActorInstance<
 			} else {
 				const lastSeen = liveness.lastSeen;
 				const sinceLastSeen = Date.now() - lastSeen;
-				if (
-					sinceLastSeen <
-					this.#config.options.lifecycle.connectionLivenessTimeout
-				) {
+				if (sinceLastSeen < this.#config.options.connectionLivenessTimeout) {
 					logger().debug("connection might be alive, will check later", {
 						connId: conn.id,
 						lastSeen,
@@ -1044,7 +1066,7 @@ export class ActorInstance<
 		}
 
 		this.#scheduleEventInner(
-			Date.now() + this.#config.options.lifecycle.connectionLivenessInterval,
+			Date.now() + this.#config.options.connectionLivenessInterval,
 			{ checkConnectionLiveness: true },
 		);
 	}
@@ -1112,7 +1134,7 @@ export class ActorInstance<
 
 				output = await deadline(
 					outputOrPromise,
-					this.#config.options.action.timeout,
+					this.#config.options.actionTimeout,
 				);
 
 				// Log that async action completed
@@ -1414,12 +1436,66 @@ export class ActorInstance<
 		}
 	}
 
-	async stop() {
-		if (this.isStopping) {
+	// MARK: Sleep
+	/**
+	 * Reset timer from the last actor interaction that allows it to be put to sleep.
+	 *
+	 * This should be called any time a sleep-related event happens:
+	 * - Connection opens (will clear timer)
+	 * - Connection closes (will schedule timer if there are no open connections)
+	 * - Alarm triggers (will reset timer)
+	 *
+	 * We don't need to call this on events like individual action calls, since there will always be a connection open for these.
+	 **/
+	#resetSleepTimer() {
+		if (this.#config.options.noSleep || !this.#sleepingSupported) return;
+
+		if (this.#sleepTimeout) {
+			clearInterval(this.#sleepTimeout);
+			this.#sleepTimeout = undefined;
+		}
+
+		if (this.#canSleep()) {
+			this.#sleepTimeout = setTimeout(() => {
+				this.#sleep();
+			}, this.#config.options.sleepTimeout);
+		}
+	}
+
+	/** If this actor can be put in a sleeping state. */
+	#canSleep(): boolean {
+		if (!this.#ready) return false;
+
+		// Check for active conns. This will also cover active actions, since all actions have a connection.
+		for (const conn of this.#connections.values()) {
+			if (conn.status === "connected") return false;
+		}
+
+		return true;
+	}
+
+	/** Puts an actor to sleep. */
+	#sleep() {
+		invariant(this.#sleepingSupported, "sleeping not supported");
+		invariant(this.#actorDriver.sleep, "no sleep on driver");
+
+		if (this.#sleepCalled) {
+			logger().warn("already sleeping actor");
+			return;
+		}
+		this.#sleepCalled = true;
+
+		// The actor driver should call stop when ready to stop
+		this.#actorDriver.sleep(this.#actorId);
+	}
+
+	// MARK: Stop
+	async _stop() {
+		if (this.#stopCalled) {
 			logger().warn("already stopping actor");
 			return;
 		}
-		this.isStopping = true;
+		this.#stopCalled = true;
 
 		// Write state
 		await this.saveState({ immediate: true });

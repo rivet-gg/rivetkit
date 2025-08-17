@@ -70,9 +70,7 @@ export const errorHandlingActor = actor({
 	},
 	options: {
 		// Set a short timeout for this actor's actions
-		action: {
-			timeout: 500, // 500ms timeout for actions
-		},
+		actionTimeout: 500, // 500ms timeout for actions
 	},
 });
 
@@ -90,8 +88,6 @@ export const customTimeoutActor = actor({
 		},
 	},
 	options: {
-		action: {
-			timeout: 200, // 200ms timeout
-		},
+		actionTimeout: 200, // 200ms timeout
 	},
 });
