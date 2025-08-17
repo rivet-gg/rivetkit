@@ -167,7 +167,7 @@
     "on-change": "^5.0.1",
     "p-retry": "^6.2.1",
     "zod": "^3.25.76",
-    "@rivetkit/engine-runner": "https://pkg.pr.new/rivet-gg/rivet/@rivetkit/engine-runner@f1c054d"
+    "@rivetkit/engine-runner": "https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-runner@664a377"
   },
   "devDependencies": {
     "@hono/node-server": "^1.18.2",

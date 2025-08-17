@@ -10,6 +10,7 @@ import { isCborSerializable, stringifyError } from "@/common/utils";
 import type { UniversalWebSocket } from "@/common/websocket-interface";
 import { ActorInspector } from "@/inspector/actor";
 import type { Registry } from "@/mod";
+import { SinglePromiseQueue } from "@/utils";
 import type { ActionContext } from "./action";
 import type { ActorConfig, OnConnectOptions } from "./config";
 import {
@@ -31,7 +32,7 @@ import type {
 import { processMessage } from "./protocol/message/mod";
 import { CachedSerializer } from "./protocol/serde";
 import { Schedule, type ScheduledEvent } from "./schedule";
-import { DeadlineError, deadline, Lock } from "./utils";
+import { DeadlineError, deadline } from "./utils";
 
 /**
  * Options for the `_saveState` method.
@@ -129,7 +130,12 @@ export class ActorInstance<
 > {
 	// Shared actor context for this instance
 	actorContext: ActorContext<S, CP, CS, V, I, AD, DB>;
-	isStopping = false;
+	#sleepCalled = false;
+	#stopCalled = false;
+
+	get isStopping() {
+		return this.#stopCalled || this.#sleepCalled;
+	}
 
 	#persistChanged = false;
 
@@ -143,7 +149,8 @@ export class ActorInstance<
 	/** Raw state without the proxy wrapper */
 	#persistRaw!: PersistedActor<S, CP, CS, I>;
 
-	#writePersistLock = new Lock<void>(void 0);
+	#persistWriteQueue = new SinglePromiseQueue();
+	#alarmWriteQueue = new SinglePromiseQueue();
 
 	#lastSaveTime = 0;
 	#pendingSaveTimeout?: NodeJS.Timeout;
@@ -163,6 +170,12 @@ export class ActorInstance<
 
 	#connections = new Map<ConnId, Conn<S, CP, CS, V, I, AD, DB>>();
 	#subscriptionIndex = new Map<string, Set<Conn<S, CP, CS, V, I, AD, DB>>>();
+
+	#sleepTimeout?: NodeJS.Timeout;
+
+	// Track active raw requests so sleep logic can account for them
+	#activeRawFetchCount = 0;
+	#activeRawWebSockets = new Set<UniversalWebSocket>();
 
 	#schedule!: Schedule;
 	#db!: InferDatabaseClient<DB>;
@@ -222,6 +235,10 @@ export class ActorInstance<
 		return this.#inspector;
 	}
 
+	get #sleepingSupported(): boolean {
+		return this.#actorDriver.sleep !== undefined;
+	}
+
 	/**
 	 * This constructor should never be used directly.
 	 *
@@ -276,7 +293,7 @@ export class ActorInstance<
 				if (dataOrPromise instanceof Promise) {
 					vars = await deadline(
 						dataOrPromise,
-						this.#config.options.lifecycle.createVarsTimeout,
+						this.#config.options.createVarsTimeout,
 					);
 				} else {
 					vars = dataOrPromise;
@@ -311,11 +328,14 @@ export class ActorInstance<
 
 		// Set alarm for next scheduled event if any exist after finishing initiation sequence
 		if (this.#persist.e.length > 0) {
-			await this.#actorDriver.setAlarm(this, this.#persist.e[0].t);
+			await this.#queueSetAlarm(this.#persist.e[0].t);
 		}
 
 		logger().info("actor ready");
 		this.#ready = true;
+
+		// Must be called after setting `#ready` or else it will not schedule sleep
+		this.#resetSleepTimer();
 
 		this.#scheduleLivenessCheck();
 	}
@@ -361,21 +381,44 @@ export class ActorInstance<
 		// - this is the newest event (i.e. at beginning of array) or
 		// - this is the only event (i.e. the only event in the array)
 		if (insertIndex === 0 || this.#persist.e.length === 1) {
-			this.actorContext.log.info("setting alarm", { timestamp });
-			await this.#actorDriver.setAlarm(this, newEvent.t);
+			this.actorContext.log.info("setting alarm", {
+				timestamp,
+				eventCount: this.#persist.e.length,
+			});
+			await this.#queueSetAlarm(newEvent.t);
 		}
 	}
 
-	async onAlarm() {
+	async _onAlarm() {
 		const now = Date.now();
 		this.actorContext.log.debug("alarm triggered", {
 			now,
 			events: this.#persist.e.length,
 		});
 
+		// Update sleep
+		//
+		// Do this before any async logic
+		this.#resetSleepTimer();
+
 		// Remove events from schedule that we're about to run
 		const runIndex = this.#persist.e.findIndex((x) => x.t <= now);
 		if (runIndex === -1) {
+			// No events are due yet. This will happen if timers fire slightly early.
+			// Ensure we reschedule the alarm for the next upcoming event to avoid losing it.
+			logger().warn("no events are due yet, time may have broken");
+			if (this.#persist.e.length > 0) {
+				const nextTs = this.#persist.e[0].t;
+				this.actorContext.log.warn(
+					"alarm fired early, rescheduling for next event",
+					{
+						now,
+						nextTs,
+						delta: nextTs - now,
+					},
+				);
+				await this.#queueSetAlarm(nextTs);
+			}
 			this.actorContext.log.debug("no events to run", { now });
 			return;
 		}
@@ -386,7 +429,12 @@ export class ActorInstance<
 
 		// Set alarm for next event
 		if (this.#persist.e.length > 0) {
-			await this.#actorDriver.setAlarm(this, this.#persist.e[0].t);
+			const nextTs = this.#persist.e[0].t;
+			this.actorContext.log.info("setting next alarm", {
+				nextTs,
+				remainingEvents: this.#persist.e.length,
+			});
+			await this.#queueSetAlarm(nextTs);
 		}
 
 		// Iterate by event key in order to ensure we call the events in order
@@ -472,7 +520,7 @@ export class ActorInstance<
 	#savePersistThrottled() {
 		const now = Date.now();
 		const timeSinceLastSave = now - this.#lastSaveTime;
-		const saveInterval = this.#config.options.state.saveInterval;
+		const saveInterval = this.#config.options.stateSaveInterval;
 
 		// If we're within the throttle window and not already scheduled, schedule the next save.
 		if (timeSinceLastSave < saveInterval) {
@@ -494,10 +542,7 @@ export class ActorInstance<
 			this.#lastSaveTime = Date.now();
 
 			if (this.#persistChanged) {
-				// Use a lock in order to avoid race conditions with multiple
-				// parallel promises writing to KV. This should almost never happen
-				// unless there are abnormally high latency in KV writes.
-				await this.#writePersistLock.lock(async () => {
+				const finished = this.#persistWriteQueue.enqueue(async () => {
 					logger().debug("saving persist");
 
 					// There might be more changes while we're writing, so we set this
@@ -512,6 +557,8 @@ export class ActorInstance<
 
 					logger().debug("persist saved");
 				});
+
+				await finished;
 			}
 
 			this.#onPersistSavedPromise?.resolve();
@@ -519,6 +566,12 @@ export class ActorInstance<
 			this.#onPersistSavedPromise?.reject(error);
 			throw error;
 		}
+	}
+
+	async #queueSetAlarm(timestamp: number): Promise<void> {
+		await this.#alarmWriteQueue.enqueue(async () => {
+			await this.#actorDriver.setAlarm(this, timestamp);
+		});
 	}
 
 	/**
@@ -737,6 +790,9 @@ export class ActorInstance<
 				});
 			}
 		}
+
+		// Update sleep
+		this.#resetSleepTimer();
 	}
 
 	async prepareConn(
@@ -777,7 +833,7 @@ export class ActorInstance<
 				if (dataOrPromise instanceof Promise) {
 					connState = await deadline(
 						dataOrPromise,
-						this.#config.options.lifecycle.createConnStateTimeout,
+						this.#config.options.createConnStateTimeout,
 					);
 				} else {
 					connState = dataOrPromise;
@@ -840,6 +896,11 @@ export class ActorInstance<
 		);
 		this.#connections.set(conn.id, conn);
 
+		// Update sleep
+		//
+		// Do this immediately after adding connection & before any async logic in order to avoid race conditions with sleep timeouts
+		this.#resetSleepTimer();
+
 		// Add to persistence & save immediately
 		this.#persist.c.push(persist);
 		this.saveState({ immediate: true });
@@ -849,15 +910,14 @@ export class ActorInstance<
 			try {
 				const result = this.#config.onConnect(this.actorContext, conn);
 				if (result instanceof Promise) {
-					deadline(
-						result,
-						this.#config.options.lifecycle.onConnectTimeout,
-					).catch((error) => {
-						logger().error("error in `onConnect`, closing socket", {
-							error,
-						});
-						conn?.disconnect("`onConnect` failed");
-					});
+					deadline(result, this.#config.options.onConnectTimeout).catch(
+						(error) => {
+							logger().error("error in `onConnect`, closing socket", {
+								error,
+							});
+							conn?.disconnect("`onConnect` failed");
+						},
+					);
 				}
 			} catch (error) {
 				logger().error("error in `onConnect`", {
@@ -995,7 +1055,6 @@ export class ActorInstance<
 	/**
 	 * Check the liveness of all connections.
 	 * Sets up a recurring check based on the configured interval.
-	 * @internal
 	 */
 	#checkConnectionsLiveness() {
 		logger().debug("checking connections liveness");
@@ -1007,10 +1066,7 @@ export class ActorInstance<
 			} else {
 				const lastSeen = liveness.lastSeen;
 				const sinceLastSeen = Date.now() - lastSeen;
-				if (
-					sinceLastSeen <
-					this.#config.options.lifecycle.connectionLivenessTimeout
-				) {
+				if (sinceLastSeen < this.#config.options.connectionLivenessTimeout) {
 					logger().debug("connection might be alive, will check later", {
 						connId: conn.id,
 						lastSeen,
@@ -1044,7 +1100,7 @@ export class ActorInstance<
 		}
 
 		this.#scheduleEventInner(
-			Date.now() + this.#config.options.lifecycle.connectionLivenessInterval,
+			Date.now() + this.#config.options.connectionLivenessInterval,
 			{ checkConnectionLiveness: true },
 		);
 	}
@@ -1112,7 +1168,7 @@ export class ActorInstance<
 
 				output = await deadline(
 					outputOrPromise,
-					this.#config.options.action.timeout,
+					this.#config.options.actionTimeout,
 				);
 
 				// Log that async action completed
@@ -1190,6 +1246,10 @@ export class ActorInstance<
 			throw new errors.FetchHandlerNotDefined();
 		}
 
+		// Track active raw fetch while handler runs
+		this.#activeRawFetchCount++;
+		this.#resetSleepTimer();
+
 		try {
 			const response = await this.#config.onFetch(
 				this.actorContext,
@@ -1206,6 +1266,9 @@ export class ActorInstance<
 			});
 			throw error;
 		} finally {
+			// Decrement active raw fetch counter and re-evaluate sleep
+			this.#activeRawFetchCount = Math.max(0, this.#activeRawFetchCount - 1);
+			this.#resetSleepTimer();
 			this.#savePersistThrottled();
 		}
 	}
@@ -1227,6 +1290,26 @@ export class ActorInstance<
 			// Set up state tracking to detect changes during WebSocket handling
 			const stateBeforeHandler = this.#persistChanged;
 
+			// Track active websocket until it fully closes
+			this.#activeRawWebSockets.add(websocket);
+			this.#resetSleepTimer();
+
+			// Track socket close
+			const onSocketClosed = () => {
+				// Remove listener and socket from tracking
+				try {
+					websocket.removeEventListener("close", onSocketClosed);
+					websocket.removeEventListener("error", onSocketClosed);
+				} catch {}
+				this.#activeRawWebSockets.delete(websocket);
+				this.#resetSleepTimer();
+			};
+			try {
+				websocket.addEventListener("close", onSocketClosed);
+				websocket.addEventListener("error", onSocketClosed);
+			} catch {}
+
+			// Handle WebSocket
 			await this.#config.onWebSocket(this.actorContext, websocket, opts);
 
 			// If state changed during the handler, save it
@@ -1414,12 +1497,109 @@ export class ActorInstance<
 		}
 	}
 
-	async stop() {
-		if (this.isStopping) {
+	// MARK: Sleep
+	/**
+	 * Reset timer from the last actor interaction that allows it to be put to sleep.
+	 *
+	 * This should be called any time a sleep-related event happens:
+	 * - Connection opens (will clear timer)
+	 * - Connection closes (will schedule timer if there are no open connections)
+	 * - Alarm triggers (will reset timer)
+	 *
+	 * We don't need to call this on events like individual action calls, since there will always be a connection open for these.
+	 **/
+	#resetSleepTimer() {
+		if (this.#config.options.noSleep || !this.#sleepingSupported) return;
+
+		const canSleep = this.#canSleep();
+
+		logger().debug("resetting sleep timer", {
+			canSleep,
+			existingTimeout: !!this.#sleepTimeout,
+		});
+
+		if (this.#sleepTimeout) {
+			clearTimeout(this.#sleepTimeout);
+			this.#sleepTimeout = undefined;
+		}
+
+		if (canSleep) {
+			this.#sleepTimeout = setTimeout(() => {
+				this._sleep().catch((error) => {
+					logger().error("error during sleep", {
+						error: stringifyError(error),
+					});
+				});
+			}, this.#config.options.sleepTimeout);
+		}
+	}
+
+	/** If this actor can be put in a sleeping state. */
+	#canSleep(): boolean {
+		if (!this.#ready) return false;
+
+		// Check for active conns. This will also cover active actions, since all actions have a connection.
+		for (const conn of this.#connections.values()) {
+			if (conn.status === "connected") return false;
+		}
+
+		// Do not sleep if raw fetches are in-flight
+		if (this.#activeRawFetchCount > 0) return false;
+
+		// Do not sleep if there are raw websockets open
+		if (this.#activeRawWebSockets.size > 0) return false;
+
+		return true;
+	}
+
+	/** Puts an actor to sleep. */
+	async _sleep() {
+		invariant(this.#sleepingSupported, "sleeping not supported");
+		invariant(this.#actorDriver.sleep, "no sleep on driver");
+
+		if (this.#sleepCalled) {
+			logger().warn("already sleeping actor");
+			return;
+		}
+		this.#sleepCalled = true;
+
+		logger().info("actor sleeping");
+
+		// The actor driver should call stop when ready to stop
+		//
+		// This will call _stop once Pegboard responds with the new status
+		this.#actorDriver.sleep(this.#actorId);
+	}
+
+	// MARK: Stop
+	async _stop() {
+		if (this.#stopCalled) {
 			logger().warn("already stopping actor");
 			return;
 		}
-		this.isStopping = true;
+		this.#stopCalled = true;
+
+		logger().info("actor stopping");
+
+		// Call onStop lifecycle hook if defined
+		if (this.#config.onStop) {
+			try {
+				logger().debug("calling onStop");
+				const result = this.#config.onStop(this.actorContext);
+				if (result instanceof Promise) {
+					await deadline(result, this.#config.options.onStopTimeout);
+				}
+				logger().debug("onStop completed");
+			} catch (error) {
+				if (error instanceof DeadlineError) {
+					logger().error("onStop timed out");
+				} else {
+					logger().error("error in onStop", {
+						error: stringifyError(error),
+					});
+				}
+			}
+		}
 
 		// Write state
 		await this.saveState({ immediate: true });

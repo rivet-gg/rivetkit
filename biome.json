@@ -1,7 +1,13 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.1.1/schema.json",
   "files": {
-    "includes": ["**/*.json", "**/*.ts", "**/*.js", "!examples/snippets/**"],
+    "includes": [
+      "**/*.json",
+      "**/*.ts",
+      "**/*.js",
+      "!examples/snippets/**",
+      "!clients/openapi/openapi.json"
+    ],
     "ignoreUnknown": true
   },
   "vcs": {

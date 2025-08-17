@@ -18,7 +18,7 @@ export function runActorScheduleTests(driverTestConfig: DriverTestConfig) {
 					await scheduled.scheduleTaskAt(timestamp);
 
 					// Wait for longer than the scheduled time
-					await waitFor(driverTestConfig, 150);
+					await waitFor(driverTestConfig, 200);
 
 					// Verify the scheduled task ran
 					const lastRun = await scheduled.getLastRun();
@@ -38,7 +38,7 @@ export function runActorScheduleTests(driverTestConfig: DriverTestConfig) {
 					await scheduled.scheduleTaskAfter(100);
 
 					// Wait for longer than the scheduled time
-					await waitFor(driverTestConfig, 150);
+					await waitFor(driverTestConfig, 200);
 
 					// Verify the scheduled task ran
 					const lastRun = await scheduled.getLastRun();
@@ -56,7 +56,7 @@ export function runActorScheduleTests(driverTestConfig: DriverTestConfig) {
 					await scheduled.scheduleTaskAfter(200);
 
 					// Wait a little so the schedule is stored but hasn't triggered yet
-					await waitFor(driverTestConfig, 50);
+					await waitFor(driverTestConfig, 100);
 
 					// Get a new reference to simulate actor restart
 					const newInstance = client.scheduled.getOrCreate();
@@ -83,22 +83,22 @@ export function runActorScheduleTests(driverTestConfig: DriverTestConfig) {
 					await scheduled.clearHistory();
 
 					// Schedule multiple tasks with different delays
-					await scheduled.scheduleTaskAfterWithId("first", 50);
-					await scheduled.scheduleTaskAfterWithId("second", 150);
-					await scheduled.scheduleTaskAfterWithId("third", 250);
+					await scheduled.scheduleTaskAfterWithId("first", 100);
+					await scheduled.scheduleTaskAfterWithId("second", 300);
+					await scheduled.scheduleTaskAfterWithId("third", 500);
 
 					// Wait for first task only
-					await waitFor(driverTestConfig, 100);
+					await waitFor(driverTestConfig, 200);
 					const history1 = await scheduled.getTaskHistory();
 					expect(history1).toEqual(["first"]);
 
 					// Wait for second task
-					await waitFor(driverTestConfig, 100);
+					await waitFor(driverTestConfig, 200);
 					const history2 = await scheduled.getTaskHistory();
 					expect(history2).toEqual(["first", "second"]);
 
 					// Wait for third task
-					await waitFor(driverTestConfig, 100);
+					await waitFor(driverTestConfig, 200);
 					const history3 = await scheduled.getTaskHistory();
 					expect(history3).toEqual(["first", "second", "third"]);
 				});

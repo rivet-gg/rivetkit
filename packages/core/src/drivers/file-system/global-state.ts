@@ -20,6 +20,12 @@ import {
 } from "@/driver-helpers/mod";
 import type { RegistryConfig } from "@/registry/config";
 import type { RunConfig } from "@/registry/run-config";
+import {
+	type LongTimeoutHandle,
+	SinglePromiseQueue,
+	setLongTimeout,
+	stringifyError,
+} from "@/utils";
 import { logger } from "./log";
 import {
 	ensureDirectoryExists,
@@ -42,8 +48,15 @@ interface ActorEntry {
 
 	genericConnGlobalState: GenericConnGlobalState;
 
-	/** Promise for ongoing write operations to prevent concurrent writes */
-	writePromise?: Promise<void>;
+	alarmTimeout?: LongTimeoutHandle;
+	/** The timestamp currently scheduled for this actor's alarm (ms since epoch). */
+	alarmTimestamp?: number;
+
+	/** Resolver for pending write operations that need to be notified when any write completes */
+	pendingWriteResolver?: PromiseWithResolvers<void>;
+
+	/** If the actor has been removed by destroy or sleep. */
+	removed: boolean;
 }
 
 /**
@@ -64,10 +77,18 @@ export class FileSystemGlobalState {
 	#storagePath: string;
 	#stateDir: string;
 	#dbsDir: string;
+	#alarmsDir: string;
 
 	#persist: boolean;
 	#actors = new Map<string, ActorEntry>();
 	#actorCountOnStartup: number = 0;
+
+	#runnerParams?: {
+		registryConfig: RegistryConfig;
+		runConfig: RunConfig;
+		inlineClient: AnyClient;
+		actorDriver: ActorDriver;
+	};
 
 	get storagePath() {
 		return this.#storagePath;
@@ -82,11 +103,13 @@ export class FileSystemGlobalState {
 		this.#storagePath = persist ? getStoragePath(customPath) : "/tmp";
 		this.#stateDir = path.join(this.#storagePath, "state");
 		this.#dbsDir = path.join(this.#storagePath, "databases");
+		this.#alarmsDir = path.join(this.#storagePath, "alarms");
 
 		if (this.#persist) {
 			// Ensure storage directories exist synchronously during initialization
 			ensureDirectoryExistsSync(this.#stateDir);
 			ensureDirectoryExistsSync(this.#dbsDir);
+			ensureDirectoryExistsSync(this.#alarmsDir);
 
 			try {
 				const actorIds = fsSync.readdirSync(this.#stateDir);
@@ -117,6 +140,10 @@ export class FileSystemGlobalState {
 
 	getActorDbPath(actorId: string): string {
 		return path.join(this.#dbsDir, `${actorId}.db`);
+	}
+
+	getActorAlarmPath(actorId: string): string {
+		return path.join(this.#alarmsDir, actorId);
 	}
 
 	async *getActorsIterator(params: {
@@ -163,6 +190,9 @@ export class FileSystemGlobalState {
 		entry = {
 			id: actorId,
 			genericConnGlobalState: new GenericConnGlobalState(),
+			removed: false,
+			stateWriteQueue: new SinglePromiseQueue(),
+			alarmWriteQueue: new SinglePromiseQueue(),
 		};
 		this.#actors.set(actorId, entry);
 		return entry;
@@ -177,6 +207,8 @@ export class FileSystemGlobalState {
 		key: ActorKey,
 		input: unknown | undefined,
 	): Promise<ActorEntry> {
+		// TODO: Does not check if actor already exists on fs
+
 		if (this.#actors.has(actorId)) {
 			throw new ActorAlreadyExists(name, key);
 		}
@@ -188,7 +220,7 @@ export class FileSystemGlobalState {
 			key,
 			persistedData: serializeEmptyPersistData(input),
 		};
-		await this.writeActor(actorId);
+		await this.writeActor(actorId, entry.state);
 		return entry;
 	}
 
@@ -264,47 +296,75 @@ export class FileSystemGlobalState {
 				key,
 				persistedData: serializeEmptyPersistData(input),
 			};
-			await this.writeActor(actorId);
+			await this.writeActor(actorId, entry.state);
 		}
 		return entry;
 	}
 
+	async sleepActor(actorId: string) {
+		invariant(
+			this.#persist,
+			"cannot sleep actor with memory driver, must use file system driver",
+		);
+
+		const actor = this.#actors.get(actorId);
+		invariant(actor, `tried to sleep ${actorId}, does not exist`);
+
+		// Wait for actor to fully start before stopping it to avoid race conditions
+		if (actor.loadPromise) await actor.loadPromise.catch();
+		if (actor.startPromise?.promise) await actor.startPromise.promise.catch();
+		if (actor.stateWriteQueue.runningDrainLoop)
+			await actor.stateWriteQueue.runningDrainLoop.catch();
+
+		// Mark as removed
+		actor.removed = true;
+
+		// Stop actor
+		invariant(actor.actor, "actor should be loaded");
+		await actor.actor._stop();
+
+		// Remove from map after stop is complete
+		this.#actors.delete(actorId);
+	}
+
 	/**
-	 * Save actor state to disk
+	 * Save actor state to disk.
 	 */
-	async writeActor(actorId: string): Promise<void> {
+	async writeActor(actorId: string, state: ActorState): Promise<void> {
 		if (!this.#persist) {
 			return;
 		}
 
 		const entry = this.#actors.get(actorId);
-		invariant(entry?.state, "missing actor state");
-		const state = entry.state;
+		invariant(entry, "actor entry does not exist");
 
-		// Get the current write promise for this actor (or resolved promise if none)
-		const currentWrite = entry.writePromise || Promise.resolve();
+		await this.#performWrite(actorId, state);
+	}
 
-		// Chain our write after the current one
-		const newWrite = currentWrite
-			.then(() => this.#performWrite(actorId, state))
-			.catch((err) => {
-				// Log but don't prevent future writes
-				logger().error("write failed", { actorId, error: err });
-				throw err;
-			});
+	async setActorAlarm(actorId: string, timestamp: number) {
+		const entry = this.#actors.get(actorId);
+		invariant(entry, "actor entry does not exist");
 
-		// Update the actor's write promise
-		entry.writePromise = newWrite;
-
-		// Wait for our write to complete
-		try {
-			await newWrite;
-		} finally {
-			// Clean up if we're the last write
-			if (entry.writePromise === newWrite) {
-				entry.writePromise = undefined;
+		// Persist alarm to disk
+		if (this.#persist) {
+			const alarmPath = this.getActorAlarmPath(actorId);
+			const tempPath = `${alarmPath}.tmp.${crypto.randomUUID()}`;
+			try {
+				await ensureDirectoryExists(path.dirname(alarmPath));
+				const data = cbor.encode(timestamp);
+				await fs.writeFile(tempPath, data);
+				await fs.rename(tempPath, alarmPath);
+			} catch (error) {
+				try {
+					await fs.unlink(tempPath);
+				} catch {}
+				logger().error("failed to write alarm", { actorId, error });
+				throw new Error(`Failed to write alarm: ${error}`);
 			}
 		}
+
+		// Schedule timeout
+		this.#scheduleAlarmTimeout(actorId, timestamp);
 	}
 
 	/**
@@ -332,6 +392,40 @@ export class FileSystemGlobalState {
 			}
 			logger().error("failed to save actor state", { actorId, error });
 			throw new Error(`Failed to save actor state: ${error}`);
+		}
+	}
+
+	/**
+	 * Call this method after the actor driver has been initiated.
+	 *
+	 * This will trigger all initial alarms from the file system.
+	 *
+	 * This needs to be sync since DriverConfig.actor is sync
+	 */
+	onRunnerStart(
+		registryConfig: RegistryConfig,
+		runConfig: RunConfig,
+		inlineClient: AnyClient,
+		actorDriver: ActorDriver,
+	) {
+		if (this.#runnerParams) {
+			logger().warn("already called onRunnerStart");
+			return;
+		}
+
+		// Save runner params for future use
+		this.#runnerParams = {
+			registryConfig,
+			runConfig,
+			inlineClient,
+			actorDriver,
+		};
+
+		// Load alarms from disk and schedule timeouts
+		try {
+			this.#loadAlarmsSync();
+		} catch (err) {
+			logger().error("failed to load alarms on startup", { error: err });
 		}
 	}
 
@@ -411,6 +505,112 @@ export class FileSystemGlobalState {
 
 	async createDatabase(actorId: string): Promise<string | undefined> {
 		return this.getActorDbPath(actorId);
+	}
+
+	/**
+	 * Load all persisted alarms from disk and schedule their timers.
+	 */
+	#loadAlarmsSync(): void {
+		try {
+			const files = fsSync.existsSync(this.#alarmsDir)
+				? fsSync.readdirSync(this.#alarmsDir)
+				: [];
+			for (const file of files) {
+				// Skip temp files
+				if (file.includes(".tmp.")) continue;
+				const fullPath = path.join(this.#alarmsDir, file);
+				try {
+					const buf = fsSync.readFileSync(fullPath);
+					const timestamp = cbor.decode(buf) as number;
+					if (typeof timestamp === "number" && Number.isFinite(timestamp)) {
+						this.#scheduleAlarmTimeout(file, timestamp);
+					} else {
+						logger().debug("invalid alarm file contents", { file });
+					}
+				} catch (err) {
+					logger().error("failed to read alarm file", {
+						file,
+						error: stringifyError(err),
+					});
+				}
+			}
+		} catch (err) {
+			logger().error("failed to list alarms directory", { error: err });
+		}
+	}
+
+	/**
+	 * Schedule an alarm timer for an actor without writing to disk.
+	 */
+	#scheduleAlarmTimeout(actorId: string, timestamp: number) {
+		const entry = this.#upsertEntry(actorId);
+
+		// If there's already an earlier alarm scheduled, do not override it.
+		if (
+			entry.alarmTimestamp !== undefined &&
+			timestamp >= entry.alarmTimestamp
+		) {
+			logger().debug("skipping alarm schedule (later than existing)", {
+				actorId,
+				timestamp,
+				current: entry.alarmTimestamp,
+			});
+			return;
+		}
+
+		logger().debug("scheduling alarm", { actorId, timestamp });
+
+		// Cancel existing timeout and update the current scheduled timestamp
+		entry.alarmTimeout?.abort();
+		entry.alarmTimestamp = timestamp;
+
+		const delay = Math.max(0, timestamp - Date.now());
+		entry.alarmTimeout = setLongTimeout(async () => {
+			// Clear currently scheduled timestamp as this alarm is firing now
+			entry.alarmTimestamp = undefined;
+			// On trigger: remove persisted alarm file
+			if (this.#persist) {
+				try {
+					await fs.unlink(this.getActorAlarmPath(actorId));
+				} catch (err: any) {
+					if (err?.code !== "ENOENT") {
+						logger().debug("failed to remove alarm file", {
+							actorId,
+							error: stringifyError(err),
+						});
+					}
+				}
+			}
+
+			try {
+				logger().debug("triggering alarm", { actorId, timestamp });
+
+				// Ensure actor state exists and start actor if needed
+				const loaded = await this.loadActor(actorId);
+				if (!loaded.state) throw new Error(`Actor does not exist: ${actorId}`);
+
+				// Start actor if not already running
+				const runnerParams = this.#runnerParams;
+				invariant(runnerParams, "missing runner params");
+				if (!loaded.actor) {
+					await this.startActor(
+						runnerParams.registryConfig,
+						runnerParams.runConfig,
+						runnerParams.inlineClient,
+						runnerParams.actorDriver,
+						actorId,
+					);
+				}
+
+				invariant(loaded.actor, "actor should be loaded after wake");
+				await loaded.actor._onAlarm();
+			} catch (err) {
+				logger().error("failed to handle alarm", {
+					actorId,
+					error: stringifyError(err),
+				});
+			}
+		}, delay);
 	}
 
 	getOrCreateInspectorAccessToken(): string {

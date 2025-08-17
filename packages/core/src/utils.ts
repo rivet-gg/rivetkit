@@ -66,3 +66,100 @@ export function toUint8Array(data: ArrayBuffer | ArrayBufferView): Uint8Array {
 		throw new TypeError("Input must be ArrayBuffer or ArrayBufferView");
 	}
 }
+
+// Long timeouts
+//
+// JavaScript timers use a signed 32-bit integer for delays, so values above 2^31-1 (~24.8 days)
+// are not reliable and may fire immediately or overflow.
+//
+// https://developer.mozilla.org/en-US/docs/Web/API/Window/setTimeout#maximum_delay_value
+const TIMEOUT_MAX = 2147483647; // 2^31-1
+
+export type LongTimeoutHandle = { abort: () => void };
+
+export function setLongTimeout(
+	listener: () => void,
+	after: number,
+): LongTimeoutHandle {
+	let timeout: ReturnType<typeof setTimeout> | undefined;
+
+	function start(remaining: number) {
+		if (remaining <= TIMEOUT_MAX) {
+			timeout = setTimeout(listener, remaining);
+		} else {
+			timeout = setTimeout(() => {
+				start(remaining - TIMEOUT_MAX);
+			}, TIMEOUT_MAX);
+		}
+	}
+
+	start(after);
+
+	return {
+		abort: () => {
+			if (timeout !== undefined) clearTimeout(timeout);
+		},
+	};
+}
+
+/**
+ * A tiny utility that coalesces/enqueues async operations so only the latest
+ * queued task runs per cycle, while callers receive a promise that resolves
+ * when the task for the cycle they joined has completed.
+ */
+export class SinglePromiseQueue {
+	/** Next operation to execute in the queue. If attempting to enqueue another op, it will override the existing op. */
+	#queuedOp?: () => Promise<void>;
+
+	/** The currently running promise of #drainLoop. Do not await this, instead await `pending` to await the current cycle. */
+	runningDrainLoop?: Promise<void>;
+
+	/** Pending resolver fro the currently queued entry. */
+	#pending?: PromiseWithResolvers<void>;
+
+	/** Queue the next operation and return a promise that resolves when it flushes. */
+	enqueue(op: () => Promise<void>): Promise<void> {
+		// Replace any previously queued operation with the latest one
+		this.#queuedOp = op;
+
+		// Ensure a shared resolver exists for all callers in this cycle
+		if (!this.#pending) {
+			this.#pending = Promise.withResolvers<void>();
+		}
+
+		const waitForThisCycle = this.#pending.promise;
+
+		// Start runner if not already running
+		if (!this.runningDrainLoop) {
+			this.runningDrainLoop = this.#drainLoop();
+		}
+
+		return waitForThisCycle;
+	}
+
+	/** Drain queued operations sequentially until there is nothing left. */
+	async #drainLoop(): Promise<void> {
+		try {
+			while (this.#queuedOp) {
+				// Capture current cycle resolver then reset for the next cycle
+				const resolver = this.#pending;
+				this.#pending = undefined;
+
+				// Capture and clear the currently queued operation
+				const op = this.#queuedOp;
+				this.#queuedOp = undefined;
+
+				try {
+					await op();
+				} catch {
+					// Swallow errors: callers only await cycle completion, not success
+				}
+
+				// Notify all waiters for this cycle
+				resolver?.resolve();
+			}
+		} finally {
+			this.runningDrainLoop = undefined;
+		}
+	}
+}

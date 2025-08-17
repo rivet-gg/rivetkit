@@ -13,7 +13,10 @@ import { runActionFeaturesTests } from "./tests/action-features";
 import { runActorAuthTests } from "./tests/actor-auth";
 import { runActorConnTests } from "./tests/actor-conn";
 import { runActorConnStateTests } from "./tests/actor-conn-state";
-import { runActorDriverTests } from "./tests/actor-driver";
+import {
+	runActorDriverTests,
+	runActorDriverTestsWithTransport,
+} from "./tests/actor-driver";
 import { runActorErrorHandlingTests } from "./tests/actor-error-handling";
 import { runActorHandleTests } from "./tests/actor-handle";
 import { runActorInlineClientTests } from "./tests/actor-inline-client";
@@ -30,6 +33,7 @@ import { runRequestAccessTests } from "./tests/request-access";
 
 export interface SkipTests {
 	schedule?: boolean;
+	sleep?: boolean;
 }
 
 export interface DriverTestConfig {
@@ -94,6 +98,8 @@ export function runDriverTests(
 					runActorConnStateTests({ ...driverTestConfig, transport });
 
 					runRequestAccessTests({ ...driverTestConfig, transport });
+
+					runActorDriverTestsWithTransport({ ...driverTestConfig, transport });
 				});
 			}
 

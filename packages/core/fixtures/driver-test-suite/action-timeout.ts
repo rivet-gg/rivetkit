@@ -5,9 +5,7 @@ export const shortTimeoutActor = actor({
 	onAuth: () => {},
 	state: { value: 0 },
 	options: {
-		action: {
-			timeout: 50, // 50ms timeout
-		},
+		actionTimeout: 50, // 50ms timeout
 	},
 	actions: {
 		quickAction: async (c) => {
@@ -26,9 +24,7 @@ export const longTimeoutActor = actor({
 	onAuth: () => {},
 	state: { value: 0 },
 	options: {
-		action: {
-			timeout: 200, // 200ms timeout
-		},
+		actionTimeout: 200, // 200ms timeout
 	},
 	actions: {
 		delayedAction: async (c) => {
@@ -56,9 +52,7 @@ export const syncTimeoutActor = actor({
 	onAuth: () => {},
 	state: { value: 0 },
 	options: {
-		action: {
-			timeout: 50, // 50ms timeout
-		},
+		actionTimeout: 50, // 50ms timeout
 	},
 	actions: {
 		syncAction: (c) => {

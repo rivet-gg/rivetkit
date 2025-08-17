@@ -64,21 +64,22 @@ export class FileSystemActorDriver implements ActorDriver {
 	}
 
 	async writePersistedData(actorId: string, data: Uint8Array): Promise<void> {
-		const entry = await this.#state.loadActorStateOrError(actorId);
-		entry.persistedData = data;
+		const state = await this.#state.loadActorStateOrError(actorId);
+		state.persistedData = data;
 
-		// Save state to disk
-		await this.#state.writeActor(actorId);
+		// Save state to disk (pass state to avoid race with sleep/removal)
+		await this.#state.writeActor(actorId, state);
 	}
 
 	async setAlarm(actor: AnyActorInstance, timestamp: number): Promise<void> {
-		const delay = Math.max(0, timestamp - Date.now());
-		setTimeout(() => {
-			actor.onAlarm();
-		}, delay);
+		await this.#state.setActorAlarm(actor.id, timestamp);
 	}
 
 	getDatabase(actorId: string): Promise<unknown | undefined> {
 		return this.#state.createDatabase(actorId);
+	}
+
+	sleep(actorId: string): void {
+		this.#state.sleepActor(actorId);
 	}
 }

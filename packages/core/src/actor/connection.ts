@@ -209,10 +209,7 @@ export class Conn<S, CP, CS, V, I, AD, DB extends AnyDatabaseProvider> {
 	 * @internal
 	 */
 	[CONNECTION_CHECK_LIVENESS_SYMBOL]() {
-		const readyState = this.#driver.getConnectionReadyState?.(
-			this.#actor,
-			this,
-		);
+		const readyState = this.#driver.getConnectionReadyState(this.#actor, this);
 
 		const isConnectionClosed =
 			readyState === ConnectionReadyState.CLOSED ||

@@ -52,6 +52,13 @@ import { requestAccessActor } from "./request-access";
 import { requestAccessAuthActor } from "./request-access-auth";
 import { scheduled } from "./scheduled";
 import {
+	sleep,
+	sleepWithLongRpc,
+	sleepWithNoSleepOption,
+	sleepWithRawHttp,
+	sleepWithRawWebSocket,
+} from "./sleep";
+import {
 	driverCtxActor,
 	dynamicVarActor,
 	nestedVarActor,
@@ -68,6 +75,12 @@ export const registry = setup({
 		counterWithLifecycle,
 		// From scheduled.ts
 		scheduled,
+		// From sleep.ts
+		sleep,
+		sleepWithLongRpc,
+		sleepWithRawHttp,
+		sleepWithRawWebSocket,
+		sleepWithNoSleepOption,
 		// From error-handling.ts
 		errorHandlingActor,
 		customTimeoutActor,

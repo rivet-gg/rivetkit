@@ -160,7 +160,9 @@ export interface GenericSseDriverState {
 	encoding: Encoding;
 }
 
-export function createGenericSseDriver(globalState: GenericConnGlobalState) {
+export function createGenericSseDriver(
+	globalState: GenericConnGlobalState,
+): ConnDriver<GenericSseDriverState> {
 	return {
 		sendMessage: (
 			_actor: AnyActorInstance,
@@ -219,8 +221,12 @@ export function createGenericSseDriver(globalState: GenericConnGlobalState) {
 // MARK: HTTP
 export type GenericHttpDriverState = Record<never, never>;
 
-export function createGenericHttpDriver() {
+export function createGenericHttpDriver(): ConnDriver<GenericHttpDriverState> {
 	return {
+		getConnectionReadyState(_actor, conn) {
+			// TODO: This might not be the correct logic
+			return ConnectionReadyState.OPEN;
+		},
 		disconnect: async () => {
 			// Noop
 		},

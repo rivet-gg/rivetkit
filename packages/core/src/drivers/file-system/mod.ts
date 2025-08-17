@@ -22,14 +22,19 @@ export function createFileSystemOrMemoryDriver(
 				state,
 				driverConfig,
 			),
-		actor: (registryConfig, runConfig, managerDriver, inlineClient) =>
-			new FileSystemActorDriver(
+		actor: (registryConfig, runConfig, managerDriver, inlineClient) => {
+			const actorDriver = new FileSystemActorDriver(
 				registryConfig,
 				runConfig,
 				managerDriver,
 				inlineClient,
 				state,
-			),
+			);
+
+			state.onRunnerStart(registryConfig, runConfig, inlineClient, actorDriver);
+
+			return actorDriver;
+		},
 	};
 	return driverConfig;
 }

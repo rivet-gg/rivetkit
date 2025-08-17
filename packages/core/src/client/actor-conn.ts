@@ -745,7 +745,7 @@ enc
 		}
 		this.#disposed = true;
 
-		logger().debug("disposing actor");
+		logger().debug("disposing actor conn");
 
 		// Clear interval so NodeJS process can exit
 		clearInterval(this.#keepNodeAliveInterval);
