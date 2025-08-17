@@ -1,3 +1,6 @@
+import type { ConnectionDriver } from "./connection";
+import type { ScheduledLivenessCheckEvent } from "./schedule";
+
 /** State object that gets automatically persisted to storage. */
 export interface PersistedActor<S, CP, CS, I> {
 	// Input
@@ -9,7 +12,7 @@ export interface PersistedActor<S, CP, CS, I> {
 	// Connections
 	c: PersistedConn<CP, CS>[];
 	// Scheduled events
-	e: PersistedScheduleEvents[];
+	e: PersistedScheduleEvent[];
 }
 
 /** Object representing connection that gets persisted to storage. */
@@ -19,7 +22,7 @@ export interface PersistedConn<CP, CS> {
 	// Token
 	t: string;
 	// Connection driver
-	d: string;
+	d: ConnectionDriver;
 	// Connection driver state
 	ds: unknown;
 	// Parameters
@@ -30,6 +33,8 @@ export interface PersistedConn<CP, CS> {
 	a?: unknown;
 	// Subscriptions
 	su: PersistedSubscription[];
+	// Last seen
+	l: number;
 }
 
 export interface PersistedSubscription {
@@ -37,7 +42,7 @@ export interface PersistedSubscription {
 	n: string;
 }
 
-export interface PersistedScheduleEvents {
+export interface GenericPersistedScheduleEvent {
 	// Event ID
 	e: string;
 	// Timestamp
@@ -45,5 +50,15 @@ export interface PersistedScheduleEvents {
 	// Action name
 	a: string;
 	// Arguments
-	ar: unknown[];
+	ar?: unknown[];
 }
+
+export interface ScheduleLivenessCheckEvent {
+	ccl: ScheduledLivenessCheckEvent["checkConnectionLiveness"];
+	// Timestamp
+	t: number;
+}
+
+export type PersistedScheduleEvent =
+	| GenericPersistedScheduleEvent
+	| ScheduleLivenessCheckEvent;
