@@ -17,6 +17,9 @@ export const EncodingSchema = z.enum(["json", "cbor"]);
  */
 export type Encoding = z.infer<typeof EncodingSchema>;
 
+export const SubscriptionsListSchema = z.array(z.string());
+export type SubscriptionsList = z.infer<typeof SubscriptionsListSchema>;
+
 /**
  * Helper class that helps serialize data without re-serializing for the same encoding.
  */

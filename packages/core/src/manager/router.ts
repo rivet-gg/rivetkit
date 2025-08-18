@@ -15,7 +15,11 @@ import * as errors from "@/actor/errors";
 import type * as protoHttpResolve from "@/actor/protocol/http/resolve";
 import type { Transport } from "@/actor/protocol/message/mod";
 import type { ToClient } from "@/actor/protocol/message/to-client";
-import { type Encoding, serialize } from "@/actor/protocol/serde";
+import {
+	type Encoding,
+	SubscriptionsListSchema,
+	serialize,
+} from "@/actor/protocol/serde";
 import {
 	PATH_CONNECT_WEBSOCKET,
 	PATH_RAW_WEBSOCKET_PREFIX,
@@ -29,6 +33,7 @@ import {
 	HEADER_AUTH_DATA,
 	HEADER_CONN_ID,
 	HEADER_CONN_PARAMS,
+	HEADER_CONN_SUBS,
 	HEADER_CONN_TOKEN,
 	HEADER_ENCODING,
 } from "@/actor/router-endpoints";
@@ -69,10 +74,12 @@ function parseWebSocketProtocols(protocols: string | undefined): {
 	queryRaw: string | undefined;
 	encodingRaw: string | undefined;
 	connParamsRaw: string | undefined;
+	subscriptionsRaw: string | undefined;
 } {
 	let queryRaw: string | undefined;
 	let encodingRaw: string | undefined;
 	let connParamsRaw: string | undefined;
+	let subscriptionsRaw: string | undefined;
 
 	if (protocols) {
 		const protocolList = protocols.split(",").map((p) => p.trim());
@@ -85,11 +92,15 @@ function parseWebSocketProtocols(protocols: string | undefined): {
 				connParamsRaw = decodeURIComponent(
 					protocol.substring("conn_params.".length),
 				);
+			} else if (protocol.startsWith("subs.")) {
+				subscriptionsRaw = decodeURIComponent(
+					protocol.substring("subs.".length),
+				);
 			}
 		}
 	}
 
-	return { queryRaw, encodingRaw, connParamsRaw };
+	return { queryRaw, encodingRaw, connParamsRaw, subscriptionsRaw };
 }
 
 const OPENAPI_ENCODING = z.string().openapi({
@@ -103,6 +114,11 @@ const OPENAPI_ACTOR_QUERY = z.string().openapi({
 
 const OPENAPI_CONN_PARAMS = z.string().openapi({
 	description: "Connection parameters",
+});
+
+const OPENAPI_CONN_SUBS = z.string().openapi({
+	description: "Connection subscriptions",
+	example: JSON.stringify(["newCount"]),
 });
 
 const OPENAPI_ACTOR_ID = z.string().openapi({
@@ -331,6 +347,7 @@ export function createManagerRouter(
 					[HEADER_ENCODING]: OPENAPI_ENCODING,
 					[HEADER_ACTOR_QUERY]: OPENAPI_ACTOR_QUERY,
 					[HEADER_CONN_PARAMS]: OPENAPI_CONN_PARAMS.optional(),
+					[HEADER_CONN_SUBS]: OPENAPI_CONN_SUBS.optional(),
 				}),
 			},
 			responses: {
@@ -639,19 +656,25 @@ export function createManagerRouter(
 					actorQuery: actorQueryRaw,
 					params: paramsRaw,
 					encodingKind,
+					subscriptions: subsRaw,
 				} = c.req.query() as {
 					actorQuery: string;
 					params?: string;
 					encodingKind: Encoding;
+					subscriptions?: string;
 				};
 				const actorQuery = JSON.parse(actorQueryRaw);
 				const params =
 					paramsRaw !== undefined ? JSON.parse(paramsRaw) : undefined;
+				const subscriptions = subsRaw
+					? SubscriptionsListSchema.parse(JSON.parse(subsRaw))
+					: [];
 
 				logger().debug("received test inline driver websocket", {
 					actorQuery,
 					params,
 					encodingKind,
+					subscriptions,
 				});
 
 				// Connect to the actor using the inline client driver - this returns a Promise<WebSocket>
@@ -660,6 +683,7 @@ export function createManagerRouter(
 					actorQuery,
 					encodingKind,
 					params,
+					subscriptions,
 					undefined,
 				);
 
@@ -1098,6 +1122,7 @@ async function handleSseConnectRequest(
 			query: getRequestQuery(c),
 			encoding: c.req.header(HEADER_ENCODING),
 			connParams: c.req.header(HEADER_CONN_PARAMS),
+			subscriptions: c.req.header(HEADER_CONN_SUBS),
 		});
 
 		if (!params.success) {
@@ -1141,6 +1166,12 @@ async function handleSseConnectRequest(
 		}
 		if (authData) {
 			proxyRequest.headers.set(HEADER_AUTH_DATA, JSON.stringify(authData));
+		}
+		if (params.data.subscriptions) {
+			proxyRequest.headers.set(
+				HEADER_CONN_SUBS,
+				JSON.stringify(params.data.subscriptions),
+			);
 		}
 		return await driver.proxyRequest(c, proxyRequest, actorId);
 	} catch (error) {
@@ -1225,7 +1256,7 @@ async function handleWebSocketConnectRequest(
 		// Browsers don't support using headers, so this is the only way to
 		// pass data securely.
 		const protocols = c.req.header("sec-websocket-protocol");
-		const { queryRaw, encodingRaw, connParamsRaw } =
+		const { queryRaw, encodingRaw, connParamsRaw, subscriptionsRaw } =
 			parseWebSocketProtocols(protocols);
 
 		// Parse query
@@ -1257,6 +1288,7 @@ async function handleWebSocketConnectRequest(
 			query: queryUnvalidated,
 			encoding: encodingRaw,
 			connParams: connParamsUnvalidated,
+			subscriptions: subscriptionsRaw,
 		});
 		if (!params.success) {
 			logger().error("invalid connection parameters", {
@@ -1280,6 +1312,8 @@ async function handleWebSocketConnectRequest(
 		const { actorId } = await queryActor(c, params.data.query, driver);
 		logger().debug("found actor for websocket connection", {
 			actorId,
+
+			params: params.data,
 		});
 		invariant(actorId, "missing actor id");
 
@@ -1296,6 +1330,7 @@ async function handleWebSocketConnectRequest(
 			params.data.encoding,
 			params.data.connParams,
 			authData,
+			params.data.subscriptions,
 		);
 	} catch (error) {
 		// If we receive an error during setup, we send the error and close the socket immediately
@@ -1428,6 +1463,7 @@ async function handleActionRequest(
 			query: getRequestQuery(c),
 			encoding: c.req.header(HEADER_ENCODING),
 			connParams: c.req.header(HEADER_CONN_PARAMS),
+			subscriptions: c.req.header(HEADER_CONN_SUBS),
 		});
 
 		if (!params.success) {
@@ -1472,6 +1508,12 @@ async function handleActionRequest(
 		}
 		if (authData) {
 			proxyRequest.headers.set(HEADER_AUTH_DATA, JSON.stringify(authData));
+		}
+		if (params.data.subscriptions) {
+			proxyRequest.headers.set(
+				HEADER_CONN_SUBS,
+				JSON.stringify(params.data.subscriptions),
+			);
 		}
 
 		return await driver.proxyRequest(c, proxyRequest, actorId);
@@ -1638,6 +1680,7 @@ async function handleRawWebSocketRequest(
 		const {
 			queryRaw: queryFromProtocol,
 			connParamsRaw: connParamsFromProtocol,
+			subscriptionsRaw: subsFromProtocol,
 		} = parseWebSocketProtocols(protocols);
 
 		if (!queryFromProtocol) {
@@ -1649,6 +1692,11 @@ async function handleRawWebSocketRequest(
 		let connParams: unknown;
 		if (connParamsFromProtocol) {
 			connParams = JSON.parse(connParamsFromProtocol);
+		}
+
+		let subscriptions: string[] = [];
+		if (subsFromProtocol) {
+			subscriptions = JSON.parse(subsFromProtocol) || [];
 		}
 
 		// Authenticate the request
@@ -1687,6 +1735,7 @@ async function handleRawWebSocketRequest(
 			"json", // Default encoding for raw WebSocket
 			connParams,
 			authData,
+			subscriptions,
 		);
 	} catch (error) {
 		// If we receive an error during setup, we send the error and close the socket immediately

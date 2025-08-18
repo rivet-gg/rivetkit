@@ -21,6 +21,7 @@ export interface ManagerDriver {
 		actorId: string,
 		encoding: Encoding,
 		params: unknown,
+		subscriptions?: string[],
 	): Promise<WebSocket>;
 	proxyRequest(
 		c: HonoContext,
@@ -34,6 +35,7 @@ export interface ManagerDriver {
 		encoding: Encoding,
 		params: unknown,
 		authData: unknown,
+		subscriptions?: string[],
 	): Promise<Response>;
 
 	extraStartupLog?: () => Record<string, unknown>;

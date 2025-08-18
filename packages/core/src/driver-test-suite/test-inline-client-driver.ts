@@ -66,12 +66,15 @@ export function createTestInlineClientDriver(
 			actorQuery: ActorQuery,
 			encodingKind: Encoding,
 			params: unknown,
+			subscriptions: string[] = [],
 		): Promise<WebSocket> => {
 			const WebSocket = await importWebSocket();
 
 			logger().debug("creating websocket connection via test inline driver", {
 				actorQuery,
 				encodingKind,
+				params,
+				subscriptions,
 			});
 
 			// Create WebSocket connection to the test endpoint
@@ -82,6 +85,9 @@ export function createTestInlineClientDriver(
 			if (params !== undefined)
 				wsUrl.searchParams.set("params", JSON.stringify(params));
 			wsUrl.searchParams.set("encodingKind", encodingKind);
+			if (subscriptions.length > 0) {
+				wsUrl.searchParams.set("subscriptions", JSON.stringify(subscriptions));
+			}
 
 			// Convert http/https to ws/wss
 			const wsProtocol = wsUrl.protocol === "https:" ? "wss:" : "ws:";
@@ -104,6 +110,7 @@ export function createTestInlineClientDriver(
 			actorQuery: ActorQuery,
 			encodingKind: Encoding,
 			params: unknown,
+			subscriptions: string[] = [],
 		): Promise<UniversalEventSource> => {
 			logger().debug("creating sse connection via test inline driver", {
 				actorQuery,
@@ -132,6 +139,9 @@ export function createTestInlineClientDriver(
 			sseUrl.searchParams.set("encodingKind", encodingParam);
 			if (paramsParam) {
 				sseUrl.searchParams.set("params", paramsParam);
+			}
+			if (subscriptions.length > 0) {
+				sseUrl.searchParams.set("subscriptions", JSON.stringify(subscriptions));
 			}
 
 			logger().debug("connecting to sse", { url: sseUrl.toString() });

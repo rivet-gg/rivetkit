@@ -121,6 +121,7 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 			actorQuery: ActorQuery,
 			encodingKind: Encoding,
 			params: unknown,
+			subs: string[] | undefined,
 		): Promise<WebSocket> => {
 			const { WebSocket } = await dynamicImports;
 
@@ -138,6 +139,9 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 				protocol.push(
 					`conn_params.${encodeURIComponent(JSON.stringify(params))}`,
 				);
+			if (subs) {
+				protocol.push(`subs.${encodeURIComponent(JSON.stringify(subs))}`);
+			}
 
 			// HACK: See packages/drivers/cloudflare-workers/src/websocket.ts
 			protocol.push("rivetkit");

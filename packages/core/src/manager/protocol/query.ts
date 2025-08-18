@@ -1,10 +1,14 @@
 import { z } from "zod";
-import { EncodingSchema } from "@/actor/protocol/serde";
+import {
+	EncodingSchema,
+	SubscriptionsListSchema,
+} from "@/actor/protocol/serde";
 import {
 	HEADER_ACTOR_ID,
 	HEADER_ACTOR_QUERY,
 	HEADER_CONN_ID,
 	HEADER_CONN_PARAMS,
+	HEADER_CONN_SUBS,
 	HEADER_CONN_TOKEN,
 	HEADER_ENCODING,
 } from "@/actor/router-endpoints";
@@ -54,16 +58,32 @@ export const ActorQuerySchema = z.union([
 	}),
 ]);
 
+const json = z.string().transform((value) => {
+	try {
+		return JSON.parse(value);
+	} catch {
+		throw new Error(`Invalid JSON: ${value}`);
+	}
+});
+
 export const ConnectRequestSchema = z.object({
 	query: ActorQuerySchema.describe(HEADER_ACTOR_QUERY),
 	encoding: EncodingSchema.describe(HEADER_ENCODING),
 	connParams: z.string().optional().describe(HEADER_CONN_PARAMS),
+	subscriptions: json
+		.pipe(SubscriptionsListSchema)
+		.optional()
+		.describe(HEADER_CONN_SUBS),
 });
 
 export const ConnectWebSocketRequestSchema = z.object({
 	query: ActorQuerySchema.describe("query"),
 	encoding: EncodingSchema.describe("encoding"),
 	connParams: z.unknown().optional().describe("conn_params"),
+	subscriptions: json
+		.pipe(SubscriptionsListSchema)
+		.optional()
+		.describe("subscriptions"),
 });
 
 export const ConnMessageRequestSchema = z.object({
