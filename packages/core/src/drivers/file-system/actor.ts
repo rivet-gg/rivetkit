@@ -74,11 +74,15 @@ export class FileSystemActorDriver implements ActorDriver {
 	async setAlarm(actor: AnyActorInstance, timestamp: number): Promise<void> {
 		const delay = Math.max(0, timestamp - Date.now());
 		setTimeout(() => {
-			actor.onAlarm();
+			actor._onAlarm();
 		}, delay);
 	}
 
 	getDatabase(actorId: string): Promise<unknown | undefined> {
 		return this.#state.createDatabase(actorId);
+	}
+
+	sleep(actorId: string): void {
+	    
 	}
 }

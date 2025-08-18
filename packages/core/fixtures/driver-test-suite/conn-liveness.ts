@@ -7,10 +7,8 @@ export const connLivenessActor = actor({
 		acceptingConnections: true,
 	},
 	options: {
-		lifecycle: {
-			connectionLivenessInterval: 5_000,
-			connectionLivenessTimeout: 2_500,
-		},
+		connectionLivenessInterval: 5_000,
+		connectionLivenessTimeout: 2_500,
 	},
 	onConnect: (c, conn) => {
 		if (!c.state.acceptingConnections) {

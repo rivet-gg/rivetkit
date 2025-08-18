@@ -60,28 +60,15 @@ export const ActorConfigSchema = z
 		createVars: z.function().optional(),
 		options: z
 			.object({
-				lifecycle: z
-					.object({
-						createVarsTimeout: z.number().positive().default(5000),
-						createConnStateTimeout: z.number().positive().default(5000),
-						onConnectTimeout: z.number().positive().default(5000),
-						connectionLivenessTimeout: z.number().positive().default(2500),
-						connectionLivenessInterval: z.number().positive().default(5000),
-					})
-					.strict()
-					.default({}),
-				state: z
-					.object({
-						saveInterval: z.number().positive().default(10_000),
-					})
-					.strict()
-					.default({}),
-				action: z
-					.object({
-						timeout: z.number().positive().default(60_000),
-					})
-					.strict()
-					.default({}),
+				createVarsTimeout: z.number().positive().default(5000),
+				createConnStateTimeout: z.number().positive().default(5000),
+				onConnectTimeout: z.number().positive().default(5000),
+				stateSaveInterval: z.number().positive().default(10_000),
+				actionTimeout: z.number().positive().default(60_000),
+				connectionLivenessTimeout: z.number().positive().default(2500),
+				connectionLivenessInterval: z.number().positive().default(5000),
+				noSleep: z.boolean().default(false),
+				sleepTimeout: z.number().positive().default(30_000),
 			})
 			.strict()
 			.default({}),

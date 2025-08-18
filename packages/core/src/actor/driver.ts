@@ -39,6 +39,8 @@ export interface ActorDriver {
 	 */
 	getDatabase(actorId: string): Promise<unknown | undefined>;
 
+	sleep?(actorId: string): void;
+
 	shutdown?(immediate: boolean): Promise<void>;
 }
 
@@ -72,7 +74,7 @@ export interface ConnDriver<ConnDriverState = unknown> {
 	 * Returns the ready state of the connection.
 	 * This is used to determine if the connection is ready to send messages, or if the connection is stale.
 	 */
-	getConnectionReadyState?(
+	getConnectionReadyState(
 		actor: AnyActorInstance,
 		conn: AnyConn,
 	): ConnectionReadyState | undefined;
