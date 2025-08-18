@@ -1,0 +1,20 @@
+{
+  "name": "example-sqlite",
+  "version": "0.9.9",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx --watch src/server.ts",
+    "check-types": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.9",
+    "tsx": "^3.12.7",
+    "typescript": "^5.5.2"
+  },
+  "dependencies": {
+    "@rivetkit/db": "workspace:*",
+    "@rivetkit/actor": "workspace:*"
+  },
+  "stableVersion": "0.8.0"
+}
