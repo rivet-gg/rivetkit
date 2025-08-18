@@ -17,14 +17,16 @@ export type DatabaseProvider<DB extends RawAccess> = {
 	onMigrate: (client: DB) => void | Promise<void>;
 };
 
-type ExecuteFunction = (
-	query: string,
-	...args: unknown[]
-) => Promise<unknown[]>;
+type PrepareFunction = (query: string, ...args: unknown[]) => Statement;
+
+type Statement = {
+	all(...args: unknown[]): Promise<unknown[]>;
+	run(...args: unknown[]): Promise<unknown>;
+};
 
 export type RawAccess = {
 	/**
-	 * Executes a raw SQL query.
+	 * Prepares a raw SQL query.
 	 */
-	execute: ExecuteFunction;
+	prepare: PrepareFunction;
 };

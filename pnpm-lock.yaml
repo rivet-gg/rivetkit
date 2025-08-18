@@ -374,6 +374,9 @@ importers:
 
   examples/drizzle:
     dependencies:
+      '@rivetkit/actor':
+        specifier: workspace:*
+        version: link:../../packages/actor
       '@rivetkit/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -384,12 +387,12 @@ importers:
         specifier: ^0.44.2
         version: 0.44.2(@cloudflare/workers-types@4.20250619.0)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@11.10.0)(kysely@0.28.2)
     devDependencies:
+      '@rivetkit/sql-loader':
+        specifier: workspace:*
+        version: link:../../packages/misc/sql-loader
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
-      rivetkit:
-        specifier: workspace:*
-        version: link:../../packages/rivetkit
       tsx:
         specifier: ^3.12.7
         version: 3.14.0

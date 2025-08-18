@@ -181,20 +181,22 @@ export function createActorInspectorRouter() {
 			const db = await c.var.inspector.accessors.getDb();
 
 			// Get list of tables
-			const rows = await db.execute(`PRAGMA table_list`);
+			const rows = await db.prepare(`PRAGMA table_list`).all();
 			const tables = TablesSchema.parse(rows).filter(
 				(table) => table.schema !== "temp" && !table.name.startsWith("sqlite_"),
 			);
 			// Get columns for each table
 			const tablesInfo = await Promise.all(
-				tables.map((table) => db.execute(`PRAGMA table_info(${table.name})`)),
+				tables.map((table) =>
+					db.prepare(`PRAGMA table_info(${table.name})`).all(),
+				),
 			);
 			const columns = tablesInfo.map((def) => ColumnsSchema.parse(def));
 
 			// Get foreign keys for each table
 			const foreignKeysList = await Promise.all(
 				tables.map((table) =>
-					db.execute(`PRAGMA foreign_key_list(${table.name})`),
+					db.prepare(`PRAGMA foreign_key_list(${table.name})`).all(),
 				),
 			);
 			const foreignKeys = foreignKeysList.map((def) =>
@@ -204,7 +206,7 @@ export function createActorInspectorRouter() {
 			// Get record counts for each table
 			const countInfo = await Promise.all(
 				tables.map((table) =>
-					db.execute(`SELECT COUNT(*) as count FROM ${table.name}`),
+					db.prepare(`SELECT COUNT(*) as count FROM ${table.name}`).all(),
 				),
 			);
 			const counts = countInfo.map((def) => {
@@ -239,13 +241,14 @@ export function createActorInspectorRouter() {
 				const db = await c.var.inspector.accessors.getDb();
 
 				try {
-					const result = (await db.execute(
-						c.req.valid("json").query,
-						...(c.req.valid("json").params || []),
-					)) as unknown;
+					const result = (await db
+						.prepare(
+							c.req.valid("json").query,
+							...(c.req.valid("json").params || []),
+						)
+						.all()) as unknown;
 					return c.json({ result }, 200);
 				} catch (error) {
-					c;
 					return c.json({ error: (error as Error).message }, 500);
 				}
 			},

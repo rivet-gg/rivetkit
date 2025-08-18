@@ -60,8 +60,20 @@ export function db<
 				const client = durableDrizzle<TSchema, SQLiteShim>(conn, config);
 				return Object.assign(client, {
 					// client.$client.exec is the underlying SQLite client
-					execute: async (query, ...args) =>
-						client.$client.exec(query, ...args),
+					prepare: (query, ...args) => {
+						return {
+							all: async (...innerArgs) =>
+								client.$client.exec(
+									query,
+									...(innerArgs.length > 0 ? innerArgs : args),
+								) as Promise<unknown[]>,
+							run: async (...innerArgs) =>
+								client.$client.exec(
+									query,
+									...(innerArgs.length > 0 ? innerArgs : args),
+								) as Promise<unknown>,
+						};
+					},
 				} satisfies RawAccess);
 			}
 
@@ -72,8 +84,18 @@ export function db<
 			});
 
 			return Object.assign(client, {
-				execute: async (query, ...args) =>
-					client.$client.prepare(query).all(...args),
+				prepare: (query, ...args) => {
+					return {
+						all: async (...innerArgs) =>
+							client.$client
+								.prepare(query)
+								.all(...(innerArgs.length > 0 ? innerArgs : args)),
+						run: async (...innerArgs) =>
+							client.$client
+								.prepare(query)
+								.run(...(innerArgs.length > 0 ? innerArgs : args)),
+					};
+				},
 			} satisfies RawAccess);
 		},
 		onMigrate: async (client) => {

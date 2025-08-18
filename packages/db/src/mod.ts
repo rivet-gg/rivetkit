@@ -28,16 +28,36 @@ export function db({
 				// If the connection is already an object with exec method, return it
 				// i.e. in serverless environments (Cloudflare Workers)
 				return Object.assign({}, conn, {
-					execute: async (query, ...args) => {
-						return conn.exec(query, ...args);
+					prepare: (query, ...args) => {
+						return {
+							all: (...innerArgs) =>
+								conn.exec(
+									query,
+									...(innerArgs.length > 0 ? innerArgs : args),
+								) as Promise<unknown[]>,
+							run: (...innerArgs) =>
+								conn.exec(
+									query,
+									...(innerArgs.length > 0 ? innerArgs : args),
+								) as Promise<unknown>,
+						};
 					},
 				} satisfies RawAccess) as SQLiteShim & RawAccess;
 			}
 
 			const client = new SQLite(conn as string);
 			return Object.assign({}, client, {
-				execute: async (query, ...args) => {
-					return client.prepare(query).all(...args);
+				prepare: (query, ...args) => {
+					return {
+						all: async (...innerArgs) =>
+							client
+								.prepare(query)
+								.all(...(innerArgs.length > 0 ? innerArgs : args)),
+						run: async (...innerArgs) =>
+							client
+								.prepare(query)
+								.run(...(innerArgs.length > 0 ? innerArgs : args)),
+					};
 				},
 			} satisfies RawAccess) as RawAccess;
 		},
