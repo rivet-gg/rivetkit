@@ -572,14 +572,18 @@ export class ActorInstance<
 					});
 				}
 				this.#persistChanged = true;
-
+				const previousState = structuredClone(this.#persist.s);
 				// Inform the inspector about state changes
 				this.inspector.emitter.emit("stateUpdated", this.#persist.s);
 
 				// Call onStateChange if it exists
 				if (this.#config.onStateChange && this.#ready) {
 					try {
-						this.#config.onStateChange(this.actorContext, this.#persistRaw.s);
+						this.#config.onStateChange(
+							this.actorContext,
+							previousState,
+							this.#persistRaw.s,
+						);
 					} catch (error) {
 						logger().error("error in `_onStateChange`", {
 							error: stringifyError(error),
