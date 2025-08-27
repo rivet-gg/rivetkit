@@ -4,17 +4,9 @@ import type {
 } from "@rivetkit/engine-runner";
 import { Runner } from "@rivetkit/engine-runner";
 import * as cbor from "cbor-x";
-import { WSContext, WSContextInit } from "hono/ws";
+import { WSContext } from "hono/ws";
 import invariant from "invariant";
-import { ActionContext } from "@/actor/action";
-import { generateConnId, generateConnToken } from "@/actor/connection";
-import {
-	CONN_DRIVER_GENERIC_HTTP,
-	type GenericHttpDriverState,
-} from "@/actor/generic-conn-driver";
-import * as protoHttpAction from "@/actor/protocol/http/action";
-import { deserialize, EncodingSchema, serialize } from "@/actor/protocol/serde";
-import { ActorHandle } from "@/client/actor-handle";
+import { EncodingSchema } from "@/actor/protocol/serde";
 import type { Client } from "@/client/client";
 import {
 	type ActorDriver,
@@ -27,10 +19,10 @@ import {
 } from "@/driver-helpers/mod";
 import type {
 	ActorRouter,
-	AnyActorInstance as CoreAnyActorInstance,
 	RegistryConfig,
 	RunConfig,
 	UniversalWebSocket,
+	UpgradeWebSocketArgs,
 } from "@/mod";
 import {
 	createActorRouter,
@@ -51,7 +43,6 @@ import { logger } from "./log";
 interface ActorHandler {
 	actor?: AnyActorInstance;
 	actorStartPromise?: PromiseWithResolvers<void>;
-	metadata: RunnerActorConfig["metadata"];
 	genericConnGlobalState: GenericConnGlobalState;
 	persistedData?: Uint8Array;
 }
@@ -93,6 +84,7 @@ export class EngineActorDriver implements ActorDriver {
 			addresses: config.addresses,
 			totalSlots: config.totalSlots,
 			runnerName: config.runnerName,
+			runnerKey: config.runnerKey,
 			prepopulateActorNames: Object.keys(this.#registryConfig.use),
 			onConnected: () => {
 				if (hasDisconnected) {
@@ -201,13 +193,13 @@ export class EngineActorDriver implements ActorDriver {
 	): Promise<void> {
 		logger().debug("runner actor starting", {
 			actorId,
-			name: config.metadata.actor.name,
-			keys: config.metadata.actor.keys,
+			name: config.name,
+			key: config.key,
 			generation,
 		});
 
 		// Deserialize input
-		let input;
+		let input: any;
 		if (config.input) {
 			input = cbor.decode(config.input);
 		}
@@ -218,19 +210,19 @@ export class EngineActorDriver implements ActorDriver {
 			handler = {
 				genericConnGlobalState: new GenericConnGlobalState(),
 				actorStartPromise: Promise.withResolvers(),
-				metadata: config.metadata,
 				persistedData: serializeEmptyPersistData(input),
 			};
 			this.#actors.set(actorId, handler);
 		}
 
-		const name = config.metadata.actor.name as string;
-		const key = deserializeActorKey(config.metadata.actor.keys[0]);
+		const name = config.name as string;
+		invariant(config.key, "actor should have a key");
+		const key = deserializeActorKey(config.key);
 
 		// Create actor instance
 		const definition = lookupInRegistry(
 			this.#registryConfig,
-			config.metadata.actor.name as string, // TODO: Remove cast
+			config.name as string, // TODO: Remove cast
 		);
 		handler.actor = definition.instantiate();
 
@@ -299,7 +291,7 @@ export class EngineActorDriver implements ActorDriver {
 		// Fetch WS handler
 		//
 		// We store the promise since we need to add WebSocket event listeners immediately that will wait for the promise to resolve
-		let wsHandlerPromise;
+		let wsHandlerPromise: Promise<UpgradeWebSocketArgs>;
 		if (url.pathname === PATH_CONNECT_WEBSOCKET) {
 			wsHandlerPromise = handleWebSocketConnect(
 				request,

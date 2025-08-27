@@ -1,3 +1,3 @@
 export const KEYS = {
-	PERSIST_DATA: [Uint8Array.from([1, 1])],
+	PERSIST_DATA: Uint8Array.from([1, 1]),
 };
