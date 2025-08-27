@@ -7,18 +7,22 @@ export const ConfigSchema = z
 		app: z.custom<Hono>().optional(),
 		endpoint: z
 			.string()
-			.default(getEnvUniversal("RIVET_ENGINE") ?? "http://localhost:7080"),
+			.default(
+				() => getEnvUniversal("RIVET_ENGINE") ?? "http://localhost:7080",
+			),
 		pegboardEndpoint: z.string().optional(),
 		namespace: z
 			.string()
-			.default(getEnvUniversal("RIVET_NAMESPACE") ?? "default"),
+			.default(() => getEnvUniversal("RIVET_NAMESPACE") ?? "default"),
 		runnerName: z
 			.string()
-			.default(getEnvUniversal("RIVET_RUNNER") ?? "rivetkit"),
+			.default(() => getEnvUniversal("RIVET_RUNNER") ?? "rivetkit"),
 		// TODO: Automatically attempt ot determine key by common env vars (e.g. k8s pod name)
 		runnerKey: z
 			.string()
-			.default(getEnvUniversal("RIVET_RUNNER_KEY") ?? crypto.randomUUID()),
+			.default(
+				() => getEnvUniversal("RIVET_RUNNER_KEY") ?? crypto.randomUUID(),
+			),
 		totalSlots: z.number().default(100_000),
 		addresses: z
 			.record(

@@ -92,7 +92,7 @@ export class RedisManagerDriver implements ManagerDriver {
 			return undefined;
 		}
 
-		return this.getForId({ actorId });
+		return this.getForId({ name, actorId });
 	}
 
 	async getOrCreateWithKey(

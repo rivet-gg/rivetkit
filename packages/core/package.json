@@ -166,13 +166,13 @@
     "nanoevents": "^9.1.0",
     "on-change": "^5.0.1",
     "p-retry": "^6.2.1",
-    "zod": "^3.25.76"
+    "zod": "^3.25.76",
+    "@rivetkit/engine-runner": "https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-runner@f8860f3"
   },
   "devDependencies": {
     "@hono/node-server": "^1.18.2",
     "@hono/node-ws": "^1.1.1",
     "@rivet-gg/actor-core": "^25.1.0",
-    "@rivetkit/engine-runner": "https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-runner@7f23f3a",
     "@types/invariant": "^2",
     "@types/node": "^22.13.1",
     "@types/ws": "^8",
