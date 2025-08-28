@@ -40,9 +40,9 @@ export class EngineManagerDriver implements ManagerDriver {
 	constructor(config: Config, runConfig: RunConfig) {
 		this.#config = config;
 		this.#runConfig = runConfig;
-		if (!this.#runConfig.studio.token()) {
+		if (!this.#runConfig.inspector.token()) {
 			const token = generateRandomString();
-			this.#runConfig.studio.token = () => token;
+			this.#runConfig.inspector.token = () => token;
 		}
 		this.#importWebSocketPromise = importWebSocket();
 	}

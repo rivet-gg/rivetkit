@@ -39,7 +39,7 @@ export const RunConfigSchema = z
 
 		maxIncomingMessageSize: z.number().optional().default(65_536),
 
-		studio: InspectorConfigSchema,
+		inspector: InspectorConfigSchema,
 
 		/**
 		 * Base path for the router. This is used to prefix all routes.

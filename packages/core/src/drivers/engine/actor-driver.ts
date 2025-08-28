@@ -85,7 +85,7 @@ export class EngineActorDriver implements ActorDriver {
 			runnerName: config.runnerName,
 			runnerKey: config.runnerKey,
 			metadata: {
-				inspectorToken: this.#runConfig.studio.token(),
+				inspectorToken: this.#runConfig.inspector.token(),
 			},
 			prepopulateActorNames: Object.fromEntries(
 				Object.keys(this.#registryConfig.use).map((name) => [

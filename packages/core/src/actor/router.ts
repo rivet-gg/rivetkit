@@ -235,7 +235,7 @@ export function createActorRouter(
 		}
 	});
 
-	if (runConfig.studio.enabled) {
+	if (runConfig.inspector.enabled) {
 		router.route(
 			"/inspect",
 			new Hono<ActorInspectorRouterEnv & { Bindings: ActorRouterBindings }>()

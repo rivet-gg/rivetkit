@@ -160,7 +160,7 @@ export function createManagerRouter(
 
 	router.use("*", loggerMiddleware(logger()));
 
-	if (runConfig.cors || runConfig.studio?.cors) {
+	if (runConfig.cors || runConfig.inspector?.cors) {
 		router.use("*", async (c, next) => {
 			// Don't apply to WebSocket routes
 			// HACK: This could be insecure if we had a varargs path. We have to check the path suffix for WS since we don't know the path that this router was mounted.
@@ -179,19 +179,19 @@ export function createManagerRouter(
 
 			return cors({
 				...(runConfig.cors ?? {}),
-				...(runConfig.studio?.cors ?? {}),
+				...(runConfig.inspector?.cors ?? {}),
 				origin: (origin, c) => {
-					const studioOrigin = runConfig.studio?.cors?.origin;
+					const inspectorOrigin = runConfig.inspector?.cors?.origin;
 
-					if (studioOrigin !== undefined) {
-						if (typeof studioOrigin === "function") {
-							const allowed = studioOrigin(origin, c);
+					if (inspectorOrigin !== undefined) {
+						if (typeof inspectorOrigin === "function") {
+							const allowed = inspectorOrigin(origin, c);
 							if (allowed) return allowed;
 							// Proceed to next CORS config if none provided
-						} else if (Array.isArray(studioOrigin)) {
-							return studioOrigin.includes(origin) ? origin : undefined;
+						} else if (Array.isArray(inspectorOrigin)) {
+							return inspectorOrigin.includes(origin) ? origin : undefined;
 						} else {
-							return studioOrigin;
+							return inspectorOrigin;
 						}
 					}
 
@@ -207,12 +207,12 @@ export function createManagerRouter(
 					return null;
 				},
 				allowMethods: (origin, c) => {
-					const studioMethods = runConfig.studio?.cors?.allowMethods;
-					if (studioMethods) {
-						if (typeof studioMethods === "function") {
-							return studioMethods(origin, c);
+					const inspectorMethods = runConfig.inspector?.cors?.allowMethods;
+					if (inspectorMethods) {
+						if (typeof inspectorMethods === "function") {
+							return inspectorMethods(origin, c);
 						}
-						return studioMethods;
+						return inspectorMethods;
 					}
 
 					if (runConfig.cors?.allowMethods) {
@@ -226,14 +226,14 @@ export function createManagerRouter(
 				},
 				allowHeaders: [
 					...(runConfig.cors?.allowHeaders ?? []),
-					...(runConfig.studio?.cors?.allowHeaders ?? []),
+					...(runConfig.inspector?.cors?.allowHeaders ?? []),
 					...ALLOWED_PUBLIC_HEADERS,
 					"Content-Type",
 					"User-Agent",
 				],
 				credentials:
 					runConfig.cors?.credentials ??
-					runConfig.studio?.cors?.credentials ??
+					runConfig.inspector?.cors?.credentials ??
 					true,
 			})(c, next);
 		});
@@ -562,12 +562,12 @@ export function createManagerRouter(
 		});
 	}
 
-	if (runConfig.studio?.enabled) {
+	if (runConfig.inspector?.enabled) {
 		router.route(
 			"/actors/inspect",
 			new Hono()
 				.use(
-					cors(runConfig.studio.cors),
+					cors(runConfig.inspector.cors),
 					secureInspector(runConfig),
 					universalActorProxy({
 						registryConfig,
@@ -584,7 +584,7 @@ export function createManagerRouter(
 			"/inspect",
 			new Hono()
 				.use(
-					cors(runConfig.studio.cors),
+					cors(runConfig.inspector.cors),
 					secureInspector(runConfig),
 					async (c, next) => {
 						const inspector = managerDriver.inspector;
