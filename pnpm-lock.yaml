@@ -1012,8 +1012,8 @@ importers:
         specifier: ^0.19.10
         version: 0.19.10(hono@4.8.3)(zod@3.25.76)
       '@rivetkit/engine-runner':
-        specifier: https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-runner@f8860f3
-        version: https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-runner@f8860f3(hono@4.8.3)
+        specifier: https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-runner@4b0f765
+        version: https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-runner@4b0f765(hono@4.8.3)
       '@rivetkit/fast-json-patch':
         specifier: ^3.1.2
         version: 3.1.2
@@ -1492,6 +1492,9 @@ packages:
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [win32]
+
+  '@borewit/text-codec@0.1.1':
+    resolution: {integrity: sha512-5L/uBxmjaCIX5h8Z+uu+kA9BQLkc/Wl06UGR5ajNRxu+/XjonB5i8JpgFMrPj3LXTCPA0pv8yxUvbUi+QthGGA==}
 
   '@cbor-extract/cbor-extract-darwin-arm64@2.2.0':
     resolution: {integrity: sha512-P7swiOAdF7aSi0H+tHtHtr6zrpF3aAq/W9FXx5HektRvLTM2O89xCyXF3pk7pLc7QpaY7AoaE8UowVf9QBdh3w==}
@@ -2578,12 +2581,12 @@ packages:
   '@rivet-gg/actor-core@25.2.0':
     resolution: {integrity: sha512-4K72XcDLVAz44Ae6G6GuyzWyxQZOLN8jM/W+sVKm6fHr70X8FNCSC5+/9hFIxz/OH9E6q6Wi3V/UN/k6immUBQ==}
 
-  '@rivetkit/engine-runner-protocol@https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-runner-protocol@f8860f3d1923948346447af2164a1953319c5987':
-    resolution: {tarball: https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-runner-protocol@f8860f3d1923948346447af2164a1953319c5987}
+  '@rivetkit/engine-runner-protocol@https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-runner-protocol@4b0f76504c5028a6363af8bbcddcda9555acf315':
+    resolution: {tarball: https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-runner-protocol@4b0f76504c5028a6363af8bbcddcda9555acf315}
     version: 1.0.0
 
-  '@rivetkit/engine-runner@https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-runner@f8860f3':
-    resolution: {tarball: https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-runner@f8860f3}
+  '@rivetkit/engine-runner@https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-runner@4b0f765':
+    resolution: {tarball: https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-runner@4b0f765}
     version: 0.0.0
 
   '@rivetkit/fast-json-patch@3.1.2':
@@ -4535,8 +4538,8 @@ packages:
   strip-literal@3.0.0:
     resolution: {integrity: sha512-TcccoMhJOM3OebGhSBEmp3UZ2SfDMZUEBdRA/9ynfLi8yYajyWX3JiXArcJt4Umh4vISpspkQIY8ZZoCqjbviA==}
 
-  strtok3@10.3.2:
-    resolution: {integrity: sha512-or9w505RhhY66+uoe5YOC5QO/bRuATaoim3XTh+pGKx5VMWi/HDhMKuCjDLsLJouU2zg9Hf1nLPcNW7IHv80kQ==}
+  strtok3@10.3.4:
+    resolution: {integrity: sha512-KIy5nylvC5le1OdaaoCJ07L+8iQzJHGH6pWDuzS+d07Cu7n1MZ2x26P8ZKIWfbK02+XIL8Mp4RkWeqdUCrDMfg==}
     engines: {node: '>=18'}
 
   styled-jsx@5.1.6:
@@ -4625,8 +4628,8 @@ packages:
     resolution: {integrity: sha512-o5sSPKEkg/DIQNmH43V0/uerLrpzVedkUh8tGNvaeXpfpuwjKenlSox/2O/BTlZUtEe+JG7s5YhEz608PlAHRA==}
     engines: {node: '>=0.6'}
 
-  token-types@6.0.3:
-    resolution: {integrity: sha512-IKJ6EzuPPWtKtEIEPpIdXv9j5j2LGJEYk0CKY2efgKoYKLBiZdh6iQkLVBow/CB3phyWAWCyk+bZeaimJn6uRQ==}
+  token-types@6.1.1:
+    resolution: {integrity: sha512-kh9LVIWH5CnL63Ipf0jhlBIy0UsrMj/NJDfpsy1SqOXlLKEVyXXYrnFxFT1yOOYVGBSApeVnjPw/sBz5BfEjAQ==}
     engines: {node: '>=14.16'}
 
   totalist@3.0.1:
@@ -4728,8 +4731,8 @@ packages:
   ufo@1.6.1:
     resolution: {integrity: sha512-9a4/uxlTWJ4+a5i0ooc1rU7C7YOw3wT+UGqdeNNHWnOF9qcMBgLRS+4IYUqbczewFx4mLEig6gawh7X6mFlEkA==}
 
-  uint8array-extras@1.4.0:
-    resolution: {integrity: sha512-ZPtzy0hu4cZjv3z5NW9gfKnNLjoz4y6uv4HlelAjDK7sY/xOkKZv9xK/WQpcsBB3jEybChz9DPC2U/+cusjJVQ==}
+  uint8array-extras@1.5.0:
+    resolution: {integrity: sha512-rvKSBiC5zqCCiDZ9kAOszZcDvdAHwwIKJG33Ykj43OKcWsnmcBRL09YTU4nOeHZ8Y2a7l1MgTd08SBe9A8Qj6A==}
     engines: {node: '>=18'}
 
   uncrypto@0.1.3:
@@ -5249,6 +5252,8 @@ snapshots:
 
   '@biomejs/cli-win32-x64@2.1.1':
     optional: true
+
+  '@borewit/text-codec@0.1.1': {}
 
   '@cbor-extract/cbor-extract-darwin-arm64@2.2.0':
     optional: true
@@ -6001,14 +6006,14 @@ snapshots:
     dependencies:
       zod: 3.25.76
 
-  '@rivetkit/engine-runner-protocol@https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-runner-protocol@f8860f3d1923948346447af2164a1953319c5987':
+  '@rivetkit/engine-runner-protocol@https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-runner-protocol@4b0f76504c5028a6363af8bbcddcda9555acf315':
     dependencies:
       '@bare-ts/lib': 0.4.0
 
-  '@rivetkit/engine-runner@https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-runner@f8860f3(hono@4.8.3)':
+  '@rivetkit/engine-runner@https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-runner@4b0f765(hono@4.8.3)':
     dependencies:
       '@hono/node-server': 1.18.2(hono@4.8.3)
-      '@rivetkit/engine-runner-protocol': https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-runner-protocol@f8860f3d1923948346447af2164a1953319c5987
+      '@rivetkit/engine-runner-protocol': https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-runner-protocol@4b0f76504c5028a6363af8bbcddcda9555acf315
       ws: 8.18.3
     transitivePeerDependencies:
       - bufferutil
@@ -6187,7 +6192,7 @@ snapshots:
     dependencies:
       debug: 4.4.1
       fflate: 0.8.2
-      token-types: 6.0.3
+      token-types: 6.1.1
     transitivePeerDependencies:
       - supports-color
 
@@ -7135,9 +7140,9 @@ snapshots:
   file-type@21.0.0:
     dependencies:
       '@tokenizer/inflate': 0.2.7
-      strtok3: 10.3.2
-      token-types: 6.0.3
-      uint8array-extras: 1.4.0
+      strtok3: 10.3.4
+      token-types: 6.1.1
+      uint8array-extras: 1.5.0
     transitivePeerDependencies:
       - supports-color
 
@@ -8110,7 +8115,7 @@ snapshots:
     dependencies:
       js-tokens: 9.0.1
 
-  strtok3@10.3.2:
+  strtok3@10.3.4:
     dependencies:
       '@tokenizer/token': 0.3.0
 
@@ -8193,8 +8198,9 @@ snapshots:
 
   toidentifier@1.0.1: {}
 
-  token-types@6.0.3:
+  token-types@6.1.1:
     dependencies:
+      '@borewit/text-codec': 0.1.1
       '@tokenizer/token': 0.3.0
       ieee754: 1.2.1
 
@@ -8326,7 +8332,7 @@ snapshots:
 
   ufo@1.6.1: {}
 
-  uint8array-extras@1.4.0: {}
+  uint8array-extras@1.5.0: {}
 
   uncrypto@0.1.3: {}
 
