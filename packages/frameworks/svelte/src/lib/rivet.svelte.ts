@@ -1,13 +1,79 @@
-import type * as _rivetkit_core_client from "@rivetkit/core/client";
-import type { Client, ExtractActorsFromRegistry } from "@rivetkit/core/client";
+import type {
+	ActorConn,
+	ActorHandle,
+	AnyActorDefinition,
+	Client,
+	ExtractActorsFromRegistry,
+} from "@rivetkit/core/client";
 import {
 	type ActorOptions,
-	type ActorsStateDerived,
 	type AnyActorRegistry,
 	type CreateRivetKitOptions,
 	createRivetKit as createVanillaRivetKit,
 } from "@rivetkit/framework-base";
-import { BROWSER } from "esm-env";
+import { useStore } from "@tanstack/svelte-store";
+
+export interface ActorStateReference<AD extends AnyActorDefinition> {
+	/**
+	 * The unique identifier for the actor.
+	 * This is a hash generated from the actor's options.
+	 * It is used to identify the actor instance in the store.
+	 * @internal
+	 */
+	hash: string;
+	/**
+	 * The state of the actor, derived from the store.
+	 * This includes the actor's connection and handle.
+	 */
+	handle: ActorHandle<AD> | null;
+	/**
+	 * The connection to the actor.
+	 * This is used to communicate with the actor in realtime.
+	 */
+	connection: ActorConn<AD> | null;
+	/**
+	 * Whether the actor is enabled.
+	 */
+	isConnected?: boolean;
+	/**
+	 * Whether the actor is currently connecting, indicating that a connection attempt is in progress.
+	 */
+	isConnecting?: boolean;
+	/**
+	 * Whether there was an error connecting to the actor.
+	 */
+	isError?: boolean;
+	/**
+	 * The error that occurred while trying to connect to the actor, if any.
+	 */
+	error: Error | null;
+	/**
+	 * Options for the actor, including its name, key, parameters, and whether it is enabled.
+	 */
+	opts: {
+		name: keyof AD;
+		/**
+		 * Unique key for the actor instance.
+		 * This can be a string or an array of strings to create multiple instances.
+		 * @example "abc" or ["abc", "def"]
+		 */
+		key: string | string[];
+		/**
+		 * Parameters for the actor.
+		 * These are additional options that can be passed to the actor.
+		 */
+		params?: Record<string, string>;
+		/** Region to create the actor in if it doesn't exist. */
+		createInRegion?: string;
+		/** Input data to pass to the actor. */
+		createWithInput?: unknown;
+		/**
+		 * Whether the actor is enabled.
+		 * Defaults to true.
+		 */
+		enabled?: boolean;
+	};
+}
 
 export { createClient } from "@rivetkit/core/client";
 
@@ -34,129 +100,86 @@ export function createRivetKit<Registry extends AnyActorRegistry>(
 	>(
 		opts: ActorOptions<Registry, ActorName>,
 	): {
-		connection: _rivetkit_core_client.ActorConn<
-			ExtractActorsFromRegistry<Registry>[ActorName]
-		> | null;
-		handle: _rivetkit_core_client.ActorHandle<
-			ExtractActorsFromRegistry<Registry>[ActorName]
-		> | null;
-		isConnected: boolean | undefined;
-		isConnecting: boolean | undefined;
-		actorOpts: {
-			name: keyof ExtractActorsFromRegistry<Registry>;
-			key: string | string[];
-			params?: Record<string, string>;
-			enabled?: boolean;
+		current: Omit<
+			ActorStateReference<ExtractActorsFromRegistry<Registry>>,
+			"handle" | "connection"
+		> & {
+			handle: ActorHandle<
+				ExtractActorsFromRegistry<Registry>[ActorName]
+			> | null;
+			connection: ActorConn<
+				ExtractActorsFromRegistry<Registry>[ActorName]
+			> | null;
 		};
-		isError: boolean | undefined;
-		error: Error | null;
-		hash: string;
 		useEvent: (eventName: string, handler: (...args: any[]) => void) => void;
 	} {
 		const { mount, setState, state } = getOrCreateActor<ActorName>(opts);
 
-		let connection = $state<_rivetkit_core_client.ActorConn<
-			ExtractActorsFromRegistry<Registry>[ActorName]
-		> | null>(null);
-		let handle = $state<_rivetkit_core_client.ActorHandle<
-			ExtractActorsFromRegistry<Registry>[ActorName]
-		> | null>(null);
-		let isConnected = $state<boolean | undefined>(false);
-		let isConnecting = $state<boolean | undefined>(false);
-		let actorOpts = $state<{
-			name: keyof ExtractActorsFromRegistry<Registry>;
-			key: string | string[];
-			params?: Record<string, string>;
-			enabled?: boolean;
-		}>({} as any);
-
-		let isError = $state<boolean | undefined>(undefined);
-
-		let error = $state<Error | null>(null);
-		let hash = $state<string>("");
-
-		// Only run in browser to avoid SSR issues
-		if (BROWSER) {
-			state.subscribe((newData) => {
-				connection = newData.currentVal.connection;
-				handle = newData.currentVal.handle;
-				isConnected = newData.currentVal.isConnected;
-				isConnecting = newData.currentVal.isConnecting;
-				actorOpts = newData.currentVal.opts;
-				isError = newData.currentVal.isError;
-				error = newData.currentVal.error;
-				hash = newData.currentVal.hash;
+		// Update options reactively
+		$effect.root(() => {
+			setState((prev) => {
+				prev.opts = {
+					...opts,
+					enabled: opts.enabled ?? true,
+				} as any;
+				return prev;
 			});
+		});
 
-			// Update options reactively
-			$effect.root(() => {
-				setState((prev) => {
-					prev.opts = {
-						...opts,
-						enabled: opts.enabled ?? true,
-					} as any;
-					return prev;
-				});
-			});
+		// Mount and subscribe to state changes
+		$effect.root(() => {
+			mount();
+		});
+		const actorState = useStore(state);
 
-			// Mount and subscribe to state changes
-			$effect.root(() => {
-				mount();
-			});
-		}
-
-		/**
-		 * Function to listen for events emitted by the actor.
-		 * This function allows you to subscribe to specific events emitted by the actor
-		 * and execute a handler function when the event occurs.
-		 * It automatically manages the event listener lifecycle.
-		 * @param eventName The name of the event to listen for.
-		 * @param handler The function to call when the event is emitted.
-		 */
 		function useEvent(
 			eventName: string,
 			// biome-ignore lint/suspicious/noExplicitAny: strong typing of handler is not supported yet
 			handler: (...args: any[]) => void,
-		): void {
-			const connection = $derived<_rivetkit_core_client.ActorConn<
-				ExtractActorsFromRegistry<Registry>[ActorName]
-			> | null>(state.state.connection);
+		) {
+			let ref = $state(handler);
+			const actorState = useStore(state) || {};
 
-			let connSubs: any;
-			$effect.root(() => {
-				connSubs = connection?.on(eventName, handler);
-				// Cleanup function
-				return () => {
-					connSubs?.();
-				};
+			$effect(() => {
+				ref = handler;
+			});
+			$effect(() => {
+				if (!actorState?.current?.connection) return;
+				function eventHandler(...args: any[]) {
+					ref(...args);
+				}
+				return actorState.current.connection.on(eventName, eventHandler);
 			});
 		}
 
-		return {
+		const current = {
 			get connection() {
-				return connection;
+				return actorState.current?.connection;
 			},
 			get handle() {
-				return handle;
+				return actorState.current?.handle;
 			},
 			get isConnected() {
-				return isConnected;
+				return actorState.current?.isConnected;
 			},
 			get isConnecting() {
-				return isConnecting;
-			},
-			get actorOpts() {
-				return actorOpts;
+				return actorState.current?.isConnecting;
 			},
 			get isError() {
-				return isError;
+				return actorState.current?.isError;
 			},
 			get error() {
-				return error;
+				return actorState.current?.error;
+			},
+			get opts() {
+				return actorState.current?.opts;
 			},
 			get hash() {
-				return hash;
+				return actorState.current?.hash;
 			},
+		};
+		return {
+			current,
 			useEvent,
 		};
 	}
