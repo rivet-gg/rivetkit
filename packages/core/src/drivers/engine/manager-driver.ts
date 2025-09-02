@@ -1,14 +1,14 @@
 import * as cbor from "cbor-x";
 import type { Context as HonoContext } from "hono";
-import type { WSContext } from "hono/ws";
 import invariant from "invariant";
-import { ActorAlreadyExists, InternalError } from "@/actor/errors";
+import { ActorAlreadyExists } from "@/actor/errors";
 import {
 	HEADER_AUTH_DATA,
 	HEADER_CONN_PARAMS,
 	HEADER_ENCODING,
 	HEADER_EXPOSE_INTERNAL_ERROR,
 } from "@/actor/router-endpoints";
+import { generateRandomString } from "@/actor/utils";
 import { importWebSocket } from "@/common/websocket";
 import type {
 	ActorOutput,
@@ -40,6 +40,10 @@ export class EngineManagerDriver implements ManagerDriver {
 	constructor(config: Config, runConfig: RunConfig) {
 		this.#config = config;
 		this.#runConfig = runConfig;
+		if (!this.#runConfig.studio.token()) {
+			const token = generateRandomString();
+			this.#runConfig.studio.token = () => token;
+		}
 		this.#importWebSocketPromise = importWebSocket();
 	}
 

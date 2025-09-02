@@ -31,7 +31,6 @@ import {
 	handleRawWebSocketHandler,
 	handleWebSocketConnect,
 	lookupInRegistry,
-	noopNext,
 	PATH_CONNECT_WEBSOCKET,
 	PATH_RAW_WEBSOCKET_PREFIX,
 } from "@/mod";
@@ -85,7 +84,15 @@ export class EngineActorDriver implements ActorDriver {
 			totalSlots: config.totalSlots,
 			runnerName: config.runnerName,
 			runnerKey: config.runnerKey,
-			prepopulateActorNames: Object.keys(this.#registryConfig.use),
+			metadata: {
+				inspectorToken: this.#runConfig.studio.token(),
+			},
+			prepopulateActorNames: Object.fromEntries(
+				Object.keys(this.#registryConfig.use).map((name) => [
+					name,
+					{ metadata: {} },
+				]),
+			),
 			onConnected: () => {
 				if (hasDisconnected) {
 					logger().info("runner reconnected", {
