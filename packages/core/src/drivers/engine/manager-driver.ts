@@ -365,7 +365,7 @@ function buildGuardHeadersForHttp(
 	// Add guard-specific headers
 	headers.set("x-rivet-target", "actor");
 	headers.set("x-rivet-actor", actorId);
-	headers.set("x-rivet-addr", "main");
+	headers.set("x-rivet-port", "main");
 	return headers;
 }
 
@@ -378,7 +378,7 @@ function buildGuardHeadersForWebSocket(
 	const headers: Record<string, string> = {};
 	headers["x-rivet-target"] = "actor";
 	headers["x-rivet-actor"] = actorId;
-	headers["x-rivet-addr"] = "main";
+	headers["x-rivet-port"] = "main";
 	headers[HEADER_EXPOSE_INTERNAL_ERROR] = "true";
 	headers[HEADER_ENCODING] = encoding;
 	if (params) {

@@ -80,7 +80,6 @@ export class EngineActorDriver implements ActorDriver {
 			endpoint: config.endpoint,
 			pegboardEndpoint: config.pegboardEndpoint,
 			namespace: config.namespace,
-			addresses: config.addresses,
 			totalSlots: config.totalSlots,
 			runnerName: config.runnerName,
 			runnerKey: config.runnerKey,
