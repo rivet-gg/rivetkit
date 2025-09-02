@@ -1,6 +1,6 @@
 {
   "name": "example-raw-websocket-handler-proxy",
-  "version": "0.9.9",
+  "version": "2.0.0",
   "private": true,
   "description": "RivetKit example demonstrating raw WebSocket handler",
   "keywords": [
