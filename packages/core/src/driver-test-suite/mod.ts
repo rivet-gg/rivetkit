@@ -157,7 +157,7 @@ export async function createTestRuntime(
 	});
 
 	// Create router
-	const managerDriver = config.driver.manager(registry.config, config);
+	const managerDriver = driver.manager(registry.config, config);
 	const inlineDriver = createInlineClientDriver(managerDriver);
 	const { router } = createManagerRouter(
 		registry.config,

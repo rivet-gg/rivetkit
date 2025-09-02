@@ -39,9 +39,7 @@ export interface ActorDriver {
 	 */
 	getDatabase(actorId: string): Promise<unknown | undefined>;
 
-	// TODO:
-	//destroy(): Promise<void>;
-	//readState(): void;
+	shutdown?(immediate: boolean): Promise<void>;
 }
 
 export enum ConnectionReadyState {

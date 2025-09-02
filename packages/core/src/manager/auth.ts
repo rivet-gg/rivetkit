@@ -40,6 +40,7 @@ export async function getActorNameFromQuery(
 		// TODO: This will have a duplicate call to getForId between this and queryActor
 		const output = await driver.getForId({
 			c,
+			name: query.getForId.name,
 			actorId: query.getForId.actorId,
 		});
 		if (!output) throw new errors.ActorNotFound(query.getForId.actorId);

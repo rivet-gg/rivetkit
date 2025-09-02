@@ -1,6 +1,7 @@
 import type { Hono } from "hono";
 import { createActorRouter } from "@/actor/router";
 import { type Client, createClientWithDriver } from "@/client/client";
+import { chooseDefaultDriver } from "@/drivers/default";
 import { createInlineClientDriver } from "@/inline-client-driver/mod";
 import { getStudioUrl } from "@/inspector/utils";
 import { createManagerRouter } from "@/manager/router";
@@ -26,12 +27,6 @@ interface ServerOutput<A extends Registry<any>> {
 	serve: (hono?: Hono) => void;
 }
 
-interface ActorNodeOutput {
-	hono: Hono<any>;
-	handler: (req: Request) => Promise<Response>;
-	serve: (hono?: Hono) => void;
-}
-
 export class Registry<A extends RegistryActors> {
 	#config: RegistryConfig;
 
@@ -49,6 +44,9 @@ export class Registry<A extends RegistryActors> {
 	public createServer(inputConfig?: RunConfigInput): ServerOutput<this> {
 		const config = RunConfigSchema.parse(inputConfig);
 
+		// Choose the driver based on configuration
+		const driver = chooseDefaultDriver(config);
+
 		// Configure getUpgradeWebSocket lazily so we can assign it in crossPlatformServe
 		let upgradeWebSocket: any;
 		if (!config.getUpgradeWebSocket) {
@@ -56,7 +54,7 @@ export class Registry<A extends RegistryActors> {
 		}
 
 		// Create router
-		const managerDriver = config.driver.manager(this.#config, config);
+		const managerDriver = driver.manager(this.#config, config);
 		const clientDriver = createInlineClientDriver(managerDriver);
 		const { router: hono } = createManagerRouter(
 			this.#config,
@@ -71,7 +69,7 @@ export class Registry<A extends RegistryActors> {
 
 		const driverLog = managerDriver.extraStartupLog?.() ?? {};
 		logger().info("rivetkit ready", {
-			driver: config.driver.name,
+			driver: driver.name,
 			definitions: Object.keys(this.#config.use).length,
 			...driverLog,
 		});
@@ -79,6 +77,20 @@ export class Registry<A extends RegistryActors> {
 			logger().info("studio ready", {
 				url: getStudioUrl(config),
 			});
+		}
+
+		// Create runner
+		if (config.role === "all" || config.role === "runner") {
+			const inlineClient = createClientWithDriver(
+				createInlineClientDriver(managerDriver),
+			);
+			const _actorDriver = driver.actor(
+				this.#config,
+				config,
+				managerDriver,
+				inlineClient,
+			);
+			// TODO: What do we do with the actor driver here?
 		}
 
 		return {
@@ -97,49 +109,6 @@ export class Registry<A extends RegistryActors> {
 	 */
 	public async runServer(inputConfig?: RunConfigInput) {
 		const { serve } = this.createServer(inputConfig);
-		serve();
-	}
-
-	/**
-	 * Creates a worker for the registry.
-	 */
-	public createWorker(inputConfig?: RunConfigInput): ActorNodeOutput {
-		const config = RunConfigSchema.parse(inputConfig);
-
-		// Configure getUpgradeWebSocket lazily so we can assign it in crossPlatformServe
-		let upgradeWebSocket: any;
-		if (!config.getUpgradeWebSocket) {
-			config.getUpgradeWebSocket = () => upgradeWebSocket!;
-		}
-
-		// Create router
-		const managerDriver = config.driver.manager(this.#config, config);
-		const inlineClient = createClientWithDriver(
-			createInlineClientDriver(managerDriver),
-		);
-		const actorDriver = config.driver.actor(
-			this.#config,
-			config,
-			managerDriver,
-			inlineClient,
-		);
-		const hono = createActorRouter(config, actorDriver);
-
-		return {
-			hono,
-			handler: async (req: Request) => await hono.fetch(req),
-			serve: async (app) => {
-				const out = await crossPlatformServe(hono, app);
-				upgradeWebSocket = out.upgradeWebSocket;
-			},
-		};
-	}
-
-	/**
-	 * Runs the standalone worker.
-	 */
-	public async runWorker(inputConfig?: RunConfigInput) {
-		const { serve } = this.createWorker(inputConfig);
 		serve();
 	}
 }

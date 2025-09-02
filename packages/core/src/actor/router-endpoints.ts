@@ -101,7 +101,7 @@ export interface WebSocketOpts {
  * Creates a WebSocket connection handler
  */
 export async function handleWebSocketConnect(
-	c: HonoContext | undefined,
+	req: Request | undefined,
 	runConfig: RunConfig,
 	actorDriver: ActorDriver,
 	actorId: string,
@@ -109,7 +109,7 @@ export async function handleWebSocketConnect(
 	parameters: unknown,
 	authData: unknown,
 ): Promise<UpgradeWebSocketArgs> {
-	const exposeInternalError = c ? getRequestExposeInternalError(c.req) : false;
+	const exposeInternalError = req ? getRequestExposeInternalError(req) : false;
 
 	// Setup promise for the init handlers since all other behavior depends on this
 	const {
@@ -157,7 +157,7 @@ export async function handleWebSocketConnect(
 				try {
 					const connId = generateConnId();
 					const connToken = generateConnToken();
-					const connState = await actor.prepareConn(parameters, c?.req.raw);
+					const connState = await actor.prepareConn(parameters, req);
 
 					// Save socket
 					const connGlobalState =
@@ -578,7 +578,7 @@ export async function handleConnectionMessage(
 }
 
 export async function handleRawWebSocketHandler(
-	c: HonoContext | undefined,
+	req: Request | undefined,
 	path: string,
 	actorDriver: ActorDriver,
 	actorId: string,
@@ -602,8 +602,8 @@ export async function handleRawWebSocketHandler(
 			const normalizedPath = pathname + url.search;
 
 			let newRequest: Request;
-			if (c) {
-				newRequest = new Request(`http://actor${normalizedPath}`, c.req.raw);
+			if (req) {
+				newRequest = new Request(`http://actor${normalizedPath}`, req);
 			} else {
 				newRequest = new Request(`http://actor${normalizedPath}`, {
 					method: "GET",
@@ -660,8 +660,8 @@ export function getRequestEncoding(req: HonoRequest): Encoding {
 	return result.data;
 }
 
-export function getRequestExposeInternalError(req: HonoRequest): boolean {
-	const param = req.header(HEADER_EXPOSE_INTERNAL_ERROR);
+export function getRequestExposeInternalError(req: Request): boolean {
+	const param = req.headers.get(HEADER_EXPOSE_INTERNAL_ERROR);
 	if (!param) {
 		return false;
 	}

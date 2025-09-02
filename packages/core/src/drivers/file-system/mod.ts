@@ -13,10 +13,15 @@ export function createFileSystemOrMemoryDriver(
 	customPath?: string,
 ): DriverConfig {
 	const state = new FileSystemGlobalState(persist, customPath);
-	return {
+	const driverConfig: DriverConfig = {
 		name: persist ? "file-system" : "memory",
 		manager: (registryConfig, runConfig) =>
-			new FileSystemManagerDriver(registryConfig, runConfig, state),
+			new FileSystemManagerDriver(
+				registryConfig,
+				runConfig,
+				state,
+				driverConfig,
+			),
 		actor: (registryConfig, runConfig, managerDriver, inlineClient) =>
 			new FileSystemActorDriver(
 				registryConfig,
@@ -26,6 +31,7 @@ export function createFileSystemOrMemoryDriver(
 				state,
 			),
 	};
+	return driverConfig;
 }
 
 export function createFileSystemDriver(opts?: { path?: string }): DriverConfig {
