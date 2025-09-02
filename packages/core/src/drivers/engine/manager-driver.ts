@@ -157,7 +157,7 @@ export class EngineManagerDriver implements ManagerDriver {
 				return undefined;
 			}
 
-			const keyRaw = response.actor.keys[0];
+			const keyRaw = response.actor.key;
 			invariant(keyRaw, `actor ${actorId} should have key`);
 			const key = deserializeActorKey(keyRaw);
 
@@ -233,10 +233,10 @@ export class EngineManagerDriver implements ManagerDriver {
 
 		const response = await getOrCreateActorById(this.#config, {
 			name,
-			keys: [serializeActorKey(key)],
+			key: serializeActorKey(key),
 			runner_name_selector: this.#config.runnerName,
 			input: input ? cbor.encode(actorInput).toString("base64") : undefined,
-			durable: true,
+			crash_policy: "restart",
 		});
 
 		const actorId = response.actor_id;
@@ -273,9 +273,9 @@ export class EngineManagerDriver implements ManagerDriver {
 		const result = await createActor(this.#config, {
 			name,
 			runner_name_selector: this.#config.runnerName,
-			keys: [serializeActorKey(key)],
+			key: serializeActorKey(key),
 			input: input ? cbor.encode(input).toString("base64") : null,
-			durable: true,
+			crash_policy: "restart",
 		});
 		const actorId = result.actor.actor_id;
 

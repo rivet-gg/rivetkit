@@ -178,7 +178,10 @@ export class EngineActorDriver implements ActorDriver {
 		// TODO: Use alarm on sleep
 		// TODO: Send alarm to runner
 
-		throw new Error("Alarms not implemented for engine driver");
+		const delay = Math.max(timestamp - Date.now(), 0);
+		setTimeout(() => {
+			actor.onAlarm();
+		}, delay);
 	}
 
 	async getDatabase(_actorId: string): Promise<unknown | undefined> {

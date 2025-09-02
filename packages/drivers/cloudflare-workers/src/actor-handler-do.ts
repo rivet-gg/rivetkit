@@ -12,6 +12,7 @@ import {
 } from "@rivetkit/core";
 import { serializeEmptyPersistData } from "@rivetkit/core/driver-helpers";
 import type { ExecutionContext } from "hono";
+import invariant from "invariant";
 import {
 	CloudflareDurableObjectGlobalState,
 	createCloudflareActorsActorDriverBuilder,
@@ -113,6 +114,7 @@ export function createActorDurableObject(
 			globalState.setDOState(actorId, { ctx: this.ctx, env: env });
 
 			// Configure actor driver
+			invariant(runConfig.driver, "runConfig.driver");
 			runConfig.driver.actor =
 				createCloudflareActorsActorDriverBuilder(globalState);
 
@@ -184,6 +186,7 @@ export function createActorDurableObject(
 			const actorId = this.ctx.id.toString();
 
 			// Get the actor driver
+			invariant(runConfig.driver, "runConfig.driver");
 			const managerDriver = runConfig.driver.manager(
 				registry.config,
 				runConfig,

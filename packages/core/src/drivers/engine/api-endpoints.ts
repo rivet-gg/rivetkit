@@ -1,4 +1,3 @@
-import { CreateRequest } from "@/client/mod";
 import { apiCall } from "./api-utils";
 import type { Config } from "./config";
 import { serializeActorKey } from "./keys";
@@ -6,18 +5,12 @@ import { serializeActorKey } from "./keys";
 // MARK: Common types
 export type RivetId = string;
 
-export interface ActorLifecycle {
-	kill_timeout_ms: number;
-	durable: boolean;
-}
-
 export interface Actor {
 	actor_id: RivetId;
 	name: string;
-	keys: string[];
+	key: string;
 	namespace_id: RivetId;
 	runner_name_selector: string;
-	lifecycle: ActorLifecycle;
 	create_ts: number;
 	connectable_ts?: number | null;
 	destroy_ts?: number | null;
@@ -46,9 +39,9 @@ export interface ActorsGetOrCreateByIdResponse {
 export interface ActorsCreateRequest {
 	name: string;
 	runner_name_selector: string;
-	keys?: string[] | null;
+	crash_policy: string;
+	key?: string | null;
 	input?: string | null;
-	durable?: boolean | null;
 }
 
 export interface ActorsCreateResponse {
@@ -86,10 +79,10 @@ export async function getActorById(
 // MARK: Get or create actor by id
 export interface ActorsGetOrCreateByIdRequest {
 	name: string;
-	keys: string[];
+	key: string;
 	runner_name_selector: string;
+	crash_policy: "restart";
 	input?: string | null;
-	durable?: boolean | null;
 }
 
 export async function getOrCreateActorById(
