@@ -232,7 +232,7 @@ export function runActorInspectorTests(driverTestConfig: DriverTestConfig) {
 					headers: {
 						Authorization: `Bearer token`,
 						[HEADER_ACTOR_QUERY]: JSON.stringify({
-							getForId: { actorId },
+							getForId: { name: "counter", actorId },
 						} satisfies ActorQuery),
 					},
 				});
@@ -250,7 +250,7 @@ export function runActorInspectorTests(driverTestConfig: DriverTestConfig) {
 					headers: {
 						Authorization: `Bearer token`,
 						[HEADER_ACTOR_QUERY]: JSON.stringify({
-							getForId: { actorId },
+							getForId: { name: "counter", actorId },
 						} satisfies ActorQuery),
 					},
 				});
@@ -275,7 +275,7 @@ export function runActorInspectorTests(driverTestConfig: DriverTestConfig) {
 					headers: {
 						Authorization: `Bearer token`,
 						[HEADER_ACTOR_QUERY]: JSON.stringify({
-							getForId: { actorId },
+							getForId: { name: "counter", actorId },
 						} satisfies ActorQuery),
 					},
 				});
@@ -302,7 +302,7 @@ export function runActorInspectorTests(driverTestConfig: DriverTestConfig) {
 					headers: {
 						Authorization: `Bearer token`,
 						[HEADER_ACTOR_QUERY]: JSON.stringify({
-							getForId: { actorId },
+							getForId: { name: "counter", actorId },
 						} satisfies ActorQuery),
 					},
 				});
@@ -335,7 +335,7 @@ export function runActorInspectorTests(driverTestConfig: DriverTestConfig) {
 					headers: {
 						Authorization: `Bearer token`,
 						[HEADER_ACTOR_QUERY]: JSON.stringify({
-							getForId: { actorId },
+							getForId: { name: "counter", actorId },
 						} satisfies ActorQuery),
 					},
 				});
@@ -375,7 +375,7 @@ export function runActorInspectorTests(driverTestConfig: DriverTestConfig) {
 					headers: {
 						Authorization: `Bearer token`,
 						[HEADER_ACTOR_QUERY]: JSON.stringify({
-							getForId: { actorId },
+							getForId: { name: "counter", actorId },
 						} satisfies ActorQuery),
 					},
 				});
@@ -406,7 +406,7 @@ export function runActorInspectorTests(driverTestConfig: DriverTestConfig) {
 					headers: {
 						Authorization: `Bearer token`,
 						[HEADER_ACTOR_QUERY]: JSON.stringify({
-							getForId: { actorId },
+							getForId: { name: "counter", actorId },
 						} satisfies ActorQuery),
 					},
 				});
@@ -438,7 +438,7 @@ export function runActorInspectorTests(driverTestConfig: DriverTestConfig) {
 					headers: {
 						Authorization: `Bearer token`,
 						[HEADER_ACTOR_QUERY]: JSON.stringify({
-							getForId: { actorId },
+							getForId: { name: "counter", actorId },
 						} satisfies ActorQuery),
 					},
 				});
@@ -472,7 +472,7 @@ export function runActorInspectorTests(driverTestConfig: DriverTestConfig) {
 					headers: {
 						Authorization: `Bearer token`,
 						[HEADER_ACTOR_QUERY]: JSON.stringify({
-							getForId: { actorId },
+							getForId: { name: "counter", actorId },
 						} satisfies ActorQuery),
 					},
 				});
@@ -499,7 +499,7 @@ export function runActorInspectorTests(driverTestConfig: DriverTestConfig) {
 					headers: {
 						Authorization: `Bearer token`,
 						[HEADER_ACTOR_QUERY]: JSON.stringify({
-							getForId: { actorId },
+							getForId: { name: "counter", actorId },
 						} satisfies ActorQuery),
 					},
 				});
@@ -530,7 +530,7 @@ export function runActorInspectorTests(driverTestConfig: DriverTestConfig) {
 					headers: {
 						Authorization: `Bearer token`,
 						[HEADER_ACTOR_QUERY]: JSON.stringify({
-							getForId: { actorId },
+							getForId: { name: "counter", actorId },
 						} satisfies ActorQuery),
 					},
 				});
