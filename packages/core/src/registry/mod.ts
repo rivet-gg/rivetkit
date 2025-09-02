@@ -3,7 +3,7 @@ import { createActorRouter } from "@/actor/router";
 import { type Client, createClientWithDriver } from "@/client/client";
 import { chooseDefaultDriver } from "@/drivers/default";
 import { createInlineClientDriver } from "@/inline-client-driver/mod";
-import { getStudioUrl } from "@/inspector/utils";
+import { getInspectorUrl } from "@/inspector/utils";
 import { createManagerRouter } from "@/manager/router";
 import {
 	type RegistryActors,
@@ -73,9 +73,9 @@ export class Registry<A extends RegistryActors> {
 			definitions: Object.keys(this.#config.use).length,
 			...driverLog,
 		});
-		if (config.studio?.enabled) {
-			logger().info("studio ready", {
-				url: getStudioUrl(config),
+		if (config.inspector?.enabled) {
+			logger().info("inspector ready", {
+				url: getInspectorUrl(config),
 			});
 		}
 

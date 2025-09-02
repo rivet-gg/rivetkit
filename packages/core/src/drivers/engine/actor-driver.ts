@@ -80,12 +80,11 @@ export class EngineActorDriver implements ActorDriver {
 			endpoint: config.endpoint,
 			pegboardEndpoint: config.pegboardEndpoint,
 			namespace: config.namespace,
-			addresses: config.addresses,
 			totalSlots: config.totalSlots,
 			runnerName: config.runnerName,
 			runnerKey: config.runnerKey,
 			metadata: {
-				inspectorToken: this.#runConfig.studio.token(),
+				inspectorToken: this.#runConfig.inspector.token(),
 			},
 			prepopulateActorNames: Object.fromEntries(
 				Object.keys(this.#registryConfig.use).map((name) => [

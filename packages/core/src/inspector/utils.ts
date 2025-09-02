@@ -28,7 +28,7 @@ export function compareSecrets(providedSecret: string, validSecret: string) {
 
 export const secureInspector = (runConfig: RunConfig) =>
 	createMiddleware(async (c, next) => {
-		if (!runConfig.studio.enabled) {
+		if (!runConfig.inspector.enabled) {
 			return c.text("Inspector is not enabled", 503);
 		}
 
@@ -37,7 +37,7 @@ export const secureInspector = (runConfig: RunConfig) =>
 			return c.text("Unauthorized", 401);
 		}
 
-		const inspectorToken = runConfig.studio.token?.();
+		const inspectorToken = runConfig.inspector.token?.();
 		if (!inspectorToken) {
 			return c.text("Unauthorized", 401);
 		}
@@ -50,16 +50,16 @@ export const secureInspector = (runConfig: RunConfig) =>
 		await next();
 	});
 
-export function getStudioUrl(runConfig: RunConfigInput | undefined) {
-	if (!runConfig?.studio?.enabled) {
+export function getInspectorUrl(runConfig: RunConfigInput | undefined) {
+	if (!runConfig?.inspector?.enabled) {
 		return "disabled";
 	}
 
-	const accessToken = runConfig?.studio?.token?.();
+	const accessToken = runConfig?.inspector?.token?.();
 
 	if (!accessToken) {
 		inspectorLogger().warn(
-			"Studio Token is not set, but Studio is enabled. Please set it in the run configuration `inspector.token` or via `RIVETKIT_STUDIO_TOKEN` environment variable. Studio will not be accessible.",
+			"Inspector Token is not set, but Inspector is enabled. Please set it in the run configuration `inspector.token` or via `RIVETKIT_INSPECTOR_TOKEN` environment variable. Inspector will not be accessible.",
 		);
 		return "disabled";
 	}
@@ -68,8 +68,8 @@ export function getStudioUrl(runConfig: RunConfigInput | undefined) {
 
 	url.searchParams.set("t", accessToken);
 
-	if (runConfig?.studio?.defaultEndpoint) {
-		url.searchParams.set("u", runConfig.studio.defaultEndpoint);
+	if (runConfig?.inspector?.defaultEndpoint) {
+		url.searchParams.set("u", runConfig.inspector.defaultEndpoint);
 	}
 
 	return url.href;

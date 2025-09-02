@@ -6,7 +6,7 @@ import { getEnvUniversal } from "@/utils";
 type CorsOptions = NonNullable<Parameters<typeof cors>[0]>;
 
 const defaultTokenFn = () => {
-	const envToken = getEnvUniversal("RIVETKIT_STUDIO_TOKEN");
+	const envToken = getEnvUniversal("RIVETKIT_INSPECTOR_TOKEN");
 
 	if (envToken) {
 		return envToken;
@@ -18,11 +18,11 @@ const defaultTokenFn = () => {
 const defaultEnabled = () => {
 	return (
 		getEnvUniversal("NODE_ENV") !== "production" ||
-		!getEnvUniversal("RIVETKIT_STUDIO_DISABLE")
+		!getEnvUniversal("RIVETKIT_INSPECTOR_DISABLE")
 	);
 };
 
-const defaultStudioOrigins = [
+const defaultInspectorOrigins = [
 	"http://localhost:43708",
 	"https://studio.rivet.gg",
 ];
@@ -30,7 +30,7 @@ const defaultStudioOrigins = [
 const defaultCors: CorsOptions = {
 	origin: (origin) => {
 		if (
-			defaultStudioOrigins.includes(origin) ||
+			defaultInspectorOrigins.includes(origin) ||
 			(origin.startsWith("https://") && origin.endsWith("rivet-gg.vercel.app"))
 		) {
 			return origin;
@@ -59,7 +59,7 @@ export const InspectorConfigSchema = z
 			.default(() => defaultCors),
 
 		/**
-		 * Token used to access the Studio.
+		 * Token used to access the Inspector.
 		 */
 		token: z
 			.function()
@@ -68,9 +68,9 @@ export const InspectorConfigSchema = z
 			.default(() => defaultTokenFn),
 
 		/**
-		 * Default RivetKit server endpoint for Rivet Studio to connect to. This should be the same endpoint as what you use for your Rivet client to connect to RivetKit.
+		 * Default RivetKit server endpoint for Rivet Inspector to connect to. This should be the same endpoint as what you use for your Rivet client to connect to RivetKit.
 		 *
-		 * This is a convenience property just for printing out the studio URL.
+		 * This is a convenience property just for printing out the inspector URL.
 		 */
 		defaultEndpoint: z.string().optional(),
 	})

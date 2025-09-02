@@ -6,7 +6,7 @@ import { type Client, createClient } from "@/client/mod";
 import { chooseDefaultDriver } from "@/drivers/default";
 import { createFileSystemOrMemoryDriver } from "@/drivers/file-system/mod";
 import { createInlineClientDriver } from "@/inline-client-driver/mod";
-import { getStudioUrl } from "@/inspector/utils";
+import { getInspectorUrl } from "@/inspector/utils";
 import { createManagerRouter } from "@/manager/router";
 import type { Registry } from "@/registry/mod";
 import { RunConfigSchema } from "@/registry/run-config";

@@ -157,7 +157,7 @@ export async function createTestRuntime(
 	const config: RunConfig = RunConfigSchema.parse({
 		driver,
 		getUpgradeWebSocket: () => upgradeWebSocket!,
-		studio: {
+		inspector: {
 			enabled: true,
 			token: () => "token",
 		},

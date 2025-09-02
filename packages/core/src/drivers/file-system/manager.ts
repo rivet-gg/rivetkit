@@ -54,9 +54,9 @@ export class FileSystemManagerDriver implements ManagerDriver {
 		this.#state = state;
 		this.#driverConfig = driverConfig;
 
-		if (runConfig.studio.enabled) {
-			if (!this.#runConfig.studio.token()) {
-				this.#runConfig.studio.token = () =>
+		if (runConfig.inspector.enabled) {
+			if (!this.#runConfig.inspector.token()) {
+				this.#runConfig.inspector.token = () =>
 					this.#state.getOrCreateInspectorAccessToken();
 			}
 			const startedAt = new Date().toISOString();

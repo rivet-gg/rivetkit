@@ -40,9 +40,9 @@ export class EngineManagerDriver implements ManagerDriver {
 	constructor(config: Config, runConfig: RunConfig) {
 		this.#config = config;
 		this.#runConfig = runConfig;
-		if (!this.#runConfig.studio.token()) {
+		if (!this.#runConfig.inspector.token()) {
 			const token = generateRandomString();
-			this.#runConfig.studio.token = () => token;
+			this.#runConfig.inspector.token = () => token;
 		}
 		this.#importWebSocketPromise = importWebSocket();
 	}
@@ -365,7 +365,7 @@ function buildGuardHeadersForHttp(
 	// Add guard-specific headers
 	headers.set("x-rivet-target", "actor");
 	headers.set("x-rivet-actor", actorId);
-	headers.set("x-rivet-addr", "main");
+	headers.set("x-rivet-port", "main");
 	return headers;
 }
 
@@ -378,7 +378,7 @@ function buildGuardHeadersForWebSocket(
 	const headers: Record<string, string> = {};
 	headers["x-rivet-target"] = "actor";
 	headers["x-rivet-actor"] = actorId;
-	headers["x-rivet-addr"] = "main";
+	headers["x-rivet-port"] = "main";
 	headers[HEADER_EXPOSE_INTERNAL_ERROR] = "true";
 	headers[HEADER_ENCODING] = encoding;
 	if (params) {
