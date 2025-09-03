@@ -8,18 +8,26 @@ vi.mock("@ai-sdk/openai", () => ({
 }));
 
 vi.mock("ai", () => ({
-	generateText: vi.fn().mockImplementation(async ({ prompt }) => ({
-		text: `AI response to: ${prompt}`,
+	streamText: vi.fn().mockImplementation(() => ({
+		fullStream: {
+			[Symbol.asyncIterator]: async function* () {
+				yield { type: "text-delta", text: "AI response to: " };
+				yield { type: "text-delta", text: "Hello, how are you?" };
+			},
+		},
+		text: Promise.resolve("AI response to: Hello, how are you?"),
+		toolCalls: Promise.resolve([]),
+		toolResults: Promise.resolve([]),
 	})),
 	tool: vi.fn().mockImplementation(({ execute }) => ({ execute })),
 }));
 
-vi.mock("../src/backend/my-utils", () => ({
-	getWeather: vi.fn().mockResolvedValue({
-		location: "San Francisco",
-		temperature: 72,
-		condition: "sunny",
-	}),
+vi.mock("../src/backend/utils", () => ({
+	getWeather: vi
+		.fn()
+		.mockResolvedValue(
+			"The weather in San Francisco is currently sunny with a temperature of 72°C and humidity at 45%.",
+		),
 }));
 
 test("AI Agent can handle basic actions without connection", async (ctx) => {
@@ -38,7 +46,6 @@ test("AI Agent can handle basic actions without connection", async (ctx) => {
 	expect(response).toMatchObject({
 		role: "assistant",
 		content: expect.stringContaining("AI response to: Hello, how are you?"),
-		timestamp: expect.any(Number),
 	});
 
 	// Verify messages are stored
@@ -47,7 +54,6 @@ test("AI Agent can handle basic actions without connection", async (ctx) => {
 	expect(messages[0]).toMatchObject({
 		role: "user",
 		content: userMessage,
-		timestamp: expect.any(Number),
 	});
 	expect(messages[1]).toEqual(response);
 });
@@ -90,28 +96,10 @@ test("AI Agent handles weather tool usage", async (ctx) => {
 	expect(response.content).toContain(
 		"AI response to: What's the weather in San Francisco?",
 	);
-	expect(response.timestamp).toBeGreaterThan(0);
 
 	// Verify message history includes both user and assistant messages
 	const messages = await agent.getMessages();
 	expect(messages).toHaveLength(2);
 	expect(messages[0].content).toBe("What's the weather in San Francisco?");
 	expect(messages[1]).toEqual(response);
-});
-
-test("AI Agent timestamps are sequential", async (ctx) => {
-	const { client } = await setupTest(ctx, registry);
-	const agent = client.aiAgent.getOrCreate(["test-timestamps"]);
-
-	const response1 = await agent.sendMessage("First");
-	const response2 = await agent.sendMessage("Second");
-
-	expect(response2.timestamp).toBeGreaterThanOrEqual(response1.timestamp);
-
-	const messages = await agent.getMessages();
-	for (let i = 1; i < messages.length; i++) {
-		expect(messages[i].timestamp).toBeGreaterThanOrEqual(
-			messages[i - 1].timestamp,
-		);
-	}
 });

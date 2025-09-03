@@ -13,6 +13,7 @@ export function App() {
 	const [messages, setMessages] = useState<Message[]>([]);
 	const [input, setInput] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
+	const [streamingMessage, setStreamingMessage] = useState<Message | null>(null);
 
 	useEffect(() => {
 		if (aiAgent.connection) {
@@ -20,16 +21,22 @@ export function App() {
 		}
 	}, [aiAgent.connection]);
 
+	aiAgent.useEvent("messageUpdate", (message: Message) => {
+		setStreamingMessage(message);
+	});
+
 	aiAgent.useEvent("messageReceived", (message: Message) => {
 		setMessages((prev) => [...prev, message]);
+		setStreamingMessage(null);
 		setIsLoading(false);
 	});
 
 	const handleSendMessage = async () => {
 		if (aiAgent.connection && input.trim()) {
 			setIsLoading(true);
+			setStreamingMessage(null);
 
-			const userMessage = { role: "user", content: input, timestamp: Date.now() } as Message;
+			const userMessage = { role: "user", content: input } as Message;
 			setMessages((prev) => [...prev, userMessage]);
 
 			await aiAgent.connection.sendMessage(input);
@@ -40,23 +47,31 @@ export function App() {
 	return (
 		<div className="ai-chat">
 			<div className="messages">
-				{messages.length === 0 ? (
+				{messages.length === 0 && !streamingMessage ? (
 					<div className="empty-message">
 						Ask the AI assistant a question to get started
 					</div>
 				) : (
-					messages.map((msg, i) => (
-						<div key={i} className={`message ${msg.role}`}>
-							<div className="avatar">{msg.role === "user" ? "👤" : "🤖"}</div>
-							<div className="content">{msg.content}</div>
-						</div>
-					))
-				)}
-				{isLoading && (
-					<div className="message assistant loading">
-						<div className="avatar">🤖</div>
-						<div className="content">Thinking...</div>
-					</div>
+					<>
+						{messages.map((msg, i) => (
+							<div key={i} className={`message ${msg.role}`}>
+								<div className="avatar">{msg.role === "user" ? "👤" : "🤖"}</div>
+								<div className="content">{msg.content}</div>
+							</div>
+						))}
+						{streamingMessage && (
+							<div className="message assistant streaming">
+								<div className="avatar">🤖</div>
+								<div className="content">{streamingMessage.content}</div>
+							</div>
+						)}
+						{isLoading && !streamingMessage && (
+							<div className="message assistant loading">
+								<div className="avatar">🤖</div>
+								<div className="content">Thinking...</div>
+							</div>
+						)}
+					</>
 				)}
 			</div>
 
