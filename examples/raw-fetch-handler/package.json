@@ -1,6 +1,6 @@
 {
   "name": "example-raw-fetch-handler",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "private": true,
   "type": "module",
   "scripts": {
