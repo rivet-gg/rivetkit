@@ -389,7 +389,7 @@ async function createGitHubRelease(version: string) {
 					`Creating new release ${version} pointing to tag ${tagName}`,
 				),
 			);
-			await $`gh release create ${tagName} --title ${version} --draft --generate-notes`;
+			await $`gh release create ${tagName} --title ${version} --generate-notes`;
 
 			// Check if this is a pre-release (contains -rc. or similar)
 			if (version.includes("-")) {
