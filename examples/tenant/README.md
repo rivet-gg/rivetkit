@@ -184,7 +184,6 @@ To test the role-based access control:
 
 ### Caching
 - Cache user roles and permissions
-- Use Redis for session storage in production
 - Implement query result caching
 
 ### Scalability

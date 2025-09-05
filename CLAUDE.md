@@ -15,7 +15,7 @@
 Always include a README.md for new packages. The `README.md` should always follow this structure:
 
     ```md
-    # RivetKit {subname, e.g. library: Rivet Actor, driver and platform: RivetKit Redis Adapter, RivetKit Cloudflare Workers Adapter}
+    # RivetKit {subname, e.g. library: Rivet Actor, driver and platform: RivetKit Cloudflare Workers Adapter}
 
     _Lightweight Libraries for Backends_
 
@@ -70,22 +70,6 @@ Driver interfaces define the contract between rivetkit and various backends:
 - **ManagerDriver:** Manages actor discovery, routing, and scaling
 - **CoordinateDriver:** Handles peer-to-peer communication between actor instances
     - Only applicable in coordinate topologies
-
-### Driver Implementations
-
-Located in `packages/drivers/`, these implement the driver interfaces:
-
-- **Memory:** In-memory implementation for development and testing
-- **Redis:** Production-ready implementation using Redis for persistence and pub/sub
-
-### Platforms
-
-Located in `packages/platforms/`, these adapt rivetkit to specific runtime environments:
-
-- **NodeJS:** Standard Node.js server environment
-- **Cloudflare Workers:** Edge computing environment
-- **Bun:** Fast JavaScript runtime alternative to Node.js
-- **Rivet:** Cloud platform with built-in scaling and management
 
 ## Package Import Resolution
 

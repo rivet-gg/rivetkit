@@ -15,8 +15,6 @@
     - Actors do not go to sleep
 - DO
     - Up to Cloudflare
-- Redis
-    - P2P -- goes to sleep when no requests are currently using the actor
 
 ## Main symbols
 
