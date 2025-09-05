@@ -240,7 +240,7 @@ export class EngineManagerDriver implements ManagerDriver {
 			key: serializeActorKey(key),
 			runner_name_selector: this.#config.runnerName,
 			input: input ? cbor.encode(actorInput).toString("base64") : undefined,
-			crash_policy: "restart",
+			crash_policy: "sleep",
 		});
 
 		const actorId = response.actor_id;
@@ -279,7 +279,7 @@ export class EngineManagerDriver implements ManagerDriver {
 			runner_name_selector: this.#config.runnerName,
 			key: serializeActorKey(key),
 			input: input ? cbor.encode(input).toString("base64") : null,
-			crash_policy: "restart",
+			crash_policy: "sleep",
 		});
 		const actorId = result.actor.actor_id;
 
