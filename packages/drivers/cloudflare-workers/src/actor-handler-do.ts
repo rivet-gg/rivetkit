@@ -51,9 +51,12 @@ interface LoadedActor {
 
 export function createActorDurableObject(
 	registry: Registry<any>,
-	runConfig: RunConfig,
+	rootRunConfig: RunConfig,
 ): DurableObjectConstructor {
 	const globalState = new CloudflareDurableObjectGlobalState();
+
+	// Configure to use the runner role instead of server role
+	const runConfig = Object.assign({}, rootRunConfig, { role: "runner" });
 
 	/**
 	 * Startup steps:

@@ -52,6 +52,9 @@ export function createServer<R extends Registry<any>>(
 
 	// Create config
 	const runConfig = {
+		...config,
+		// The worker acts as a server and doesn't run actors
+		role: "server",
 		driver: {
 			name: "cloudflare-workers",
 			manager: () => new CloudflareActorsManagerDriver(),
@@ -59,7 +62,6 @@ export function createServer<R extends Registry<any>>(
 			actor: undefined as any,
 		},
 		getUpgradeWebSocket: () => upgradeWebSocket,
-		...config,
 	} satisfies RunConfig;
 
 	// Create Durable Object
