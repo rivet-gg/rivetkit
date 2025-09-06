@@ -37,6 +37,7 @@
     "@sveltejs/kit": "^2.22.0",
     "@sveltejs/package": "^2.0.0",
     "@sveltejs/vite-plugin-svelte": "^6.0.0",
+    "@tanstack/svelte-store": "^0.7.4",
     "publint": "^0.3.2",
     "svelte": "^5.38.1",
     "svelte-check": "^4.0.0",

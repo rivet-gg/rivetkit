@@ -360,13 +360,13 @@ export class FileSystemGlobalState {
 		try {
 			// Create actor
 			const definition = lookupInRegistry(registryConfig, entry.state.name);
-			entry.actor = definition.instantiate();
+			const actor = definition.instantiate();
 
 			// Start actor
 			const connDrivers = createGenericConnDrivers(
 				entry.genericConnGlobalState,
 			);
-			await entry.actor.start(
+			await actor.start(
 				connDrivers,
 				actorDriver,
 				inlineClient,
@@ -375,6 +375,9 @@ export class FileSystemGlobalState {
 				entry.state.key,
 				"unknown",
 			);
+
+			// Only set entry.actor after the actor is fully started
+			entry.actor = actor;
 
 			// Finish
 			entry.startPromise.resolve();

@@ -343,6 +343,7 @@ interface BaseActorConfig<
 			TAuthData,
 			TDatabase
 		>,
+		prevState: TState,
 		newState: TState,
 	) => void;
 

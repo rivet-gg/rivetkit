@@ -1340,6 +1340,9 @@ importers:
       '@sveltejs/vite-plugin-svelte':
         specifier: ^6.0.0
         version: 6.1.2(svelte@5.38.1)(vite@7.1.2(@types/node@24.0.4)(tsx@4.20.3)(yaml@2.8.0))
+      '@tanstack/svelte-store':
+        specifier: ^0.7.4
+        version: 0.7.4(svelte@5.38.1)
       publint:
         specifier: ^0.3.2
         version: 0.3.12
@@ -2856,6 +2859,14 @@ packages:
 
   '@tanstack/store@0.7.1':
     resolution: {integrity: sha512-PjUQKXEXhLYj2X5/6c1Xn/0/qKY0IVFxTJweopRfF26xfjVyb14yALydJrHupDh3/d+1WKmfEgZPBVCmDkzzwg==}
+
+  '@tanstack/store@0.7.4':
+    resolution: {integrity: sha512-F1XqZQici1Aq6WigEfcxJSml92nW+85Om8ElBMokPNg5glCYVOmPkZGIQeieYFxcPiKTfwo0MTOQpUyJtwncrg==}
+
+  '@tanstack/svelte-store@0.7.4':
+    resolution: {integrity: sha512-oE9g10IXIAqpWLDWmh1oWXDUuffYZfi5q+jM9j4nXCo/ByMRUshd9IVtB9Zywc6ZrXmcNQiB988Fle8PTgZfDA==}
+    peerDependencies:
+      svelte: ^5.0.0
 
   '@tokenizer/inflate@0.2.7':
     resolution: {integrity: sha512-MADQgmZT1eKjp06jpI2yozxaU9uVs4GzzgSL+uEq7bVcJ9V1ZXQkeGNql1fsSI0gMy1vhvNTNbUqrx+pZfJVmg==}
@@ -6909,6 +6920,13 @@ snapshots:
       use-sync-external-store: 1.5.0(react@19.1.0)
 
   '@tanstack/store@0.7.1': {}
+
+  '@tanstack/store@0.7.4': {}
+
+  '@tanstack/svelte-store@0.7.4(svelte@5.38.1)':
+    dependencies:
+      '@tanstack/store': 0.7.4
+      svelte: 5.38.1
 
   '@tokenizer/inflate@0.2.7':
     dependencies:

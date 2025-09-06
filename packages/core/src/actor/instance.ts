@@ -553,7 +553,11 @@ export class ActorInstance<
 				// Call onStateChange if it exists
 				if (this.#config.onStateChange && this.#ready) {
 					try {
-						this.#config.onStateChange(this.actorContext, this.#persistRaw.s);
+						this.#config.onStateChange(
+							this.actorContext,
+							this.#persist.s,
+							this.#persistRaw.s,
+						);
 					} catch (error) {
 						logger().error("error in `_onStateChange`", {
 							error: stringifyError(error),
