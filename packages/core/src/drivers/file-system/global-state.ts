@@ -122,10 +122,16 @@ export class FileSystemGlobalState {
 	async *getActorsIterator(params: {
 		cursor?: string;
 	}): AsyncGenerator<ActorState> {
-		const actorIds = fsSync
-			.readdirSync(this.#stateDir)
-			.filter((id) => !id.includes(".tmp"))
-			.sort();
+		let actorIds = Array.from(this.#actors.keys()).sort();
+
+		// Check if state directory exists first
+		if (fsSync.existsSync(this.#stateDir)) {
+			actorIds = fsSync
+				.readdirSync(this.#stateDir)
+				.filter((id) => !id.includes(".tmp"))
+				.sort();
+		}
+
 		const startIndex = params.cursor ? actorIds.indexOf(params.cursor) + 1 : 0;
 
 		for (let i = startIndex; i < actorIds.length; i++) {

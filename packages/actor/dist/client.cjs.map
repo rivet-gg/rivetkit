@@ -1,0 +1,1 @@
+{"version":3,"sources":["/Users/josi/Documents/ShiftLabs/Projects/rivetkit/packages/actor/dist/client.cjs","../src/client.ts"],"names":[],"mappings":"AAAA;ACAA,2EAAc","file":"/Users/josi/Documents/ShiftLabs/Projects/rivetkit/packages/actor/dist/client.cjs","sourcesContent":[null,"export * from \"@rivetkit/core/client\";\n"]}

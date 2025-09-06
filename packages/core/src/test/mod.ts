@@ -3,9 +3,10 @@ import { serve as honoServe, type ServerType } from "@hono/node-server";
 import { createNodeWebSocket } from "@hono/node-ws";
 import { type TestContext, vi } from "vitest";
 import { type Client, createClient } from "@/client/mod";
+import { chooseDefaultDriver } from "@/drivers/default";
 import { createFileSystemOrMemoryDriver } from "@/drivers/file-system/mod";
 import { createInlineClientDriver } from "@/inline-client-driver/mod";
-import { getStudioUrl } from "@/inspector/utils";
+import { getInspectorUrl } from "@/inspector/utils";
 import { createManagerRouter } from "@/manager/router";
 import type { Registry } from "@/registry/mod";
 import { RunConfigSchema } from "@/registry/run-config";
@@ -15,9 +16,6 @@ import { logger } from "./log";
 function serve(registry: Registry<any>, inputConfig?: InputConfig): ServerType {
 	// Configure default configuration
 	inputConfig ??= {};
-	if (!inputConfig.driver) {
-		inputConfig.driver = createFileSystemOrMemoryDriver(false);
-	}
 
 	const config = ConfigSchema.parse(inputConfig);
 
@@ -28,7 +26,8 @@ function serve(registry: Registry<any>, inputConfig?: InputConfig): ServerType {
 
 	// Create router
 	const runConfig = RunConfigSchema.parse(inputConfig);
-	const managerDriver = config.driver.manager(registry.config, config);
+	const driver = inputConfig.driver ?? createFileSystemOrMemoryDriver(false);
+	const managerDriver = driver.manager(registry.config, config);
 	const inlineClientDriver = createInlineClientDriver(managerDriver);
 	const { router } = createManagerRouter(
 		registry.config,

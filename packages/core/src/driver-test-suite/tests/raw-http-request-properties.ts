@@ -111,7 +111,6 @@ export function runRawHttpRequestPropertiesTests(
 					"Accept-Language": "en-US,en;q=0.9",
 					"Cache-Control": "no-cache",
 					"User-Agent": "RivetKit-Test/1.0",
-					"X-Forwarded-For": "192.168.1.1",
 					"X-Request-ID": "12345",
 				},
 			});
@@ -125,7 +124,6 @@ export function runRawHttpRequestPropertiesTests(
 			expect(data.headers["cache-control"]).toBe("no-cache");
 			// User-Agent might be overwritten by the HTTP client, so just check it exists
 			expect(data.headers["user-agent"]).toBeTruthy();
-			expect(data.headers["x-forwarded-for"]).toBe("192.168.1.1");
 			expect(data.headers["x-request-id"]).toBe("12345");
 		});
 

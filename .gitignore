@@ -93,7 +93,12 @@ out
 
 # Nuxt.js build / generate output
 .nuxt
-dist
+
+# Build output - ignore dist folders except in packages/actor
+dist/
+packages/*/dist/
+examples/*/dist/
+!packages/actor/dist/
 
 # Gatsby files
 .cache/

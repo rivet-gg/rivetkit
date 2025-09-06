@@ -24,7 +24,9 @@ export function createManagerInspectorRouter() {
 			const limit = Number.parseInt(c.req.query("limit") ?? "") || undefined;
 			const cursor = c.req.query("cursor") || undefined;
 
-			invariant(limit && limit > 0, "Limit must be a positive integer");
+			if (!limit || (limit && limit <= 0)) {
+				return c.json("Invalid limit", 400);
+			}
 
 			try {
 				const actors = await c.var.inspector.accessors.getAllActors({

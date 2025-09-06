@@ -1,9 +1,10 @@
 import type * as messageToClient from "@/actor/protocol/message/to-client";
 import type * as wsToClient from "@/actor/protocol/message/to-client";
 import type { AnyDatabaseProvider } from "./database";
-import type { ConnDriver } from "./driver";
+import { type ConnDriver, ConnectionReadyState } from "./driver";
 import * as errors from "./errors";
 import type { ActorInstance } from "./instance";
+import { logger } from "./log";
 import type { PersistedConn } from "./persisted";
 import { CachedSerializer } from "./protocol/serde";
 import { generateSecureToken } from "./utils";
@@ -20,6 +21,19 @@ export type ConnId = string;
 
 export type AnyConn = Conn<any, any, any, any, any, any, any>;
 
+export const CONNECTION_DRIVER_WEBSOCKET = "webSocket";
+export const CONNECTION_DRIVER_SSE = "sse";
+export const CONNECTION_DRIVER_HTTP = "http";
+
+export type ConnectionDriver =
+	| typeof CONNECTION_DRIVER_WEBSOCKET
+	| typeof CONNECTION_DRIVER_SSE
+	| typeof CONNECTION_DRIVER_HTTP;
+
+export type ConnectionStatus = "connected" | "reconnecting";
+
+export const CONNECTION_CHECK_LIVENESS_SYMBOL = Symbol("checkLiveness");
+
 /**
  * Represents a client connection to a actor.
  *
@@ -34,6 +48,8 @@ export class Conn<S, CP, CS, V, I, AD, DB extends AnyDatabaseProvider> {
 
 	// TODO: Remove this cyclical reference
 	#actor: ActorInstance<S, CP, CS, V, I, AD, DB>;
+
+	#status: ConnectionStatus = "connected";
 
 	/**
 	 * The proxied state that notifies of changes automatically.
@@ -55,6 +71,10 @@ export class Conn<S, CP, CS, V, I, AD, DB extends AnyDatabaseProvider> {
 
 	public get auth(): AD {
 		return this.__persist.a as AD;
+	}
+
+	public get driver(): ConnectionDriver {
+		return this.__persist.d as ConnectionDriver;
 	}
 
 	public get _stateEnabled() {
@@ -94,6 +114,20 @@ export class Conn<S, CP, CS, V, I, AD, DB extends AnyDatabaseProvider> {
 	 */
 	public get _token(): string {
 		return this.__persist.t;
+	}
+
+	/**
+	 * Status of the connection.
+	 */
+	public get status(): ConnectionStatus {
+		return this.#status;
+	}
+
+	/**
+	 * Timestamp of the last time the connection was seen, i.e. the last time the connection was active and checked for liveness.
+	 */
+	public get lastSeen(): number {
+		return this.__persist.l;
 	}
 
 	/**
@@ -164,6 +198,50 @@ export class Conn<S, CP, CS, V, I, AD, DB extends AnyDatabaseProvider> {
 	 * @param reason - The reason for disconnection.
 	 */
 	public async disconnect(reason?: string) {
+		this.#status = "reconnecting";
 		await this.#driver.disconnect(this.#actor, this, this.__persist.ds, reason);
+	}
+
+	/**
+	 * This method checks the connection's liveness by querying the driver for its ready state.
+	 * If the connection is not closed, it updates the last liveness timestamp and returns `true`.
+	 * Otherwise, it returns `false`.
+	 * @internal
+	 */
+	[CONNECTION_CHECK_LIVENESS_SYMBOL]() {
+		const readyState = this.#driver.getConnectionReadyState?.(
+			this.#actor,
+			this,
+		);
+
+		const isConnectionClosed =
+			readyState === ConnectionReadyState.CLOSED ||
+			readyState === ConnectionReadyState.CLOSING ||
+			readyState === undefined;
+
+		const newLastSeen = Date.now();
+		const newStatus = isConnectionClosed ? "reconnecting" : "connected";
+
+		logger().debug("liveness probe for connection", {
+			connId: this.id,
+			actorId: this.#actor.id,
+			readyState,
+
+			status: this.#status,
+			newStatus,
+
+			lastSeen: this.__persist.l,
+			currentTs: newLastSeen,
+		});
+
+		if (!isConnectionClosed) {
+			this.__persist.l = newLastSeen;
+		}
+
+		this.#status = newStatus;
+		return {
+			status: this.#status,
+			lastSeen: this.__persist.l,
+		};
 	}
 }

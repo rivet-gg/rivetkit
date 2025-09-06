@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "version": "0.9.9",
+    "version": "2.0.2",
     "title": "RivetKit API"
   },
   "components": {

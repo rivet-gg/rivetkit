@@ -160,7 +160,7 @@ export function createManagerRouter(
 
 	router.use("*", loggerMiddleware(logger()));
 
-	if (runConfig.cors || runConfig.studio?.cors) {
+	if (runConfig.cors || runConfig.inspector?.cors) {
 		router.use("*", async (c, next) => {
 			// Don't apply to WebSocket routes
 			// HACK: This could be insecure if we had a varargs path. We have to check the path suffix for WS since we don't know the path that this router was mounted.
@@ -179,19 +179,19 @@ export function createManagerRouter(
 
 			return cors({
 				...(runConfig.cors ?? {}),
-				...(runConfig.studio?.cors ?? {}),
+				...(runConfig.inspector?.cors ?? {}),
 				origin: (origin, c) => {
-					const studioOrigin = runConfig.studio?.cors?.origin;
+					const inspectorOrigin = runConfig.inspector?.cors?.origin;
 
-					if (studioOrigin !== undefined) {
-						if (typeof studioOrigin === "function") {
-							const allowed = studioOrigin(origin, c);
+					if (inspectorOrigin !== undefined) {
+						if (typeof inspectorOrigin === "function") {
+							const allowed = inspectorOrigin(origin, c);
 							if (allowed) return allowed;
 							// Proceed to next CORS config if none provided
-						} else if (Array.isArray(studioOrigin)) {
-							return studioOrigin.includes(origin) ? origin : undefined;
+						} else if (Array.isArray(inspectorOrigin)) {
+							return inspectorOrigin.includes(origin) ? origin : undefined;
 						} else {
-							return studioOrigin;
+							return inspectorOrigin;
 						}
 					}
 
@@ -207,12 +207,12 @@ export function createManagerRouter(
 					return null;
 				},
 				allowMethods: (origin, c) => {
-					const studioMethods = runConfig.studio?.cors?.allowMethods;
-					if (studioMethods) {
-						if (typeof studioMethods === "function") {
-							return studioMethods(origin, c);
+					const inspectorMethods = runConfig.inspector?.cors?.allowMethods;
+					if (inspectorMethods) {
+						if (typeof inspectorMethods === "function") {
+							return inspectorMethods(origin, c);
 						}
-						return studioMethods;
+						return inspectorMethods;
 					}
 
 					if (runConfig.cors?.allowMethods) {
@@ -226,14 +226,14 @@ export function createManagerRouter(
 				},
 				allowHeaders: [
 					...(runConfig.cors?.allowHeaders ?? []),
-					...(runConfig.studio?.cors?.allowHeaders ?? []),
+					...(runConfig.inspector?.cors?.allowHeaders ?? []),
 					...ALLOWED_PUBLIC_HEADERS,
 					"Content-Type",
 					"User-Agent",
 				],
 				credentials:
 					runConfig.cors?.credentials ??
-					runConfig.studio?.cors?.credentials ??
+					runConfig.inspector?.cors?.credentials ??
 					true,
 			})(c, next);
 		});
@@ -562,12 +562,12 @@ export function createManagerRouter(
 		});
 	}
 
-	if (runConfig.studio?.enabled) {
+	if (runConfig.inspector?.enabled) {
 		router.route(
 			"/actors/inspect",
 			new Hono()
 				.use(
-					cors(runConfig.studio.cors),
+					cors(runConfig.inspector.cors),
 					secureInspector(runConfig),
 					universalActorProxy({
 						registryConfig,
@@ -584,7 +584,7 @@ export function createManagerRouter(
 			"/inspect",
 			new Hono()
 				.use(
-					cors(runConfig.studio.cors),
+					cors(runConfig.inspector.cors),
 					secureInspector(runConfig),
 					async (c, next) => {
 						const inspector = managerDriver.inspector;
@@ -839,6 +839,7 @@ export async function queryActor(
 	if ("getForId" in query) {
 		const output = await driver.getForId({
 			c,
+			name: query.getForId.name,
 			actorId: query.getForId.actorId,
 		});
 		if (!output) throw new errors.ActorNotFound(query.getForId.actorId);
@@ -899,9 +900,26 @@ async function createTestWebSocketProxy(
 	try {
 		// Resolve the client WebSocket promise
 		logger().debug("awaiting client websocket promise");
-		clientWs = await clientWsPromise;
+		const ws = await clientWsPromise;
+		clientWs = ws;
 		logger().debug("client websocket promise resolved", {
-			constructor: clientWs?.constructor.name,
+			constructor: ws?.constructor.name,
+		});
+
+		// Wait for ws to open
+		await new Promise<void>((resolve, reject) => {
+			const onOpen = () => {
+				logger().debug("test websocket connection opened");
+				resolve();
+			};
+			const onError = (error: any) => {
+				logger().error("test websocket connection failed", { error });
+				reject(
+					new Error(`Failed to open WebSocket: ${error.message || error}`),
+				);
+			};
+			ws.addEventListener("open", onOpen);
+			ws.addEventListener("error", onError);
 		});
 	} catch (error) {
 		logger().error(
@@ -1134,14 +1152,17 @@ async function handleSseConnectRequest(
 		const url = new URL("http://actor/connect/sse");
 
 		// Always build fresh request to prevent forwarding unwanted headers
-		const proxyRequest = new Request(url);
-		proxyRequest.headers.set(HEADER_ENCODING, params.data.encoding);
+		const proxyRequestHeaderes = new Headers();
+		proxyRequestHeaderes.set(HEADER_ENCODING, params.data.encoding);
 		if (params.data.connParams) {
-			proxyRequest.headers.set(HEADER_CONN_PARAMS, params.data.connParams);
+			proxyRequestHeaderes.set(HEADER_CONN_PARAMS, params.data.connParams);
 		}
 		if (authData) {
-			proxyRequest.headers.set(HEADER_AUTH_DATA, JSON.stringify(authData));
+			proxyRequestHeaderes.set(HEADER_AUTH_DATA, JSON.stringify(authData));
 		}
+
+		const proxyRequest = new Request(url, { headers: proxyRequestHeaderes });
+
 		return await driver.proxyRequest(c, proxyRequest, actorId);
 	} catch (error) {
 		// If we receive an error during setup, we send the error and close the socket immediately
@@ -1389,14 +1410,17 @@ async function handleMessageRequest(
 		const url = new URL("http://actor/connections/message");
 
 		// Always build fresh request to prevent forwarding unwanted headers
+		const proxyRequestHeaders = new Headers();
+		proxyRequestHeaders.set(HEADER_ENCODING, encoding);
+		proxyRequestHeaders.set(HEADER_CONN_ID, connId);
+		proxyRequestHeaders.set(HEADER_CONN_TOKEN, connToken);
+
 		const proxyRequest = new Request(url, {
 			method: "POST",
 			body: c.req.raw.body,
 			duplex: "half",
+			headers: proxyRequestHeaders,
 		});
-		proxyRequest.headers.set(HEADER_ENCODING, encoding);
-		proxyRequest.headers.set(HEADER_CONN_ID, connId);
-		proxyRequest.headers.set(HEADER_CONN_TOKEN, connToken);
 
 		return await driver.proxyRequest(c, proxyRequest, actorId);
 	} catch (error) {
@@ -1462,17 +1486,20 @@ async function handleActionRequest(
 		);
 
 		// Always build fresh request to prevent forwarding unwanted headers
+		const proxyRequestHeaders = new Headers();
+		proxyRequestHeaders.set(HEADER_ENCODING, params.data.encoding);
+		if (params.data.connParams) {
+			proxyRequestHeaders.set(HEADER_CONN_PARAMS, params.data.connParams);
+		}
+		if (authData) {
+			proxyRequestHeaders.set(HEADER_AUTH_DATA, JSON.stringify(authData));
+		}
+
 		const proxyRequest = new Request(url, {
 			method: "POST",
 			body: c.req.raw.body,
+			headers: proxyRequestHeaders,
 		});
-		proxyRequest.headers.set(HEADER_ENCODING, params.data.encoding);
-		if (params.data.connParams) {
-			proxyRequest.headers.set(HEADER_CONN_PARAMS, params.data.connParams);
-		}
-		if (authData) {
-			proxyRequest.headers.set(HEADER_AUTH_DATA, JSON.stringify(authData));
-		}
 
 		return await driver.proxyRequest(c, proxyRequest, actorId);
 	} catch (error) {
@@ -1580,25 +1607,25 @@ async function handleRawHttpRequest(
 		);
 
 		// Forward the request to the actor
-		const proxyRequest = new Request(url, {
-			method: c.req.method,
-			headers: c.req.raw.headers,
-			body: c.req.raw.body,
-		});
 
 		logger().debug("rewriting http url", {
 			from: c.req.url,
-			to: proxyRequest.url,
+			to: url,
 		});
 
-		// Forward conn params if provided
+		const proxyRequestHeaders = new Headers(c.req.raw.headers);
 		if (connParams) {
-			proxyRequest.headers.set(HEADER_CONN_PARAMS, JSON.stringify(connParams));
+			proxyRequestHeaders.set(HEADER_CONN_PARAMS, JSON.stringify(connParams));
 		}
-		// Forward auth data to actor
 		if (authData) {
-			proxyRequest.headers.set(HEADER_AUTH_DATA, JSON.stringify(authData));
+			proxyRequestHeaders.set(HEADER_AUTH_DATA, JSON.stringify(authData));
 		}
+
+		const proxyRequest = new Request(url, {
+			method: c.req.method,
+			headers: proxyRequestHeaders,
+			body: c.req.raw.body,
+		});
 
 		return await driver.proxyRequest(c, proxyRequest, actorId);
 	} catch (error) {
@@ -1731,8 +1758,8 @@ function universalActorProxy({
 			url.hostname = "actor";
 			url.pathname = url.pathname
 				.replace(new RegExp(`^${runConfig.basePath}`, ""), "")
-				.replace(/^\/registry\/actors/, "")
-				.replace(/^\/actors/, ""); // Remove /registry prefix if present
+				.replace(/^\/?registry\/actors/, "")
+				.replace(/^\/?actors/, ""); // Remove /registry prefix if present
 
 			const proxyRequest = new Request(url, {
 				method: c.req.method,

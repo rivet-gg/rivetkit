@@ -21,6 +21,7 @@ import { createInlineClientDriver } from "@/inline-client-driver/mod";
 import { ManagerInspector } from "@/inspector/manager";
 import { type Actor, ActorFeature, type ActorId } from "@/inspector/mod";
 import {
+	type DriverConfig,
 	type Encoding,
 	PATH_CONNECT_WEBSOCKET,
 	PATH_RAW_WEBSOCKET_PREFIX,
@@ -35,6 +36,7 @@ export class FileSystemManagerDriver implements ManagerDriver {
 	#registryConfig: RegistryConfig;
 	#runConfig: RunConfig;
 	#state: FileSystemGlobalState;
+	#driverConfig: DriverConfig;
 
 	#actorDriver: ActorDriver;
 	#actorRouter: ActorRouter;
@@ -45,14 +47,16 @@ export class FileSystemManagerDriver implements ManagerDriver {
 		registryConfig: RegistryConfig,
 		runConfig: RunConfig,
 		state: FileSystemGlobalState,
+		driverConfig: DriverConfig,
 	) {
 		this.#registryConfig = registryConfig;
 		this.#runConfig = runConfig;
 		this.#state = state;
+		this.#driverConfig = driverConfig;
 
-		if (runConfig.studio.enabled) {
-			if (!this.#runConfig.studio.token()) {
-				this.#runConfig.studio.token = () =>
+		if (runConfig.inspector.enabled) {
+			if (!this.#runConfig.inspector.token()) {
+				this.#runConfig.inspector.token = () =>
 					this.#state.getOrCreateInspectorAccessToken();
 			}
 			const startedAt = new Date().toISOString();
@@ -116,7 +120,7 @@ export class FileSystemManagerDriver implements ManagerDriver {
 
 		// Actors run on the same node as the manager, so we create a dummy actor router that we route requests to
 		const inlineClient = createClientWithDriver(createInlineClientDriver(this));
-		this.#actorDriver = runConfig.driver.actor(
+		this.#actorDriver = this.#driverConfig.actor(
 			registryConfig,
 			runConfig,
 			this,
@@ -192,7 +196,7 @@ export class FileSystemManagerDriver implements ManagerDriver {
 		if (path === PATH_CONNECT_WEBSOCKET) {
 			// Handle standard connect
 			const wsHandler = await handleWebSocketConnect(
-				c,
+				c.req.raw,
 				this.#runConfig,
 				this.#actorDriver,
 				actorId,
@@ -205,7 +209,7 @@ export class FileSystemManagerDriver implements ManagerDriver {
 		} else if (path.startsWith(PATH_RAW_WEBSOCKET_PREFIX)) {
 			// Handle websocket proxy
 			const wsHandler = await handleRawWebSocketHandler(
-				c,
+				c.req.raw,
 				path,
 				this.#actorDriver,
 				actorId,

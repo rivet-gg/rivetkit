@@ -1,13 +1,21 @@
 import type { SSEStreamingApi } from "hono/streaming";
 import type { WSContext } from "hono/ws";
 import type { WebSocket } from "ws";
-import type { AnyConn } from "@/actor/connection";
-import type { ConnDriver } from "@/actor/driver";
+import {
+	type AnyConn,
+	CONNECTION_DRIVER_HTTP,
+	CONNECTION_DRIVER_SSE,
+	CONNECTION_DRIVER_WEBSOCKET,
+} from "@/actor/connection";
+import {
+	type ConnDriver,
+	type ConnectionDriversMap,
+	ConnectionReadyState,
+} from "@/actor/driver";
 import type { AnyActorInstance } from "@/actor/instance";
 import type * as messageToClient from "@/actor/protocol/message/to-client";
 import type { CachedSerializer, Encoding } from "@/actor/protocol/serde";
 import { encodeDataToString } from "@/actor/protocol/serde";
-import { dbg } from "@/utils";
 import { logger } from "./log";
 
 // This state is different than `PersistedConn` state since the connection-specific state is persisted & must be serializable. This is also part of the connection driver, not part of the core actor.
@@ -25,17 +33,15 @@ export class GenericConnGlobalState {
  */
 export function createGenericConnDrivers(
 	globalState: GenericConnGlobalState,
-): Record<string, ConnDriver> {
+): ConnectionDriversMap {
 	return {
-		[CONN_DRIVER_GENERIC_WEBSOCKET]: createGenericWebSocketDriver(globalState),
-		[CONN_DRIVER_GENERIC_SSE]: createGenericSseDriver(globalState),
-		[CONN_DRIVER_GENERIC_HTTP]: createGeneircHttpDriver(),
+		[CONNECTION_DRIVER_WEBSOCKET]: createGenericWebSocketDriver(globalState),
+		[CONNECTION_DRIVER_SSE]: createGenericSseDriver(globalState),
+		[CONNECTION_DRIVER_HTTP]: createGenericHttpDriver(),
 	};
 }
 
 // MARK: WebSocket
-export const CONN_DRIVER_GENERIC_WEBSOCKET = "genericWebSocket";
-
 export interface GenericWebSocketDriverState {
 	encoding: Encoding;
 }
@@ -114,7 +120,6 @@ export function createGenericWebSocketDriver(
 				});
 				return;
 			}
-
 			const raw = ws.raw as WebSocket;
 			if (!raw) {
 				logger().warn("ws.raw does not exist");
@@ -130,12 +135,27 @@ export function createGenericWebSocketDriver(
 
 			await promise;
 		},
+
+		getConnectionReadyState: (
+			_actor: AnyActorInstance,
+			conn: AnyConn,
+		): ConnectionReadyState | undefined => {
+			const ws = globalState.websockets.get(conn.id);
+			if (!ws) {
+				logger().warn("missing ws for getConnectionReadyState", {
+					connId: conn.id,
+				});
+				return undefined;
+			}
+
+			const raw = ws.raw as WebSocket;
+
+			return raw.readyState as ConnectionReadyState;
+		},
 	};
 }
 
 // MARK: SSE
-export const CONN_DRIVER_GENERIC_SSE = "genericSse";
-
 export interface GenericSseDriverState {
 	encoding: Encoding;
 }
@@ -174,15 +194,32 @@ export function createGenericSseDriver(globalState: GenericConnGlobalState) {
 
 			stream.close();
 		},
+
+		getConnectionReadyState: (
+			_actor: AnyActorInstance,
+			conn: AnyConn,
+		): ConnectionReadyState | undefined => {
+			const stream = globalState.sseStreams.get(conn.id);
+			if (!stream) {
+				logger().warn("missing sse stream for getConnectionReadyState", {
+					connId: conn.id,
+				});
+				return undefined;
+			}
+
+			if (stream.aborted || stream.closed) {
+				return ConnectionReadyState.CLOSED;
+			}
+
+			return ConnectionReadyState.OPEN;
+		},
 	};
 }
 
 // MARK: HTTP
-export const CONN_DRIVER_GENERIC_HTTP = "genericHttp";
-
 export type GenericHttpDriverState = Record<never, never>;
 
-export function createGeneircHttpDriver() {
+export function createGenericHttpDriver() {
 	return {
 		disconnect: async () => {
 			// Noop

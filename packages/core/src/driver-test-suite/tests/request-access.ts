@@ -11,7 +11,7 @@ export function runRequestAccessTests(driverTestConfig: DriverTestConfig) {
 			const handle = client.requestAccessActor.getOrCreate(["test-request"], {
 				params: { trackRequest: true },
 			});
-			const connection = await handle.connect();
+			const connection = handle.connect();
 
 			// Get request info that was captured in onBeforeConnect
 			const requestInfo = await connection.getRequestInfo();
@@ -30,14 +30,11 @@ export function runRequestAccessTests(driverTestConfig: DriverTestConfig) {
 				expect(requestInfo.createConnState.requestMethod).toBeDefined();
 				expect(requestInfo.createConnState.requestHeaders).toBeDefined();
 			} else {
-				// Inline client doesn't have request object
-				expect(requestInfo.onBeforeConnect.hasRequest).toBe(false);
-				expect(requestInfo.onBeforeConnect.requestUrl).toBeNull();
-				expect(requestInfo.onBeforeConnect.requestMethod).toBeNull();
-
-				expect(requestInfo.createConnState.hasRequest).toBe(false);
-				expect(requestInfo.createConnState.requestUrl).toBeNull();
-				expect(requestInfo.createConnState.requestMethod).toBeNull();
+				// Inline client may or may not have request object depending on the driver
+				//
+				// e.g.
+				// - File system does not have a request for inline requests
+				// - Rivet Engine proxies the request so it has access to the request object
 			}
 
 			// Clean up
@@ -54,7 +51,7 @@ export function runRequestAccessTests(driverTestConfig: DriverTestConfig) {
 					params: { trackRequest: false },
 				},
 			);
-			const connection = await handle.connect();
+			const connection = handle.connect();
 
 			// Get request info
 			const requestInfo = await connection.getRequestInfo();
@@ -85,7 +82,7 @@ export function runRequestAccessTests(driverTestConfig: DriverTestConfig) {
 			const handle = client.requestAccessActor.getOrCreate(["test-headers"], {
 				params: { trackRequest: true },
 			});
-			const connection = await handle.connect();
+			const connection = handle.connect();
 
 			// Get request info
 			const requestInfo = await connection.getRequestInfo();
@@ -108,9 +105,9 @@ export function runRequestAccessTests(driverTestConfig: DriverTestConfig) {
 					"object",
 				);
 			} else {
-				// Inline client doesn't have request object
-				expect(requestInfo.onBeforeConnect.hasRequest).toBe(false);
-				expect(requestInfo.createConnState.hasRequest).toBe(false);
+				// Inline client may or may not have request object depending on the driver
+				//
+				// See "should have access to request object in onBeforeConnect and createConnState"
 			}
 
 			// Clean up

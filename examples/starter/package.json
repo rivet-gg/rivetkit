@@ -1,6 +1,6 @@
 {
   "name": "starter",
-  "version": "0.9.9",
+  "version": "2.0.2",
   "private": true,
   "scripts": {
     "dev": "tsx --watch src/server.ts",
