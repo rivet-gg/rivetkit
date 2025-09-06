@@ -1,7 +1,31 @@
+import * as readline from "node:readline/promises";
+import { program } from "commander";
 import * as semver from "semver";
-import { $, argv, chalk } from "zx";
+import { $, chalk } from "zx";
 
 async function main() {
+	// Setup commander
+	program
+		.name("release")
+		.description("Release a new version of RivetKit")
+		.version("1.0.0", "-v, --cli-version", "Show CLI version")
+		.option("--major", "Bump major version")
+		.option("--minor", "Bump minor version")
+		.option("--patch", "Bump patch version")
+		.option("--version <version>", "Set specific version")
+		.argument("[version]", "Version to release (legacy format)")
+		.parse();
+
+	// Get version from arguments or calculate based on flags
+	const version = await getVersionFromArgs(program.opts(), program.args);
+
+	// Confirm before proceeding
+	const confirmed = await confirmRelease(version);
+	if (!confirmed) {
+		console.log(chalk.yellow("Release cancelled"));
+		process.exit(0);
+	}
+
 	// Clean the workspace first
 	await cleanWorkspace();
 
@@ -10,7 +34,6 @@ async function main() {
 	// await checkPythonEnvironment();
 
 	// Update version
-	const version = getVersionFromArgs();
 	await bumpPackageVersions(version);
 	// await updateRustClientVersion(version);
 	// await updatePythonClientVersion(version);
@@ -35,6 +58,27 @@ async function main() {
 	// Create GitHub release
 	await createAndPushTag(version);
 	await createGitHubRelease(version);
+}
+
+async function confirmRelease(version: string): Promise<boolean> {
+	console.log(
+		chalk.blue("\n📦 About to release version:"),
+		chalk.yellow.bold(version),
+	);
+
+	const rl = readline.createInterface({
+		input: process.stdin,
+		output: process.stdout,
+	});
+
+	try {
+		const answer = await rl.question(
+			chalk.cyan("\nDo you want to proceed with the release? (y/N): "),
+		);
+		return answer.toLowerCase() === "y" || answer.toLowerCase() === "yes";
+	} finally {
+		rl.close();
+	}
 }
 
 async function runTypeCheck() {
@@ -291,15 +335,60 @@ async function checkPythonEnvironment() {
 	console.log(chalk.green("✅ Python environment is good"));
 }
 
-function getVersionFromArgs() {
-	const version = argv._[0];
+async function getCurrentVersion(): Promise<string> {
+	// Get version from the main package
+	const { stdout } =
+		await $`cat packages/rivetkit/package.json | jq -r '.version'`;
+	const version = stdout.trim();
+	return version;
+}
 
-	if (!version) {
-		console.error("Usage: tsx publish.ts <version>");
+async function getVersionFromArgs(
+	options: any,
+	args: string[],
+): Promise<string> {
+	// Check if explicit version is provided via --version flag
+	if (options.version) {
+		const version = options.version;
+		validateVersion(version);
+		return version;
+	}
+
+	// Check if version provided as positional argument (legacy)
+	if (args[0]) {
+		const version = args[0];
+		validateVersion(version);
+		return version;
+	}
+
+	// Check for version bump flags
+	if (!options.major && !options.minor && !options.patch) {
+		program.help();
+	}
+
+	// Get current version and calculate new one
+	const currentVersion = await getCurrentVersion();
+	console.log(chalk.blue("Current version:"), currentVersion);
+
+	let newVersion: string | null = null;
+
+	if (options.major) {
+		newVersion = semver.inc(currentVersion, "major");
+	} else if (options.minor) {
+		newVersion = semver.inc(currentVersion, "minor");
+	} else if (options.patch) {
+		newVersion = semver.inc(currentVersion, "patch");
+	}
+
+	if (!newVersion) {
+		console.error(chalk.red("Error: Failed to calculate new version"));
 		process.exit(1);
 	}
 
-	// Validate version format (x.x.x or x.x.x-rc.x)
+	return newVersion;
+}
+
+function validateVersion(version: string): void {
 	const versionRegex = /^\d+\.\d+\.\d+(-rc\.\d+)?$/;
 	if (!versionRegex.test(version)) {
 		console.error(chalk.red(`Invalid version format: ${version}`));
@@ -308,8 +397,6 @@ function getVersionFromArgs() {
 		);
 		process.exit(1);
 	}
-
-	return version;
 }
 
 async function bumpPackageVersions(version: string) {
@@ -389,7 +476,7 @@ async function createGitHubRelease(version: string) {
 					`Creating new release ${version} pointing to tag ${tagName}`,
 				),
 			);
-			await $`gh release create ${tagName} --title ${version} --draft --generate-notes`;
+			await $`gh release create ${tagName} --title ${version} --generate-notes`;
 
 			// Check if this is a pre-release (contains -rc. or similar)
 			if (version.includes("-")) {

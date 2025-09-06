@@ -268,8 +268,9 @@ export class ClientRaw {
 			params: opts?.params,
 		});
 
-		const actorQuery = {
+		const actorQuery: ActorQuery = {
 			getForId: {
+				name,
 				actorId,
 			},
 		};
@@ -400,6 +401,7 @@ export class ClientRaw {
 		// Create handle with actor ID
 		const getForIdQuery = {
 			getForId: {
+				name,
 				actorId,
 			},
 		} satisfies ActorQuery;

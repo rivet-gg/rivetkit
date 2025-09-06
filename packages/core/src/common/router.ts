@@ -47,7 +47,7 @@ export function handleRouteError(
 	c: HonoContext,
 ) {
 	const exposeInternalError =
-		opts.enableExposeInternalError && getRequestExposeInternalError(c.req);
+		opts.enableExposeInternalError && getRequestExposeInternalError(c.req.raw);
 
 	const { statusCode, code, message, metadata } = deconstructError(
 		error,

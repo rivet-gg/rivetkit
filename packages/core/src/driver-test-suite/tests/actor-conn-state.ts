@@ -94,6 +94,10 @@ export function runActorConnStateTests(driverTestConfig: DriverTestConfig) {
 				const conn1 = handle.connect();
 				const conn2 = handle.connect();
 
+				// HACK: Wait for both connections to successfully connect by waiting for a round trip RPC
+				await conn1.getConnectionState();
+				await conn2.getConnectionState();
+
 				// Get state1 for reference
 				const state1 = await conn1.getConnectionState();
 
@@ -118,6 +122,10 @@ export function runActorConnStateTests(driverTestConfig: DriverTestConfig) {
 				const handle = client.connStateActor.getOrCreate();
 				const conn1 = handle.connect();
 				const conn2 = handle.connect();
+
+				// HACK: Wait for both connections to successfully connect by waiting for a round trip RPC
+				await conn1.getConnectionState();
+				await conn2.getConnectionState();
 
 				// Get all connection states
 				const allStates = await conn1.getAllConnectionStates();

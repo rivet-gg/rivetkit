@@ -1,7 +1,6 @@
 import type { cors } from "hono/cors";
 import { z } from "zod";
 import type { ActorDriverBuilder } from "@/actor/driver";
-import { createDefaultDriver } from "@/drivers/default";
 import { InspectorConfigSchema } from "@/inspector/config";
 import type { ManagerDriverBuilder } from "@/manager/driver";
 import type { UpgradeWebSocket } from "@/utils";
@@ -22,7 +21,10 @@ export type DriverConfig = z.infer<typeof DriverConfigSchema>;
 /** Base config used for the actor config across all platforms. */
 export const RunConfigSchema = z
 	.object({
-		driver: DriverConfigSchema.optional().default(() => createDefaultDriver()),
+		driver: DriverConfigSchema.optional(),
+
+		/** Endpoint to connect to the Rivet engine. Can be configured via RIVET_ENGINE env var. */
+		engine: z.string().optional(),
 
 		// This is a function to allow for lazy configuration of upgradeWebSocket on the
 		// fly. This is required since the dependencies that profie upgradeWebSocket
@@ -30,12 +32,14 @@ export const RunConfigSchema = z
 		// created or must be imported async using `await import(...)`
 		getUpgradeWebSocket: z.custom<GetUpgradeWebSocket>().optional(),
 
+		role: z.enum(["all", "server", "runner"]).optional().default("all"),
+
 		/** CORS configuration for the router. Uses Hono's CORS middleware options. */
 		cors: z.custom<CorsOptions>().optional(),
 
 		maxIncomingMessageSize: z.number().optional().default(65_536),
 
-		studio: InspectorConfigSchema,
+		inspector: InspectorConfigSchema,
 
 		/**
 		 * Base path for the router. This is used to prefix all routes.

@@ -17,6 +17,7 @@ import { runActorDriverTests } from "./tests/actor-driver";
 import { runActorErrorHandlingTests } from "./tests/actor-error-handling";
 import { runActorHandleTests } from "./tests/actor-handle";
 import { runActorInlineClientTests } from "./tests/actor-inline-client";
+import { runActorInspectorTests } from "./tests/actor-inspector";
 import { runActorMetadataTests } from "./tests/actor-metadata";
 import { runActorVarsTests } from "./tests/actor-vars";
 import { runManagerDriverTests } from "./tests/manager-driver";
@@ -119,6 +120,8 @@ export function runDriverTests(
 			runRawHttpDirectRegistryTests(driverTestConfig);
 
 			runRawWebSocketDirectRegistryTests(driverTestConfig);
+
+			runActorInspectorTests(driverTestConfig);
 		});
 	}
 }
@@ -154,10 +157,14 @@ export async function createTestRuntime(
 	const config: RunConfig = RunConfigSchema.parse({
 		driver,
 		getUpgradeWebSocket: () => upgradeWebSocket!,
+		inspector: {
+			enabled: true,
+			token: () => "token",
+		},
 	});
 
 	// Create router
-	const managerDriver = config.driver.manager(registry.config, config);
+	const managerDriver = driver.manager(registry.config, config);
 	const inlineDriver = createInlineClientDriver(managerDriver);
 	const { router } = createManagerRouter(
 		registry.config,

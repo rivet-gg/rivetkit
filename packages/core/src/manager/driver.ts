@@ -47,6 +47,7 @@ export interface ManagerDriver {
 }
 export interface GetForIdInput<E extends Env = any> {
 	c?: HonoContext | undefined;
+	name: string;
 	actorId: string;
 }
 
