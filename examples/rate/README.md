@@ -83,7 +83,6 @@ This rate limiter can be extended with:
 - Dynamic rate limits based on user behavior
 - Rate limit bypass for admin users
 - Metrics and monitoring integration
-- Redis backend for distributed rate limiting
 
 ## License
 

@@ -28,7 +28,7 @@ Generated from: github.com/rivet-gg/rivet/site/scripts/generateReadme.mjs
   </p>
   <p>
     <i>
-      Supports <a href="https://rivet.gg/docs/actors/quickstart/backend/">Node.js</a>, <a href="https://rivet.gg/docs/actors/quickstart/backend/">Bun</a>, <a href="https://rivet.gg/docs/drivers/redis/">Redis</a>, <a href="https://rivet.gg/docs/hosting-providers/cloudflare-workers/">Cloudflare</a>,<br/>
+      Supports <a href="https://rivet.gg/docs/actors/quickstart/backend/">Node.js</a>, <a href="https://rivet.gg/docs/actors/quickstart/backend/">Bun</a>, <a href="https://rivet.gg/docs/hosting-providers/cloudflare-workers/">Cloudflare</a>,<br/>
       <a href="https://rivet.gg/docs/clients/react/">React</a>, <a href="https://rivet.gg/docs/clients/rust/">Rust</a>, <a href="https://rivet.gg/docs/integrations/hono/">Hono</a>, <a href="https://rivet.gg/docs/integrations/express/">Express</a>, <a href="https://rivet.gg/docs/integrations/trpc/">tRPC</a>, and <a href="https://rivet.gg/docs/integrations/better-auth/">Better Auth</a>.
     </i>
   </p>
@@ -146,10 +146,7 @@ console.log("Count:", result.count); // 1
 
 **Step 3**: Deploy
 
-To scale Rivet in production, follow a guide to deploy to a hosting provider or integrate a driver:
-
-- [Redis](https://rivet.gg/docs/drivers/redis/)
-- [Cloudflare Workers](https://rivet.gg/docs/hosting-providers/cloudflare-workers/)
+To scale Rivet in production, see [self-hosting documentation](https://www.rivet.gg/docs/self-hosting/).
 
 ## Features
 
@@ -190,7 +187,6 @@ Deploy RivetKit anywhere - from serverless platforms to your own infrastructure 
 - <img src=".github/media/platforms/nodejs.svg" height="16" alt="Node.js" />&nbsp;&nbsp;[Node.js](https://rivet.gg/docs/actors/quickstart/backend/)
 
 ### Storage
-- <img src=".github/media/platforms/redis.svg" height="16" alt="Redis" />&nbsp;&nbsp;[Redis](https://rivet.gg/docs/drivers/redis/)
 - <img src=".github/media/platforms/postgres.svg" height="16" alt="Postgres" />&nbsp;&nbsp;[Postgres](https://github.com/rivet-gg/rivetkit/issues/899) *(Help Wanted)*
 - <img src=".github/media/platforms/file-system.svg" height="16" alt="File System" />&nbsp;&nbsp;[File System](https://rivet.gg/docs/drivers/file-system/)
 - <img src=".github/media/platforms/memory.svg" height="16" alt="Memory" />&nbsp;&nbsp;[Memory](https://rivet.gg/docs/drivers/memory/)

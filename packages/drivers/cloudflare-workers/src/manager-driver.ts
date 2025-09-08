@@ -24,7 +24,6 @@ interface ActorData {
 	key: string[];
 }
 
-// Key constants similar to Redis implementation
 const KEYS = {
 	ACTOR: {
 		// Combined key for actor metadata (name and key)
