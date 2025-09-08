@@ -81,7 +81,7 @@ export interface ActorsGetOrCreateByIdRequest {
 	name: string;
 	key: string;
 	runner_name_selector: string;
-	crash_policy: "restart";
+	crash_policy: string;
 	input?: string | null;
 }
 
