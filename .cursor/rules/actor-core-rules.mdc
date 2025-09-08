@@ -1,6 +1,6 @@
 ---
 description: ActorCore rules
-globs: 
+globs:
 alwaysApply: false
 ---
 # ActorCore Development Guide
@@ -59,11 +59,11 @@ When importing from workspace packages, always check the package's `package.json
 - **Formatting:** Uses Biome for consistent formatting
 - **Imports:** Organized imports enforced, unused imports warned
 - **TypeScript:** Strict mode enabled, target ESNext
-- **Naming:** 
+- **Naming:**
   - camelCase for variables, functions
   - PascalCase for classes, interfaces, types
   - UPPER_CASE for constants
-- **Error Handling:** 
+- **Error Handling:**
   - Use `UserError` for client-safe errors
   - Use `InternalError` for internal errors
 
@@ -105,7 +105,7 @@ When importing from workspace packages, always check the package's `package.json
 
 - `createState()`: Function that returns initial actor state
 - `onStart(c)`: Called any time actor is started (after restart/upgrade)
-- `onStateChange(c, newState)`: Called when actor state changes
+- `onStateChange(c,prevState, newState)`: Called when actor state changes
 - `onBeforeConnect(c)`: Called when new client connects
 - `onConnect(c)`: Executed after client connection succeeds
 - `onDisconnect(c)`: Called when client disconnects
