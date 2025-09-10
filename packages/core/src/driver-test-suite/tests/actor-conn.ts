@@ -84,8 +84,16 @@ export function runActorConnTests(driverTestConfig: DriverTestConfig) {
 
 				// Set up event listener
 				const receivedEvents: number[] = [];
-				connection.on("newCount", (count: number) => {
-					receivedEvents.push(count);
+				const receivedEventsPromise = new Promise((resolve) => {
+					connection.on("newCount", (count: number) => {
+						receivedEvents.push(count);
+						if (
+							receivedEvents.includes(1) &&
+							receivedEvents.includes(6) &&
+							receivedEvents.includes(9)
+						)
+							resolve(undefined);
+					});
 				});
 
 				// Send one RPC call over the connection to ensure it's open
@@ -96,10 +104,8 @@ export function runActorConnTests(driverTestConfig: DriverTestConfig) {
 				await handle.increment(5);
 				await handle.increment(3);
 
-				// Verify events were received from both connection and handle calls
-				expect(receivedEvents).toContain(1); // From connection call
-				expect(receivedEvents).toContain(6); // From first handle call (1+5)
-				expect(receivedEvents).toContain(9); // From second handle call (6+3)
+				// Wait for all events to be received
+				await receivedEventsPromise;
 
 				// Clean up
 				await connection.dispose();
