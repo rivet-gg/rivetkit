@@ -68,6 +68,8 @@ export const ActorConfigSchema = z
 				onStopTimeout: z.number().positive().default(5000),
 				stateSaveInterval: z.number().positive().default(10_000),
 				actionTimeout: z.number().positive().default(60_000),
+				// Max time to wait for waitUntil background promises during shutdown
+				waitUntilTimeout: z.number().positive().default(15_000),
 				connectionLivenessTimeout: z.number().positive().default(2500),
 				connectionLivenessInterval: z.number().positive().default(5000),
 				noSleep: z.boolean().default(false),
