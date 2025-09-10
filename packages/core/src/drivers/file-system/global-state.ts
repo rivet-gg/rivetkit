@@ -191,8 +191,6 @@ export class FileSystemGlobalState {
 			id: actorId,
 			genericConnGlobalState: new GenericConnGlobalState(),
 			removed: false,
-			stateWriteQueue: new SinglePromiseQueue(),
-			alarmWriteQueue: new SinglePromiseQueue(),
 		};
 		this.#actors.set(actorId, entry);
 		return entry;
@@ -313,8 +311,6 @@ export class FileSystemGlobalState {
 		// Wait for actor to fully start before stopping it to avoid race conditions
 		if (actor.loadPromise) await actor.loadPromise.catch();
 		if (actor.startPromise?.promise) await actor.startPromise.promise.catch();
-		if (actor.stateWriteQueue.runningDrainLoop)
-			await actor.stateWriteQueue.runningDrainLoop.catch();
 
 		// Mark as removed
 		actor.removed = true;
