@@ -12,10 +12,8 @@ import invariant from "invariant";
 import type { CloseEvent, MessageEvent, WebSocket } from "ws";
 import { z } from "zod";
 import * as errors from "@/actor/errors";
-import type * as protoHttpResolve from "@/actor/protocol/http/resolve";
-import type { Transport } from "@/actor/protocol/message/mod";
-import type { ToClient } from "@/actor/protocol/message/to-client";
-import { type Encoding, serialize } from "@/actor/protocol/serde";
+import type { Transport } from "@/actor/protocol/old";
+import type { Encoding } from "@/actor/protocol/serde";
 import {
 	PATH_CONNECT_WEBSOCKET,
 	PATH_RAW_WEBSOCKET_PREFIX,
@@ -49,7 +47,13 @@ import { secureInspector } from "@/inspector/utils";
 import type { UpgradeWebSocketArgs } from "@/mod";
 import type { RegistryConfig } from "@/registry/config";
 import type { RunConfig } from "@/registry/run-config";
-import { VERSION } from "@/utils";
+import type * as protocol from "@/schemas/client-protocol/mod";
+import {
+	HTTP_RESOLVE_RESPONSE_VERSIONED,
+	TO_CLIENT_VERSIONED,
+} from "@/schemas/client-protocol/versioned";
+import { serializeWithEncoding } from "@/serde";
+import { bufferToArrayBuffer } from "@/utils";
 import { authenticateEndpoint } from "./auth";
 import type { ManagerDriver } from "./driver";
 import { logger } from "./log";
@@ -1104,7 +1108,7 @@ async function createTestWebSocketProxy(
 async function handleSseConnectRequest(
 	c: HonoContext,
 	registryConfig: RegistryConfig,
-	runConfig: RunConfig,
+	_runConfig: RunConfig,
 	driver: ManagerDriver,
 ): Promise<Response> {
 	let encoding: Encoding | undefined;
@@ -1177,18 +1181,24 @@ async function handleSseConnectRequest(
 			try {
 				if (encoding) {
 					// Serialize and send the connection error
-					const errorMsg: ToClient = {
-						b: {
-							e: {
-								c: code,
-								m: message,
-								md: metadata,
+					const errorMsg: protocol.ToClient = {
+						body: {
+							tag: "Error",
+							val: {
+								code,
+								message,
+								metadata: bufferToArrayBuffer(cbor.encode(metadata)),
+								actionId: null,
 							},
 						},
 					};
 
 					// Send the error message to the client
-					const serialized = serialize(errorMsg, encoding);
+					const serialized = serializeWithEncoding(
+						encoding,
+						errorMsg,
+						TO_CLIENT_VERSIONED,
+					);
 					await stream.writeSSE({
 						data:
 							typeof serialized === "string"
@@ -1332,18 +1342,24 @@ async function handleWebSocketConnectRequest(
 				if (encoding) {
 					try {
 						// Serialize and send the connection error
-						const errorMsg: ToClient = {
-							b: {
-								e: {
-									c: code,
-									m: message,
-									md: metadata,
+						const errorMsg: protocol.ToClient = {
+							body: {
+								tag: "Error",
+								val: {
+									code,
+									message,
+									metadata: bufferToArrayBuffer(cbor.encode(metadata)),
+									actionId: null,
 								},
 							},
 						};
 
 						// Send the error message to the client
-						const serialized = serialize(errorMsg, encoding);
+						const serialized = serializeWithEncoding(
+							encoding,
+							errorMsg,
+							TO_CLIENT_VERSIONED,
+						);
 						ws.send(serialized);
 
 						// Close the connection with an error code
@@ -1371,8 +1387,8 @@ async function handleWebSocketConnectRequest(
  */
 async function handleMessageRequest(
 	c: HonoContext,
-	registryConfig: RegistryConfig,
-	runConfig: RunConfig,
+	_registryConfig: RegistryConfig,
+	_runConfig: RunConfig,
 	driver: ManagerDriver,
 ): Promise<Response> {
 	logger().debug("connection message request received");
@@ -1441,7 +1457,7 @@ async function handleMessageRequest(
 async function handleActionRequest(
 	c: HonoContext,
 	registryConfig: RegistryConfig,
-	runConfig: RunConfig,
+	_runConfig: RunConfig,
 	driver: ManagerDriver,
 ): Promise<Response> {
 	try {
@@ -1552,10 +1568,14 @@ async function handleResolveRequest(
 	invariant(actorId, "Missing actor ID");
 
 	// Format response according to protocol
-	const response: protoHttpResolve.ResolveResponse = {
-		i: actorId,
+	const response: protocol.HttpResolveResponse = {
+		actorId,
 	};
-	const serialized = serialize(response, encoding);
+	const serialized = serializeWithEncoding(
+		encoding,
+		response,
+		HTTP_RESOLVE_RESPONSE_VERSIONED,
+	);
 	return c.body(serialized);
 }
 
@@ -1565,7 +1585,7 @@ async function handleResolveRequest(
 async function handleRawHttpRequest(
 	c: HonoContext,
 	registryConfig: RegistryConfig,
-	runConfig: RunConfig,
+	_runConfig: RunConfig,
 	driver: ManagerDriver,
 ): Promise<Response> {
 	try {
@@ -1742,7 +1762,7 @@ function universalActorProxy({
 	runConfig: RunConfig;
 	driver: ManagerDriver;
 }): MiddlewareHandler {
-	return async (c, next) => {
+	return async (c, _next) => {
 		if (c.req.header("upgrade") === "websocket") {
 			return handleRawWebSocketRequest(c, registryConfig, runConfig, driver);
 		} else {

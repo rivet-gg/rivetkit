@@ -1,0 +1,44 @@
+{
+  "name": "@rivetkit/versioned-data-util",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Versioned data serialization utilities for RivetKit",
+  "keywords": [
+    "rivetkit",
+    "versioning",
+    "serialization",
+    "migration",
+    "bare"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rivet-gg/rivetkit.git",
+    "directory": "packages/misc/versioned-data-util"
+  },
+  "license": "Apache-2.0",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/mod.d.ts",
+        "default": "./dist/mod.js"
+      },
+      "require": {
+        "types": "./dist/mod.d.cts",
+        "default": "./dist/mod.cjs"
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsup src/mod.ts",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "check-types": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.10",
+    "tsup": "^8.5.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.0.0"
+  }
+}

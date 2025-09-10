@@ -1,5 +1,3 @@
-import type { Encoding } from "@/actor/protocol/serde";
-import { assertUnreachable } from "@/common/utils";
 import type { ActorQuery } from "@/manager/protocol/query";
 import type { ClientDriver } from "./client";
 

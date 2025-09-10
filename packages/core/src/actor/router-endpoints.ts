@@ -1,3 +1,4 @@
+import * as cbor from "cbor-x";
 import type { Context as HonoContext, HonoRequest } from "hono";
 import { type SSEStreamingApi, streamSSE } from "hono/streaming";
 import type { WSContext } from "hono/ws";
@@ -12,21 +13,25 @@ import {
 } from "@/actor/connection";
 import * as errors from "@/actor/errors";
 import type { AnyActorInstance } from "@/actor/instance";
-import * as protoHttpAction from "@/actor/protocol/http/action";
-import { parseMessage } from "@/actor/protocol/message/mod";
-import type * as messageToServer from "@/actor/protocol/message/to-server";
 import type { InputData } from "@/actor/protocol/serde";
-import {
-	deserialize,
-	type Encoding,
-	EncodingSchema,
-	serialize,
-} from "@/actor/protocol/serde";
+import { type Encoding, EncodingSchema } from "@/actor/protocol/serde";
 import type { UpgradeWebSocketArgs } from "@/common/inline-websocket-adapter2";
 import { deconstructError, stringifyError } from "@/common/utils";
 import type { UniversalWebSocket } from "@/common/websocket-interface";
 import { HonoWebSocketAdapter } from "@/manager/hono-websocket-adapter";
 import type { RunConfig } from "@/registry/run-config";
+import type * as protocol from "@/schemas/client-protocol/mod";
+import {
+	HTTP_ACTION_REQUEST_VERSIONED,
+	HTTP_ACTION_RESPONSE_VERSIONED,
+	TO_SERVER_VERSIONED,
+} from "@/schemas/client-protocol/versioned";
+import {
+	contentTypeForEncoding,
+	deserializeWithEncoding,
+	serializeWithEncoding,
+} from "@/serde";
+import { bufferToArrayBuffer } from "@/utils";
 import type { ActorDriver } from "./driver";
 import type {
 	GenericHttpDriverState,
@@ -34,7 +39,7 @@ import type {
 	GenericWebSocketDriverState,
 } from "./generic-conn-driver";
 import { logger } from "./log";
-import { assertUnreachable } from "./utils";
+import { parseMessage } from "./protocol/old";
 
 export interface ConnectWebSocketOpts {
 	req?: HonoRequest;
@@ -46,7 +51,7 @@ export interface ConnectWebSocketOpts {
 
 export interface ConnectWebSocketOutput {
 	onOpen: (ws: WSContext) => void;
-	onMessage: (message: messageToServer.ToServer) => void;
+	onMessage: (message: protocol.ToServer) => void;
 	onClose: () => void;
 }
 
@@ -80,7 +85,7 @@ export interface ConnsMessageOpts {
 	req?: HonoRequest;
 	connId: string;
 	connToken: string;
-	message: messageToServer.ToServer;
+	message: protocol.ToServer;
 	actorId: string;
 }
 
@@ -319,7 +324,7 @@ export async function handleWebSocketConnect(
  */
 export async function handleSseConnect(
 	c: HonoContext,
-	runConfig: RunConfig,
+	_runConfig: RunConfig,
 	actorDriver: ActorDriver,
 	actorId: string,
 	authData: unknown,
@@ -416,7 +421,7 @@ export async function handleSseConnect(
  */
 export async function handleAction(
 	c: HonoContext,
-	runConfig: RunConfig,
+	_runConfig: RunConfig,
 	actorDriver: ActorDriver,
 	actionName: string,
 	actorId: string,
@@ -428,46 +433,13 @@ export async function handleAction(
 	logger().debug("handling action", { actionName, encoding });
 
 	// Validate incoming request
-	let body: unknown;
-	if (encoding === "json") {
-		try {
-			body = await c.req.json();
-		} catch (err) {
-			if (err instanceof errors.InvalidActionRequest) {
-				throw err;
-			}
-			throw new errors.InvalidActionRequest(
-				`Invalid JSON: ${stringifyError(err)}`,
-			);
-		}
-	} else if (encoding === "cbor") {
-		try {
-			const value = await c.req.arrayBuffer();
-			const uint8Array = new Uint8Array(value);
-			body = await deserialize(uint8Array as unknown as InputData, encoding);
-		} catch (err) {
-			throw new errors.InvalidActionRequest(
-				`Invalid binary format: ${stringifyError(err)}`,
-			);
-		}
-	} else {
-		return assertUnreachable(encoding);
-	}
-
-	// Validate using the action schema
-	let actionArgs: unknown[];
-	try {
-		const result = protoHttpAction.ActionRequestSchema.safeParse(body);
-		if (!result.success) {
-			throw new errors.InvalidActionRequest("Invalid action request format");
-		}
-
-		actionArgs = result.data.a;
-	} catch (err) {
-		throw new errors.InvalidActionRequest(
-			`Invalid schema: ${stringifyError(err)}`,
-		);
-	}
+	const arrayBuffer = await c.req.arrayBuffer();
+	const request = deserializeWithEncoding(
+		encoding,
+		new Uint8Array(arrayBuffer),
+		HTTP_ACTION_REQUEST_VERSIONED,
+	);
+	const actionArgs = cbor.decode(new Uint8Array(request.args));
 
 	// Invoke the action
 	let actor: AnyActorInstance | undefined;
@@ -497,25 +469,18 @@ export async function handleAction(
 		}
 	}
 
-	// Encode the response
-	if (encoding === "json") {
-		const responseData = {
-			o: output, // Use the format expected by ResponseOkSchema
-		};
-		return c.json(responseData);
-	} else if (encoding === "cbor") {
-		// Use serialize from serde.ts instead of custom encoder
-		const responseData = {
-			o: output, // Use the format expected by ResponseOkSchema
-		};
-		const serialized = serialize(responseData, encoding);
-
-		return c.body(serialized as Uint8Array, 200, {
-			"Content-Type": "application/octet-stream",
-		});
-	} else {
-		return assertUnreachable(encoding);
-	}
+	// Send response
+	const responseData: protocol.HttpActionResponse = {
+		output: bufferToArrayBuffer(cbor.encode(output)),
+	};
+	const serialized = serializeWithEncoding(
+		encoding,
+		responseData,
+		HTTP_ACTION_RESPONSE_VERSIONED,
+	);
+	return c.body(serialized as Uint8Array, 200, {
+		"Content-Type": contentTypeForEncoding(encoding),
+	});
 }
 
 /**
@@ -523,7 +488,7 @@ export async function handleAction(
  */
 export async function handleConnectionMessage(
 	c: HonoContext,
-	runConfig: RunConfig,
+	_runConfig: RunConfig,
 	actorDriver: ActorDriver,
 	connId: string,
 	connToken: string,
@@ -532,29 +497,12 @@ export async function handleConnectionMessage(
 	const encoding = getRequestEncoding(c.req);
 
 	// Validate incoming request
-	let message: messageToServer.ToServer;
-	if (encoding === "json") {
-		try {
-			message = await c.req.json();
-		} catch (_err) {
-			throw new errors.InvalidRequest("Invalid JSON");
-		}
-	} else if (encoding === "cbor") {
-		try {
-			const value = await c.req.arrayBuffer();
-			const uint8Array = new Uint8Array(value);
-			message = await parseMessage(uint8Array as unknown as InputData, {
-				encoding,
-				maxIncomingMessageSize: runConfig.maxIncomingMessageSize,
-			});
-		} catch (err) {
-			throw new errors.InvalidRequest(
-				`Invalid binary format: ${stringifyError(err)}`,
-			);
-		}
-	} else {
-		return assertUnreachable(encoding);
-	}
+	const arrayBuffer = await c.req.arrayBuffer();
+	const message = deserializeWithEncoding(
+		encoding,
+		new Uint8Array(arrayBuffer),
+		TO_SERVER_VERSIONED,
+	);
 
 	const actor = await actorDriver.loadActor(actorId);
 

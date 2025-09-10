@@ -5,14 +5,23 @@
     "dump-openapi": {
       "inputs": ["package.json", "packages/rivetkit/src/manager/router.ts"]
     },
+    "build:schema": {
+      "dependsOn": ["^build"],
+      "inputs": ["schemas/**/*.bare"],
+      "outputs": ["dist/schemas/**/*.ts"]
+    },
     "build": {
-      "dependsOn": ["^build", "dump-openapi"],
+      "dependsOn": ["^build", "dump-openapi", "build:schema"],
       "inputs": ["src/**", "tsconfig.json", "tsup.config.ts", "package.json"],
       "outputs": ["dist/**"]
     },
     "test": {
       "dependsOn": ["^test", "build"],
       "inputs": ["src/**", "tests/**", "fixtures/**"]
+    },
+    "check-types": {
+      "dependsOn": ["^build", "build:schema"],
+      "inputs": ["src/**", "schemas/**/*.bare", "tsconfig.json"]
     }
   }
 }

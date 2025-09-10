@@ -1,7 +1,6 @@
 import * as cbor from "cbor-x";
 import type { Context as HonoContext } from "hono";
 import type { WebSocket } from "ws";
-import type * as wsToServer from "@/actor/protocol/message/to-server";
 import type { Encoding } from "@/actor/protocol/serde";
 import {
 	HEADER_ACTOR_QUERY,
@@ -19,6 +18,7 @@ import type {
 	TestInlineDriverCallRequest,
 	TestInlineDriverCallResponse,
 } from "@/manager/router";
+import type * as protocol from "@/schemas/client-protocol/mod";
 import { logger } from "./log";
 
 /**
@@ -30,7 +30,7 @@ export function createTestInlineClientDriver(
 ): ClientDriver {
 	return {
 		action: async <Args extends Array<unknown> = unknown[], Response = unknown>(
-			c: HonoContext | undefined,
+			_c: HonoContext | undefined,
 			actorQuery: ActorQuery,
 			encoding: Encoding,
 			params: unknown,
@@ -47,7 +47,7 @@ export function createTestInlineClientDriver(
 		},
 
 		resolveActorId: async (
-			c: HonoContext | undefined,
+			_c: HonoContext | undefined,
 			actorQuery: ActorQuery,
 			encodingKind: Encoding,
 			params: unknown,
@@ -62,7 +62,7 @@ export function createTestInlineClientDriver(
 		},
 
 		connectWebSocket: async (
-			c: HonoContext | undefined,
+			_c: HonoContext | undefined,
 			actorQuery: ActorQuery,
 			encodingKind: Encoding,
 			params: unknown,
@@ -100,7 +100,7 @@ export function createTestInlineClientDriver(
 		},
 
 		connectSse: async (
-			c: HonoContext | undefined,
+			_c: HonoContext | undefined,
 			actorQuery: ActorQuery,
 			encodingKind: Encoding,
 			params: unknown,
@@ -163,13 +163,13 @@ export function createTestInlineClientDriver(
 		},
 
 		sendHttpMessage: async (
-			c: HonoContext | undefined,
+			_c: HonoContext | undefined,
 			actorId: string,
 			encoding: Encoding,
 			connectionId: string,
 			connectionToken: string,
-			message: wsToServer.ToServer,
-		): Promise<Response> => {
+			message: protocol.ToServer,
+		): Promise<void> => {
 			logger().debug("sending http message via test inline driver", {
 				actorId,
 				encoding,
@@ -204,16 +204,12 @@ export function createTestInlineClientDriver(
 				throw new Error(`Failed to send HTTP message: ${result.statusText}`);
 			}
 
-			// Need to create a Response object from the proxy response
-			return new Response(await result.text(), {
-				status: result.status,
-				statusText: result.statusText,
-				headers: result.headers,
-			});
+			// Discard response
+			await result.body?.cancel();
 		},
 
 		rawHttpRequest: async (
-			c: HonoContext | undefined,
+			_c: HonoContext | undefined,
 			actorQuery: ActorQuery,
 			encoding: Encoding,
 			params: unknown,

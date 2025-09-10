@@ -1,13 +1,9 @@
+import * as cbor from "cbor-x";
 import type { Context as HonoContext } from "hono";
 import invariant from "invariant";
 import onChange from "on-change";
 import type { WebSocket } from "ws";
 import * as errors from "@/actor/errors";
-import type {
-	ActionRequest,
-	ActionResponse,
-} from "@/actor/protocol/http/action";
-import type * as wsToServer from "@/actor/protocol/message/to-server";
 import type { Encoding } from "@/actor/protocol/serde";
 import {
 	PATH_CONNECT_WEBSOCKET,
@@ -30,7 +26,14 @@ import { deconstructError } from "@/common/utils";
 import type { ManagerDriver } from "@/manager/driver";
 import type { ActorQuery } from "@/manager/protocol/query";
 import type { RunConfig } from "@/mod";
-import { httpUserAgent } from "@/utils";
+import type * as protocol from "@/schemas/client-protocol/mod";
+import {
+	HTTP_ACTION_REQUEST_VERSIONED,
+	HTTP_ACTION_RESPONSE_VERSIONED,
+	TO_CLIENT_VERSIONED,
+	TO_SERVER_VERSIONED,
+} from "@/schemas/client-protocol/versioned";
+import { bufferToArrayBuffer, httpUserAgent } from "@/utils";
 import { logger } from "./log";
 
 /**
@@ -66,8 +69,8 @@ export function createInlineClientDriver(
 				// Invoke the action
 				logger().debug("handling action", { actionName, encoding });
 				const responseData = await sendHttpRequest<
-					ActionRequest,
-					ActionResponse
+					protocol.HttpActionRequest,
+					protocol.HttpActionResponse
 				>({
 					url: `http://actor/action/${encodeURIComponent(actionName)}`,
 					method: "POST",
@@ -78,13 +81,17 @@ export function createInlineClientDriver(
 							: {}),
 						[HEADER_EXPOSE_INTERNAL_ERROR]: "true",
 					},
-					body: { a: args } satisfies ActionRequest,
+					body: {
+						args: bufferToArrayBuffer(cbor.encode(args)),
+					} satisfies protocol.HttpActionRequest,
 					encoding: encoding,
 					customFetch: managerDriver.sendRequest.bind(managerDriver, actorId),
 					signal: opts?.signal,
+					requestVersionedDataHandler: HTTP_ACTION_REQUEST_VERSIONED,
+					responseVersionedDataHandler: HTTP_ACTION_RESPONSE_VERSIONED,
 				});
 
-				return responseData.o as Response;
+				return cbor.decode(new Uint8Array(responseData.output));
 			} catch (err) {
 				// Standardize to ClientActorError instead of the native backend error
 				const { code, message, metadata } = deconstructError(
@@ -181,12 +188,12 @@ export function createInlineClientDriver(
 			encoding: Encoding,
 			connectionId: string,
 			connectionToken: string,
-			message: wsToServer.ToServer,
-		): Promise<Response> => {
+			message: protocol.ToServer,
+		): Promise<void> => {
 			logger().debug("sending http message", { actorId, connectionId });
 
 			// Send an HTTP request to the connections endpoint
-			return sendHttpRequest({
+			await sendHttpRequest({
 				url: "http://actor/connections/message",
 				method: "POST",
 				headers: {
@@ -199,6 +206,8 @@ export function createInlineClientDriver(
 				encoding,
 				skipParseResponse: true,
 				customFetch: managerDriver.sendRequest.bind(managerDriver, actorId),
+				requestVersionedDataHandler: TO_SERVER_VERSIONED,
+				responseVersionedDataHandler: TO_CLIENT_VERSIONED,
 			});
 		},
 

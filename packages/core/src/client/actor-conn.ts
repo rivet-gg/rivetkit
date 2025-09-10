@@ -1,10 +1,10 @@
 import * as cbor from "cbor-x";
+import invariant from "invariant";
 import pRetry from "p-retry";
 import type { CloseEvent, WebSocket } from "ws";
 import type { AnyActorDefinition } from "@/actor/definition";
-import type * as wsToClient from "@/actor/protocol/message/to-client";
-import type * as wsToServer from "@/actor/protocol/message/to-server";
-import type { Encoding } from "@/actor/protocol/serde";
+import { inputDataToBuffer } from "@/actor/protocol/old";
+import { type Encoding, jsonStringifyCompat } from "@/actor/protocol/serde";
 import type {
 	UniversalErrorEvent,
 	UniversalEventSource,
@@ -12,6 +12,17 @@ import type {
 } from "@/common/eventsource-interface";
 import { assertUnreachable, stringifyError } from "@/common/utils";
 import type { ActorQuery } from "@/manager/protocol/query";
+import type * as protocol from "@/schemas/client-protocol/mod";
+import {
+	TO_CLIENT_VERSIONED,
+	TO_SERVER_VERSIONED,
+} from "@/schemas/client-protocol/versioned";
+import {
+	deserializeWithEncoding,
+	encodingIsBinary,
+	serializeWithEncoding,
+} from "@/serde";
+import { bufferToArrayBuffer, getEnvUniversal } from "@/utils";
 import type { ActorDefinitionActions } from "./actor-common";
 import {
 	ACTOR_CONNS_SYMBOL,
@@ -21,16 +32,11 @@ import {
 } from "./client";
 import * as errors from "./errors";
 import { logger } from "./log";
-import { rawHttpFetch, rawWebSocket } from "./raw-utils";
-import {
-	type WebSocketMessage as ConnMessage,
-	messageLength,
-	serializeWithEncoding,
-} from "./utils";
+import { type WebSocketMessage as ConnMessage, messageLength } from "./utils";
 
 interface ActionInFlight {
 	name: string;
-	resolve: (response: wsToClient.ActionResponse) => void;
+	resolve: (response: protocol.ActionResponse) => void;
 	reject: (error: Error) => void;
 }
 
@@ -85,7 +91,7 @@ export class ActorConnRaw {
 
 	#transport?: ConnTransport;
 
-	#messageQueue: wsToServer.ToServer[] = [];
+	#messageQueue: protocol.ToServer[] = [];
 	#actionsInFlight = new Map<number, ActionInFlight>();
 
 	// biome-ignore lint/suspicious/noExplicitAny: Unknown subscription type
@@ -121,11 +127,11 @@ export class ActorConnRaw {
 	 * @protected
 	 */
 	public constructor(
-		private client: ClientRaw,
-		private driver: ClientDriver,
-		private params: unknown,
-		private encodingKind: Encoding,
-		private actorQuery: ActorQuery,
+		client: ClientRaw,
+		driver: ClientDriver,
+		params: unknown,
+		encodingKind: Encoding,
+		actorQuery: ActorQuery,
 	) {
 		this.#client = client;
 		this.#driver = driver;
@@ -161,28 +167,29 @@ export class ActorConnRaw {
 		this.#actionIdCounter += 1;
 
 		const { promise, resolve, reject } =
-			Promise.withResolvers<wsToClient.ActionResponse>();
+			Promise.withResolvers<protocol.ActionResponse>();
 		this.#actionsInFlight.set(actionId, { name: opts.name, resolve, reject });
 
 		this.#sendMessage({
-			b: {
-				ar: {
-					i: actionId,
-					n: opts.name,
-					a: opts.args,
+			body: {
+				tag: "ActionRequest",
+				val: {
+					id: BigInt(actionId),
+					name: opts.name,
+					args: bufferToArrayBuffer(cbor.encode(opts.args)),
 				},
 			},
-		} satisfies wsToServer.ToServer);
+		} satisfies protocol.ToServer);
 
 		// TODO: Throw error if disconnect is called
 
-		const { i: responseId, o: output } = await promise;
-		if (responseId !== actionId)
+		const { id: responseId, output } = await promise;
+		if (responseId !== BigInt(actionId))
 			throw new Error(
 				`Request ID ${actionId} does not match response ID ${responseId}`,
 			);
 
-		return output as Response;
+		return cbor.decode(new Uint8Array(output)) as Response;
 	}
 
 	/**
@@ -271,7 +278,7 @@ enc
 		ws.addEventListener("close", (ev) => {
 			this.#handleOnClose(ev);
 		});
-		ws.addEventListener("error", (ev) => {
+		ws.addEventListener("error", (_ev) => {
 			this.#handleOnError();
 		});
 	}
@@ -292,7 +299,7 @@ enc
 		eventSource.onmessage = (ev: UniversalMessageEvent) => {
 			this.#handleOnMessage(ev.data);
 		};
-		eventSource.onerror = (ev: UniversalErrorEvent) => {
+		eventSource.onerror = (_ev: UniversalErrorEvent) => {
 			if (eventSource.readyState === eventSource.CLOSED) {
 				// This error indicates a close event
 				this.#handleOnClose(new Event("error"));
@@ -339,29 +346,32 @@ enc
 			isArrayBuffer: data instanceof ArrayBuffer,
 		});
 
-		const response = (await this.#parse(
-			data as ConnMessage,
-		)) as wsToClient.ToClient;
-		logger().trace("parsed message", {
-			response: JSON.stringify(response).substring(0, 100) + "...",
-		});
+		const response = await this.#parseMessage(data as ConnMessage);
+		logger().trace(
+			"parsed message",
+			getEnvUniversal("_RIVETKIT_LOG_MESSAGE")
+				? {
+						message: jsonStringifyCompat(response).substring(0, 100) + "...",
+					}
+				: {},
+		);
 
-		if ("i" in response.b) {
+		if (response.body.tag === "Init") {
 			// This is only called for SSE
-			this.#actorId = response.b.i.ai;
-			this.#connectionId = response.b.i.ci;
-			this.#connectionToken = response.b.i.ct;
+			this.#actorId = response.body.val.actorId;
+			this.#connectionId = response.body.val.connectionId;
+			this.#connectionToken = response.body.val.connectionToken;
 			logger().trace("received init message", {
 				actorId: this.#actorId,
 				connectionId: this.#connectionId,
 			});
 			this.#handleOnOpen();
-		} else if ("e" in response.b) {
+		} else if (response.body.tag === "Error") {
 			// Connection error
-			const { c: code, m: message, md: metadata, ai: actionId } = response.b.e;
+			const { code, message, metadata, actionId } = response.body.val;
 
 			if (actionId) {
-				const inFlight = this.#takeActionInFlight(actionId);
+				const inFlight = this.#takeActionInFlight(Number(actionId));
 
 				logger().warn("action error", {
 					actionId: actionId,
@@ -396,28 +406,24 @@ enc
 				// Dispatch to error handler if registered
 				this.#dispatchActorError(actorError);
 			}
-		} else if ("ar" in response.b) {
+		} else if (response.body.tag === "ActionResponse") {
 			// Action response OK
-			const { i: actionId, o: outputType } = response.b.ar;
+			const { id: actionId } = response.body.val;
 			logger().trace("received action response", {
 				actionId,
-				outputType,
 			});
 
-			const inFlight = this.#takeActionInFlight(actionId);
+			const inFlight = this.#takeActionInFlight(Number(actionId));
 			logger().trace("resolving action promise", {
 				actionId,
 				actionName: inFlight?.name,
 			});
-			inFlight.resolve(response.b.ar);
-		} else if ("ev" in response.b) {
-			logger().trace("received event", {
-				name: response.b.ev.n,
-				argsCount: response.b.ev.a?.length,
-			});
-			this.#dispatchEvent(response.b.ev);
+			inFlight.resolve(response.body.val);
+		} else if (response.body.tag === "Event") {
+			logger().trace("received event", { name: response.body.val.name });
+			this.#dispatchEvent(response.body.val);
 		} else {
-			assertUnreachable(response.b);
+			assertUnreachable(response.body);
 		}
 	}
 
@@ -479,8 +485,9 @@ enc
 		return inFlight;
 	}
 
-	#dispatchEvent(event: wsToClient.Event) {
-		const { n: name, a: args } = event;
+	#dispatchEvent(event: protocol.Event) {
+		const { name, args: argsRaw } = event;
+		const args = cbor.decode(new Uint8Array(argsRaw));
 
 		const listeners = this.#eventSubscriptions.get(name);
 		if (!listeners) return;
@@ -592,7 +599,7 @@ enc
 		};
 	}
 
-	#sendMessage(message: wsToServer.ToServer, opts?: SendHttpMessageOpts) {
+	#sendMessage(message: protocol.ToServer, opts?: SendHttpMessageOpts) {
 		if (this.#disposed) {
 			throw new errors.ActorConnDisposed();
 		}
@@ -607,6 +614,7 @@ enc
 					const messageSerialized = serializeWithEncoding(
 						this.#encodingKind,
 						message,
+						TO_SERVER_VERSIONED,
 					);
 					this.#transport.websocket.send(messageSerialized);
 					logger().trace("sent websocket message", {
@@ -641,18 +649,23 @@ enc
 	}
 
 	async #sendHttpMessage(
-		message: wsToServer.ToServer,
+		message: protocol.ToServer,
 		opts?: SendHttpMessageOpts,
 	) {
 		try {
 			if (!this.#actorId || !this.#connectionId || !this.#connectionToken)
 				throw new errors.InternalError("Missing connection ID or token.");
 
-			logger().trace("sent http message", {
-				message: JSON.stringify(message).substring(0, 100) + "...",
-			});
+			logger().trace(
+				"sent http message",
+				getEnvUniversal("_RIVETKIT_LOG_MESSAGE")
+					? {
+							message: jsonStringifyCompat(message).substring(0, 100) + "...",
+						}
+					: {},
+			);
 
-			const res = await this.#driver.sendHttpMessage(
+			await this.#driver.sendHttpMessage(
 				undefined,
 				this.#actorId,
 				this.#encodingKind,
@@ -661,15 +674,6 @@ enc
 				message,
 				opts?.signal ? { signal: opts.signal } : undefined,
 			);
-
-			if (!res.ok) {
-				throw new errors.InternalError(
-					`Publish message over HTTP error (${res.statusText}):\n${await res.text()}`,
-				);
-			}
-
-			// Dispose of the response body, we don't care about it
-			await res.json();
 		} catch (error) {
 			// TODO: This will not automatically trigger a re-broadcast of HTTP events since SSE is separate from the HTTP action
 
@@ -686,49 +690,30 @@ enc
 		}
 	}
 
-	async #parse(data: ConnMessage): Promise<unknown> {
-		if (this.#encodingKind === "json") {
-			if (typeof data !== "string") {
-				throw new Error("received non-string for json parse");
-			}
-			return JSON.parse(data);
-		} else if (this.#encodingKind === "cbor") {
-			if (!this.#transport) {
-				// Do thing
-				throw new Error("Cannot parse message when no transport defined");
-			} else if ("sse" in this.#transport) {
-				// Decode base64 since SSE sends raw strings
-				if (typeof data === "string") {
-					const binaryString = atob(data);
-					data = new Uint8Array(
-						[...binaryString].map((char) => char.charCodeAt(0)),
-					);
-				} else {
-					throw new errors.InternalError(
-						`Expected data to be a string for SSE, got ${data}.`,
-					);
-				}
-			} else if ("websocket" in this.#transport) {
-				// Do nothing
-			} else {
-				assertUnreachable(this.#transport);
-			}
+	async #parseMessage(data: ConnMessage): Promise<protocol.ToClient> {
+		invariant(this.#transport, "transport must be defined");
 
-			// Decode data
-			if (data instanceof Blob) {
-				return cbor.decode(new Uint8Array(await data.arrayBuffer()));
-			} else if (data instanceof ArrayBuffer) {
-				return cbor.decode(new Uint8Array(data));
-			} else if (data instanceof Uint8Array) {
-				return cbor.decode(data);
+		// Decode base64 since SSE sends raw strings
+		if (encodingIsBinary(this.#encodingKind) && "sse" in this.#transport) {
+			if (typeof data === "string") {
+				const binaryString = atob(data);
+				data = new Uint8Array(
+					[...binaryString].map((char) => char.charCodeAt(0)),
+				);
 			} else {
-				throw new Error(
-					`received non-binary type for cbor parse: ${typeof data}`,
+				throw new errors.InternalError(
+					`Expected data to be a string for SSE, got ${data}.`,
 				);
 			}
-		} else {
-			assertUnreachable(this.#encodingKind);
 		}
+
+		const buffer = await inputDataToBuffer(data);
+
+		return deserializeWithEncoding(
+			this.#encodingKind,
+			buffer,
+			TO_CLIENT_VERSIONED,
+		);
 	}
 
 	/**
@@ -760,13 +745,22 @@ enc
 		if (!this.#transport) {
 			// Nothing to do
 		} else if ("websocket" in this.#transport) {
-			const { promise, resolve } = Promise.withResolvers();
-			this.#transport.websocket.addEventListener("close", () => {
-				logger().debug("ws closed");
-				resolve(undefined);
-			});
-			this.#transport.websocket.close();
-			await promise;
+			const ws = this.#transport.websocket;
+			// Check if WebSocket is already closed or closing
+			if (
+				ws.readyState === 2 /* CLOSING */ ||
+				ws.readyState === 3 /* CLOSED */
+			) {
+				logger().debug("ws already closed or closing");
+			} else {
+				const { promise, resolve } = Promise.withResolvers();
+				ws.addEventListener("close", () => {
+					logger().debug("ws closed");
+					resolve(undefined);
+				});
+				ws.close();
+				await promise;
+			}
 		} else if ("sse" in this.#transport) {
 			this.#transport.sse.close();
 		} else {
@@ -778,10 +772,11 @@ enc
 	#sendSubscription(eventName: string, subscribe: boolean) {
 		this.#sendMessage(
 			{
-				b: {
-					sr: {
-						e: eventName,
-						s: subscribe,
+				body: {
+					tag: "SubscriptionRequest",
+					val: {
+						eventName,
+						subscribe,
 					},
 				},
 			},

@@ -1,10 +1,14 @@
+import * as cbor from "cbor-x";
 import type { Context as HonoContext, Next } from "hono";
-import type { ResponseError } from "@/actor/protocol/http/error";
-import { type Encoding, serialize } from "@/actor/protocol/serde";
+import type { Encoding } from "@/actor/protocol/serde";
 import {
 	getRequestEncoding,
 	getRequestExposeInternalError,
 } from "@/actor/router-endpoints";
+import { HttpResponseError } from "@/schemas/client-protocol/mod";
+import { HTTP_RESPONSE_ERROR_VERSIONED } from "@/schemas/client-protocol/versioned";
+import { serializeWithEncoding } from "@/serde";
+import { bufferToArrayBuffer } from "@/utils";
 import { getLogger, type Logger } from "./log";
 import { deconstructError, stringifyError } from "./utils";
 
@@ -69,13 +73,14 @@ export function handleRouteError(
 		encoding = "json";
 	}
 
-	const output = serialize(
-		{
-			c: code,
-			m: message,
-			md: metadata,
-		} satisfies ResponseError,
+	const output = serializeWithEncoding(
 		encoding,
+		{
+			code,
+			message,
+			metadata: bufferToArrayBuffer(cbor.encode(metadata)),
+		},
+		HTTP_RESPONSE_ERROR_VERSIONED,
 	);
 
 	return c.body(output, { status: statusCode });

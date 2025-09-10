@@ -1,4 +1,5 @@
 import type { GenericConnGlobalState } from "@/actor/generic-conn-driver";
+import { logger } from "@/actor/log";
 import type { AnyClient } from "@/client/client";
 import type {
 	ActorDriver,
@@ -79,7 +80,7 @@ export class FileSystemActorDriver implements ActorDriver {
 		return this.#state.createDatabase(actorId);
 	}
 
-	sleep(actorId: string): void {
-		this.#state.sleepActor(actorId);
+	sleep(actorId: string): Promise<void> {
+		return this.#state.sleepActor(actorId);
 	}
 }

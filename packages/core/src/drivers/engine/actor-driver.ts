@@ -349,7 +349,7 @@ export class EngineActorDriver implements ActorDriver {
 		});
 	}
 
-	sleep(actorId: string) {
+	async sleep(actorId: string) {
 		this.#runner.sleepActor(actorId);
 	}
 

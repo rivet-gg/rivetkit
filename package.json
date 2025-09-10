@@ -13,6 +13,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.1.1",
+    "tsup": "^8.4.0",
     "@types/ws": "^8.5.14",
     "commander": "^14.0.0",
     "dedent": "^1.5.3",

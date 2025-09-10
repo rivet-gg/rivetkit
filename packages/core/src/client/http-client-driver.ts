@@ -1,9 +1,6 @@
+import * as cbor from "cbor-x";
 import type { Context as HonoContext } from "hono";
 import type { WebSocket } from "ws";
-import type { ActionRequest } from "@/actor/protocol/http/action";
-import type * as protoHttpResolve from "@/actor/protocol/http/resolve";
-import type { ActionResponse } from "@/actor/protocol/message/to-client";
-import type * as wsToServer from "@/actor/protocol/message/to-server";
 import type { Encoding } from "@/actor/protocol/serde";
 import {
 	HEADER_ACTOR_ID,
@@ -17,17 +14,26 @@ import { importEventSource } from "@/common/eventsource";
 import type { UniversalEventSource } from "@/common/eventsource-interface";
 import { importWebSocket } from "@/common/websocket";
 import type { ActorQuery } from "@/manager/protocol/query";
-import { assertUnreachable, httpUserAgent } from "@/utils";
+import type * as protocol from "@/schemas/client-protocol/mod";
+import {
+	HTTP_ACTION_REQUEST_VERSIONED,
+	HTTP_ACTION_RESPONSE_VERSIONED,
+	HTTP_RESOLVE_REQUEST_VERSIONED,
+	HTTP_RESOLVE_RESPONSE_VERSIONED,
+	TO_SERVER_VERSIONED,
+} from "@/schemas/client-protocol/versioned";
+import { serializeWithEncoding, wsBinaryTypeForEncoding } from "@/serde";
+import { assertUnreachable, bufferToArrayBuffer, httpUserAgent } from "@/utils";
 import type { ClientDriver } from "./client";
 import * as errors from "./errors";
 import { logger } from "./log";
-import { sendHttpRequest, serializeWithEncoding } from "./utils";
+import { sendHttpRequest } from "./utils";
 
 /**
  * Client driver that communicates with the manager via HTTP.
  */
 export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
-	// Lazily import the dynamic imports so we don't have to turn `createClient` in to an aysnc fn
+	// Lazily import the dynamic imports so we don't have to turn `createClient` in to an async fn
 	const dynamicImports = (async () => {
 		// Import dynamic dependencies
 		const [WebSocket, EventSource] = await Promise.all([
@@ -56,24 +62,29 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 				query: actorQuery,
 			});
 
-			const responseData = await sendHttpRequest<ActionRequest, ActionResponse>(
-				{
-					url: `${managerEndpoint}/registry/actors/actions/${encodeURIComponent(name)}`,
-					method: "POST",
-					headers: {
-						[HEADER_ENCODING]: encoding,
-						[HEADER_ACTOR_QUERY]: JSON.stringify(actorQuery),
-						...(params !== undefined
-							? { [HEADER_CONN_PARAMS]: JSON.stringify(params) }
-							: {}),
-					},
-					body: { a: args } satisfies ActionRequest,
-					encoding: encoding,
-					signal: opts?.signal,
+			const responseData = await sendHttpRequest<
+				protocol.HttpActionRequest,
+				protocol.HttpActionResponse
+			>({
+				url: `${managerEndpoint}/registry/actors/actions/${encodeURIComponent(name)}`,
+				method: "POST",
+				headers: {
+					[HEADER_ENCODING]: encoding,
+					[HEADER_ACTOR_QUERY]: JSON.stringify(actorQuery),
+					...(params !== undefined
+						? { [HEADER_CONN_PARAMS]: JSON.stringify(params) }
+						: {}),
 				},
-			);
+				body: {
+					args: bufferToArrayBuffer(cbor.encode(args)),
+				} satisfies protocol.HttpActionRequest,
+				encoding: encoding,
+				signal: opts?.signal,
+				requestVersionedDataHandler: HTTP_ACTION_REQUEST_VERSIONED,
+				responseVersionedDataHandler: HTTP_ACTION_RESPONSE_VERSIONED,
+			});
 
-			return responseData.o as Response;
+			return cbor.decode(new Uint8Array(responseData.output));
 		},
 
 		resolveActorId: async (
@@ -86,8 +97,8 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 
 			try {
 				const result = await sendHttpRequest<
-					Record<never, never>,
-					protoHttpResolve.ResolveResponse
+					null,
+					protocol.HttpResolveResponse
 				>({
 					url: `${managerEndpoint}/registry/actors/resolve`,
 					method: "POST",
@@ -98,12 +109,14 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 							? { [HEADER_CONN_PARAMS]: JSON.stringify(params) }
 							: {}),
 					},
-					body: {},
+					body: null,
 					encoding: encodingKind,
+					requestVersionedDataHandler: HTTP_RESOLVE_REQUEST_VERSIONED,
+					responseVersionedDataHandler: HTTP_RESOLVE_RESPONSE_VERSIONED,
 				});
 
-				logger().debug("resolved actor ID", { actorId: result.i });
-				return result.i;
+				logger().debug("resolved actor ID", { actorId: result.actorId });
+				return result.actorId;
 			} catch (error) {
 				logger().error("failed to resolve actor ID", { error });
 				if (error instanceof errors.ActorError) {
@@ -144,16 +157,10 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 
 			logger().debug("connecting to websocket", { url });
 			const ws = new WebSocket(url, protocol);
-			if (encodingKind === "cbor") {
-				ws.binaryType = "arraybuffer";
-			} else if (encodingKind === "json") {
-				// HACK: Bun bug prevents changing binary type, so we ignore the error https://github.com/oven-sh/bun/issues/17005
-				try {
-					ws.binaryType = "blob" as any;
-				} catch (error) {}
-			} else {
-				assertUnreachable(encodingKind);
-			}
+			// HACK: Bun bug prevents changing binary type, so we ignore the error https://github.com/oven-sh/bun/issues/17005
+			try {
+				ws.binaryType = wsBinaryTypeForEncoding(encodingKind);
+			} catch (error) {}
 
 			// Node & web WebSocket types not compatible
 			return ws as any;
@@ -197,11 +204,15 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 			encoding: Encoding,
 			connectionId: string,
 			connectionToken: string,
-			message: wsToServer.ToServer,
-		): Promise<Response> => {
+			message: protocol.ToServer,
+		): Promise<void> => {
 			// TODO: Implement ordered messages, this is not guaranteed order. Needs to use an index in order to ensure we can pipeline requests efficiently.
 			// TODO: Validate that we're using HTTP/3 whenever possible for pipelining requests
-			const messageSerialized = serializeWithEncoding(encoding, message);
+			const messageSerialized = serializeWithEncoding(
+				encoding,
+				message,
+				TO_SERVER_VERSIONED,
+			);
 			const res = await fetch(`${managerEndpoint}/registry/actors/message`, {
 				method: "POST",
 				headers: {
@@ -214,7 +225,14 @@ export function createHttpClientDriver(managerEndpoint: string): ClientDriver {
 				body: messageSerialized,
 				credentials: "include",
 			});
-			return res;
+			if (!res.ok) {
+				throw new errors.InternalError(
+					`Publish message over HTTP error (${res.statusText}):\n${await res.text()}`,
+				);
+			}
+
+			// Discard response
+			await res.body?.cancel();
 		},
 
 		rawHttpRequest: async (

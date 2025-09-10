@@ -1,7 +1,15 @@
+import type { VersionedDataHandler } from "@rivetkit/versioned-data-util";
 import * as cbor from "cbor-x";
-import type { ResponseError } from "@/actor/protocol/http/error";
+import invariant from "invariant";
 import { assertUnreachable } from "@/common/utils";
 import type { Encoding } from "@/mod";
+import type { HttpResponseError } from "@/schemas/client-protocol/mod";
+import { HTTP_RESPONSE_ERROR_VERSIONED } from "@/schemas/client-protocol/versioned";
+import {
+	contentTypeForEncoding,
+	deserializeWithEncoding,
+	serializeWithEncoding,
+} from "@/serde";
 import { httpUserAgent } from "@/utils";
 import { ActorError, HttpRequestError } from "./errors";
 import { logger } from "./log";
@@ -24,21 +32,23 @@ export function messageLength(message: WebSocketMessage): number {
 	assertUnreachable(message);
 }
 
-export interface HttpRequestOpts<Body> {
+export interface HttpRequestOpts<RequestBody, ResponseBody> {
 	method: string;
 	url: string;
 	headers: Record<string, string>;
-	body?: Body;
+	body?: RequestBody;
 	encoding: Encoding;
 	skipParseResponse?: boolean;
 	signal?: AbortSignal;
 	customFetch?: (req: Request) => Promise<Response>;
+	requestVersionedDataHandler: VersionedDataHandler<RequestBody>;
+	responseVersionedDataHandler: VersionedDataHandler<ResponseBody>;
 }
 
 export async function sendHttpRequest<
 	RequestBody = unknown,
 	ResponseBody = unknown,
->(opts: HttpRequestOpts<RequestBody>): Promise<ResponseBody> {
+>(opts: HttpRequestOpts<RequestBody, ResponseBody>): Promise<ResponseBody> {
 	logger().debug("sending http request", {
 		url: opts.url,
 		encoding: opts.encoding,
@@ -46,17 +56,15 @@ export async function sendHttpRequest<
 
 	// Serialize body
 	let contentType: string | undefined;
-	let bodyData: string | Buffer | undefined;
+	let bodyData: string | Uint8Array | undefined;
 	if (opts.method === "POST" || opts.method === "PUT") {
-		if (opts.encoding === "json") {
-			contentType = "application/json";
-			bodyData = JSON.stringify(opts.body);
-		} else if (opts.encoding === "cbor") {
-			contentType = "application/octet-stream";
-			bodyData = cbor.encode(opts.body);
-		} else {
-			assertUnreachable(opts.encoding);
-		}
+		invariant(opts.body !== undefined, "missing body");
+		contentType = contentTypeForEncoding(opts.encoding);
+		bodyData = serializeWithEncoding<RequestBody>(
+			opts.encoding,
+			opts.body,
+			opts.requestVersionedDataHandler,
+		);
 	}
 
 	// Send request
@@ -90,17 +98,13 @@ export async function sendHttpRequest<
 	if (!response.ok) {
 		// Attempt to parse structured data
 		const bufferResponse = await response.arrayBuffer();
-		let responseData: ResponseError;
+		let responseData: HttpResponseError;
 		try {
-			if (opts.encoding === "json") {
-				const textResponse = new TextDecoder().decode(bufferResponse);
-				responseData = JSON.parse(textResponse);
-			} else if (opts.encoding === "cbor") {
-				const uint8Array = new Uint8Array(bufferResponse);
-				responseData = cbor.decode(uint8Array);
-			} else {
-				assertUnreachable(opts.encoding);
-			}
+			responseData = deserializeWithEncoding(
+				opts.encoding,
+				new Uint8Array(bufferResponse),
+				HTTP_RESPONSE_ERROR_VERSIONED,
+			);
 		} catch (error) {
 			//logger().warn("failed to cleanly parse error, this is likely because a non-structured response is being served", {
 			//	error: stringifyError(error),
@@ -116,7 +120,13 @@ export async function sendHttpRequest<
 		}
 
 		// Throw structured error
-		throw new ActorError(responseData.c, responseData.m, responseData.md);
+		throw new ActorError(
+			responseData.code,
+			responseData.message,
+			responseData.metadata
+				? cbor.decode(new Uint8Array(responseData.metadata))
+				: undefined,
+		);
 	}
 
 	// Some requests don't need the success response to be parsed, so this can speed things up
@@ -125,35 +135,16 @@ export async function sendHttpRequest<
 	}
 
 	// Parse the response based on encoding
-	let responseBody: ResponseBody;
 	try {
-		if (opts.encoding === "json") {
-			responseBody = (await response.json()) as ResponseBody;
-		} else if (opts.encoding === "cbor") {
-			const buffer = await response.arrayBuffer();
-			const uint8Array = new Uint8Array(buffer);
-			responseBody = cbor.decode(uint8Array);
-		} else {
-			assertUnreachable(opts.encoding);
-		}
+		const buffer = new Uint8Array(await response.arrayBuffer());
+		return deserializeWithEncoding(
+			opts.encoding,
+			buffer,
+			opts.responseVersionedDataHandler,
+		);
 	} catch (error) {
 		throw new HttpRequestError(`Failed to parse response: ${error}`, {
 			cause: error,
 		});
-	}
-
-	return responseBody;
-}
-
-export function serializeWithEncoding(
-	encoding: Encoding,
-	value: unknown,
-): WebSocketMessage {
-	if (encoding === "json") {
-		return JSON.stringify(value);
-	} else if (encoding === "cbor") {
-		return cbor.encode(value);
-	} else {
-		assertUnreachable(encoding);
 	}
 }

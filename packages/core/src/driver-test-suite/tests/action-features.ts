@@ -6,7 +6,7 @@ import { setupDriverTest } from "../utils";
 export function runActionFeaturesTests(driverTestConfig: DriverTestConfig) {
 	describe("Action Features", () => {
 		// TODO: These do not work with fake timers
-		describe.skip("Action Timeouts", () => {
+		describe("Action Timeouts", () => {
 			const usesFakeTimers = !driverTestConfig.useRealTimers;
 
 			test("should timeout actions that exceed the configured timeout", async (c) => {

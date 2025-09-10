@@ -2,15 +2,15 @@ import * as cbor from "cbor-x";
 import invariant from "invariant";
 import onChange from "on-change";
 import type { ActorKey } from "@/actor/mod";
-import type * as wsToClient from "@/actor/protocol/message/to-client";
-import type * as wsToServer from "@/actor/protocol/message/to-server";
 import type { Client } from "@/client/client";
 import type { Logger } from "@/common/log";
 import { isCborSerializable, stringifyError } from "@/common/utils";
 import type { UniversalWebSocket } from "@/common/websocket-interface";
 import { ActorInspector } from "@/inspector/actor";
 import type { Registry } from "@/mod";
-import { SinglePromiseQueue } from "@/utils";
+import type * as protocol from "@/schemas/client-protocol/mod";
+import { TO_CLIENT_VERSIONED } from "@/schemas/client-protocol/versioned";
+import { bufferToArrayBuffer, SinglePromiseQueue } from "@/utils";
 import type { ActionContext } from "./action";
 import type { ActorConfig, OnConnectOptions } from "./config";
 import {
@@ -28,9 +28,8 @@ import type {
 	PersistedActor,
 	PersistedConn,
 	PersistedScheduleEvent,
-	PersistedScheduleEventKind,
 } from "./persisted";
-import { processMessage } from "./protocol/message/mod";
+import { processMessage } from "./protocol/old";
 import { CachedSerializer } from "./protocol/serde";
 import { Schedule } from "./schedule";
 import { DeadlineError, deadline } from "./utils";
@@ -945,15 +944,19 @@ export class ActorInstance<
 
 		// Send init message
 		conn._sendMessage(
-			new CachedSerializer<wsToClient.ToClient>({
-				b: {
-					i: {
-						ai: this.id,
-						ci: conn.id,
-						ct: conn._token,
+			new CachedSerializer<protocol.ToClient>(
+				{
+					body: {
+						tag: "Init",
+						val: {
+							actorId: this.id,
+							connectionId: conn.id,
+							connectionToken: conn._token,
+						},
 					},
 				},
-			}),
+				TO_CLIENT_VERSIONED,
+			),
 		);
 
 		return conn;
@@ -961,7 +964,7 @@ export class ActorInstance<
 
 	// MARK: Messages
 	async processMessage(
-		message: wsToServer.ToServer,
+		message: protocol.ToServer,
 		conn: Conn<S, CP, CS, V, I, AD, DB>,
 	) {
 		await processMessage(message, this, conn, {
@@ -1428,14 +1431,18 @@ export class ActorInstance<
 		const subscriptions = this.#subscriptionIndex.get(name);
 		if (!subscriptions) return;
 
-		const toClientSerializer = new CachedSerializer<wsToClient.ToClient>({
-			b: {
-				ev: {
-					n: name,
-					a: args,
+		const toClientSerializer = new CachedSerializer<protocol.ToClient>(
+			{
+				body: {
+					tag: "Event",
+					val: {
+						name,
+						args: bufferToArrayBuffer(cbor.encode(args)),
+					},
 				},
 			},
-		});
+			TO_CLIENT_VERSIONED,
+		);
 
 		// Send message to clients
 		for (const connection of subscriptions) {
@@ -1524,6 +1531,9 @@ export class ActorInstance<
 			this.#sleepTimeout = undefined;
 		}
 
+		// Don't set a new timer if already sleeping
+		if (this.#sleepCalled) return;
+
 		if (canSleep) {
 			this.#sleepTimeout = setTimeout(() => {
 				this._sleep().catch((error) => {
@@ -1555,8 +1565,12 @@ export class ActorInstance<
 
 	/** Puts an actor to sleep. This should just start the sleep sequence, most shutdown logic should be in _stop (which is called by the ActorDriver when sleeping). */
 	async _sleep() {
+		const sleep = this.#actorDriver.sleep?.bind(
+			this.#actorDriver,
+			this.#actorId,
+		);
 		invariant(this.#sleepingSupported, "sleeping not supported");
-		invariant(this.#actorDriver.sleep, "no sleep on driver");
+		invariant(sleep, "no sleep on driver");
 
 		if (this.#sleepCalled) {
 			logger().warn("already sleeping actor");
@@ -1566,10 +1580,13 @@ export class ActorInstance<
 
 		logger().info("actor sleeping");
 
-		// The actor driver should call stop when ready to stop
-		//
-		// This will call _stop once Pegboard responds with the new status
-		this.#actorDriver.sleep(this.#actorId);
+		// Schedule sleep to happen on the next tick. This allows for any action that calls _sleep to complete.
+		setImmediate(async () => {
+			// The actor driver should call stop when ready to stop
+			//
+			// This will call _stop once Pegboard responds with the new status
+			await sleep();
+		});
 	}
 
 	// MARK: Stop
