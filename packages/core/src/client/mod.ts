@@ -10,7 +10,7 @@ export {
 	ActorDefinition,
 	AnyActorDefinition,
 } from "@/actor/definition";
-export type { Transport } from "@/actor/protocol/message/mod";
+export type { Transport } from "@/actor/protocol/old";
 export type { Encoding } from "@/actor/protocol/serde";
 export {
 	ActorClientError,

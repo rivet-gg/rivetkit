@@ -1,12 +1,12 @@
 import type { Context as HonoContext } from "hono";
 import type { WebSocket } from "ws";
 import type { AnyActorDefinition } from "@/actor/definition";
-import type { Transport } from "@/actor/protocol/message/mod";
-import type * as wsToServer from "@/actor/protocol/message/to-server";
+import type { Transport } from "@/actor/protocol/old";
 import type { Encoding } from "@/actor/protocol/serde";
 import type { UniversalEventSource } from "@/common/eventsource-interface";
 import type { ActorQuery } from "@/manager/protocol/query";
 import type { Registry } from "@/mod";
+import type { ToServer } from "@/schemas/client-protocol/mod";
 import type { ActorActionFunction } from "./actor-common";
 import {
 	type ActorConn,
@@ -196,9 +196,9 @@ export interface ClientDriver {
 		encoding: Encoding,
 		connectionId: string,
 		connectionToken: string,
-		message: wsToServer.ToServer,
+		message: ToServer,
 		opts: { signal?: AbortSignal } | undefined,
-	): Promise<Response>;
+	): Promise<void>;
 	rawHttpRequest(
 		c: HonoContext | undefined,
 		actorQuery: ActorQuery,
@@ -244,7 +244,7 @@ export class ClientRaw {
 	public constructor(driver: ClientDriver, opts?: ClientOptions) {
 		this.#driver = driver;
 
-		this.#encodingKind = opts?.encoding ?? "cbor";
+		this.#encodingKind = opts?.encoding ?? "bare";
 		this[TRANSPORT_SYMBOL] = opts?.transport ?? "websocket";
 	}
 

@@ -1,0 +1,20 @@
+# File System Driver Schema (v1)
+
+# MARK: Actor State
+# Represents the persisted state for an actor on disk.
+# Note: createdAt is not persisted; it is derived from the file's birthtime.
+type ActorState struct {
+  id: str
+  name: str
+  key: list<str>
+  persistedData: data
+}
+
+# MARK: Actor Alarm
+# Represents a scheduled alarm for an actor.
+# Stored per-actor; the actor id is implied by the filename.
+# The timestamp is milliseconds since epoch.
+type ActorAlarm struct {
+  timestamp: uint
+}
+

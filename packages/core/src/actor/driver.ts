@@ -1,9 +1,9 @@
-import type * as messageToClient from "@/actor/protocol/message/to-client";
 import type { CachedSerializer } from "@/actor/protocol/serde";
 import type { AnyClient } from "@/client/client";
 import type { ManagerDriver } from "@/manager/driver";
 import type { RegistryConfig } from "@/registry/config";
 import type { RunConfig } from "@/registry/run-config";
+import type * as protocol from "@/schemas/client-protocol/mod";
 import type { AnyConn, ConnectionDriver } from "./connection";
 import type { GenericConnGlobalState } from "./generic-conn-driver";
 import type { AnyActorInstance } from "./instance";
@@ -42,7 +42,7 @@ export interface ActorDriver {
 	 */
 	getDatabase(actorId: string): Promise<unknown | undefined>;
 
-	sleep?(actorId: string): void;
+	sleep?(actorId: string): Promise<void>;
 
 	shutdown?(immediate: boolean): Promise<void>;
 }
@@ -60,7 +60,7 @@ export interface ConnDriver<ConnDriverState = unknown> {
 		actor: AnyActorInstance,
 		conn: AnyConn,
 		state: ConnDriverState,
-		message: CachedSerializer<messageToClient.ToClient>,
+		message: CachedSerializer<protocol.ToClient>,
 	): void;
 
 	/**

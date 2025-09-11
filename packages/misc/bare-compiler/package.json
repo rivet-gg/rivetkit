@@ -1,0 +1,36 @@
+{
+  "name": "@rivetkit/bare-compiler",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "BARE schema compiler for RivetKit",
+  "keywords": [
+    "rivetkit",
+    "bare",
+    "compiler",
+    "serialization",
+    "binary"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rivet-gg/rivetkit.git",
+    "directory": "packages/misc/bare-compiler"
+  },
+  "license": "Apache-2.0",
+  "bin": {
+    "bare-compiler": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@bare-ts/tools": "^0.13.0",
+    "commander": "^12.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.10",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

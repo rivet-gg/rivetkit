@@ -1,5 +1,7 @@
-import type * as messageToClient from "@/actor/protocol/message/to-client";
-import type * as wsToClient from "@/actor/protocol/message/to-client";
+import * as cbor from "cbor-x";
+import type * as protocol from "@/schemas/client-protocol/mod";
+import { TO_CLIENT_VERSIONED } from "@/schemas/client-protocol/versioned";
+import { bufferToArrayBuffer } from "@/utils";
 import type { AnyDatabaseProvider } from "./database";
 import { type ConnDriver, ConnectionReadyState } from "./driver";
 import * as errors from "./errors";
@@ -162,7 +164,7 @@ export class Conn<S, CP, CS, V, I, AD, DB extends AnyDatabaseProvider> {
 	 *
 	 * @protected
 	 */
-	public _sendMessage(message: CachedSerializer<messageToClient.ToClient>) {
+	public _sendMessage(message: CachedSerializer<protocol.ToClient>) {
 		this.#driver.sendMessage?.(this.#actor, this, this.__persist.ds, message);
 	}
 
@@ -181,14 +183,18 @@ export class Conn<S, CP, CS, V, I, AD, DB extends AnyDatabaseProvider> {
 			connId: this.id,
 		});
 		this._sendMessage(
-			new CachedSerializer<wsToClient.ToClient>({
-				b: {
-					ev: {
-						n: eventName,
-						a: args,
+			new CachedSerializer<protocol.ToClient>(
+				{
+					body: {
+						tag: "Event",
+						val: {
+							name: eventName,
+							args: bufferToArrayBuffer(cbor.encode(args)),
+						},
 					},
 				},
-			}),
+				TO_CLIENT_VERSIONED,
+			),
 		);
 	}
 

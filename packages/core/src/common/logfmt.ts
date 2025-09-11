@@ -1,7 +1,7 @@
 import { type LogLevel, LogLevels } from "./log-levels";
 
 export type LogEntry = [string, LogValue];
-export type LogValue = string | number | boolean | null | undefined;
+export type LogValue = string | number | bigint | boolean | null | undefined;
 
 const LOG_LEVEL_COLORS: Record<number, string> = {
 	[LogLevels.CRITICAL]: "\x1b[31m", // Red
@@ -108,6 +108,7 @@ export function castToLogValue(v: unknown): LogValue {
 	if (
 		typeof v === "string" ||
 		typeof v === "number" ||
+		typeof v === "bigint" ||
 		typeof v === "boolean" ||
 		v === null ||
 		v === undefined

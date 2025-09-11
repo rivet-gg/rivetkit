@@ -13,9 +13,9 @@ import {
 	ConnectionReadyState,
 } from "@/actor/driver";
 import type { AnyActorInstance } from "@/actor/instance";
-import type * as messageToClient from "@/actor/protocol/message/to-client";
 import type { CachedSerializer, Encoding } from "@/actor/protocol/serde";
 import { encodeDataToString } from "@/actor/protocol/serde";
+import type * as protocol from "@/schemas/client-protocol/mod";
 import { logger } from "./log";
 
 // This state is different than `PersistedConn` state since the connection-specific state is persisted & must be serializable. This is also part of the connection driver, not part of the core actor.
@@ -54,7 +54,7 @@ export function createGenericWebSocketDriver(
 			actor: AnyActorInstance,
 			conn: AnyConn,
 			state: GenericWebSocketDriverState,
-			message: CachedSerializer<messageToClient.ToClient>,
+			message: CachedSerializer<protocol.ToClient>,
 		) => {
 			const ws = globalState.websockets.get(conn.id);
 			if (!ws) {
@@ -168,7 +168,7 @@ export function createGenericSseDriver(
 			_actor: AnyActorInstance,
 			conn: AnyConn,
 			state: GenericSseDriverState,
-			message: CachedSerializer<messageToClient.ToClient>,
+			message: CachedSerializer<protocol.ToClient>,
 		) => {
 			const stream = globalState.sseStreams.get(conn.id);
 			if (!stream) {
@@ -223,7 +223,7 @@ export type GenericHttpDriverState = Record<never, never>;
 
 export function createGenericHttpDriver(): ConnDriver<GenericHttpDriverState> {
 	return {
-		getConnectionReadyState(_actor, conn) {
+		getConnectionReadyState(_actor, _conn) {
 			// TODO: This might not be the correct logic
 			return ConnectionReadyState.OPEN;
 		},

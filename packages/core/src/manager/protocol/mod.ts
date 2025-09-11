@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { TransportSchema } from "@/actor/protocol/message/mod";
+import { TransportSchema } from "@/actor/protocol/old";
 import { ActorQuerySchema } from "./query";
 
 export * from "./query";
