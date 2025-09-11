@@ -88,7 +88,7 @@ export function runDriverTests(
 
 			// TODO: Add back SSE once fixed in Rivet driver & CF lifecycle
 			// for (const transport of ["websocket", "sse"] as Transport[]) {
-			for (const transport of ["websocket"] as Transport[]) {
+			for (const transport of ["websocket", "sse"] as Transport[]) {
 				describe(`transport (${transport})`, () => {
 					runActorConnTests({
 						...driverTestConfig,
