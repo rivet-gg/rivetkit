@@ -43,6 +43,7 @@ export const ActorConfigSchema = z
 		onAuth: z.function().optional(),
 		onCreate: z.function().optional(),
 		onStart: z.function().optional(),
+		onStop: z.function().optional(),
 		onStateChange: z.function().optional(),
 		onBeforeConnect: z.function().optional(),
 		onConnect: z.function().optional(),
@@ -60,28 +61,17 @@ export const ActorConfigSchema = z
 		createVars: z.function().optional(),
 		options: z
 			.object({
-				lifecycle: z
-					.object({
-						createVarsTimeout: z.number().positive().default(5000),
-						createConnStateTimeout: z.number().positive().default(5000),
-						onConnectTimeout: z.number().positive().default(5000),
-						connectionLivenessTimeout: z.number().positive().default(2500),
-						connectionLivenessInterval: z.number().positive().default(5000),
-					})
-					.strict()
-					.default({}),
-				state: z
-					.object({
-						saveInterval: z.number().positive().default(10_000),
-					})
-					.strict()
-					.default({}),
-				action: z
-					.object({
-						timeout: z.number().positive().default(60_000),
-					})
-					.strict()
-					.default({}),
+				createVarsTimeout: z.number().positive().default(5000),
+				createConnStateTimeout: z.number().positive().default(5000),
+				onConnectTimeout: z.number().positive().default(5000),
+				// This must be less than ACTOR_STOP_THRESHOLD_MS
+				onStopTimeout: z.number().positive().default(5000),
+				stateSaveInterval: z.number().positive().default(10_000),
+				actionTimeout: z.number().positive().default(60_000),
+				connectionLivenessTimeout: z.number().positive().default(2500),
+				connectionLivenessInterval: z.number().positive().default(5000),
+				noSleep: z.boolean().default(false),
+				sleepTimeout: z.number().positive().default(30_000),
 			})
 			.strict()
 			.default({}),
@@ -316,6 +306,28 @@ interface BaseActorConfig<
 	 * @returns Void or a Promise that resolves when startup is complete
 	 */
 	onStart?: (
+		c: ActorContext<
+			TState,
+			TConnParams,
+			TConnState,
+			TVars,
+			TInput,
+			TAuthData,
+			TDatabase
+		>,
+	) => void | Promise<void>;
+
+	/**
+	 * Called when the actor is stopping or sleeping.
+	 *
+	 * Use this hook to clean up resources, save state, or perform
+	 * any shutdown operations before the actor sleeps or stops.
+	 *
+	 * Not supported on all platforms.
+	 *
+	 * @returns Void or a Promise that resolves when shutdown is complete
+	 */
+	onStop?: (
 		c: ActorContext<
 			TState,
 			TConnParams,
@@ -641,6 +653,7 @@ export type ActorConfigInput<
 	| "onAuth"
 	| "onCreate"
 	| "onStart"
+	| "onStop"
 	| "onStateChange"
 	| "onBeforeConnect"
 	| "onConnect"

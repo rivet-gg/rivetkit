@@ -965,8 +965,8 @@ importers:
         specifier: ^0.19.10
         version: 0.19.10(hono@4.8.3)(zod@3.25.76)
       '@rivetkit/engine-runner':
-        specifier: https://pkg.pr.new/rivet-gg/rivet/@rivetkit/engine-runner@f1c054d
-        version: https://pkg.pr.new/rivet-gg/rivet/@rivetkit/engine-runner@f1c054d
+        specifier: https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-runner@664a377
+        version: https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-runner@664a377
       '@rivetkit/fast-json-patch':
         specifier: ^3.1.2
         version: 3.1.2
@@ -2473,16 +2473,16 @@ packages:
   '@rivet-gg/actor-core@25.2.0':
     resolution: {integrity: sha512-4K72XcDLVAz44Ae6G6GuyzWyxQZOLN8jM/W+sVKm6fHr70X8FNCSC5+/9hFIxz/OH9E6q6Wi3V/UN/k6immUBQ==}
 
-  '@rivetkit/engine-runner-protocol@https://pkg.pr.new/rivet-gg/rivet/@rivetkit/engine-runner-protocol@f1c054db74707f06454ea6072da81cfbdc31873d':
-    resolution: {tarball: https://pkg.pr.new/rivet-gg/rivet/@rivetkit/engine-runner-protocol@f1c054db74707f06454ea6072da81cfbdc31873d}
+  '@rivetkit/engine-runner-protocol@https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-runner-protocol@664a377784e8296d6c3f5617a1ec45ab977dc9f8':
+    resolution: {tarball: https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-runner-protocol@664a377784e8296d6c3f5617a1ec45ab977dc9f8}
     version: 1.0.0
 
-  '@rivetkit/engine-runner@https://pkg.pr.new/rivet-gg/rivet/@rivetkit/engine-runner@f1c054d':
-    resolution: {tarball: https://pkg.pr.new/rivet-gg/rivet/@rivetkit/engine-runner@f1c054d}
+  '@rivetkit/engine-runner@https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-runner@664a377':
+    resolution: {tarball: https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-runner@664a377}
     version: 0.0.0
 
-  '@rivetkit/engine-tunnel-protocol@https://pkg.pr.new/rivet-gg/rivet/@rivetkit/engine-tunnel-protocol@f1c054db74707f06454ea6072da81cfbdc31873d':
-    resolution: {tarball: https://pkg.pr.new/rivet-gg/rivet/@rivetkit/engine-tunnel-protocol@f1c054db74707f06454ea6072da81cfbdc31873d}
+  '@rivetkit/engine-tunnel-protocol@https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-tunnel-protocol@664a377784e8296d6c3f5617a1ec45ab977dc9f8':
+    resolution: {tarball: https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-tunnel-protocol@664a377784e8296d6c3f5617a1ec45ab977dc9f8}
     version: 1.0.0
 
   '@rivetkit/fast-json-patch@3.1.2':
@@ -4498,6 +4498,10 @@ packages:
   util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
 
+  uuid@12.0.0:
+    resolution: {integrity: sha512-USe1zesMYh4fjCA8ZH5+X5WIVD0J4V1Jksm1bFTVBX2F/cwSXt0RO5w/3UXbdLKmZX65MiWV+hwhSS8p6oBTGA==}
+    hasBin: true
+
   vary@1.1.2:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
@@ -5693,20 +5697,21 @@ snapshots:
     dependencies:
       zod: 3.25.76
 
-  '@rivetkit/engine-runner-protocol@https://pkg.pr.new/rivet-gg/rivet/@rivetkit/engine-runner-protocol@f1c054db74707f06454ea6072da81cfbdc31873d':
+  '@rivetkit/engine-runner-protocol@https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-runner-protocol@664a377784e8296d6c3f5617a1ec45ab977dc9f8':
     dependencies:
       '@bare-ts/lib': 0.4.0
 
-  '@rivetkit/engine-runner@https://pkg.pr.new/rivet-gg/rivet/@rivetkit/engine-runner@f1c054d':
+  '@rivetkit/engine-runner@https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-runner@664a377':
     dependencies:
-      '@rivetkit/engine-runner-protocol': https://pkg.pr.new/rivet-gg/rivet/@rivetkit/engine-runner-protocol@f1c054db74707f06454ea6072da81cfbdc31873d
-      '@rivetkit/engine-tunnel-protocol': https://pkg.pr.new/rivet-gg/rivet/@rivetkit/engine-tunnel-protocol@f1c054db74707f06454ea6072da81cfbdc31873d
+      '@rivetkit/engine-runner-protocol': https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-runner-protocol@664a377784e8296d6c3f5617a1ec45ab977dc9f8
+      '@rivetkit/engine-tunnel-protocol': https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-tunnel-protocol@664a377784e8296d6c3f5617a1ec45ab977dc9f8
+      uuid: 12.0.0
       ws: 8.18.3
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
 
-  '@rivetkit/engine-tunnel-protocol@https://pkg.pr.new/rivet-gg/rivet/@rivetkit/engine-tunnel-protocol@f1c054db74707f06454ea6072da81cfbdc31873d':
+  '@rivetkit/engine-tunnel-protocol@https://pkg.pr.new/rivet-gg/engine/@rivetkit/engine-tunnel-protocol@664a377784e8296d6c3f5617a1ec45ab977dc9f8':
     dependencies:
       '@bare-ts/lib': 0.4.0
 
@@ -7892,6 +7897,8 @@ snapshots:
       react: 19.1.0
 
   util-deprecate@1.0.2: {}
+
+  uuid@12.0.0: {}
 
   vary@1.1.2: {}
 

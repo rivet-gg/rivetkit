@@ -183,11 +183,6 @@ export class EngineActorDriver implements ActorDriver {
 		// TODO: Set timeout
 		// TODO: Use alarm on sleep
 		// TODO: Send alarm to runner
-
-		const delay = Math.max(timestamp - Date.now(), 0);
-		setTimeout(() => {
-			actor.onAlarm();
-		}, delay);
 	}
 
 	async getDatabase(_actorId: string): Promise<unknown | undefined> {
@@ -261,7 +256,7 @@ export class EngineActorDriver implements ActorDriver {
 
 		const handler = this.#actors.get(actorId);
 		if (handler?.actor) {
-			await handler.actor.stop();
+			await handler.actor._stop();
 			this.#actors.delete(actorId);
 		}
 
@@ -352,6 +347,10 @@ export class EngineActorDriver implements ActorDriver {
 		websocket.addEventListener("error", (event) => {
 			wsHandlerPromise.then((x) => x.onError?.(event, wsContext));
 		});
+	}
+
+	sleep(actorId: string) {
+		this.#runner.sleepActor(actorId);
 	}
 
 	async shutdown(immediate: boolean): Promise<void> {

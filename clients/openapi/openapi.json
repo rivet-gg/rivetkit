@@ -14,7 +14,9 @@
             "example": "actor-123"
           }
         },
-        "required": ["i"]
+        "required": [
+          "i"
+        ]
       },
       "ResolveQuery": {
         "type": "object",

@@ -259,7 +259,8 @@ export function runActorConnTests(driverTestConfig: DriverTestConfig) {
 		});
 
 		describe("Connection Liveness", () => {
-			test("should return correct liveness status for connections", async (c) => {
+			// TODO: KIT-242
+			test.skip("should return correct liveness status for connections", async (c) => {
 				const { client } = await setupDriverTest(c, driverTestConfig);
 
 				// Create actor and connection

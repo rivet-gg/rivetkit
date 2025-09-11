@@ -151,6 +151,16 @@ export class ActorContext<
 	 */
 	runInBackground(promise: Promise<void>): void {
 		this.#actor._runInBackground(promise);
-		return;
+	}
+
+	/**
+	 * Forces the actor to sleep.
+	 *
+	 * Not supported on all drivers.
+	 *
+	 * @experimental
+	 */
+	sleep() {
+		this.#actor._sleep();
 	}
 }

@@ -27,9 +27,12 @@ export interface ActorDriver {
 	getContext(actorId: string): unknown;
 
 	readPersistedData(actorId: string): Promise<Uint8Array | undefined>;
+
+	/** ActorInstance ensure that only one instance of writePersistedData is called in parallel at a time. */
 	writePersistedData(actorId: string, data: Uint8Array): Promise<void>;
 
 	// Schedule
+	/** ActorInstance ensure that only one instance of setAlarm is called in parallel at a time. */
 	setAlarm(actor: AnyActorInstance, timestamp: number): Promise<void>;
 
 	// Database
@@ -38,6 +41,8 @@ export interface ActorDriver {
 	 * This is an experimental API that may change in the future.
 	 */
 	getDatabase(actorId: string): Promise<unknown | undefined>;
+
+	sleep?(actorId: string): void;
 
 	shutdown?(immediate: boolean): Promise<void>;
 }
@@ -72,7 +77,7 @@ export interface ConnDriver<ConnDriverState = unknown> {
 	 * Returns the ready state of the connection.
 	 * This is used to determine if the connection is ready to send messages, or if the connection is stale.
 	 */
-	getConnectionReadyState?(
+	getConnectionReadyState(
 		actor: AnyActorInstance,
 		conn: AnyConn,
 	): ConnectionReadyState | undefined;
