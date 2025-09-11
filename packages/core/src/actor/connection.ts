@@ -68,15 +68,15 @@ export class Conn<S, CP, CS, V, I, AD, DB extends AnyDatabaseProvider> {
 	#driver: ConnDriver;
 
 	public get params(): CP {
-		return this.__persist.p;
+		return this.__persist.params;
 	}
 
 	public get auth(): AD {
-		return this.__persist.a as AD;
+		return this.__persist.authData as AD;
 	}
 
 	public get driver(): ConnectionDriver {
-		return this.__persist.d as ConnectionDriver;
+		return this.__persist.connDriver as ConnectionDriver;
 	}
 
 	public get _stateEnabled() {
@@ -90,8 +90,8 @@ export class Conn<S, CP, CS, V, I, AD, DB extends AnyDatabaseProvider> {
 	 */
 	public get state(): CS {
 		this.#validateStateEnabled();
-		if (!this.__persist.s) throw new Error("state should exists");
-		return this.__persist.s;
+		if (!this.__persist.state) throw new Error("state should exists");
+		return this.__persist.state;
 	}
 
 	/**
@@ -101,21 +101,21 @@ export class Conn<S, CP, CS, V, I, AD, DB extends AnyDatabaseProvider> {
 	 */
 	public set state(value: CS) {
 		this.#validateStateEnabled();
-		this.__persist.s = value;
+		this.__persist.state = value;
 	}
 
 	/**
 	 * Unique identifier for the connection.
 	 */
 	public get id(): ConnId {
-		return this.__persist.i;
+		return this.__persist.connId;
 	}
 
 	/**
 	 * Token used to authenticate this request.
 	 */
 	public get _token(): string {
-		return this.__persist.t;
+		return this.__persist.token;
 	}
 
 	/**
@@ -129,7 +129,7 @@ export class Conn<S, CP, CS, V, I, AD, DB extends AnyDatabaseProvider> {
 	 * Timestamp of the last time the connection was seen, i.e. the last time the connection was active and checked for liveness.
 	 */
 	public get lastSeen(): number {
-		return this.__persist.l;
+		return this.__persist.lastSeen;
 	}
 
 	/**
@@ -165,7 +165,12 @@ export class Conn<S, CP, CS, V, I, AD, DB extends AnyDatabaseProvider> {
 	 * @protected
 	 */
 	public _sendMessage(message: CachedSerializer<protocol.ToClient>) {
-		this.#driver.sendMessage?.(this.#actor, this, this.__persist.ds, message);
+		this.#driver.sendMessage?.(
+			this.#actor,
+			this,
+			this.__persist.connDriverState,
+			message,
+		);
 	}
 
 	/**
@@ -205,7 +210,12 @@ export class Conn<S, CP, CS, V, I, AD, DB extends AnyDatabaseProvider> {
 	 */
 	public async disconnect(reason?: string) {
 		this.#status = "reconnecting";
-		await this.#driver.disconnect(this.#actor, this, this.__persist.ds, reason);
+		await this.#driver.disconnect(
+			this.#actor,
+			this,
+			this.__persist.connDriverState,
+			reason,
+		);
 	}
 
 	/**
@@ -233,18 +243,18 @@ export class Conn<S, CP, CS, V, I, AD, DB extends AnyDatabaseProvider> {
 			status: this.#status,
 			newStatus,
 
-			lastSeen: this.__persist.l,
+			lastSeen: this.__persist.lastSeen,
 			currentTs: newLastSeen,
 		});
 
 		if (!isConnectionClosed) {
-			this.__persist.l = newLastSeen;
+			this.__persist.lastSeen = newLastSeen;
 		}
 
 		this.#status = newStatus;
 		return {
 			status: this.#status,
-			lastSeen: this.__persist.l,
+			lastSeen: this.__persist.lastSeen,
 		};
 	}
 }

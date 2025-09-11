@@ -7,6 +7,7 @@ import type {
 	ManagerDriver,
 } from "@/driver-helpers/mod";
 import type { RegistryConfig, RunConfig } from "@/mod";
+import { bufferToArrayBuffer } from "@/utils";
 import type { FileSystemGlobalState } from "./global-state";
 
 export type ActorDriverContext = Record<never, never>;
@@ -61,15 +62,19 @@ export class FileSystemActorDriver implements ActorDriver {
 	}
 
 	async readPersistedData(actorId: string): Promise<Uint8Array | undefined> {
-		return (await this.#state.loadActorStateOrError(actorId)).persistedData;
+		return new Uint8Array(
+			(await this.#state.loadActorStateOrError(actorId)).persistedData,
+		);
 	}
 
 	async writePersistedData(actorId: string, data: Uint8Array): Promise<void> {
 		const state = await this.#state.loadActorStateOrError(actorId);
-		state.persistedData = data;
 
-		// Save state to disk (pass state to avoid race with sleep/removal)
-		await this.#state.writeActor(actorId, state);
+		// Save state to disk
+		await this.#state.writeActor(actorId, {
+			...state,
+			persistedData: bufferToArrayBuffer(data),
+		});
 	}
 
 	async setAlarm(actor: AnyActorInstance, timestamp: number): Promise<void> {

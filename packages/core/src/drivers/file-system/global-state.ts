@@ -2,7 +2,6 @@ import * as crypto from "node:crypto";
 import * as fsSync from "node:fs";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import * as cbor from "cbor-x";
 import invariant from "invariant";
 import { lookupInRegistry } from "@/actor/definition";
 import { ActorAlreadyExists } from "@/actor/errors";
@@ -20,7 +19,13 @@ import {
 } from "@/driver-helpers/mod";
 import type { RegistryConfig } from "@/registry/config";
 import type { RunConfig } from "@/registry/run-config";
+import type * as schema from "@/schemas/file-system-driver/mod";
 import {
+	ACTOR_ALARM_VERSIONED,
+	ACTOR_STATE_VERSIONED,
+} from "@/schemas/file-system-driver/versioned";
+import {
+	bufferToArrayBuffer,
 	type LongTimeoutHandle,
 	SinglePromiseQueue,
 	setLongTimeout,
@@ -38,7 +43,7 @@ import {
 interface ActorEntry {
 	id: string;
 
-	state?: ActorState;
+	state?: schema.ActorState;
 	/** Promise for loading the actor state. */
 	loadPromise?: Promise<ActorEntry>;
 
@@ -57,17 +62,6 @@ interface ActorEntry {
 
 	/** If the actor has been removed by destroy or sleep. */
 	removed: boolean;
-}
-
-/**
- * Interface representing a actor's state
- */
-export interface ActorState {
-	id: string;
-	name: string;
-	key: ActorKey;
-	createdAt?: Date;
-	persistedData: Uint8Array;
 }
 
 /**
@@ -148,7 +142,7 @@ export class FileSystemGlobalState {
 
 	async *getActorsIterator(params: {
 		cursor?: string;
-	}): AsyncGenerator<ActorState> {
+	}): AsyncGenerator<schema.ActorState> {
 		let actorIds = Array.from(this.#actors.keys()).sort();
 
 		// Check if state directory exists first
@@ -213,10 +207,11 @@ export class FileSystemGlobalState {
 
 		const entry = this.#upsertEntry(actorId);
 		entry.state = {
-			id: actorId,
+			actorId,
 			name,
 			key,
-			persistedData: serializeEmptyPersistData(input),
+			createdAt: BigInt(Date.now()),
+			persistedData: bufferToArrayBuffer(serializeEmptyPersistData(input)),
 		};
 		await this.writeActor(actorId, entry.state);
 		return entry;
@@ -255,13 +250,11 @@ export class FileSystemGlobalState {
 		// Read & parse file
 		try {
 			const stateData = await fs.readFile(stateFilePath);
-			const state = cbor.decode(stateData) as ActorState;
-
-			const stats = await fs.stat(stateFilePath);
-			state.createdAt = stats.birthtime;
 
 			// Cache the loaded state in handler
-			entry.state = state;
+			entry.state = ACTOR_STATE_VERSIONED.deserializeWithEmbeddedVersion(
+				new Uint8Array(stateData),
+			);
 
 			return entry;
 		} catch (innerError: any) {
@@ -289,10 +282,11 @@ export class FileSystemGlobalState {
 		// If no state for this actor, then create & write state
 		if (!entry.state) {
 			entry.state = {
-				id: actorId,
+				actorId,
 				name,
-				key,
-				persistedData: serializeEmptyPersistData(input),
+				key: key as readonly string[],
+				createdAt: BigInt(Date.now()),
+				persistedData: bufferToArrayBuffer(serializeEmptyPersistData(input)),
 			};
 			await this.writeActor(actorId, entry.state);
 		}
@@ -326,7 +320,7 @@ export class FileSystemGlobalState {
 	/**
 	 * Save actor state to disk.
 	 */
-	async writeActor(actorId: string, state: ActorState): Promise<void> {
+	async writeActor(actorId: string, state: schema.ActorState): Promise<void> {
 		if (!this.#persist) {
 			return;
 		}
@@ -347,7 +341,12 @@ export class FileSystemGlobalState {
 			const tempPath = `${alarmPath}.tmp.${crypto.randomUUID()}`;
 			try {
 				await ensureDirectoryExists(path.dirname(alarmPath));
-				const data = cbor.encode(timestamp);
+				const alarmData: schema.ActorAlarm = {
+					actorId,
+					timestamp: BigInt(timestamp),
+				};
+				const data =
+					ACTOR_ALARM_VERSIONED.serializeWithEmbeddedVersion(alarmData);
 				await fs.writeFile(tempPath, data);
 				await fs.rename(tempPath, alarmPath);
 			} catch (error) {
@@ -366,7 +365,10 @@ export class FileSystemGlobalState {
 	/**
 	 * Perform the actual write operation with atomic writes
 	 */
-	async #performWrite(actorId: string, state: ActorState): Promise<void> {
+	async #performWrite(
+		actorId: string,
+		state: schema.ActorState,
+	): Promise<void> {
 		const dataPath = this.getActorStatePath(actorId);
 		// Generate unique temp filename to prevent any race conditions
 		const tempPath = `${dataPath}.tmp.${crypto.randomUUID()}`;
@@ -375,8 +377,18 @@ export class FileSystemGlobalState {
 			// Create directory if needed
 			await ensureDirectoryExists(path.dirname(dataPath));
 
+			// Convert to BARE types for serialization
+			const bareState: schema.ActorState = {
+				actorId: state.actorId,
+				name: state.name,
+				key: state.key,
+				createdAt: state.createdAt,
+				persistedData: state.persistedData,
+			};
+
 			// Perform atomic write
-			const serializedState = cbor.encode(state);
+			const serializedState =
+				ACTOR_STATE_VERSIONED.serializeWithEmbeddedVersion(bareState);
 			await fs.writeFile(tempPath, serializedState);
 			await fs.rename(tempPath, dataPath);
 		} catch (error) {
@@ -468,7 +480,7 @@ export class FileSystemGlobalState {
 				inlineClient,
 				actorId,
 				entry.state.name,
-				entry.state.key,
+				entry.state.key as string[],
 				"unknown",
 			);
 
@@ -480,6 +492,7 @@ export class FileSystemGlobalState {
 		} catch (innerError) {
 			const error = new Error(
 				`Failed to start actor ${actorId}: ${innerError}`,
+				{ cause: innerError },
 			);
 			entry.startPromise?.reject(error);
 			entry.startPromise = undefined;
@@ -487,7 +500,7 @@ export class FileSystemGlobalState {
 		}
 	}
 
-	async loadActorStateOrError(actorId: string): Promise<ActorState> {
+	async loadActorStateOrError(actorId: string): Promise<schema.ActorState> {
 		const state = (await this.loadActor(actorId)).state;
 		if (!state) throw new Error(`Actor does not exist: ${actorId}`);
 		return state;
@@ -517,9 +530,13 @@ export class FileSystemGlobalState {
 				const fullPath = path.join(this.#alarmsDir, file);
 				try {
 					const buf = fsSync.readFileSync(fullPath);
-					const timestamp = cbor.decode(buf) as number;
-					if (typeof timestamp === "number" && Number.isFinite(timestamp)) {
-						this.#scheduleAlarmTimeout(file, timestamp);
+					const alarmData =
+						ACTOR_ALARM_VERSIONED.deserializeWithEmbeddedVersion(
+							new Uint8Array(buf),
+						);
+					const timestamp = Number(alarmData.timestamp);
+					if (Number.isFinite(timestamp)) {
+						this.#scheduleAlarmTimeout(alarmData.actorId, timestamp);
 					} else {
 						logger().debug("invalid alarm file contents", { file });
 					}

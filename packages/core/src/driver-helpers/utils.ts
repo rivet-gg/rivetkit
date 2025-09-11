@@ -1,15 +1,17 @@
 import * as cbor from "cbor-x";
-import type { PersistedActor } from "@/actor/persisted";
+import type * as schema from "@/schemas/actor-persist/mod";
+import { PERSISTED_ACTOR_VERSIONED } from "@/schemas/actor-persist/versioned";
+import { bufferToArrayBuffer } from "@/utils";
 
 export function serializeEmptyPersistData(
 	input: unknown | undefined,
 ): Uint8Array {
-	const persistData: PersistedActor<any, any, any, any> = {
-		i: input,
-		hi: false,
-		s: undefined,
-		c: [],
-		e: [],
+	const persistData: schema.PersistedActor = {
+		input: input !== undefined ? bufferToArrayBuffer(cbor.encode(input)) : null,
+		hasInitialized: false,
+		state: bufferToArrayBuffer(cbor.encode(undefined)),
+		connections: [],
+		scheduledEvents: [],
 	};
-	return cbor.encode(persistData);
+	return PERSISTED_ACTOR_VERSIONED.serializeWithEmbeddedVersion(persistData);
 }
