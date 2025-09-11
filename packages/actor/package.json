@@ -78,7 +78,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@rivetkit/core": "workspace:*"
+    "rivetkit": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
