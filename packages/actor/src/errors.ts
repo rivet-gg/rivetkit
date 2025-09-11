@@ -1,1 +1,1 @@
-export * from "@rivetkit/core/errors";
+export * from "rivetkit/errors";

@@ -1,1 +1,1 @@
-export * from "@rivetkit/core/client";
+export * from "rivetkit/client";
