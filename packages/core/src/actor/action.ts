@@ -156,10 +156,17 @@ export class ActionContext<
 	}
 
 	/**
-	 * Runs a promise in the background.
+	 * Prevents the actor from sleeping until promise is complete.
 	 */
-	runInBackground(promise: Promise<void>): void {
-		this.#actorContext.runInBackground(promise);
+	waitUntil(promise: Promise<void>): void {
+		this.#actorContext.waitUntil(promise);
+	}
+
+	/**
+	 * AbortSignal that fires when the actor is stopping.
+	 */
+	get abortSignal(): AbortSignal {
+		return this.#actorContext.abortSignal;
 	}
 
 	/**
