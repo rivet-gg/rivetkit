@@ -8,6 +8,8 @@ import { isCborSerializable, stringifyError } from "@/common/utils";
 import type { UniversalWebSocket } from "@/common/websocket-interface";
 import { ActorInspector } from "@/inspector/actor";
 import type { Registry } from "@/mod";
+import type * as bareSchema from "@/schemas/actor-persist/mod";
+import { PERSISTED_ACTOR_VERSIONED } from "@/schemas/actor-persist/versioned";
 import type * as protocol from "@/schemas/client-protocol/mod";
 import { TO_CLIENT_VERSIONED } from "@/schemas/client-protocol/versioned";
 import { bufferToArrayBuffer, SinglePromiseQueue } from "@/utils";
@@ -199,7 +201,7 @@ export class ActorInstance<
 				this.#validateStateEnabled();
 
 				// Must return from `#persistRaw` in order to not return the `onchange` proxy
-				return this.#persistRaw.s as Record<string, any> as unknown;
+				return this.#persistRaw.state as Record<string, any> as unknown;
 			},
 			getRpcs: async () => {
 				return Object.keys(this.#config.actions);
@@ -221,7 +223,7 @@ export class ActorInstance<
 				// We have to use `...` so `on-change` recognizes the changes to `state` (i.e. set #persistChanged` to true). This is because:
 				// 1. In `getState`, we returned the value from `persistRaw`, which does not have the Proxy to monitor state changes
 				// 2. If we were to assign `state` to `#persist.s`, `on-change` would assume nothing changed since `state` is still === `#persist.s` since we returned a reference in `getState`
-				this.#persist.s = { ...(state as S) };
+				this.#persist.state = { ...(state as S) };
 				await this.saveState({ immediate: true });
 			},
 		};
@@ -331,8 +333,8 @@ export class ActorInstance<
 		}
 
 		// Set alarm for next scheduled event if any exist after finishing initiation sequence
-		if (this.#persist.e.length > 0) {
-			await this.#queueSetAlarm(this.#persist.e[0].t);
+		if (this.#persist.scheduledEvents.length > 0) {
+			await this.#queueSetAlarm(this.#persist.scheduledEvents[0].timestamp);
 		}
 
 		logger().info("actor ready");
@@ -364,33 +366,25 @@ export class ActorInstance<
 	async #scheduleEventInner(newEvent: PersistedScheduleEvent) {
 		this.actorContext.log.info("scheduling event", newEvent);
 
-		// remove old ccl event
-		if ("ccl" in newEvent) {
-			const existingIndex = this.#persist.e.findIndex(
-				(event) => "ccl" in event,
-			);
-			if (existingIndex !== -1) {
-				this.#persist.e.splice(existingIndex, 1);
-			}
-		}
-
 		// Insert event in to index
-		const insertIndex = this.#persist.e.findIndex((x) => x.t > newEvent.t);
+		const insertIndex = this.#persist.scheduledEvents.findIndex(
+			(x) => x.timestamp > newEvent.timestamp,
+		);
 		if (insertIndex === -1) {
-			this.#persist.e.push(newEvent);
+			this.#persist.scheduledEvents.push(newEvent);
 		} else {
-			this.#persist.e.splice(insertIndex, 0, newEvent);
+			this.#persist.scheduledEvents.splice(insertIndex, 0, newEvent);
 		}
 
 		// Update alarm if:
 		// - this is the newest event (i.e. at beginning of array) or
 		// - this is the only event (i.e. the only event in the array)
-		if (insertIndex === 0 || this.#persist.e.length === 1) {
+		if (insertIndex === 0 || this.#persist.scheduledEvents.length === 1) {
 			this.actorContext.log.info("setting alarm", {
-				timestamp: newEvent.t,
-				eventCount: this.#persist.e.length,
+				timestamp: newEvent.timestamp,
+				eventCount: this.#persist.scheduledEvents.length,
 			});
-			await this.#queueSetAlarm(newEvent.t);
+			await this.#queueSetAlarm(newEvent.timestamp);
 		}
 	}
 
@@ -398,7 +392,7 @@ export class ActorInstance<
 		const now = Date.now();
 		this.actorContext.log.debug("alarm triggered", {
 			now,
-			events: this.#persist.e.length,
+			events: this.#persist.scheduledEvents.length,
 		});
 
 		// Update sleep
@@ -407,13 +401,15 @@ export class ActorInstance<
 		this.#resetSleepTimer();
 
 		// Remove events from schedule that we're about to run
-		const runIndex = this.#persist.e.findIndex((x) => x.t <= now);
+		const runIndex = this.#persist.scheduledEvents.findIndex(
+			(x) => x.timestamp <= now,
+		);
 		if (runIndex === -1) {
 			// No events are due yet. This will happen if timers fire slightly early.
 			// Ensure we reschedule the alarm for the next upcoming event to avoid losing it.
 			logger().warn("no events are due yet, time may have broken");
-			if (this.#persist.e.length > 0) {
-				const nextTs = this.#persist.e[0].t;
+			if (this.#persist.scheduledEvents.length > 0) {
+				const nextTs = this.#persist.scheduledEvents[0].timestamp;
 				this.actorContext.log.warn(
 					"alarm fired early, rescheduling for next event",
 					{
@@ -427,17 +423,20 @@ export class ActorInstance<
 			this.actorContext.log.debug("no events to run", { now });
 			return;
 		}
-		const scheduleEvents = this.#persist.e.splice(0, runIndex + 1);
+		const scheduleEvents = this.#persist.scheduledEvents.splice(
+			0,
+			runIndex + 1,
+		);
 		this.actorContext.log.debug("running events", {
 			count: scheduleEvents.length,
 		});
 
 		// Set alarm for next event
-		if (this.#persist.e.length > 0) {
-			const nextTs = this.#persist.e[0].t;
+		if (this.#persist.scheduledEvents.length > 0) {
+			const nextTs = this.#persist.scheduledEvents[0].timestamp;
 			this.actorContext.log.info("setting next alarm", {
 				nextTs,
-				remainingEvents: this.#persist.e.length,
+				remainingEvents: this.#persist.scheduledEvents.length,
 			});
 			await this.#queueSetAlarm(nextTs);
 		}
@@ -445,41 +444,37 @@ export class ActorInstance<
 		// Iterate by event key in order to ensure we call the events in order
 		for (const event of scheduleEvents) {
 			try {
-				if ("ccl" in event) {
-					this.#checkConnectionsLiveness();
-				} else {
-					this.actorContext.log.info("running action for event", {
-						event: event.e,
-						timestamp: event.t,
-						action: event.k.g.a,
-						args: event.k.g.ar,
+				this.actorContext.log.info("running action for event", {
+					event: event.eventId,
+					timestamp: event.timestamp,
+					action: event.kind.generic.actionName,
+				});
+
+				// Look up function
+				const fn: unknown = this.#config.actions[event.kind.generic.actionName];
+
+				if (!fn)
+					throw new Error(
+						`Missing action for alarm ${event.kind.generic.actionName}`,
+					);
+				if (typeof fn !== "function")
+					throw new Error(
+						`Alarm function lookup for ${event.kind.generic.actionName} returned ${typeof fn}`,
+					);
+
+				// Call function
+				try {
+					const args = event.kind.generic.args
+						? cbor.decode(new Uint8Array(event.kind.generic.args))
+						: [];
+					await fn.call(undefined, this.actorContext, ...args);
+				} catch (error) {
+					this.actorContext.log.error("error while running event", {
+						error: stringifyError(error),
+						event: event.eventId,
+						timestamp: event.timestamp,
+						action: event.kind.generic.actionName,
 					});
-
-					// Look up function
-					const fn: unknown = this.#config.actions[event.k.g.a];
-
-					if (!fn) throw new Error(`Missing action for alarm ${event.k.g.a}`);
-					if (typeof fn !== "function")
-						throw new Error(
-							`Alarm function lookup for ${event.k.g.a} returned ${typeof fn}`,
-						);
-
-					// Call function
-					try {
-						await fn.call(
-							undefined,
-							this.actorContext,
-							...(event.k.g.ar || []),
-						);
-					} catch (error) {
-						this.actorContext.log.error("error while running event", {
-							error: stringifyError(error),
-							event: event.e,
-							timestamp: event.t,
-							action: event.k.g.a,
-							args: event.k.g.ar,
-						});
-					}
 				}
 			} catch (error) {
 				this.actorContext.log.error("internal error while running event", {
@@ -496,9 +491,14 @@ export class ActorInstance<
 		args: unknown[],
 	): Promise<void> {
 		return this.#scheduleEventInner({
-			e: crypto.randomUUID(),
-			t: timestamp,
-			k: { g: { a: action, ar: args } },
+			eventId: crypto.randomUUID(),
+			timestamp,
+			kind: {
+				generic: {
+					actionName: action,
+					args: bufferToArrayBuffer(cbor.encode(args)),
+				},
+			},
 		});
 	}
 
@@ -562,10 +562,11 @@ export class ActorInstance<
 					// before writing to KV in order to avoid a race condition.
 					this.#persistChanged = false;
 
-					// Write to KV
+					// Convert to BARE types and write to KV
+					const bareData = this.#convertToBarePersisted(this.#persistRaw);
 					await this.#actorDriver.writePersistedData(
 						this.#actorId,
-						cbor.encode(this.#persistRaw),
+						PERSISTED_ACTOR_VERSIONED.serializeWithEmbeddedVersion(bareData),
 					);
 
 					logger().debug("persist saved");
@@ -640,12 +641,15 @@ export class ActorInstance<
 				this.#persistChanged = true;
 
 				// Inform the inspector about state changes
-				this.inspector.emitter.emit("stateUpdated", this.#persist.s);
+				this.inspector.emitter.emit("stateUpdated", this.#persist.state);
 
 				// Call onStateChange if it exists
 				if (this.#config.onStateChange && this.#ready) {
 					try {
-						this.#config.onStateChange(this.actorContext, this.#persistRaw.s);
+						this.#config.onStateChange(
+							this.actorContext,
+							this.#persistRaw.state,
+						);
 					} catch (error) {
 						logger().error("error in `_onStateChange`", {
 							error: stringifyError(error),
@@ -668,25 +672,24 @@ export class ActorInstance<
 			persistDataBuffer !== undefined,
 			"persist data has not been set, it should be set when initialized",
 		);
-		const persistData = cbor.decode(persistDataBuffer) as PersistedActor<
-			S,
-			CP,
-			CS,
-			I
-		>;
+		const bareData =
+			PERSISTED_ACTOR_VERSIONED.deserializeWithEmbeddedVersion(
+				persistDataBuffer,
+			);
+		const persistData = this.#convertFromBarePersisted(bareData);
 
-		if (persistData.hi) {
+		if (persistData.hasInitiated) {
 			logger().info("actor restoring", {
-				connections: persistData.c.length,
+				connections: persistData.connections.length,
 			});
 
 			// Set initial state
 			this.#setPersist(persistData);
 
 			// Load connections
-			for (const connPersist of this.#persist.c) {
+			for (const connPersist of this.#persist.connections) {
 				// Create connections
-				const driver = this.__getConnDriver(connPersist.d);
+				const driver = this.__getConnDriver(connPersist.connDriver);
 				const conn = new Conn<S, CP, CS, V, I, AD, DB>(
 					this,
 					connPersist,
@@ -696,8 +699,8 @@ export class ActorInstance<
 				this.#connections.set(conn.id, conn);
 
 				// Register event subscriptions
-				for (const sub of connPersist.su) {
-					this.#addSubscription(sub.n, conn, true);
+				for (const sub of connPersist.subscriptions) {
+					this.#addSubscription(sub.eventName, conn, true);
 				}
 			}
 		} else {
@@ -722,7 +725,7 @@ export class ActorInstance<
 							undefined,
 							undefined
 						>,
-						persistData.i!,
+						persistData.input!,
 					);
 				} else if ("state" in this.#config) {
 					stateData = structuredClone(this.#config.state);
@@ -734,21 +737,22 @@ export class ActorInstance<
 			}
 
 			// Save state and mark as initialized
-			persistData.s = stateData as S;
-			persistData.hi = true;
+			persistData.state = stateData as S;
+			persistData.hasInitiated = true;
 
 			// Update state
 			logger().debug("writing state");
+			const bareData = this.#convertToBarePersisted(persistData);
 			await this.#actorDriver.writePersistedData(
 				this.#actorId,
-				cbor.encode(persistData),
+				PERSISTED_ACTOR_VERSIONED.serializeWithEmbeddedVersion(bareData),
 			);
 
 			this.#setPersist(persistData);
 
 			// Notify creation
 			if (this.#config.onCreate) {
-				await this.#config.onCreate(this.actorContext, persistData.i!);
+				await this.#config.onCreate(this.actorContext, persistData.input!);
 			}
 		}
 	}
@@ -767,9 +771,11 @@ export class ActorInstance<
 		}
 
 		// Remove from persist & save immediately
-		const connIdx = this.#persist.c.findIndex((c) => c.i === conn.id);
+		const connIdx = this.#persist.connections.findIndex(
+			(c) => c.connId === conn.id,
+		);
 		if (connIdx !== -1) {
-			this.#persist.c.splice(connIdx, 1);
+			this.#persist.connections.splice(connIdx, 1);
 			this.saveState({ immediate: true, allowStoppingState: true });
 		} else {
 			logger().warn("could not find persisted connection to remove", {
@@ -891,15 +897,15 @@ export class ActorInstance<
 		// Create connection
 		const driver = this.__getConnDriver(driverId);
 		const persist: PersistedConn<CP, CS> = {
-			i: connectionId,
-			t: connectionToken,
-			d: driverId,
-			ds: driverState,
-			p: params,
-			s: state,
-			a: authData,
-			l: Date.now(),
-			su: [],
+			connId: connectionId,
+			token: connectionToken,
+			connDriver: driverId,
+			connDriverState: driverState,
+			params: params,
+			state: state,
+			authData: authData,
+			lastSeen: Date.now(),
+			subscriptions: [],
 		};
 		const conn = new Conn<S, CP, CS, V, I, AD, DB>(
 			this,
@@ -915,7 +921,7 @@ export class ActorInstance<
 		this.#resetSleepTimer();
 
 		// Add to persistence & save immediately
-		this.#persist.c.push(persist);
+		this.#persist.connections.push(persist);
 		this.saveState({ immediate: true });
 
 		// Handle connection
@@ -1011,7 +1017,7 @@ export class ActorInstance<
 		//
 		// Don't update persistence if already restoring from persistence
 		if (!fromPersist) {
-			connection.__persist.su.push({ n: eventName });
+			connection.__persist.subscriptions.push({ eventName: eventName });
 			this.saveState({ immediate: true });
 		}
 
@@ -1043,11 +1049,11 @@ export class ActorInstance<
 		if (!fromRemoveConn) {
 			connection.subscriptions.delete(eventName);
 
-			const subIdx = connection.__persist.su.findIndex(
-				(s) => s.n === eventName,
+			const subIdx = connection.__persist.subscriptions.findIndex(
+				(s) => s.eventName === eventName,
 			);
 			if (subIdx !== -1) {
-				connection.__persist.su.splice(subIdx, 1);
+				connection.__persist.subscriptions.splice(subIdx, 1);
 			} else {
 				logger().warn("subscription does not exist with name", { eventName });
 			}
@@ -1382,7 +1388,7 @@ export class ActorInstance<
 	 */
 	get state(): S {
 		this.#validateStateEnabled();
-		return this.#persist.s;
+		return this.#persist.state;
 	}
 
 	/**
@@ -1404,7 +1410,7 @@ export class ActorInstance<
 	 */
 	set state(value: S) {
 		this.#validateStateEnabled();
-		this.#persist.s = value;
+		this.#persist.state = value;
 	}
 
 	get vars(): V {
@@ -1697,5 +1703,85 @@ export class ActorInstance<
 		} else {
 			logger().debug("background promises finished");
 		}
+	}
+
+	// MARK: BARE Conversion Helpers
+	#convertToBarePersisted(
+		persist: PersistedActor<S, CP, CS, I>,
+	): bareSchema.PersistedActor {
+		return {
+			input:
+				persist.input !== undefined
+					? bufferToArrayBuffer(cbor.encode(persist.input))
+					: null,
+			hasInitialized: persist.hasInitiated,
+			state: bufferToArrayBuffer(cbor.encode(persist.state)),
+			connections: persist.connections.map((conn) => ({
+				id: conn.connId,
+				token: conn.token,
+				driver: conn.connDriver as string,
+				driverState: bufferToArrayBuffer(
+					cbor.encode(conn.connDriverState || {}),
+				),
+				parameters: bufferToArrayBuffer(cbor.encode(conn.params || {})),
+				state: bufferToArrayBuffer(cbor.encode(conn.state || {})),
+				auth:
+					conn.authData !== undefined
+						? bufferToArrayBuffer(cbor.encode(conn.authData))
+						: null,
+				subscriptions: conn.subscriptions.map((sub) => ({
+					eventName: sub.eventName,
+				})),
+				lastSeen: BigInt(conn.lastSeen),
+			})),
+			scheduledEvents: persist.scheduledEvents.map((event) => ({
+				eventId: event.eventId,
+				timestamp: BigInt(event.timestamp),
+				kind: {
+					tag: "GenericPersistedScheduleEvent" as const,
+					val: {
+						action: event.kind.generic.actionName,
+						args: event.kind.generic.args ?? null,
+					},
+				},
+			})),
+		};
+	}
+
+	#convertFromBarePersisted(
+		bareData: bareSchema.PersistedActor,
+	): PersistedActor<S, CP, CS, I> {
+		return {
+			input: bareData.input
+				? cbor.decode(new Uint8Array(bareData.input))
+				: undefined,
+			hasInitiated: bareData.hasInitialized,
+			state: cbor.decode(new Uint8Array(bareData.state)),
+			connections: bareData.connections.map((conn) => ({
+				connId: conn.id,
+				token: conn.token,
+				connDriver: conn.driver as ConnectionDriver,
+				connDriverState: cbor.decode(new Uint8Array(conn.driverState)),
+				params: cbor.decode(new Uint8Array(conn.parameters)),
+				state: cbor.decode(new Uint8Array(conn.state)),
+				authData: conn.auth
+					? cbor.decode(new Uint8Array(conn.auth))
+					: undefined,
+				subscriptions: conn.subscriptions.map((sub) => ({
+					eventName: sub.eventName,
+				})),
+				lastSeen: Number(conn.lastSeen),
+			})),
+			scheduledEvents: bareData.scheduledEvents.map((event) => ({
+				eventId: event.eventId,
+				timestamp: Number(event.timestamp),
+				kind: {
+					generic: {
+						actionName: event.kind.val.action,
+						args: event.kind.val.args,
+					},
+				},
+			})),
+		};
 	}
 }

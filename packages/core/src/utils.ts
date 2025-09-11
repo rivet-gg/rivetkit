@@ -164,7 +164,7 @@ export class SinglePromiseQueue {
 	}
 }
 
-export function bufferToArrayBuffer(buf: Buffer): ArrayBuffer {
+export function bufferToArrayBuffer(buf: Buffer | Uint8Array): ArrayBuffer {
 	return buf.buffer.slice(
 		buf.byteOffset,
 		buf.byteOffset + buf.byteLength,

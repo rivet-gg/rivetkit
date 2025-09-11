@@ -28,7 +28,8 @@ import {
 	type RegistryConfig,
 	type RunConfig,
 } from "@/mod";
-import type { ActorState, FileSystemGlobalState } from "./global-state";
+import type * as schema from "@/schemas/file-system-driver/mod";
+import type { FileSystemGlobalState } from "./global-state";
 import { logger } from "./log";
 import { generateActorId } from "./utils";
 
@@ -60,14 +61,13 @@ export class FileSystemManagerDriver implements ManagerDriver {
 					this.#state.getOrCreateInspectorAccessToken();
 			}
 			const startedAt = new Date().toISOString();
-			function transformActor(actorState: ActorState): Actor {
+			function transformActor(actorState: schema.ActorState): Actor {
 				return {
-					id: actorState.id as ActorId,
+					id: actorState.actorId as ActorId,
 					name: actorState.name,
-					key: actorState.key,
+					key: actorState.key as string[],
 					startedAt: startedAt,
-					createdAt:
-						actorState.createdAt?.toISOString() || new Date().toISOString(),
+					createdAt: new Date(Number(actorState.createdAt)).toISOString(),
 					features: [
 						ActorFeature.State,
 						ActorFeature.Connections,
@@ -234,7 +234,7 @@ export class FileSystemManagerDriver implements ManagerDriver {
 			return {
 				actorId,
 				name: actor.state.name,
-				key: actor.state.key,
+				key: actor.state.key as string[],
 			};
 		} catch (error) {
 			logger().error("failed to read actor state", { actorId, error });
@@ -278,9 +278,9 @@ export class FileSystemManagerDriver implements ManagerDriver {
 		invariant(actorEntry.state, "must have state");
 
 		return {
-			actorId: actorEntry.state.id,
+			actorId: actorEntry.state.actorId,
 			name: actorEntry.state.name,
-			key: actorEntry.state.key,
+			key: actorEntry.state.key as string[],
 		};
 	}
 
