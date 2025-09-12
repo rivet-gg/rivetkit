@@ -1,6 +1,6 @@
 import { openai } from "@ai-sdk/openai";
-import { actor, setup } from "@rivetkit/actor";
 import { generateText, tool } from "ai";
+import { actor, setup } from "rivetkit";
 import { z } from "zod";
 import { getWeather } from "./my-utils";
 

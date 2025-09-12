@@ -1,4 +1,4 @@
-import { createClient } from "@rivetkit/actor/client";
+import { createClient } from "rivetkit/client";
 import type { registry } from "../src/registry.js";
 
 // Get endpoint from environment variable or default to localhost

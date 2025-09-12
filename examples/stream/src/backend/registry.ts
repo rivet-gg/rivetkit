@@ -1,4 +1,4 @@
-import { actor, setup } from "@rivetkit/actor";
+import { actor, setup } from "rivetkit";
 
 export type StreamState = {
 	topValues: number[];

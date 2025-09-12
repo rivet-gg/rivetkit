@@ -63,14 +63,14 @@ Get started with Rivet by following a quickstart guide:
 **Step 1**: Install RivetKit
 
 ```sh
-npm install @rivetkit/actor
+npm install rivetkit
 ```
 
 **Step 2**: Create an actor
 
 ```typescript
 // registry.ts
-import { actor, setup } from "@rivetkit/actor";
+import { actor, setup } from "rivetkit";
 
 export const counter = actor({
 	state: { count: 0 },

@@ -3,7 +3,8 @@
   "extends": ["//"],
   "tasks": {
     "dump-openapi": {
-      "inputs": ["package.json", "packages/rivetkit/src/manager/router.ts"]
+      "inputs": ["package.json", "packages/rivetkit/src/manager/router.ts"],
+      "dependsOn": ["build:schema"]
     },
     "build:schema": {
       "dependsOn": ["^build"],

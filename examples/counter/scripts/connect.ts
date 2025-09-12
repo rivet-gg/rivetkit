@@ -1,4 +1,4 @@
-import { createClient } from "@rivetkit/actor/client";
+import { createClient } from "rivetkit/client";
 import type { Registry } from "../src/registry";
 
 async function main() {

@@ -1,6 +1,6 @@
 {
   "name": "example-cloudflare-workers-hono",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,7 +11,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250129.0",
-    "@rivetkit/actor": "workspace:*",
+    "rivetkit": "workspace:*",
     "@types/node": "^22.13.9",
     "tsx": "^3.12.7",
     "typescript": "^5.5.2",

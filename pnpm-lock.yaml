@@ -83,9 +83,6 @@ importers:
         specifier: 3.25.76
         version: 3.25.76
     devDependencies:
-      '@rivetkit/actor':
-        specifier: workspace:*
-        version: link:../../packages/actor
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
@@ -101,6 +98,9 @@ importers:
       concurrently:
         specifier: ^8.2.2
         version: 8.2.2
+      rivetkit:
+        specifier: workspace:*
+        version: link:../../packages/rivetkit
       tsx:
         specifier: ^3.12.7
         version: 3.14.0
@@ -138,9 +138,6 @@ importers:
         specifier: ^18.2.0
         version: 18.2.0(react@18.3.1)
     devDependencies:
-      '@rivetkit/actor':
-        specifier: workspace:*
-        version: link:../../packages/actor
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
@@ -156,6 +153,9 @@ importers:
       concurrently:
         specifier: ^8.2.2
         version: 8.2.2
+      rivetkit:
+        specifier: workspace:*
+        version: link:../../packages/rivetkit
       tsx:
         specifier: ^3.12.7
         version: 3.14.0
@@ -181,9 +181,6 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
     devDependencies:
-      '@rivetkit/actor':
-        specifier: workspace:*
-        version: link:../../packages/actor
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
@@ -205,6 +202,9 @@ importers:
       prompts:
         specifier: ^2.4.2
         version: 2.4.2
+      rivetkit:
+        specifier: workspace:*
+        version: link:../../packages/rivetkit
       tsx:
         specifier: ^3.12.7
         version: 3.14.0
@@ -220,12 +220,12 @@ importers:
 
   examples/cloudflare-workers:
     dependencies:
-      '@rivetkit/actor':
-        specifier: workspace:*
-        version: link:../../packages/actor
       '@rivetkit/cloudflare-workers':
         specifier: workspace:*
         version: link:../../packages/cloudflare-workers
+      rivetkit:
+        specifier: workspace:*
+        version: link:../../packages/rivetkit
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20250129.0
@@ -255,12 +255,12 @@ importers:
       '@cloudflare/workers-types':
         specifier: ^4.20250129.0
         version: 4.20250619.0
-      '@rivetkit/actor':
-        specifier: workspace:*
-        version: link:../../packages/actor
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
+      rivetkit:
+        specifier: workspace:*
+        version: link:../../packages/rivetkit
       tsx:
         specifier: ^3.12.7
         version: 3.14.0
@@ -273,12 +273,12 @@ importers:
 
   examples/counter:
     devDependencies:
-      '@rivetkit/actor':
-        specifier: workspace:*
-        version: link:../../packages/actor
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
+      rivetkit:
+        specifier: workspace:*
+        version: link:../../packages/rivetkit
       tsx:
         specifier: ^3.12.7
         version: 3.14.0
@@ -304,9 +304,6 @@ importers:
         specifier: ^13.6.20
         version: 13.6.27
     devDependencies:
-      '@rivetkit/actor':
-        specifier: workspace:*
-        version: link:../../packages/actor
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
@@ -322,6 +319,9 @@ importers:
       concurrently:
         specifier: ^8.2.2
         version: 8.2.2
+      rivetkit:
+        specifier: workspace:*
+        version: link:../../packages/rivetkit
       tsx:
         specifier: ^3.12.7
         version: 3.14.0
@@ -347,9 +347,6 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
     devDependencies:
-      '@rivetkit/actor':
-        specifier: workspace:*
-        version: link:../../packages/actor
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
@@ -365,6 +362,9 @@ importers:
       concurrently:
         specifier: ^8.2.2
         version: 8.2.2
+      rivetkit:
+        specifier: workspace:*
+        version: link:../../packages/rivetkit
       tsx:
         specifier: ^3.12.7
         version: 3.14.0
@@ -418,12 +418,12 @@ importers:
         specifier: ^18.2.0
         version: 18.2.0(react@18.3.1)
     devDependencies:
-      '@rivetkit/actor':
-        specifier: workspace:*
-        version: link:../../packages/actor
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
+      rivetkit:
+        specifier: workspace:*
+        version: link:../../packages/rivetkit
       typescript:
         specifier: ^5.5.2
         version: 5.8.3
@@ -443,15 +443,15 @@ importers:
         specifier: ^18.2.0
         version: 18.2.0(react@18.3.1)
     devDependencies:
-      '@rivetkit/actor':
-        specifier: workspace:*
-        version: link:../../packages/actor
       '@types/express':
         specifier: ^4.17.21
         version: 4.17.23
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
+      rivetkit:
+        specifier: workspace:*
+        version: link:../../packages/rivetkit
       tsx:
         specifier: ^3.12.7
         version: 3.14.0
@@ -461,9 +461,6 @@ importers:
 
   examples/game:
     dependencies:
-      '@rivetkit/actor':
-        specifier: workspace:*
-        version: link:../../packages/actor
       '@rivetkit/react':
         specifier: workspace:*
         version: link:../../packages/react
@@ -473,6 +470,9 @@ importers:
       react-dom:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
+      rivetkit:
+        specifier: workspace:*
+        version: link:../../packages/rivetkit
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
@@ -508,12 +508,12 @@ importers:
         specifier: 4.8.3
         version: 4.8.3
     devDependencies:
-      '@rivetkit/actor':
-        specifier: workspace:*
-        version: link:../../packages/actor
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
+      rivetkit:
+        specifier: workspace:*
+        version: link:../../packages/rivetkit
       tsx:
         specifier: ^3.12.7
         version: 3.14.0
@@ -536,9 +536,6 @@ importers:
         specifier: ^18.2.0
         version: 18.2.0(react@18.3.1)
     devDependencies:
-      '@rivetkit/actor':
-        specifier: workspace:*
-        version: link:../../packages/actor
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
@@ -554,6 +551,9 @@ importers:
       concurrently:
         specifier: ^8.2.2
         version: 8.2.2
+      rivetkit:
+        specifier: workspace:*
+        version: link:../../packages/rivetkit
       tsx:
         specifier: ^3.12.7
         version: 3.14.0
@@ -569,9 +569,6 @@ importers:
 
   examples/next-js:
     dependencies:
-      '@rivetkit/actor':
-        specifier: workspace:*
-        version: link:../../packages/actor
       '@rivetkit/next-js':
         specifier: workspace:*
         version: link:../../packages/next-js
@@ -584,6 +581,9 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.1.0(react@19.1.0)
+      rivetkit:
+        specifier: workspace:*
+        version: link:../../packages/rivetkit
     devDependencies:
       '@types/node':
         specifier: ^20
@@ -610,9 +610,6 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
     devDependencies:
-      '@rivetkit/actor':
-        specifier: workspace:*
-        version: link:../../packages/actor
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
@@ -628,6 +625,9 @@ importers:
       concurrently:
         specifier: ^8.2.2
         version: 8.2.2
+      rivetkit:
+        specifier: workspace:*
+        version: link:../../packages/rivetkit
       tsx:
         specifier: ^3.12.7
         version: 3.14.0
@@ -643,9 +643,6 @@ importers:
 
   examples/raw-fetch-handler:
     dependencies:
-      '@rivetkit/actor':
-        specifier: workspace:*
-        version: link:../../packages/actor
       '@rivetkit/react':
         specifier: workspace:*
         version: link:../../packages/react
@@ -658,6 +655,9 @@ importers:
       react-dom:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
+      rivetkit:
+        specifier: workspace:*
+        version: link:../../packages/rivetkit
     devDependencies:
       '@types/node':
         specifier: ^22.10.6
@@ -689,9 +689,6 @@ importers:
 
   examples/raw-websocket-handler-proxy:
     dependencies:
-      '@rivetkit/actor':
-        specifier: workspace:*
-        version: link:../../packages/actor
       hono:
         specifier: 4.8.3
         version: 4.8.3
@@ -701,6 +698,9 @@ importers:
       react-dom:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
+      rivetkit:
+        specifier: workspace:*
+        version: link:../../packages/rivetkit
     devDependencies:
       '@types/node':
         specifier: ^22.10.2
@@ -742,9 +742,6 @@ importers:
         specifier: ^18.2.0
         version: 18.2.0(react@18.3.1)
     devDependencies:
-      '@rivetkit/actor':
-        specifier: workspace:*
-        version: link:../../packages/actor
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
@@ -760,6 +757,9 @@ importers:
       concurrently:
         specifier: ^8.2.2
         version: 8.2.2
+      rivetkit:
+        specifier: workspace:*
+        version: link:../../packages/rivetkit
       tsx:
         specifier: ^3.12.7
         version: 3.14.0
@@ -775,9 +775,9 @@ importers:
 
   examples/starter:
     dependencies:
-      '@rivetkit/actor':
+      rivetkit:
         specifier: workspace:*
-        version: link:../../packages/actor
+        version: link:../../packages/rivetkit
     devDependencies:
       '@types/node':
         specifier: ^22.13.9
@@ -791,9 +791,6 @@ importers:
 
   examples/stream:
     dependencies:
-      '@rivetkit/actor':
-        specifier: workspace:*
-        version: link:../../packages/actor
       '@rivetkit/react':
         specifier: workspace:*
         version: link:../../packages/react
@@ -803,6 +800,9 @@ importers:
       react-dom:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
+      rivetkit:
+        specifier: workspace:*
+        version: link:../../packages/rivetkit
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
@@ -834,9 +834,6 @@ importers:
 
   examples/sync:
     dependencies:
-      '@rivetkit/actor':
-        specifier: workspace:*
-        version: link:../../packages/actor
       '@rivetkit/react':
         specifier: workspace:*
         version: link:../../packages/react
@@ -846,6 +843,9 @@ importers:
       react-dom:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
+      rivetkit:
+        specifier: workspace:*
+        version: link:../../packages/rivetkit
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
@@ -877,9 +877,6 @@ importers:
 
   examples/tenant:
     dependencies:
-      '@rivetkit/actor':
-        specifier: workspace:*
-        version: link:../../packages/actor
       '@rivetkit/react':
         specifier: workspace:*
         version: link:../../packages/react
@@ -889,6 +886,9 @@ importers:
       react-dom:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
+      rivetkit:
+        specifier: workspace:*
+        version: link:../../packages/rivetkit
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
@@ -930,12 +930,12 @@ importers:
         specifier: 3.25.76
         version: 3.25.76
     devDependencies:
-      '@rivetkit/actor':
-        specifier: workspace:*
-        version: link:../../packages/actor
       '@types/node':
         specifier: ^22.13.9
         version: 22.15.32
+      rivetkit:
+        specifier: workspace:*
+        version: link:../../packages/rivetkit
       tsx:
         specifier: ^3.12.7
         version: 3.14.0
