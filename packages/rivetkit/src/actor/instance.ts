@@ -142,6 +142,7 @@ export class ActorInstance<
 	}
 
 	#persistChanged = false;
+	#isInOnStateChange = false;
 
 	/**
 	 * The proxied state that notifies of changes automatically.
@@ -648,8 +649,14 @@ export class ActorInstance<
 				this.inspector.emitter.emit("stateUpdated", this.#persist.state);
 
 				// Call onStateChange if it exists
-				if (this.#config.onStateChange && this.#ready) {
+				// Skip if we're already inside onStateChange to prevent infinite recursion
+				if (
+					this.#config.onStateChange &&
+					this.#ready &&
+					!this.#isInOnStateChange
+				) {
 					try {
+						this.#isInOnStateChange = true;
 						this.#config.onStateChange(
 							this.actorContext,
 							this.#persistRaw.state,
@@ -658,6 +665,8 @@ export class ActorInstance<
 						logger().error("error in `_onStateChange`", {
 							error: stringifyError(error),
 						});
+					} finally {
+						this.#isInOnStateChange = false;
 					}
 				}
 

@@ -347,6 +347,9 @@ interface BaseActorConfig<
 	 * Use this hook to react to state changes, such as updating
 	 * external systems or triggering events.
 	 *
+	 * State changes made within this hook will NOT trigger
+	 * another onStateChange call, preventing infinite recursion.
+	 *
 	 * @param newState The updated state
 	 */
 	onStateChange?: (
