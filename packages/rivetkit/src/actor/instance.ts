@@ -624,6 +624,10 @@ export class ActorInstance<
 			target,
 			// biome-ignore lint/suspicious/noExplicitAny: Don't know types in proxy
 			(path: string, value: any, _previousValue: any, _applyData: any) => {
+				if (path !== "state" && !path.startsWith("state.")) {
+					return;
+				}
+
 				let invalidPath = "";
 				if (
 					!isCborSerializable(
