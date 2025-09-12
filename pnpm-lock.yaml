@@ -944,10 +944,6 @@ importers:
         version: 5.8.3
 
   packages/actor:
-    dependencies:
-      rivetkit:
-        specifier: workspace:*
-        version: link:../rivetkit
     devDependencies:
       '@types/node':
         specifier: ^22.14.0
@@ -995,6 +991,18 @@ importers:
       wrangler:
         specifier: ^4.22.0
         version: 4.22.0(@cloudflare/workers-types@4.20250619.0)
+
+  packages/core:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.14.0
+        version: 22.15.32
+      tsup:
+        specifier: ^8.4.0
+        version: 8.5.0(@microsoft/api-extractor@7.52.8(@types/node@22.15.32))(postcss@8.5.6)(tsx@4.20.3)(typescript@5.8.3)(yaml@2.8.0)
+      typescript:
+        specifier: ^5.5.2
+        version: 5.8.3
 
   packages/db:
     dependencies:
