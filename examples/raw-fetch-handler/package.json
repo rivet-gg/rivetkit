@@ -1,6 +1,6 @@
 {
   "name": "example-raw-fetch-handler",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,7 +13,7 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@rivetkit/actor": "workspace:*",
+    "rivetkit": "workspace:*",
     "@rivetkit/react": "workspace:*",
     "hono": "^4.6.18",
     "react": "^18.3.1",

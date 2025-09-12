@@ -71,5 +71,25 @@ export function runActorOnStateChangeTests(driverTestConfig: DriverTestConfig) {
 				expect(changeCount).toBe(1);
 			}
 		});
+
+		test("simple: connect, call action, dispose does NOT trigger onChange", async (c) => {
+			const { client } = await setupDriverTest(c, driverTestConfig);
+
+			const actor = client.onStateChangeActor.getOrCreate();
+
+			// Connect to the actor
+			const connection = await actor.connect();
+
+			// Call an action that doesn't modify state
+			const value = await connection.getValue();
+			expect(value).toBe(0);
+
+			// Dispose the connection
+			await connection.dispose();
+
+			// Verify that onChange was NOT triggered
+			const changeCount = await actor.getChangeCount();
+			expect(changeCount).toBe(0);
+		});
 	});
 }

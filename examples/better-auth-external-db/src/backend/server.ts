@@ -1,6 +1,6 @@
-import { ALLOWED_PUBLIC_HEADERS } from "@rivetkit/actor";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { ALLOWED_PUBLIC_HEADERS } from "rivetkit";
 import { auth } from "./auth";
 import { registry } from "./registry";
 

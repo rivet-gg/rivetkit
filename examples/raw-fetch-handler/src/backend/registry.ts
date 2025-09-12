@@ -1,5 +1,5 @@
-import { type ActorContextOf, actor, setup } from "@rivetkit/actor";
 import { Hono } from "hono";
+import { type ActorContextOf, actor, setup } from "rivetkit";
 
 export const counter = actor({
 	state: {

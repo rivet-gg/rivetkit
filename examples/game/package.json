@@ -1,6 +1,6 @@
 {
   "name": "example-game",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "type": "module",
   "scripts": {
     "dev": "concurrently \"tsx --watch src/backend/server.ts\" \"vite\"",
@@ -10,7 +10,7 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@rivetkit/actor": "workspace:*",
+    "rivetkit": "workspace:*",
     "@rivetkit/react": "workspace:*",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"

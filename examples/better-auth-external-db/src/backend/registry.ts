@@ -1,5 +1,5 @@
-import { actor, type OnAuthOptions, setup } from "@rivetkit/actor";
-import { Unauthorized } from "@rivetkit/actor/errors";
+import { actor, type OnAuthOptions, setup } from "rivetkit";
+import { Unauthorized } from "rivetkit/errors";
 import { auth } from "./auth";
 
 interface State {

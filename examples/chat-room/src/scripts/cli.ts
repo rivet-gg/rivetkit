@@ -1,5 +1,5 @@
-import { createClient } from "@rivetkit/actor/client";
 import prompts from "prompts";
+import { createClient } from "rivetkit/client";
 import type { registry } from "../backend/registry";
 
 async function main() {

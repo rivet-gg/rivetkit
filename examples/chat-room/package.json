@@ -1,6 +1,6 @@
 {
   "name": "chat-room",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "private": true,
   "type": "module",
   "scripts": {
@@ -19,7 +19,7 @@
     "@vitejs/plugin-react": "^4.2.0",
     "concurrently": "^8.2.2",
     "prompts": "^2.4.2",
-    "@rivetkit/actor": "workspace:*",
+    "rivetkit": "workspace:*",
     "tsx": "^3.12.7",
     "typescript": "^5.5.2",
     "vite": "^5.0.0",

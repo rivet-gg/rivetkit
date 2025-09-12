@@ -1,4 +1,4 @@
-import { setupTest } from "@rivetkit/actor/test";
+import { setupTest } from "rivetkit/test";
 import { expect, test } from "vitest";
 import { registry } from "../src/registry";
 

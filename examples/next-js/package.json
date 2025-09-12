@@ -1,6 +1,6 @@
 {
   "name": "example-next-js",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -12,7 +12,7 @@
     "react-dom": "19.1.0",
     "next": "15.4.5",
     "@rivetkit/next-js": "workspace:*",
-    "@rivetkit/actor": "workspace:*"
+    "rivetkit": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5",
