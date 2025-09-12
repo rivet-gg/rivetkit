@@ -12,6 +12,7 @@ import {
 	promiseActor,
 	syncActionActor,
 } from "./action-types";
+import { onStateChangeActor } from "./actor-onstatechange";
 import {
 	asyncAuthActor,
 	authActor,
@@ -140,5 +141,7 @@ export const registry = setup({
 		// From request-access.ts
 		requestAccessActor,
 		requestAccessAuthActor,
+		// From actor-onstatechange.ts
+		onStateChangeActor,
 	},
 });
