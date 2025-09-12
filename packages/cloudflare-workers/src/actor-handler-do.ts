@@ -201,7 +201,7 @@ export function createActorDurableObject(
 
 			// Load the actor instance and trigger alarm
 			const actor = await actorDriver.loadActor(actorId);
-			await actor.onAlarm();
+			await actor._onAlarm();
 		}
 	};
 }
