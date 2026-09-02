@@ -391,7 +391,7 @@ dev-bootstrap:
 			--filter "!@agentos-software/everything" build; \
 		echo "==> agentos-sidecar (debug)"; \
 		cargo build -p agentos-sidecar; \
-		echo "==> workspace TypeScript + inspector tab bundle"; \
+		echo "==> workspace TypeScript"; \
 		pnpm --filter @rivet-dev/agentos-core --filter @rivet-dev/agentos-runtime-core build; \
 		pnpm --filter @rivet-dev/agentos build; \
 		echo "==> done"'
@@ -403,7 +403,3 @@ dev-terminal-example:
 		pnpm concurrently -k -n server,web -c blue,magenta \
 			"tsx server.ts" \
 			"vite --host 0.0.0.0"'
-
-# Rebuild the inspector custom-tab bundle (run after editing src/inspector-tabs).
-dev-build-tabs:
-	{{dev-compose}} exec dev bash -lc 'pnpm --filter @rivet-dev/agentos build:tabs'

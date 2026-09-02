@@ -1,6 +1,6 @@
 # 01: Delete the TypeScript Hosted Actor
 
-**Status:** Proposed
+**Status:** Implemented
 
 ## Outcome
 
@@ -101,4 +101,3 @@ The revision must explicitly eliminate these old hosted surfaces:
 This is the first revision. Step 02 removes agent/session/ACP and Actor Runtime
 Socket code from the retained Core and native layers. Step 03 introduces the new
 Rust actor rather than restoring any TypeScript implementation.
-

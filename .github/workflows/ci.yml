@@ -265,48 +265,10 @@ jobs:
         env:
           AGENTOS_NATIVE_SIDECAR_BIN: ${{ github.workspace }}/ci-artifacts/agentos-native-sidecar/agentos-native-sidecar
 
-  actor-pr:
-    name: Actor Conformance
-    if: github.event_name != 'pull_request' || github.base_ref == 'main' || contains(github.event.pull_request.labels.*.name, 'aggregate-ci')
-    needs: [checks, rust, wasm-commands]
-    runs-on: ubuntu-latest
-    env:
-      AGENTOS_SKIP_NATIVE_META_BUILD: '1'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile --filter '@rivet-dev/agentos...'
-      - uses: actions/download-artifact@v4
-        with:
-          name: js-dist
-          path: ci-artifacts/js
-      - uses: actions/download-artifact@v4
-        with:
-          name: agentos-sidecar
-          path: ci-artifacts/agentos-sidecar
-      - uses: actions/download-artifact@v4
-        with:
-          name: wasm-commands
-          path: packages/runtime-core/commands
-      - name: Restore runtime inputs
-        run: |
-          tar -xzf ci-artifacts/js/agentos-js-dist.tar.gz
-          chmod +x ci-artifacts/agentos-sidecar/agentos-sidecar
-          node packages/runtime-core/scripts/copy-wasm-commands.mjs --require-coreutils
-          pnpm --filter @agentos-software/coreutils build:runtime
-      - run: pnpm --dir packages/agentos test:pr
-        env:
-          AGENTOS_SIDECAR_BIN: ${{ github.workspace }}/ci-artifacts/agentos-sidecar/agentos-sidecar
-
   required:
     name: CI / Required
     if: ${{ always() && (github.event_name != 'pull_request' || github.base_ref == 'main' || contains(github.event.pull_request.labels.*.name, 'aggregate-ci')) }}
-    needs: [checks, wasm-commands, rust, core-pr, runtime-core-pr, actor-pr]
+    needs: [checks, wasm-commands, rust, core-pr, runtime-core-pr]
     runs-on: ubuntu-latest
     steps:
       - name: Require every PR gate
@@ -316,15 +278,13 @@ jobs:
           RUST_RESULT: ${{ needs.rust.result }}
           CORE_RESULT: ${{ needs.core-pr.result }}
           RUNTIME_CORE_RESULT: ${{ needs.runtime-core-pr.result }}
-          ACTOR_RESULT: ${{ needs.actor-pr.result }}
         run: |
           for result in \
             "$CHECKS_RESULT" \
             "$WASM_RESULT" \
             "$RUST_RESULT" \
             "$CORE_RESULT" \
-            "$RUNTIME_CORE_RESULT" \
-            "$ACTOR_RESULT"; do
+            "$RUNTIME_CORE_RESULT"; do
             if [ "$result" != success ]; then
               echo "required CI job did not succeed: $result" >&2
               exit 1
