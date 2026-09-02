@@ -6,7 +6,6 @@
 //! and never introduce new struct fields.
 
 use std::collections::{BTreeMap, HashMap, VecDeque};
-use std::io::Write;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Weak};
 use std::time::Duration;
@@ -17,10 +16,6 @@ use serde_json::{Map, Value};
 use tokio::sync::{broadcast, watch};
 use tokio::task::JoinHandle;
 
-use agentos_protocol::generated::v1::{
-    AcpCallback, AcpCallbackResponse, AcpEvent, AcpHostRequestCallbackResponse,
-};
-use agentos_protocol::ACP_EXTENSION_NAMESPACE;
 use agentos_sidecar_client::wire;
 use agentos_vm_config as vm_config;
 
@@ -32,13 +27,8 @@ use crate::config::{
 use crate::cron::CronManager;
 use crate::error::ClientError;
 use crate::process::SYNTHETIC_PID_BASE;
-use crate::session::{
-    AgentExitEvent, AgentRestartOutcome, DurableSessionEventEntry, EphemeralSessionEventEntry,
-    SessionStreamEntry, SessionUpdate,
-};
 use crate::sidecar::{AgentOsSidecar, AgentOsSidecarPlacement, AgentOsSidecarVmLease};
 use crate::transport::{SidecarProcess, WireSidecarCallback};
-use agentos_sidecar_client::TransportError;
 
 use once_cell::sync::OnceCell;
 
@@ -92,33 +82,9 @@ pub(crate) struct ShellEntry {
     pub exit_tx: watch::Sender<Option<i32>>,
 }
 
-/// A connected ACP terminal process and its output fan-out task.
-pub(crate) struct AcpTerminalEntry {
+/// A connected terminal process and its output fan-out task.
+pub(crate) struct TerminalEntry {
     pub exit_task: JoinHandle<()>,
-}
-
-/// Mutable output state of a host-request ACP terminal (mirrors the TS `AcpTerminalEntry`
-/// `output` / `truncated` accumulation behavior).
-pub(crate) struct HostAcpTerminalOutput {
-    /// Accumulated UTF-8 terminal output (stdout + stderr interleaved, like the TS handle).
-    pub buffer: String,
-    pub truncated: bool,
-    /// Byte limit; `output` is trimmed from the front once it exceeds this. Mirrors the TS
-    /// `outputByteLimit` (default 1 MiB).
-    pub output_byte_limit: usize,
-}
-
-/// A host-request ACP terminal created via `terminal/create` (mirrors the TS `_acpTerminals`
-/// value). Backed by a real PTY shell (`open_shell`); the background fan-out task accumulates
-/// output and records the exit code.
-pub(crate) struct HostAcpTerminal {
-    /// The backing shell id (`shell-N`) used for `terminal/write` / `terminal/resize` /
-    /// `terminal/kill`.
-    pub shell_id: String,
-    /// Shared output buffer updated by the fan-out task and read by `terminal/output`.
-    pub output: Arc<parking_lot::Mutex<HostAcpTerminalOutput>>,
-    /// Exit code once the process has exited (`None` while running). Mirrors `exitCode`.
-    pub exit_rx: watch::Receiver<Option<i32>>,
 }
 
 // ---------------------------------------------------------------------------
@@ -133,13 +99,6 @@ pub(crate) struct HostAcpTerminal {
 #[derive(Debug, Clone)]
 pub struct PackageDescriptor {
     pub path: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ProjectedAgent {
-    pub id: String,
-    pub acp_entrypoint: String,
-    pub adapter_entrypoint: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -163,8 +122,6 @@ pub(crate) struct AgentOsInner {
     pub(crate) vm_id: String,
     /// Projected command names and guest entrypoints reported by the sidecar.
     pub(crate) projected_commands: parking_lot::Mutex<BTreeMap<String, String>>,
-    /// Projected agents reported by the sidecar.
-    pub(crate) projected_agents: parking_lot::Mutex<Vec<ProjectedAgent>>,
 
     // Process registries.
     pub(crate) process_registry_lock: parking_lot::Mutex<()>,
@@ -193,18 +150,9 @@ pub(crate) struct AgentOsInner {
     /// exit codes, so `wait_shell` issued after the shell already exited (entry dropped from
     /// `shells`) still resolves with the recorded code — mirrors the TS `_closedShellIds` retention.
     pub(crate) closed_shell_exit_codes: parking_lot::Mutex<VecDeque<(String, i32)>>,
-    pub(crate) acp_terminals: SccHashMap<String, AcpTerminalEntry>,
-    pub(crate) acp_terminal_count: AtomicUsize,
-    pub(crate) acp_terminal_lifecycle_lock: tokio::sync::Mutex<()>,
-    /// Host-request ACP terminals created via `terminal/create` (TS `_acpTerminals`). Keyed by the
-    /// `acp-terminal-N` id the agent uses in subsequent `terminal/*` calls.
-    pub(crate) host_acp_terminals: SccHashMap<String, HostAcpTerminal>,
-    /// Monotonic counter for the `acp-terminal-N` ids (TS `_acpTerminalCounter`).
-    pub(crate) host_acp_terminal_counter: AtomicU64,
-
-    // Durable session event fan-out. Session state itself is sidecar-owned SQLite.
-    pub(crate) durable_session_event_tx: broadcast::Sender<crate::session::SessionStreamEntry>,
-    pub(crate) durable_agent_exit_tx: broadcast::Sender<crate::session::AgentExitEvent>,
+    pub(crate) terminals: SccHashMap<String, TerminalEntry>,
+    pub(crate) terminal_count: AtomicUsize,
+    pub(crate) terminal_lifecycle_lock: tokio::sync::Mutex<()>,
 
     // Cron.
     pub(crate) cron: Arc<CronManager>,
@@ -215,10 +163,6 @@ pub(crate) struct AgentOsInner {
     pub(crate) sidecar_lease: parking_lot::Mutex<Option<AgentOsSidecarVmLease>>,
     pub(crate) dynamic_mounts: parking_lot::Mutex<Vec<wire::MountDescriptor>>,
     pub(crate) disposed: AtomicBool,
-    /// Handle for the background ACP event-pump task (`spawn_acp_event_pump`). Stored so `shutdown`
-    /// can abort it; the pump only exits on its own when the shared transport's event channel closes,
-    /// which does not happen while sibling VMs keep the transport alive. Mirrors `pending_shell_exits`.
-    pub(crate) acp_event_pump: parking_lot::Mutex<Option<JoinHandle<()>>>,
 }
 
 impl AgentOs {
@@ -388,8 +332,8 @@ impl AgentOs {
         // 5. Wait for the VM to reach `ready` (bounded by VM_READY_TIMEOUT_MS).
         wait_for_vm_ready(&mut events, &vm_id, crate::VM_READY_TIMEOUT_MS).await?;
 
-        // Forward package dirs to the sidecar. The sidecar owns manifest parsing,
-        // command discovery, and agent enumeration for the `/opt/agentos` projection.
+        // Forward packages to the sidecar. The sidecar owns manifest parsing and
+        // command discovery for the `/opt/agentos` projection.
         let packages = build_package_descriptors(&config);
 
         // Native plugin mounts configured on the client.
@@ -399,7 +343,7 @@ impl AgentOs {
         // 6. Configure the VM (vm scope). The sidecar owns the `/opt/agentos` package
         // projection: it builds the staging dir + registers the read-only host_dir
         // mount itself from the forwarded `packages`.
-        let (projected_commands, projected_agents) = match transport
+        let projected_commands = match transport
             .request_wire(
                 wire_vm_ownership(&connection_id, &session_id, &vm_id),
                 wire::RequestPayload::ConfigureVmRequest(wire::ConfigureVmRequest {
@@ -412,7 +356,7 @@ impl AgentOs {
                     // explicit `nodeModulesMount(...)` entry in `mounts`; the
                     // agentos wire field is left unset.
                     module_access_cwd: None,
-                    instructions: config.additional_instructions.clone().into_iter().collect(),
+                    instructions: Vec::new(),
                     projected_modules: Vec::new(),
                     command_permissions: HashMap::new(),
                     loopback_exempt_ports: config.loopback_exempt_ports.clone(),
@@ -424,14 +368,11 @@ impl AgentOs {
             )
             .await?
         {
-            wire::ResponsePayload::VmConfiguredResponse(configured) => (
-                configured
-                    .projected_commands
-                    .into_iter()
-                    .map(|command| (command.name, command.guest_path))
-                    .collect(),
-                projected_agents_from_wire(configured.agents),
-            ),
+            wire::ResponsePayload::VmConfiguredResponse(configured) => configured
+                .projected_commands
+                .into_iter()
+                .map(|command| (command.name, command.guest_path))
+                .collect(),
             wire::ResponsePayload::RejectedResponse(rejected) => {
                 return Err(rejected_to_error(rejected));
             }
@@ -606,7 +547,6 @@ impl AgentOs {
             session_id,
             vm_id,
             projected_commands: parking_lot::Mutex::new(projected_commands),
-            projected_agents: parking_lot::Mutex::new(projected_agents),
             process_registry_lock: parking_lot::Mutex::new(()),
             processes: SccHashMap::new(),
             process_counter: AtomicU64::new(1),
@@ -618,45 +558,34 @@ impl AgentOs {
             shell_counter: AtomicU64::new(0),
             pending_shell_exits: SccHashMap::new(),
             closed_shell_exit_codes: parking_lot::Mutex::new(VecDeque::new()),
-            acp_terminals: SccHashMap::new(),
-            acp_terminal_count: AtomicUsize::new(0),
-            acp_terminal_lifecycle_lock: tokio::sync::Mutex::new(()),
-            host_acp_terminals: SccHashMap::new(),
-            host_acp_terminal_counter: AtomicU64::new(0),
-            durable_session_event_tx: broadcast::channel(1024).0,
-            durable_agent_exit_tx: broadcast::channel(64).0,
+            terminals: SccHashMap::new(),
+            terminal_count: AtomicUsize::new(0),
+            terminal_lifecycle_lock: tokio::sync::Mutex::new(()),
             cron,
             config,
             sidecar,
             sidecar_lease: parking_lot::Mutex::new(Some(lease)),
             dynamic_mounts: parking_lot::Mutex::new(configured_mounts),
             disposed: AtomicBool::new(false),
-            acp_event_pump: parking_lot::Mutex::new(None),
         };
 
         let client = AgentOs {
             inner: Arc::new(inner),
         };
-        // Register the ACP host-operation router unconditionally. Adapters can
-        // request filesystem or terminal work even when no binding kit exists.
-        // Re-registering on a shared transport replaces the same stateless callback.
-        let _ = vm_acp_routers().insert(client.inner.vm_id.clone(), Arc::downgrade(&client.inner));
-        client
-            .inner
-            .transport
-            .register_wire_callback("ext", acp_host_callback());
-        spawn_acp_event_pump(&client);
+        // Host bindings can read JSON arguments from the guest filesystem. Keep
+        // a weak VM route for that trusted Core-only callback without exposing
+        // any product-specific orchestration protocol.
+        let _ = vm_clients().insert(client.inner.vm_id.clone(), Arc::downgrade(&client.inner));
         Ok(client)
     }
 
     /// Dispose the VM (= TS `dispose`). Teardown order:
     /// 1. cron dispose
     /// 2. kill all shells + snapshot pending exits
-    /// 3. kill all ACP terminals
+    /// 3. kill all connected terminals
     /// 4. drain tracked shell-exit tasks (two-phase, bounded by
     ///    [`crate::SHELL_DISPOSE_TIMEOUT_MS`])
-    /// 5. unregister the sidecar event listener
-    /// 6. release the lease (or tear down the transport)
+    /// 5. release the lease (or tear down the transport)
     ///
     /// Idempotent (guarded by `disposed`).
     /// Dynamically link a software package into the RUNNING VM (parity with the
@@ -685,10 +614,6 @@ impl AgentOs {
                 for command in linked.projected_commands {
                     guard.insert(command.name, command.guest_path);
                 }
-                register_projected_agents(
-                    &inner.projected_agents,
-                    projected_agents_from_wire(linked.agents),
-                );
                 Ok(())
             }
             wire::ResponsePayload::RejectedResponse(rejected) => Err(rejected_to_error(rejected)),
@@ -735,12 +660,8 @@ impl AgentOs {
         // 1. Cron dispose (cancel armed timers + tear down the driver).
         self.inner.cron.dispose();
 
-        // Abort the background ACP event pump and drain the SDK-spawned process registry. Neither
-        // ends on its own while a shared transport stays alive: the pump only exits on transport
-        // close, and the per-process output tasks await a broadcast `Closed` that the entry's own
-        // retained sender clones prevent. Aborting + clearing here stops both from leaking past
-        // dispose.
-        abort_tracked_task(&self.inner.acp_event_pump);
+        // Drain the SDK-spawned process registry. Per-process output tasks await
+        // a broadcast `Closed` that retained sender clones otherwise prevent.
         crate::process::drain_process_output_tasks(&self.inner.processes);
 
         // 2-5. Best-effort drain tracked shell and terminal tasks before the VM is disposed, bounded
@@ -752,16 +673,16 @@ impl AgentOs {
         });
 
         {
-            let _terminal_lifecycle_guard = self.inner.acp_terminal_lifecycle_lock.lock().await;
+            let _terminal_lifecycle_guard = self.inner.terminal_lifecycle_lock.lock().await;
             let mut terminal_entries = Vec::new();
-            self.inner.acp_terminals.retain(|process_id, entry| {
+            self.inner.terminals.retain(|process_id, entry| {
                 terminal_entries.push((
                     process_id.clone(),
                     std::mem::replace(&mut entry.exit_task, tokio::spawn(async {})),
                 ));
                 false
             });
-            self.inner.acp_terminal_count.store(0, Ordering::SeqCst);
+            self.inner.terminal_count.store(0, Ordering::SeqCst);
             for (process_id, _) in &terminal_entries {
                 let transport = self.transport().clone();
                 let ownership = wire::OwnershipScope::VmOwnership(wire::VmOwnership {
@@ -785,18 +706,6 @@ impl AgentOs {
             for (_, task) in terminal_entries {
                 exit_tasks.push(task);
             }
-        }
-
-        // Tear down host-request ACP terminals (`terminal/create`). Close the backing shell, which
-        // sends SIGTERM, removes the shell entry, and ends the fan-out/exit task; the task itself is
-        // tracked in `pending_shell_exits` above and drained with the other shell exit tasks.
-        let mut host_terminal_shells = Vec::new();
-        self.inner.host_acp_terminals.retain(|_, terminal| {
-            host_terminal_shells.push(terminal.shell_id.clone());
-            false
-        });
-        for shell_id in host_terminal_shells {
-            let _ = self.close_shell(&shell_id);
         }
 
         if !exit_tasks.is_empty() {
@@ -832,7 +741,7 @@ impl AgentOs {
             )
             .await;
         let _ = vm_bindings().remove(&self.inner.vm_id);
-        let _ = vm_acp_routers().remove(&self.inner.vm_id);
+        let _ = vm_clients().remove(&self.inner.vm_id);
         let _ = session_js_bridge_callbacks().remove(&sidecar_session_key(
             &self.inner.connection_id,
             &self.inner.session_id,
@@ -883,146 +792,6 @@ impl AgentOs {
     /// `AgentOs.sidecar` (e.g. `describe()` reports `active_vm_count` across VMs sharing a pool).
     pub fn sidecar(&self) -> Arc<AgentOsSidecar> {
         self.inner.sidecar.clone()
-    }
-
-    pub fn projected_agents(&self) -> Vec<ProjectedAgent> {
-        self.inner.projected_agents.lock().clone()
-    }
-}
-
-/// Abort and clear a single tracked background-task handle (e.g. the ACP event pump) so it cannot
-/// outlive the disposed VM. Mirrors the `pending_shell_exits` drain in `shutdown`.
-fn abort_tracked_task(slot: &parking_lot::Mutex<Option<JoinHandle<()>>>) {
-    if let Some(handle) = slot.lock().take() {
-        handle.abort();
-    }
-}
-
-fn spawn_acp_event_pump(client: &AgentOs) {
-    let mut events = client.transport().subscribe_wire_events();
-    let inner = Arc::downgrade(&client.inner);
-    let handle = tokio::spawn(async move {
-        loop {
-            match events.recv().await {
-                Ok((ownership, wire::EventPayload::ExtEnvelope(envelope))) => {
-                    let Some(inner) = inner.upgrade() else {
-                        break;
-                    };
-                    if inner.disposed.load(Ordering::SeqCst) {
-                        break;
-                    }
-                    if wire_ownership_vm_id(&ownership) != Some(inner.vm_id.as_str()) {
-                        continue;
-                    }
-                    if let Err(error) = deliver_acp_ext_event(&inner, envelope) {
-                        tracing::warn!(?error, "failed to deliver acp extension event");
-                    }
-                }
-                Ok((
-                    _,
-                    wire::EventPayload::VmLifecycleEvent(_)
-                    | wire::EventPayload::ProcessOutputEvent(_)
-                    | wire::EventPayload::ProcessExitedEvent(_)
-                    | wire::EventPayload::ExecutionOutputEvent(_)
-                    | wire::EventPayload::ExecutionCompletedEvent(_)
-                    | wire::EventPayload::StructuredEvent(_),
-                )) => {}
-                Err(broadcast::error::RecvError::Lagged(_)) => {}
-                Err(broadcast::error::RecvError::Closed) => break,
-            }
-        }
-    });
-    *client.inner.acp_event_pump.lock() = Some(handle);
-}
-
-fn deliver_acp_ext_event(
-    inner: &AgentOsInner,
-    envelope: wire::ExtEnvelope,
-) -> Result<(), ClientError> {
-    if envelope.namespace != ACP_EXTENSION_NAMESPACE {
-        return Ok(());
-    }
-    let event: AcpEvent = serde_bare::from_slice(&envelope.payload)
-        .map_err(|error| ClientError::Sidecar(format!("invalid ACP event: {error}")))?;
-    match event {
-        AcpEvent::AcpDurableSessionEvent(event) => {
-            let durable_event = crate::session::decode_durable_event(event.event)
-                .map_err(|error| ClientError::Sidecar(error.to_string()))?;
-            let _ = inner
-                .durable_session_event_tx
-                .send(SessionStreamEntry::Durable(DurableSessionEventEntry {
-                    durability: crate::session::DurableEventKind::Durable,
-                    session_id: event.session_id.clone(),
-                    sequence: event.sequence,
-                    timestamp: event.timestamp,
-                    event: durable_event.clone(),
-                }));
-            Ok(())
-        }
-        AcpEvent::AcpEphemeralSessionUpdateEvent(event) => {
-            let update: SessionUpdate = serde_json::from_str(&event.update).map_err(|error| {
-                ClientError::Sidecar(format!("invalid ephemeral ACP session update: {error}"))
-            })?;
-            let session_event = match update {
-                SessionUpdate::AgentMessageChunk(chunk) => {
-                    crate::session::EphemeralSessionEvent::AgentMessageChunk(chunk)
-                }
-                SessionUpdate::AgentThoughtChunk(chunk) => {
-                    crate::session::EphemeralSessionEvent::AgentThoughtChunk(chunk)
-                }
-                _ => {
-                    return Err(ClientError::Sidecar(String::from(
-                        "ephemeral ACP event must be an agent message or thought chunk",
-                    )))
-                }
-            };
-            let _ = inner
-                .durable_session_event_tx
-                .send(SessionStreamEntry::Ephemeral(EphemeralSessionEventEntry {
-                    durability: crate::session::EphemeralEventKind::Ephemeral,
-                    session_id: event.session_id,
-                    after_sequence: event.after_sequence,
-                    event: session_event,
-                }));
-            Ok(())
-        }
-        AcpEvent::AcpSessionEvent(event) => {
-            tracing::warn!(
-                session_id = event.session_id,
-                "ignored legacy live-session event; durable session events use typed envelopes"
-            );
-            Ok(())
-        }
-        AcpEvent::AcpAgentStderrEvent(event) => {
-            let mut stderr = std::io::stderr().lock();
-            if let Err(error) = stderr.write_all(&event.chunk).and_then(|_| stderr.flush()) {
-                tracing::warn!(?error, "failed to write acp stderr event");
-            }
-            Ok(())
-        }
-        AcpEvent::AcpAgentExitedEvent(event) => {
-            tracing::warn!(
-                session_id = event.session_id,
-                agent_type = event.agent_type,
-                process_id = event.process_id,
-                exit_code = ?event.exit_code,
-                restart = event.restart,
-                restart_count = event.restart_count,
-                max_restarts = event.max_restarts,
-                "acp agent adapter exited unexpectedly"
-            );
-            let _ = inner.durable_agent_exit_tx.send(AgentExitEvent {
-                session_id: event.session_id,
-                agent_type: event.agent_type,
-                process_id: event.process_id,
-                pid: event.pid,
-                exit_code: event.exit_code,
-                restart: AgentRestartOutcome::NotAttempted,
-                restart_count: event.restart_count,
-                max_restarts: event.max_restarts,
-            });
-            Ok(())
-        }
     }
 }
 
@@ -1241,7 +1010,7 @@ fn serialize_limits_config_for_sidecar(
 
 /// Hosts the VM may reach by default (egress). The default network policy is an
 /// allowlist of the common hosted LLM provider API endpoints so the standard
-/// agent quickstart works with zero network configuration, while still matching
+/// the quickstart works with zero network configuration, while still matching
 /// the Workers-style default-deny egress model: every other host is denied
 /// unless the client widens the `network` permission. Clients opt out by
 /// configuring `network` explicitly (e.g. `{ network: "allow" }`).
@@ -1484,13 +1253,13 @@ fn vm_bindings() -> &'static SccHashMap<String, Arc<VmBindingRegistry>> {
     VM_BINDINGS.get_or_init(SccHashMap::new)
 }
 
-/// Process-global map of VM id to client state. The shared ACP host callback
-/// uses frame ownership to route filesystem and terminal operations to the
-/// correct VM. `Weak` prevents the registry from extending VM lifetime.
-static VM_ACP_ROUTERS: OnceCell<SccHashMap<String, Weak<AgentOsInner>>> = OnceCell::new();
+/// Process-global map of VM id to client state used by trusted host bindings
+/// that read JSON arguments from the guest filesystem. `Weak` prevents the
+/// registry from extending VM lifetime.
+static VM_CLIENTS: OnceCell<SccHashMap<String, Weak<AgentOsInner>>> = OnceCell::new();
 
-fn vm_acp_routers() -> &'static SccHashMap<String, Weak<AgentOsInner>> {
-    VM_ACP_ROUTERS.get_or_init(SccHashMap::new)
+fn vm_clients() -> &'static SccHashMap<String, Weak<AgentOsInner>> {
+    VM_CLIENTS.get_or_init(SccHashMap::new)
 }
 
 /// Process-global map of sidecar session -> Rust-host js_bridge callback.
@@ -1614,755 +1383,6 @@ async fn run_js_bridge_callback(
             error: Some(error),
         },
     }
-}
-
-/// Transport callback for ACP filesystem and terminal host operations. Durable
-/// permission requests are resolved inside the sidecar; the legacy permission
-/// callback variant is rejected below.
-fn acp_host_callback() -> WireSidecarCallback {
-    Arc::new(|payload, ownership| {
-        Box::pin(async move {
-            match payload {
-                wire::SidecarRequestPayload::ExtEnvelope(envelope) => {
-                    handle_acp_ext_callback(envelope, &ownership)
-                        .await
-                        .map_err(|error| TransportError::Sidecar(error.to_string()))
-                }
-                wire::SidecarRequestPayload::HostCallbackRequest(_)
-                | wire::SidecarRequestPayload::JsBridgeCallRequest(_) => Ok(
-                    wire::SidecarResponsePayload::ExtEnvelope(wire::ExtEnvelope {
-                        namespace: ACP_EXTENSION_NAMESPACE.to_string(),
-                        payload: b"ACP callback received a non-extension request".to_vec(),
-                    }),
-                ),
-            }
-        })
-    })
-}
-
-async fn handle_acp_ext_callback(
-    envelope: wire::ExtEnvelope,
-    ownership: &wire::OwnershipScope,
-) -> Result<wire::SidecarResponsePayload, ClientError> {
-    if envelope.namespace != ACP_EXTENSION_NAMESPACE {
-        return Ok(wire::SidecarResponsePayload::ExtEnvelope(
-            wire::ExtEnvelope {
-                namespace: envelope.namespace,
-                payload: b"unknown extension namespace".to_vec(),
-            },
-        ));
-    }
-    let callback: AcpCallback = serde_bare::from_slice(&envelope.payload)
-        .map_err(|error| ClientError::Sidecar(format!("invalid ACP callback: {error}")))?;
-    let response = match callback {
-        AcpCallback::AcpHostRequestCallback(callback) => {
-            let response = dispatch_acp_host_request(ownership, &callback.request).await;
-            AcpCallbackResponse::AcpHostRequestCallbackResponse(AcpHostRequestCallbackResponse {
-                response: Some(response),
-            })
-        }
-    };
-    let payload = serde_bare::to_vec(&response).map_err(|error| {
-        ClientError::Sidecar(format!("failed to encode ACP callback response: {error}"))
-    })?;
-    Ok(wire::SidecarResponsePayload::ExtEnvelope(
-        wire::ExtEnvelope {
-            namespace: ACP_EXTENSION_NAMESPACE.to_string(),
-            payload,
-        },
-    ))
-}
-
-// ---------------------------------------------------------------------------
-// ACP host-request dispatch (mirrors TS `_dispatchAcpSidecarRequest` ->
-// `_handleSupportedAcpSidecarRequest`)
-// ---------------------------------------------------------------------------
-
-/// The default `terminal/create` output cap (1 MiB), matching the TS reference.
-const ACP_TERMINAL_DEFAULT_OUTPUT_BYTE_LIMIT: usize = 1_048_576;
-
-/// A JSON-RPC error raised while handling an ACP host request. Mirrors the TS `AcpDispatchError`.
-struct AcpDispatchError {
-    code: i64,
-    message: String,
-    data: Option<Value>,
-}
-
-impl AcpDispatchError {
-    fn new(code: i64, message: impl Into<String>) -> Self {
-        Self {
-            code,
-            message: message.into(),
-            data: None,
-        }
-    }
-
-    fn with_data(code: i64, message: impl Into<String>, data: Value) -> Self {
-        Self {
-            code,
-            message: message.into(),
-            data: Some(data),
-        }
-    }
-}
-
-impl From<ClientError> for AcpDispatchError {
-    fn from(error: ClientError) -> Self {
-        match error {
-            // Preserve the kernel errno code where one exists (e.g. ENOENT), surfaced through the
-            // JSON-RPC `data.code`, while keeping a JSON-RPC internal-error envelope.
-            ClientError::Kernel { code, message } => {
-                AcpDispatchError::with_data(-32603, message, serde_json::json!({ "code": code }))
-            }
-            other => AcpDispatchError::new(-32603, other.to_string()),
-        }
-    }
-}
-
-impl From<anyhow::Error> for AcpDispatchError {
-    fn from(error: anyhow::Error) -> Self {
-        // The filesystem methods return `anyhow::Result`; downcast to recover the kernel errno where
-        // the underlying cause is a `ClientError::Kernel` (so e.g. ENOENT survives into `data.code`).
-        match error.downcast::<ClientError>() {
-            Ok(client_error) => client_error.into(),
-            Err(error) => AcpDispatchError::new(-32603, error.to_string()),
-        }
-    }
-}
-
-/// Decode the inbound JSON-RPC request, dispatch it to the matching VM operation, and serialize the
-/// JSON-RPC response (success or error). Always returns a valid JSON-RPC response string; the
-/// `id`/`error` shape mirrors `_dispatchAcpSidecarRequest`.
-async fn dispatch_acp_host_request(ownership: &wire::OwnershipScope, request: &str) -> String {
-    let parsed = serde_json::from_str::<Value>(request);
-    let (id, method, params_value) = match parsed {
-        Ok(value) => {
-            let id = value.get("id").cloned().unwrap_or(Value::Null);
-            let method = value
-                .get("method")
-                .and_then(Value::as_str)
-                .map(str::to_string);
-            (id, method, value.get("params").cloned())
-        }
-        Err(error) => {
-            return acp_error_response(Value::Null, -32700, &format!("Parse error: {error}"), None);
-        }
-    };
-
-    let Some(method) = method else {
-        return acp_error_response(id, -32600, "Invalid Request: missing method", None);
-    };
-
-    match handle_acp_host_request(ownership, &method, params_value).await {
-        Ok(result) => serde_json::to_string(&serde_json::json!({
-            "jsonrpc": "2.0",
-            "id": id,
-            "result": result,
-        }))
-        .unwrap_or_else(|error| acp_error_response(Value::Null, -32603, &error.to_string(), None)),
-        Err(error) => acp_error_response(id, error.code, &error.message, error.data),
-    }
-}
-
-fn acp_error_response(id: Value, code: i64, message: &str, data: Option<Value>) -> String {
-    let mut error = serde_json::json!({
-        "code": code,
-        "message": message,
-    });
-    if let Some(data) = data {
-        if let Some(map) = error.as_object_mut() {
-            map.insert("data".to_string(), data);
-        }
-    }
-    serde_json::to_string(&serde_json::json!({
-        "jsonrpc": "2.0",
-        "id": id,
-        "error": error,
-    }))
-    .unwrap_or_else(|_| {
-        String::from(r#"{"jsonrpc":"2.0","id":null,"error":{"code":-32603,"message":"failed to encode error response"}}"#)
-    })
-}
-
-/// Resolve the `AgentOs` that owns the VM named in `ownership`, mirroring `route_permission_request`.
-fn resolve_acp_agent(ownership: &wire::OwnershipScope) -> Result<AgentOs, AcpDispatchError> {
-    let vm_id = wire_ownership_vm_id(ownership).unwrap_or("");
-    let inner = vm_acp_routers()
-        .read(vm_id, |_, weak| weak.clone())
-        .and_then(|weak| weak.upgrade());
-    inner
-        .map(|inner| AgentOs { inner })
-        .ok_or_else(|| AcpDispatchError::new(-32603, "VM is no longer available"))
-}
-
-/// Mirror of TS `_handleSupportedAcpSidecarRequest`: dispatch the JSON-RPC method to the matching VM
-/// operation. Returns the JSON-RPC `result` value on success.
-async fn handle_acp_host_request(
-    ownership: &wire::OwnershipScope,
-    method: &str,
-    params_value: Option<Value>,
-) -> Result<Value, AcpDispatchError> {
-    let params = acp_params(method, params_value)?;
-    match method {
-        "fs/read" | "fs/read_text_file" => {
-            let agent = resolve_acp_agent(ownership)?;
-            handle_acp_read_file(&agent, &params).await
-        }
-        "fs/write" | "fs/write_text_file" => {
-            let agent = resolve_acp_agent(ownership)?;
-            handle_acp_write_file(&agent, &params).await
-        }
-        "fs/readDir" | "fs/read_dir" => {
-            let agent = resolve_acp_agent(ownership)?;
-            handle_acp_read_dir(&agent, &params).await
-        }
-        "terminal/create" => {
-            let agent = resolve_acp_agent(ownership)?;
-            handle_acp_create_terminal(&agent, &params)
-        }
-        "terminal/write" => {
-            let agent = resolve_acp_agent(ownership)?;
-            handle_acp_write_terminal(&agent, &params)
-        }
-        "terminal/output" | "terminal/read" => {
-            let agent = resolve_acp_agent(ownership)?;
-            handle_acp_read_terminal(&agent, &params)
-        }
-        "terminal/wait_for_exit" | "terminal/waitForExit" => {
-            let agent = resolve_acp_agent(ownership)?;
-            handle_acp_wait_for_terminal_exit(&agent, &params).await
-        }
-        "terminal/kill" => {
-            let agent = resolve_acp_agent(ownership)?;
-            handle_acp_kill_terminal(&agent, &params)
-        }
-        "terminal/release" | "terminal/close" => {
-            let agent = resolve_acp_agent(ownership)?;
-            handle_acp_release_terminal(&agent, &params)
-        }
-        "terminal/resize" => {
-            let agent = resolve_acp_agent(ownership)?;
-            handle_acp_resize_terminal(&agent, &params)
-        }
-        other => Err(AcpDispatchError::with_data(
-            -32601,
-            format!("Method not found: {other}"),
-            serde_json::json!({ "method": other }),
-        )),
-    }
-}
-
-// --- ACP host-request param helpers (mirror TS `_acpParams` / `_require*` / `_optional*`) ---
-
-fn acp_params(
-    method: &str,
-    params_value: Option<Value>,
-) -> Result<Map<String, Value>, AcpDispatchError> {
-    match params_value {
-        None | Some(Value::Null) => Ok(Map::new()),
-        Some(Value::Object(map)) => Ok(map),
-        Some(_) => Err(AcpDispatchError::new(
-            -32602,
-            format!("{method} requires object params"),
-        )),
-    }
-}
-
-fn require_acp_string(
-    params: &Map<String, Value>,
-    name: &str,
-    method: &str,
-) -> Result<String, AcpDispatchError> {
-    match params.get(name).and_then(Value::as_str) {
-        Some(value) => Ok(value.to_string()),
-        None => Err(AcpDispatchError::new(
-            -32602,
-            format!("{method} requires a string {name}"),
-        )),
-    }
-}
-
-fn optional_acp_string(
-    params: &Map<String, Value>,
-    name: &str,
-    method: &str,
-) -> Result<Option<String>, AcpDispatchError> {
-    match params.get(name) {
-        None | Some(Value::Null) => Ok(None),
-        Some(Value::String(value)) => Ok(Some(value.clone())),
-        Some(_) => Err(AcpDispatchError::new(
-            -32602,
-            format!("{method} requires {name} to be a string when provided"),
-        )),
-    }
-}
-
-fn optional_acp_number(
-    params: &Map<String, Value>,
-    name: &str,
-    method: &str,
-) -> Result<Option<f64>, AcpDispatchError> {
-    match params.get(name) {
-        None | Some(Value::Null) => Ok(None),
-        Some(value) => match value.as_f64() {
-            Some(number) if number.is_finite() => Ok(Some(number)),
-            _ => Err(AcpDispatchError::new(
-                -32602,
-                format!("{method} requires {name} to be a number when provided"),
-            )),
-        },
-    }
-}
-
-fn optional_acp_string_array(
-    params: &Map<String, Value>,
-    name: &str,
-    method: &str,
-) -> Result<Option<Vec<String>>, AcpDispatchError> {
-    match params.get(name) {
-        None | Some(Value::Null) => Ok(None),
-        Some(Value::Array(items)) => {
-            let mut out = Vec::with_capacity(items.len());
-            for item in items {
-                match item.as_str() {
-                    Some(value) => out.push(value.to_string()),
-                    None => {
-                        return Err(AcpDispatchError::new(
-                            -32602,
-                            format!(
-                                "{method} requires {name} to be an array of strings when provided"
-                            ),
-                        ))
-                    }
-                }
-            }
-            Ok(Some(out))
-        }
-        Some(_) => Err(AcpDispatchError::new(
-            -32602,
-            format!("{method} requires {name} to be an array of strings when provided"),
-        )),
-    }
-}
-
-/// Parse the ACP `env` param, accepting either an object map or a `[{ name, value }]` array, matching
-/// the TS `_optionalAcpEnvParam`.
-fn optional_acp_env(
-    params: &Map<String, Value>,
-    name: &str,
-    method: &str,
-) -> Result<Option<BTreeMap<String, String>>, AcpDispatchError> {
-    match params.get(name) {
-        None | Some(Value::Null) => Ok(None),
-        Some(Value::Array(items)) => {
-            let mut env = BTreeMap::new();
-            for entry in items {
-                let Some(record) = entry.as_object() else {
-                    return Err(AcpDispatchError::new(
-                        -32602,
-                        format!("{method} requires {name} entries to be {{ name, value }} objects"),
-                    ));
-                };
-                match (
-                    record.get("name").and_then(Value::as_str),
-                    record.get("value").and_then(Value::as_str),
-                ) {
-                    (Some(key), Some(value)) => {
-                        env.insert(key.to_string(), value.to_string());
-                    }
-                    _ => {
-                        return Err(AcpDispatchError::new(
-                            -32602,
-                            format!(
-                                "{method} requires {name} entries to be {{ name, value }} objects"
-                            ),
-                        ))
-                    }
-                }
-            }
-            Ok(Some(env))
-        }
-        Some(Value::Object(map)) => {
-            let mut env = BTreeMap::new();
-            for (key, value) in map {
-                match value.as_str() {
-                    Some(value) => {
-                        env.insert(key.clone(), value.to_string());
-                    }
-                    None => {
-                        return Err(AcpDispatchError::new(
-                            -32602,
-                            format!("{method} requires {name} values to be strings"),
-                        ))
-                    }
-                }
-            }
-            Ok(Some(env))
-        }
-        Some(_) => Err(AcpDispatchError::new(
-            -32602,
-            format!("{method} requires {name} to be an object or name/value array"),
-        )),
-    }
-}
-
-// --- fs/* handlers ---
-
-async fn handle_acp_read_file(
-    agent: &AgentOs,
-    params: &Map<String, Value>,
-) -> Result<Value, AcpDispatchError> {
-    let method = "fs/read";
-    let path = require_acp_string(params, "path", method)?;
-    let line = optional_acp_number(params, "line", method)?;
-    let limit = optional_acp_number(params, "limit", method)?;
-    let encoding = optional_acp_string(params, "encoding", method)?;
-    let bytes = agent.read_file(&path).await?;
-    if encoding.as_deref() == Some("base64") {
-        use base64::engine::general_purpose::STANDARD as BASE64;
-        use base64::Engine as _;
-        return Ok(serde_json::json!({ "content": BASE64.encode(&bytes) }));
-    }
-    let text = String::from_utf8_lossy(&bytes).into_owned();
-    if line.is_none() && limit.is_none() {
-        return Ok(serde_json::json!({ "content": text }));
-    }
-    let start_line = line.map(|n| n.trunc() as i64).unwrap_or(1).max(1);
-    let lines: Vec<&str> = text.split('\n').collect();
-    let start_index = (start_line - 1).max(0) as usize;
-    let selected: Vec<&str> = match limit {
-        None => lines.into_iter().skip(start_index).collect(),
-        Some(limit) => {
-            let limit = limit.trunc().max(0.0) as usize;
-            lines.into_iter().skip(start_index).take(limit).collect()
-        }
-    };
-    Ok(serde_json::json!({ "content": selected.join("\n") }))
-}
-
-async fn handle_acp_write_file(
-    agent: &AgentOs,
-    params: &Map<String, Value>,
-) -> Result<Value, AcpDispatchError> {
-    let method = "fs/write";
-    let path = require_acp_string(params, "path", method)?;
-    let content = require_acp_string(params, "content", method)?;
-    let encoding = optional_acp_string(params, "encoding", method)?;
-    if encoding.as_deref() == Some("base64") {
-        use base64::engine::general_purpose::STANDARD as BASE64;
-        use base64::Engine as _;
-        let decoded = BASE64.decode(content.as_bytes()).map_err(|error| {
-            AcpDispatchError::new(
-                -32602,
-                format!("{method} content is not valid base64: {error}"),
-            )
-        })?;
-        agent.write_file(&path, decoded).await?;
-    } else {
-        agent.write_file(&path, content).await?;
-    }
-    Ok(Value::Null)
-}
-
-async fn handle_acp_read_dir(
-    agent: &AgentOs,
-    params: &Map<String, Value>,
-) -> Result<Value, AcpDispatchError> {
-    let method = "fs/readDir";
-    let path = require_acp_string(params, "path", method)?;
-    let entries = agent.acp_read_dir_with_types(&path).await?;
-    let mapped: Vec<Value> = entries
-        .into_iter()
-        .map(|entry| {
-            let child_path = if path == "/" {
-                format!("/{}", entry.name)
-            } else {
-                format!("{path}/{}", entry.name)
-            };
-            let entry_type = if entry.is_symbolic_link {
-                "symlink"
-            } else if entry.is_directory {
-                "directory"
-            } else {
-                "file"
-            };
-            serde_json::json!({
-                "name": entry.name,
-                "path": child_path,
-                "type": entry_type,
-            })
-        })
-        .collect();
-    Ok(serde_json::json!({ "entries": mapped }))
-}
-
-// --- terminal/* handlers ---
-
-fn require_acp_terminal_id(
-    params: &Map<String, Value>,
-    method: &str,
-) -> Result<String, AcpDispatchError> {
-    require_acp_string(params, "terminalId", method)
-}
-
-fn handle_acp_create_terminal(
-    agent: &AgentOs,
-    params: &Map<String, Value>,
-) -> Result<Value, AcpDispatchError> {
-    let method = "terminal/create";
-    let command = require_acp_string(params, "command", method)?;
-    let args = optional_acp_string_array(params, "args", method)?;
-    let env = optional_acp_env(params, "env", method)?;
-    let cwd = optional_acp_string(params, "cwd", method)?;
-    let cols = optional_acp_number(params, "cols", method)?;
-    let rows = optional_acp_number(params, "rows", method)?;
-    let output_byte_limit = optional_acp_number(params, "outputByteLimit", method)?
-        .map(|n| n.trunc().max(0.0) as usize)
-        .unwrap_or(ACP_TERMINAL_DEFAULT_OUTPUT_BYTE_LIMIT);
-
-    let counter = agent
-        .inner()
-        .host_acp_terminal_counter
-        .fetch_add(1, Ordering::SeqCst)
-        + 1;
-    let terminal_id = format!("acp-terminal-{counter}");
-
-    let output = Arc::new(parking_lot::Mutex::new(HostAcpTerminalOutput {
-        buffer: String::new(),
-        truncated: false,
-        output_byte_limit,
-    }));
-    let (exit_tx, exit_rx) = watch::channel::<Option<i32>>(None);
-
-    // Build the PTY shell. Both stdout and stderr are appended to the same output buffer, mirroring
-    // the TS handle where `onData` and `onStderr` both append to `terminal.output`.
-    let mut shell_options = crate::shell::OpenShellOptions {
-        command: Some(command),
-        cwd,
-        ..Default::default()
-    };
-    if let Some(args) = args {
-        shell_options.args = args;
-    }
-    if let Some(env) = env {
-        shell_options.env = env;
-    }
-    if let Some(cols) = cols {
-        shell_options.cols = Some(cols.trunc() as u16);
-    }
-    if let Some(rows) = rows {
-        shell_options.rows = Some(rows.trunc() as u16);
-    }
-    // Both stdout and stderr are appended to the single combined output buffer inside
-    // `acp_open_terminal`'s fan-out task (mirroring the TS handle's `onData`/`onStderr`).
-    let buffer_sink = output.clone();
-    let handle = agent
-        .acp_open_terminal(shell_options, exit_tx, move |data: &[u8]| {
-            append_acp_terminal_output(&buffer_sink, data);
-        })
-        .map_err(|error| AcpDispatchError::new(-32603, error.to_string()))?;
-    let shell_id = handle.shell_id.clone();
-
-    let entry = HostAcpTerminal {
-        shell_id,
-        output,
-        exit_rx,
-    };
-    if agent
-        .inner()
-        .host_acp_terminals
-        .insert(terminal_id.clone(), entry)
-        .is_err()
-    {
-        return Err(AcpDispatchError::new(
-            -32603,
-            format!("ACP terminal id collision: {terminal_id}"),
-        ));
-    }
-
-    Ok(serde_json::json!({ "terminalId": terminal_id }))
-}
-
-fn append_acp_terminal_output(
-    output: &Arc<parking_lot::Mutex<HostAcpTerminalOutput>>,
-    data: &[u8],
-) {
-    let chunk = String::from_utf8_lossy(data);
-    if chunk.is_empty() {
-        return;
-    }
-    let mut state = output.lock();
-    state.buffer.push_str(&chunk);
-    let limit = state.output_byte_limit;
-    if state.buffer.len() > limit {
-        // Trim from the front to the limit, on a char boundary, matching the TS slice-to-limit
-        // behavior (which trims to the last `limit` UTF-16 code units; bytes are an acceptable port).
-        let overflow = state.buffer.len() - limit;
-        let mut cut = overflow;
-        while cut < state.buffer.len() && !state.buffer.is_char_boundary(cut) {
-            cut += 1;
-        }
-        state.buffer = state.buffer.split_off(cut);
-        state.truncated = true;
-    }
-}
-
-fn handle_acp_write_terminal(
-    agent: &AgentOs,
-    params: &Map<String, Value>,
-) -> Result<Value, AcpDispatchError> {
-    let method = "terminal/write";
-    let terminal_id = require_acp_terminal_id(params, method)?;
-    let shell_id = acp_terminal_shell_id(agent, &terminal_id)?;
-    let data = require_acp_string(params, "data", method)?;
-    let encoding = optional_acp_string(params, "encoding", method)?;
-    let input = if encoding.as_deref() == Some("base64") {
-        use base64::engine::general_purpose::STANDARD as BASE64;
-        use base64::Engine as _;
-        let decoded = BASE64.decode(data.as_bytes()).map_err(|error| {
-            AcpDispatchError::new(
-                -32602,
-                format!("{method} data is not valid base64: {error}"),
-            )
-        })?;
-        crate::process::StdinInput::Bytes(decoded)
-    } else {
-        crate::process::StdinInput::Text(data)
-    };
-    agent
-        .write_shell(&shell_id, input)
-        .map_err(|error| AcpDispatchError::new(-32603, error.to_string()))?;
-    Ok(Value::Null)
-}
-
-fn handle_acp_read_terminal(
-    agent: &AgentOs,
-    params: &Map<String, Value>,
-) -> Result<Value, AcpDispatchError> {
-    let method = "terminal/output";
-    let terminal_id = require_acp_terminal_id(params, method)?;
-    agent
-        .inner()
-        .host_acp_terminals
-        .read(&terminal_id, |_, terminal| {
-            let (output, truncated) = {
-                let state = terminal.output.lock();
-                (state.buffer.clone(), state.truncated)
-            };
-            let mut result = serde_json::json!({
-                "output": output,
-                "truncated": truncated,
-            });
-            if let Some(exit_code) = *terminal.exit_rx.borrow() {
-                if let Some(map) = result.as_object_mut() {
-                    map.insert(
-                        "exitStatus".to_string(),
-                        serde_json::json!({ "exitCode": exit_code, "signal": Value::Null }),
-                    );
-                }
-            }
-            result
-        })
-        .ok_or_else(|| {
-            AcpDispatchError::new(-32602, format!("ACP terminal not found: {terminal_id}"))
-        })
-}
-
-async fn handle_acp_wait_for_terminal_exit(
-    agent: &AgentOs,
-    params: &Map<String, Value>,
-) -> Result<Value, AcpDispatchError> {
-    let method = "terminal/wait_for_exit";
-    let terminal_id = require_acp_terminal_id(params, method)?;
-    let mut exit_rx = agent
-        .inner()
-        .host_acp_terminals
-        .read(&terminal_id, |_, terminal| terminal.exit_rx.clone())
-        .ok_or_else(|| {
-            AcpDispatchError::new(-32602, format!("ACP terminal not found: {terminal_id}"))
-        })?;
-    let exit_code = loop {
-        if let Some(code) = *exit_rx.borrow() {
-            break code;
-        }
-        if exit_rx.changed().await.is_err() {
-            // Sender dropped (terminal released / VM disposed) without a recorded
-            // exit code. Surface that as an abnormal exit instead of pretending
-            // the terminal completed cleanly with exit 0.
-            break exit_rx.borrow().unwrap_or(1);
-        }
-    };
-    Ok(serde_json::json!({ "exitCode": exit_code, "signal": Value::Null }))
-}
-
-fn handle_acp_kill_terminal(
-    agent: &AgentOs,
-    params: &Map<String, Value>,
-) -> Result<Value, AcpDispatchError> {
-    let method = "terminal/kill";
-    let terminal_id = require_acp_terminal_id(params, method)?;
-    let shell_id = acp_terminal_shell_id(agent, &terminal_id)?;
-    // The native shell API only exposes SIGTERM teardown via `close_shell`'s kill; the explicit
-    // `signal` param is accepted for parity but the underlying kill is fixed to SIGTERM. The terminal
-    // entry is retained (matching TS `kill`, which does not delete the terminal) so `terminal/output`
-    // and `terminal/wait_for_exit` still work afterward.
-    agent
-        .acp_kill_terminal_shell(&shell_id)
-        .map_err(|error| AcpDispatchError::new(-32603, error.to_string()))?;
-    Ok(Value::Null)
-}
-
-fn handle_acp_release_terminal(
-    agent: &AgentOs,
-    params: &Map<String, Value>,
-) -> Result<Value, AcpDispatchError> {
-    let method = "terminal/release";
-    let terminal_id = require_acp_terminal_id(params, method)?;
-    let Some((_, terminal)) = agent.inner().host_acp_terminals.remove(&terminal_id) else {
-        return Err(AcpDispatchError::new(
-            -32602,
-            format!("ACP terminal not found: {terminal_id}"),
-        ));
-    };
-    // If the process has not exited yet, kill it (TS releases by killing when `exitCode === null`).
-    if terminal.exit_rx.borrow().is_none() {
-        let _ = agent.acp_kill_terminal_shell(&terminal.shell_id);
-    }
-    // Closing the shell removes the registry entry and ends the fan-out/exit task naturally.
-    let _ = agent.close_shell(&terminal.shell_id);
-    Ok(Value::Null)
-}
-
-fn handle_acp_resize_terminal(
-    agent: &AgentOs,
-    params: &Map<String, Value>,
-) -> Result<Value, AcpDispatchError> {
-    let method = "terminal/resize";
-    let terminal_id = require_acp_terminal_id(params, method)?;
-    let shell_id = acp_terminal_shell_id(agent, &terminal_id)?;
-    let cols = optional_acp_number(params, "cols", method)?;
-    let rows = optional_acp_number(params, "rows", method)?;
-    let (Some(cols), Some(rows)) = (cols, rows) else {
-        return Err(AcpDispatchError::new(
-            -32602,
-            format!("{method} requires numeric cols and rows"),
-        ));
-    };
-    agent
-        .resize_shell(&shell_id, cols.trunc() as u16, rows.trunc() as u16)
-        .map_err(|error| AcpDispatchError::new(-32603, error.to_string()))?;
-    Ok(Value::Null)
-}
-
-/// Look up the backing shell id for a host-request terminal, or a JSON-RPC -32602 error.
-fn acp_terminal_shell_id(agent: &AgentOs, terminal_id: &str) -> Result<String, AcpDispatchError> {
-    agent
-        .inner()
-        .host_acp_terminals
-        .read(terminal_id, |_, terminal| terminal.shell_id.clone())
-        .ok_or_else(|| {
-            AcpDispatchError::new(-32602, format!("ACP terminal not found: {terminal_id}"))
-        })
 }
 
 /// The transport callback that answers guest binding invocations by running the matching host binding.
@@ -2670,7 +1690,7 @@ async fn parse_binding_input(
             format!("{cwd}/{path}")
         });
         let vm_id = wire_ownership_vm_id(ownership).unwrap_or("");
-        let inner = vm_acp_routers()
+        let inner = vm_clients()
             .read(vm_id, |_, weak| weak.clone())
             .and_then(|weak| weak.upgrade())
             .ok_or_else(|| String::from("Invalid JSON file: VM is no longer available"))?;
@@ -3542,28 +2562,6 @@ pub(crate) fn build_package_descriptors(config: &AgentOsConfig) -> Vec<wire::Pac
         .collect()
 }
 
-fn projected_agents_from_wire(agents: Vec<wire::AgentosProjectedAgent>) -> Vec<ProjectedAgent> {
-    agents
-        .into_iter()
-        .map(|agent| ProjectedAgent {
-            id: agent.id,
-            acp_entrypoint: agent.acp_entrypoint,
-            adapter_entrypoint: agent.adapter_entrypoint,
-        })
-        .collect()
-}
-
-fn register_projected_agents(
-    projected_agents: &parking_lot::Mutex<Vec<ProjectedAgent>>,
-    agents: Vec<ProjectedAgent>,
-) {
-    let mut guard = projected_agents.lock();
-    for agent in agents {
-        guard.retain(|existing| existing.id != agent.id);
-        guard.push(agent);
-    }
-}
-
 pub(crate) fn serialize_mounts(
     config: &AgentOsConfig,
 ) -> Result<Vec<wire::MountDescriptor>, ClientError> {
@@ -3775,9 +2773,8 @@ fn rejected_to_error(rejected: wire::RejectedResponse) -> ClientError {
 #[cfg(test)]
 mod tests {
     use super::{
-        abort_tracked_task, default_permissions_policy, permissions_policy,
-        serialize_create_vm_config_for_sidecar, serialize_root_filesystem_config_for_sidecar,
-        JoinHandle,
+        default_permissions_policy, permissions_policy, serialize_create_vm_config_for_sidecar,
+        serialize_root_filesystem_config_for_sidecar,
     };
     use crate::config::{
         AgentOsConfig, AgentOsLimits, BindingLimits, FsPermissionRule, FsPermissions, HttpLimits,
@@ -3796,61 +2793,6 @@ mod tests {
         RootFilesystemEntryKind, RootFilesystemLowerDescriptor,
         RootFilesystemMode as ConfigRootFilesystemMode,
     };
-
-    /// Regression for the ACP event-pump leak (M7): `spawn_acp_event_pump` now stores its task
-    /// handle in `AgentOsInner::acp_event_pump`, and `shutdown` aborts it through `abort_tracked_task`
-    /// so the pump cannot outlive the disposed VM (it otherwise only ends on a shared-transport
-    /// close that never comes while sibling VMs hold the transport open).
-    ///
-    /// Gap: driving `spawn_acp_event_pump` itself needs a live `AgentOs` (it calls
-    /// `client.transport().subscribe_wire_events()`), which requires a real sidecar transport and so
-    /// is out of reach at unit level. We instead exercise the exact field (`Mutex<Option<JoinHandle>>`)
-    /// and the precise store-then-abort sequence the production code uses: `acp_event_pump` is
-    /// initialized to `None`, `spawn_acp_event_pump` does `*slot.lock() = Some(handle)`, and
-    /// `shutdown` does `abort_tracked_task(&slot)`.
-    #[tokio::test]
-    async fn abort_tracked_task_aborts_and_clears_the_handle() {
-        // Mirrors `AgentOsInner` init (`acp_event_pump: parking_lot::Mutex::new(None)`).
-        let slot: parking_lot::Mutex<Option<JoinHandle<()>>> = parking_lot::Mutex::new(None);
-        assert!(
-            slot.lock().is_none(),
-            "pump slot starts empty like AgentOsInner"
-        );
-
-        let task = tokio::spawn(async {
-            loop {
-                tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
-            }
-        });
-        let abort_handle = task.abort_handle();
-        // Mirrors the tail of `spawn_acp_event_pump`: `*client.inner.acp_event_pump.lock() = Some(handle)`.
-        *slot.lock() = Some(task);
-        assert!(
-            slot.lock().is_some(),
-            "spawning the pump must populate the tracked handle"
-        );
-
-        assert!(!abort_handle.is_finished(), "pump task should start alive");
-
-        abort_tracked_task(&slot);
-
-        assert!(
-            slot.lock().is_none(),
-            "tracked handle must be taken on abort"
-        );
-
-        // The abort is asynchronous; give the runtime a bounded window to reap the cancelled task.
-        for _ in 0..100 {
-            if abort_handle.is_finished() {
-                break;
-            }
-            tokio::time::sleep(std::time::Duration::from_millis(5)).await;
-        }
-        assert!(
-            abort_handle.is_finished(),
-            "pump task must be aborted on shutdown"
-        );
-    }
 
     #[test]
     fn permissions_policy_defaults_to_default_policy_when_unset() {

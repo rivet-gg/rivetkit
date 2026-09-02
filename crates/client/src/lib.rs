@@ -6,11 +6,10 @@
 //! `AgentOs` client (`packages/core/src/agent-os.ts`): every public method, option type, return
 //! type, event, and error maps across with identical semantics.
 //!
-//! The client spawns the native `agentos-sidecar` binary and speaks the existing framed BARE
+//! The client spawns the native `agentos-native-sidecar` binary and speaks the framed BARE
 //! protocol over its stdio (see [`transport`]). It does NOT embed the kernel in-process and does NOT
-//! define a new sidecar wire protocol. The generated AgentOS language execution schema surface comes from
-//! `agentos_sidecar_client::wire`; Agent OS layers ACP/session semantics on top of those generated wire
-//! frames through the wrapper client.
+//! define a new sidecar wire protocol. The generated agentOS language execution schema surface comes
+//! from `agentos_sidecar_client::wire`.
 //!
 //! See the companion design docs in `~/.agents/specs/rust-client-sdk/` (ADR-001, spec, reference,
 //! checklist) for the architecture, type-mapping, error taxonomy, and streaming model.
@@ -24,7 +23,6 @@ pub mod fs;
 pub mod language_execution;
 pub mod net;
 pub mod process;
-pub mod session;
 pub mod sidecar;
 pub mod stream;
 pub mod transport;
@@ -32,9 +30,6 @@ pub mod transport;
 // ---------------------------------------------------------------------------
 // Centralized constants (ADR-001 §6 / spec.md §7)
 // ---------------------------------------------------------------------------
-
-/// ACP protocol version negotiated on session creation.
-pub const ACP_PROTOCOL_VERSION: u64 = 1;
 
 /// Bounded exited-shell exit-code retention (for `wait_shell` after exit).
 pub const CLOSED_SHELL_EXIT_CODE_RETENTION_LIMIT: usize = 2048;
@@ -52,7 +47,7 @@ pub const CRON_JOB_LIMIT: usize = 1024;
 // Public re-exports
 // ---------------------------------------------------------------------------
 
-pub use agent_os::{AgentOs, PackageDescriptor, ProjectedAgent, SoftwareInfo};
+pub use agent_os::{AgentOs, PackageDescriptor, SoftwareInfo};
 pub use error::{ClientError, ClientResult, ResourceLimitDetails};
 pub use language_execution::{
     CodeEvaluationResult, CodeExecutionResult, ContextDescriptor, ExecutionPtyOptions,
@@ -65,15 +60,14 @@ pub use sidecar::{
 pub use stream::{ByteStream, Subscription};
 
 pub use config::{
-    node_modules_mount, AcpLimits, AgentOsConfig, AgentOsConfigBuilder, AgentOsLimits,
-    AgentOsSidecarConfig, Binding, BindingCallback, BindingLimits, Bindings, FsPermissionRule,
-    FsPermissions, HttpLimits, JsRuntimeLimits, MountConfig, MountPlugin, OverlayMountConfig,
-    PackageRef, PatternPermissionRule, PatternPermissions, PermissionMode, Permissions,
-    PluginLimits, PythonLimits, ResourceLimits, RootFilesystemConfig, RootFilesystemKind,
-    RootFilesystemMode, RootLowerInput, RulePermissions, ScheduleCallback, ScheduleDriver,
-    ScheduleEntry, ScheduleHandle, SidecarJsBridgeCall, SidecarJsBridgeCallback, SoftwareInput,
-    SoftwareKind, TimerScheduleDriver, VmGroupConfig, VmUserAccountConfig, VmUserConfig,
-    WasmLimits,
+    node_modules_mount, AgentOsConfig, AgentOsConfigBuilder, AgentOsLimits, AgentOsSidecarConfig,
+    Binding, BindingCallback, BindingLimits, Bindings, FsPermissionRule, FsPermissions, HttpLimits,
+    JsRuntimeLimits, MountConfig, MountPlugin, OverlayMountConfig, PackageRef,
+    PatternPermissionRule, PatternPermissions, PermissionMode, Permissions, PluginLimits,
+    PythonLimits, ResourceLimits, RootFilesystemConfig, RootFilesystemKind, RootFilesystemMode,
+    RootLowerInput, RulePermissions, ScheduleCallback, ScheduleDriver, ScheduleEntry,
+    ScheduleHandle, SidecarJsBridgeCall, SidecarJsBridgeCallback, SoftwareInput, SoftwareKind,
+    TimerScheduleDriver, VmGroupConfig, VmUserAccountConfig, VmUserConfig, WasmLimits,
 };
 
 pub use process::{
@@ -94,21 +88,9 @@ pub use fs::{
 
 pub use shell::{ConnectTerminalOptions, OpenShellOptions, ShellData, ShellExit, ShellHandle};
 
-pub use session::{
-    AgentExitEvent, AgentExitStream, AgentExitSubscription, AgentMessage, AgentRegistryEntry,
-    AgentRestartOutcome, CancelPromptStatus, ContentBlock, DurableEventKind, DurableSessionEvent,
-    DurableSessionEventEntry, DurableSessionEventStream, DurableSessionEventSubscription,
-    EphemeralEventKind, EphemeralSessionEvent, EphemeralSessionEventEntry, HistoryPage,
-    ListSessionsInput, McpServerConfig, OpenSessionInput, PendingPermissionRequest,
-    PermissionEventStatus, PermissionPolicy, PermissionResponseStatus, PermissionTerminalReason,
-    PromptInput, PromptResult, ReadHistoryInput, SessionCapabilities, SessionConfig,
-    SessionConfigOption, SessionConfigValue, SessionInfo, SessionPage, SessionState,
-    SessionStreamEntry, SessionSubscriptionError, SessionUpdate, StopReason,
-};
-
 pub use cron::{
     CronAction, CronActionInfo, CronEvent, CronJobHandle, CronJobInfo, CronJobOptions, CronManager,
-    CronOverlap, CronSessionOptions,
+    CronOverlap,
 };
 
 // `shell` is declared here because its methods live in a sibling module to keep `lib.rs` re-exports

@@ -1,6 +1,6 @@
 # 03: Build the Rust Actor Foundation
 
-**Status:** Proposed
+**Status:** In progress
 
 ## Outcome
 

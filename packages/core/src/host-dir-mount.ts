@@ -46,7 +46,7 @@ export interface NodeModulesMountConfig {
  * This is the explicit replacement for the removed `moduleAccessCwd` option:
  * the VM's module resolver reads the mounted tree through the kernel VFS, so the
  * caller supplies exactly the `node_modules` directory whose packages should be
- * resolvable in the guest (e.g. the agent SDK + its transitive deps).
+ * resolvable in the guest (e.g. a guest library and its transitive deps).
  *
  * @param hostNodeModulesDir Absolute host path to a `node_modules` directory.
  * @param opts.readOnly Defaults to `true`; the mount is read-only.

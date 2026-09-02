@@ -46,23 +46,13 @@ jobs:
             npx turbo build \
               --only \
               --concurrency=4 \
-              --filter='!@agentos-software/codex' \
-              --filter='!@rivet-dev/agentos-browser' \
-              --filter='!@rivet-dev/agentos-runtime-browser' \
-              --filter='!@rivet-dev/agentos-playground'
+              --filter='!@rivet-dev/agentos-runtime-browser'
           else
             npx turbo build \
               --only \
               --concurrency=4 \
-              --filter='!@agentos-software/codex' \
-              --filter='!@rivet-dev/agentos-browser' \
-              --filter='!@rivet-dev/agentos-runtime-browser' \
-              --filter='!@rivet-dev/agentos-playground'
+              --filter='!@rivet-dev/agentos-runtime-browser'
           fi
-      # The Codex adapter is ordinary TypeScript, while its executable is a
-      # reproducibly built 56 MB WASI artifact. Keep the cheap PR lane source-only;
-      # nightly and publish workflows build the pinned executable explicitly.
-      - run: pnpm --dir software/codex check-types
       - run: pnpm --dir scripts/publish run check-types
       - run: pnpm --dir scripts/publish test
       - run: node --test scripts/check-rust-package-metadata.test.mjs
@@ -156,18 +146,16 @@ jobs:
         run: |
           cargo test -p agentos-vm-config --quiet
           git diff --exit-code -- packages/runtime-core/src/generated
-      - name: Build PR sidecar binaries
-        run: cargo build -p agentos-sidecar -p agentos-native-sidecar
-      - run: cargo clippy --workspace --exclude agentos-sidecar-browser --exclude agentos-native-sidecar-browser --all-targets -- -D warnings
-      - run: cargo test -p agentos-protocol -p agentos-sidecar -- --test-threads=1
+      - name: Build PR sidecar binary
+        run: cargo build -p agentos-native-sidecar
+      - run: cargo clippy --workspace --exclude agentos-native-sidecar-browser --all-targets -- -D warnings
       - name: Test Rust client contracts
         env:
-          AGENTOS_SIDECAR_BIN: ${{ github.workspace }}/target/debug/agentos-sidecar
+          AGENTOS_SIDECAR_BIN: ${{ github.workspace }}/target/debug/agentos-native-sidecar
         run: |
           cargo test -p agentos-client \
             --lib \
             --test scaffold \
-            --test session_event_types \
             --test e2e_smoke \
             --test fs_e2e \
             --test lifecycle_e2e \
@@ -178,17 +166,9 @@ jobs:
             -- --test-threads=1
       - name: Stage stripped sidecar artifacts
         run: |
-          mkdir -p ci-artifacts/agentos-sidecar ci-artifacts/agentos-native-sidecar
-          cp target/debug/agentos-sidecar ci-artifacts/agentos-sidecar/agentos-sidecar
+          mkdir -p ci-artifacts/agentos-native-sidecar
           cp target/debug/agentos-native-sidecar ci-artifacts/agentos-native-sidecar/agentos-native-sidecar
-          strip --strip-all ci-artifacts/agentos-sidecar/agentos-sidecar
           strip --strip-all ci-artifacts/agentos-native-sidecar/agentos-native-sidecar
-      - uses: actions/upload-artifact@v4
-        with:
-          name: agentos-sidecar
-          path: ci-artifacts/agentos-sidecar/agentos-sidecar
-          retention-days: 1
-          if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
           name: agentos-native-sidecar
@@ -218,15 +198,15 @@ jobs:
           path: ci-artifacts/js
       - uses: actions/download-artifact@v4
         with:
-          name: agentos-sidecar
-          path: ci-artifacts/agentos-sidecar
+          name: agentos-native-sidecar
+          path: ci-artifacts/agentos-native-sidecar
       - name: Restore runtime inputs
         run: |
           tar -xzf ci-artifacts/js/agentos-js-dist.tar.gz
-          chmod +x ci-artifacts/agentos-sidecar/agentos-sidecar
+          chmod +x ci-artifacts/agentos-native-sidecar/agentos-native-sidecar
       - run: pnpm --dir packages/core test:pr
         env:
-          AGENTOS_SIDECAR_BIN: ${{ github.workspace }}/ci-artifacts/agentos-sidecar/agentos-sidecar
+          AGENTOS_SIDECAR_BIN: ${{ github.workspace }}/ci-artifacts/agentos-native-sidecar/agentos-native-sidecar
 
   runtime-core-pr:
     name: Runtime Core PR

@@ -1,25 +1,37 @@
-//! VM-scoped SQLite substrate shared by VFS and AgentOS durable state.
+//! VM-scoped local SQLite substrate shared by VFS and agentOS Core state.
 //!
-//! The actor backend is intentionally a thin translation over `ActorUdsClient`.
-//! Rivet owns transaction isolation through lease keys, so every transaction
-//! uses one fresh UUID and attaches it to `BEGIN`, every statement, and the
-//! terminal `COMMIT` or `ROLLBACK`. No second mux, pool, or retry scheduler is
-//! needed in the sidecar.
+//! This is a temporary adapter boundary. Callers depend only on the async
+//! database trait so the local connection can later be replaced by Rivet's
+//! SQLite API without restoring the Actor Runtime Socket.
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use agentos_actor_uds_client::{ActorUdsClient, ActorUdsError};
-pub use agentos_actor_uds_client::{QueryResult, SqlValue};
 use async_trait::async_trait;
 use rusqlite::types::{Value, ValueRef};
 use thiserror::Error;
-use uuid::Uuid;
 
 use agentos_vm_config::VmSqliteDescriptor;
 
 const LOCAL_SQLITE_JOB_BYTES: usize = 64 * 1024;
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum SqlValue {
+    SqlNull,
+    SqlInteger(i64),
+    SqlReal(f64),
+    SqlText(String),
+    SqlBlob(Vec<u8>),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct QueryResult {
+    pub columns: Vec<String>,
+    pub rows: Vec<Vec<SqlValue>>,
+    pub changes: i64,
+    pub last_insert_row_id: Option<i64>,
+}
 
 #[derive(Debug, Clone)]
 pub struct SqlStatement {
@@ -52,8 +64,6 @@ impl SqlStatement {
 
 #[derive(Debug, Error)]
 pub enum VmSqliteError {
-    #[error("actor SQLite UDS failed: {0}")]
-    Actor(#[from] ActorUdsError),
     #[error("local SQLite failed: {0}")]
     Local(#[from] rusqlite::Error),
     #[error("local SQLite blocking executor failed: {0}")]
@@ -64,25 +74,12 @@ pub enum VmSqliteError {
         "sqlite_result_limit: SQLite result used {used} bytes, limit {limit}; raise limits.sqlite.maxResultBytes"
     )]
     ResultTooLarge { used: usize, limit: usize },
-    #[error(
-        "acp_history_events_limit: durable event batch contains {used} events, retention limit {limit}; raise limits.acp.maxSessionHistoryEvents"
-    )]
-    HistoryEventBatchTooLarge { used: usize, limit: usize },
-    #[error(
-        "acp_history_bytes_limit: durable event batch uses {used} bytes, retention limit {limit}; raise limits.acp.maxSessionHistoryBytes"
-    )]
-    HistoryByteBatchTooLarge { used: usize, limit: usize },
-    #[error("{code}: durable SQLite collection used {used} rows, limit {limit}; raise {setting}")]
-    DurableCollectionLimit {
-        code: &'static str,
-        used: usize,
-        limit: usize,
-        setting: &'static str,
-    },
     #[error("SQLite backend {backend} did not enable PRAGMA foreign_keys")]
     ForeignKeysDisabled { backend: &'static str },
     #[error("SQLite compare-and-set affected {actual} rows; expected {expected}")]
     UnexpectedChanges { expected: i64, actual: i64 },
+    #[error("SQLite database is closed")]
+    Closed,
     #[error(
         "schema component {component} is at future version {found}; sidecar supports {supported}"
     )]
@@ -104,6 +101,10 @@ pub trait VmSqliteDatabase: Send + Sync {
         &self,
         statements: Vec<SqlStatement>,
     ) -> Result<Vec<QueryResult>, VmSqliteError>;
+
+    /// Close the backing database. Closing an already closed database is safe;
+    /// all later queries and transactions fail with [`VmSqliteError::Closed`].
+    async fn close(&self) -> Result<(), VmSqliteError>;
 }
 
 pub type SharedVmSqliteDatabase = Arc<dyn VmSqliteDatabase>;
@@ -114,105 +115,14 @@ pub async fn resolve_vm_sqlite(
     max_result_bytes: usize,
 ) -> Result<SharedVmSqliteDatabase, VmSqliteError> {
     match descriptor {
-        VmSqliteDescriptor::ActorUds { path } => Ok(Arc::new(
-            ActorUdsVmSqliteDatabase::open(path.clone(), max_result_bytes).await?,
-        )),
         VmSqliteDescriptor::SqliteFile { path } => Ok(Arc::new(
             LocalVmSqliteDatabase::open(PathBuf::from(path), runtime, max_result_bytes).await?,
         )),
     }
 }
 
-#[derive(Clone)]
-struct ActorUdsVmSqliteDatabase {
-    client: ActorUdsClient,
-    max_result_bytes: usize,
-}
-
-impl ActorUdsVmSqliteDatabase {
-    async fn open(path: String, max_result_bytes: usize) -> Result<Self, VmSqliteError> {
-        let database = Self {
-            client: ActorUdsClient::new(path),
-            max_result_bytes,
-        };
-        database.enable_and_verify_foreign_keys().await?;
-        Ok(database)
-    }
-
-    async fn enable_and_verify_foreign_keys(&self) -> Result<(), VmSqliteError> {
-        self.client
-            .query("PRAGMA foreign_keys = ON", Vec::new())
-            .await?;
-        let result = self.client.query("PRAGMA foreign_keys", Vec::new()).await?;
-        verify_foreign_keys(&result, "actor_uds")
-    }
-}
-
-#[async_trait]
-impl VmSqliteDatabase for ActorUdsVmSqliteDatabase {
-    async fn query(&self, statement: SqlStatement) -> Result<QueryResult, VmSqliteError> {
-        let result = self.client.query(statement.sql, statement.params).await?;
-        validate_result_size(&result, self.max_result_bytes)?;
-        Ok(result)
-    }
-
-    async fn transaction(
-        &self,
-        statements: Vec<SqlStatement>,
-    ) -> Result<Vec<QueryResult>, VmSqliteError> {
-        let key = Uuid::new_v4().to_string();
-        self.client.begin(&key, None).await?;
-        let mut results = Vec::with_capacity(statements.len());
-        for statement in statements {
-            let expected_changes = statement.expected_changes;
-            match self
-                .client
-                .query_with_lease(statement.sql, statement.params, Some(&key))
-                .await
-            {
-                Ok(result) => {
-                    if let Err(error) = validate_expected_changes(expected_changes, &result) {
-                        if let Err(rollback_error) = self.client.rollback(&key).await {
-                            eprintln!(
-                                "ERR_AGENTOS_SQLITE_ROLLBACK: actor transaction {key} rollback failed after {error}: {rollback_error}"
-                            );
-                        }
-                        return Err(error);
-                    }
-                    if let Err(error) = validate_result_size(&result, self.max_result_bytes) {
-                        if let Err(rollback_error) = self.client.rollback(&key).await {
-                            eprintln!(
-                                "ERR_AGENTOS_SQLITE_ROLLBACK: actor transaction {key} rollback failed after {error}: {rollback_error}"
-                            );
-                        }
-                        return Err(error);
-                    }
-                    results.push(result)
-                }
-                Err(error) => {
-                    if let Err(rollback_error) = self.client.rollback(&key).await {
-                        eprintln!(
-                            "ERR_AGENTOS_SQLITE_ROLLBACK: actor transaction {key} rollback failed after {error}: {rollback_error}"
-                        );
-                    }
-                    return Err(error.into());
-                }
-            }
-        }
-        if let Err(error) = self.client.commit(&key).await {
-            if let Err(rollback_error) = self.client.rollback(&key).await {
-                eprintln!(
-                    "ERR_AGENTOS_SQLITE_ROLLBACK: actor transaction {key} rollback failed after commit error {error}: {rollback_error}"
-                );
-            }
-            return Err(error.into());
-        }
-        Ok(results)
-    }
-}
-
 struct LocalVmSqliteDatabase {
-    connection: Arc<Mutex<rusqlite::Connection>>,
+    connection: Arc<Mutex<Option<rusqlite::Connection>>>,
     runtime: agentos_runtime::RuntimeContext,
     max_result_bytes: usize,
 }
@@ -240,7 +150,7 @@ impl LocalVmSqliteDatabase {
             })
             .await??;
         Ok(Self {
-            connection: Arc::new(Mutex::new(connection)),
+            connection: Arc::new(Mutex::new(Some(connection))),
             runtime,
             max_result_bytes,
         })
@@ -260,7 +170,8 @@ impl LocalVmSqliteDatabase {
                 let mut connection = connection.lock().map_err(|_| {
                     VmSqliteError::InvalidResult("local SQLite mutex poisoned".to_owned())
                 })?;
-                operation(&mut connection)
+                let connection = connection.as_mut().ok_or(VmSqliteError::Closed)?;
+                operation(connection)
             })
             .await?
     }
@@ -320,6 +231,28 @@ impl VmSqliteDatabase for LocalVmSqliteDatabase {
             Ok(results)
         })
         .await
+    }
+
+    async fn close(&self) -> Result<(), VmSqliteError> {
+        let connection = Arc::clone(&self.connection);
+        self.runtime
+            .blocking()
+            .run(LOCAL_SQLITE_JOB_BYTES, move || {
+                let mut guard = connection.lock().map_err(|_| {
+                    VmSqliteError::InvalidResult("local SQLite mutex poisoned".to_owned())
+                })?;
+                let Some(database) = guard.take() else {
+                    return Ok(());
+                };
+                match database.close() {
+                    Ok(()) => Ok(()),
+                    Err((database, error)) => {
+                        *guard = Some(database);
+                        Err(VmSqliteError::Local(error))
+                    }
+                }
+            })
+            .await?
     }
 }
 
@@ -406,38 +339,6 @@ fn execute_local_statement(
     })
 }
 
-fn validate_result_size(result: &QueryResult, limit: usize) -> Result<(), VmSqliteError> {
-    let mut used = result.columns.iter().map(String::len).sum::<usize>();
-    for value in result.rows.iter().flatten() {
-        used = used
-            .checked_add(sql_value_bytes(value))
-            .ok_or(VmSqliteError::ResultTooLarge {
-                used: usize::MAX,
-                limit,
-            })?;
-        if used > limit {
-            return Err(VmSqliteError::ResultTooLarge { used, limit });
-        }
-    }
-    if used >= limit.saturating_mul(4) / 5 {
-        tracing::warn!(
-            used,
-            limit,
-            config_path = "limits.sqlite.maxResultBytes",
-            "SQLite result materialization is near its configured limit"
-        );
-    }
-    Ok(())
-}
-
-fn verify_foreign_keys(result: &QueryResult, backend: &'static str) -> Result<(), VmSqliteError> {
-    if result.rows == [vec![SqlValue::SqlInteger(1)]] {
-        Ok(())
-    } else {
-        Err(VmSqliteError::ForeignKeysDisabled { backend })
-    }
-}
-
 fn sql_value_bytes(value: &SqlValue) -> usize {
     match value {
         SqlValue::SqlNull => 0,
@@ -486,6 +387,27 @@ pub struct VmSqliteMigration {
     pub statements: &'static [&'static str],
 }
 
+fn validate_migration_namespace(owner: &str, sql: &str) -> Result<(), VmSqliteError> {
+    let expected_prefix = match owner {
+        "filesystem" => "agentos_fs_",
+        "core" => "agentos_core_",
+        "actor" => "agentos_actor_",
+        _ => unreachable!("owner was validated before migration SQL"),
+    };
+    for identifier in sql
+        .split(|character: char| !(character.is_ascii_alphanumeric() || character == '_'))
+        .filter(|identifier| !identifier.is_empty())
+    {
+        let identifier = identifier.to_ascii_lowercase();
+        if identifier.starts_with("agentos_") && !identifier.starts_with(expected_prefix) {
+            return Err(VmSqliteError::InvalidResult(format!(
+                "SQLite {owner} migration referenced schema object {identifier}; expected prefix {expected_prefix}"
+            )));
+        }
+    }
+    Ok(())
+}
+
 pub async fn migrate_schema(
     database: &dyn VmSqliteDatabase,
     owner: &str,
@@ -523,6 +445,9 @@ pub async fn migrate_schema(
                 component: owner.to_owned(),
                 expected,
             });
+        }
+        for statement in migration.statements {
+            validate_migration_namespace(owner, statement)?;
         }
     }
     database
@@ -631,6 +556,15 @@ mod tests {
                 .await
                 .expect("query");
             assert_eq!(result.rows, vec![vec![SqlValue::SqlInteger(1)]]);
+
+            database.close().await.expect("close");
+            database.close().await.expect("idempotent close");
+            assert!(matches!(
+                database
+                    .query(SqlStatement::plain("SELECT value FROM values_table"))
+                    .await,
+                Err(VmSqliteError::Closed)
+            ));
         });
     }
 
@@ -673,6 +607,19 @@ mod tests {
             )
             .await;
             assert!(matches!(crossed_owner, Err(VmSqliteError::InvalidResult(message)) if message.contains("must use agentos_core_schema_version")));
+
+            const CROSSED_MIGRATION: &[VmSqliteMigration] = &[VmSqliteMigration {
+                version: 1,
+                statements: &["CREATE TABLE agentos_actor_forbidden (value INTEGER) STRICT"],
+            }];
+            let crossed_statement = migrate_schema(
+                database.as_ref(),
+                "core",
+                "agentos_core_schema_version",
+                CROSSED_MIGRATION,
+            )
+            .await;
+            assert!(matches!(crossed_statement, Err(VmSqliteError::InvalidResult(message)) if message.contains("agentos_actor_forbidden")));
             let owner_side_effects = database
                 .query(SqlStatement::plain(
                     "SELECT COUNT(*) FROM sqlite_schema WHERE name LIKE 'agentos_%_schema_version'",
@@ -954,27 +901,5 @@ mod tests {
                 .expect("count after rollback");
             assert_eq!(result.rows, vec![vec![SqlValue::SqlInteger(1)]]);
         });
-    }
-
-    #[test]
-    fn foreign_key_verification_requires_enabled_pragma() {
-        let enabled = QueryResult {
-            columns: vec![String::from("foreign_keys")],
-            rows: vec![vec![SqlValue::SqlInteger(1)]],
-            changes: 0,
-            last_insert_row_id: None,
-        };
-        verify_foreign_keys(&enabled, "test").expect("enabled");
-
-        let disabled = QueryResult {
-            rows: vec![vec![SqlValue::SqlInteger(0)]],
-            ..enabled
-        };
-        assert!(matches!(
-            verify_foreign_keys(&disabled, "actor_uds"),
-            Err(VmSqliteError::ForeignKeysDisabled {
-                backend: "actor_uds"
-            })
-        ));
     }
 }

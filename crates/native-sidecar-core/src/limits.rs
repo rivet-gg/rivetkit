@@ -31,24 +31,6 @@ pub const MAX_BINDING_EXAMPLE_INPUT_BYTES: usize = 4 * 1024;
 pub const MAX_PERSISTED_MANIFEST_BYTES: usize = 64 * 1024 * 1024;
 pub const MAX_PERSISTED_MANIFEST_FILE_BYTES: u64 = 1024 * 1024 * 1024;
 
-pub const DEFAULT_ACP_MAX_READ_LINE_BYTES: usize = 16 * 1024 * 1024;
-pub const DEFAULT_ACP_STDOUT_BUFFER_BYTE_LIMIT: usize = 1024 * 1024;
-pub const DEFAULT_ACP_MAX_COMPLETED_MESSAGE_BYTES: usize = 64 * 1024 * 1024;
-pub const DEFAULT_ACP_MAX_TURN_OUTPUT_BYTES: usize = 256 * 1024 * 1024;
-pub const DEFAULT_ACP_MAX_PROMPT_BYTES: usize = 64 * 1024 * 1024;
-pub const DEFAULT_ACP_MAX_PROMPT_BLOCKS: usize = 16_384;
-pub const DEFAULT_ACP_MAX_FALLBACK_CONTINUATION_BYTES: usize = 4 * 1024 * 1024;
-pub const DEFAULT_ACP_MAX_SESSION_HISTORY_BYTES: usize = 1024 * 1024 * 1024;
-pub const DEFAULT_ACP_MAX_SESSION_HISTORY_EVENTS: usize = 1_000_000;
-pub const DEFAULT_ACP_MAX_HISTORY_PAGE_ENTRIES: usize = 10_000;
-pub const DEFAULT_ACP_MAX_SESSION_LIST_ENTRIES: usize = 10_000;
-pub const DEFAULT_ACP_MAX_SESSIONS_PER_VM: usize = 10_000;
-pub const DEFAULT_ACP_MAX_PROMPTS_PER_SESSION: usize = 100_000;
-pub const DEFAULT_ACP_MAX_PROMPTS_PER_VM: usize = 1_000_000;
-pub const DEFAULT_ACP_MAX_PENDING_PERMISSIONS_PER_SESSION: usize = 1_000;
-pub const DEFAULT_ACP_MAX_PENDING_PERMISSIONS_PER_VM: usize = 10_000;
-pub const DEFAULT_ACP_MAX_PERMISSION_OUTCOMES_PER_SESSION: usize = 10_000;
-pub const DEFAULT_ACP_MAX_PERMISSION_OUTCOMES_PER_VM: usize = 100_000;
 pub const DEFAULT_SQLITE_MAX_RESULT_BYTES: usize = 128 * 1024 * 1024;
 
 pub const DEFAULT_JS_CAPTURED_OUTPUT_LIMIT_BYTES: usize = 16 * 1024 * 1024;
@@ -132,7 +114,6 @@ pub struct VmLimits {
     pub http2: Http2Limits,
     pub bindings: BindingLimits,
     pub plugins: PluginLimits,
-    pub acp: AcpLimits,
     pub sqlite: SqliteLimits,
     pub js_runtime: JsRuntimeLimits,
     pub python: PythonLimits,
@@ -277,46 +258,6 @@ pub struct PluginLimits {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AcpLimits {
-    /// Maximum length of a single ACP adapter stdout line. Threaded into `AcpClientOptions`.
-    pub max_read_line_bytes: usize,
-    /// Pre-session ACP adapter stdout buffer cap.
-    pub stdout_buffer_byte_limit: usize,
-    /// Maximum serialized bytes retained while completing one message.
-    pub max_completed_message_bytes: usize,
-    /// Maximum serialized ACP update bytes accepted during one turn.
-    pub max_turn_output_bytes: usize,
-    /// Maximum serialized bytes accepted in one ACP prompt content array.
-    pub max_prompt_bytes: usize,
-    /// Maximum content blocks accepted in one ACP prompt.
-    pub max_prompt_blocks: usize,
-    /// Maximum recent durable history bytes included in a fallback continuation preamble.
-    pub max_fallback_continuation_bytes: usize,
-    /// Per-session durable history retention budget. Oldest completed events are pruned.
-    pub max_session_history_bytes: usize,
-    /// Per-session durable history event retention budget.
-    pub max_session_history_events: usize,
-    /// Maximum entries in one durable history response.
-    pub max_history_page_entries: usize,
-    /// Maximum entries in one session-list response.
-    pub max_session_list_entries: usize,
-    /// Maximum durable sessions stored in one VM database.
-    pub max_sessions_per_vm: usize,
-    /// Maximum retained prompt/idempotency records for one session.
-    pub max_prompts_per_session: usize,
-    /// Maximum retained prompt/idempotency records across one VM.
-    pub max_prompts_per_vm: usize,
-    /// Maximum actionable permission requests for one session.
-    pub max_pending_permissions_per_session: usize,
-    /// Maximum actionable permission requests across one VM.
-    pub max_pending_permissions_per_vm: usize,
-    /// Maximum retained terminal permission outcomes for one session.
-    pub max_permission_outcomes_per_session: usize,
-    /// Maximum retained terminal permission outcomes across one VM.
-    pub max_permission_outcomes_per_vm: usize,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SqliteLimits {
     /// Maximum materialized bytes returned by one SQLite statement.
     pub max_result_bytes: usize,
@@ -446,31 +387,6 @@ impl Default for PluginLimits {
         Self {
             max_persisted_manifest_bytes: MAX_PERSISTED_MANIFEST_BYTES,
             max_persisted_manifest_file_bytes: MAX_PERSISTED_MANIFEST_FILE_BYTES,
-        }
-    }
-}
-
-impl Default for AcpLimits {
-    fn default() -> Self {
-        Self {
-            max_read_line_bytes: DEFAULT_ACP_MAX_READ_LINE_BYTES,
-            stdout_buffer_byte_limit: DEFAULT_ACP_STDOUT_BUFFER_BYTE_LIMIT,
-            max_completed_message_bytes: DEFAULT_ACP_MAX_COMPLETED_MESSAGE_BYTES,
-            max_turn_output_bytes: DEFAULT_ACP_MAX_TURN_OUTPUT_BYTES,
-            max_prompt_bytes: DEFAULT_ACP_MAX_PROMPT_BYTES,
-            max_prompt_blocks: DEFAULT_ACP_MAX_PROMPT_BLOCKS,
-            max_fallback_continuation_bytes: DEFAULT_ACP_MAX_FALLBACK_CONTINUATION_BYTES,
-            max_session_history_bytes: DEFAULT_ACP_MAX_SESSION_HISTORY_BYTES,
-            max_session_history_events: DEFAULT_ACP_MAX_SESSION_HISTORY_EVENTS,
-            max_history_page_entries: DEFAULT_ACP_MAX_HISTORY_PAGE_ENTRIES,
-            max_session_list_entries: DEFAULT_ACP_MAX_SESSION_LIST_ENTRIES,
-            max_sessions_per_vm: DEFAULT_ACP_MAX_SESSIONS_PER_VM,
-            max_prompts_per_session: DEFAULT_ACP_MAX_PROMPTS_PER_SESSION,
-            max_prompts_per_vm: DEFAULT_ACP_MAX_PROMPTS_PER_VM,
-            max_pending_permissions_per_session: DEFAULT_ACP_MAX_PENDING_PERMISSIONS_PER_SESSION,
-            max_pending_permissions_per_vm: DEFAULT_ACP_MAX_PENDING_PERMISSIONS_PER_VM,
-            max_permission_outcomes_per_session: DEFAULT_ACP_MAX_PERMISSION_OUTCOMES_PER_SESSION,
-            max_permission_outcomes_per_vm: DEFAULT_ACP_MAX_PERMISSION_OUTCOMES_PER_VM,
         }
     }
 }
@@ -623,98 +539,6 @@ pub fn vm_limits_from_config(
             &mut limits.plugins.max_persisted_manifest_file_bytes,
             plugins.max_persisted_manifest_file_bytes,
             "limits.plugins.maxPersistedManifestFileBytes",
-        )?;
-    }
-    if let Some(acp) = config.acp.as_ref() {
-        set_usize(
-            &mut limits.acp.max_read_line_bytes,
-            acp.max_read_line_bytes,
-            "limits.acp.maxReadLineBytes",
-        )?;
-        set_usize(
-            &mut limits.acp.stdout_buffer_byte_limit,
-            acp.stdout_buffer_byte_limit,
-            "limits.acp.stdoutBufferByteLimit",
-        )?;
-        set_usize(
-            &mut limits.acp.max_completed_message_bytes,
-            acp.max_completed_message_bytes,
-            "limits.acp.maxCompletedMessageBytes",
-        )?;
-        set_usize(
-            &mut limits.acp.max_turn_output_bytes,
-            acp.max_turn_output_bytes,
-            "limits.acp.maxTurnOutputBytes",
-        )?;
-        set_usize(
-            &mut limits.acp.max_prompt_bytes,
-            acp.max_prompt_bytes,
-            "limits.acp.maxPromptBytes",
-        )?;
-        set_usize(
-            &mut limits.acp.max_prompt_blocks,
-            acp.max_prompt_blocks,
-            "limits.acp.maxPromptBlocks",
-        )?;
-        set_usize(
-            &mut limits.acp.max_fallback_continuation_bytes,
-            acp.max_fallback_continuation_bytes,
-            "limits.acp.maxFallbackContinuationBytes",
-        )?;
-        set_usize(
-            &mut limits.acp.max_session_history_bytes,
-            acp.max_session_history_bytes,
-            "limits.acp.maxSessionHistoryBytes",
-        )?;
-        set_usize(
-            &mut limits.acp.max_session_history_events,
-            acp.max_session_history_events,
-            "limits.acp.maxSessionHistoryEvents",
-        )?;
-        set_usize(
-            &mut limits.acp.max_history_page_entries,
-            acp.max_history_page_entries,
-            "limits.acp.maxHistoryPageEntries",
-        )?;
-        set_usize(
-            &mut limits.acp.max_session_list_entries,
-            acp.max_session_list_entries,
-            "limits.acp.maxSessionListEntries",
-        )?;
-        set_usize(
-            &mut limits.acp.max_sessions_per_vm,
-            acp.max_sessions_per_vm,
-            "limits.acp.maxSessionsPerVm",
-        )?;
-        set_usize(
-            &mut limits.acp.max_prompts_per_session,
-            acp.max_prompts_per_session,
-            "limits.acp.maxPromptsPerSession",
-        )?;
-        set_usize(
-            &mut limits.acp.max_prompts_per_vm,
-            acp.max_prompts_per_vm,
-            "limits.acp.maxPromptsPerVm",
-        )?;
-        set_usize(
-            &mut limits.acp.max_pending_permissions_per_session,
-            acp.max_pending_permissions_per_session,
-            "limits.acp.maxPendingPermissionsPerSession",
-        )?;
-        set_usize(
-            &mut limits.acp.max_pending_permissions_per_vm,
-            acp.max_pending_permissions_per_vm,
-            "limits.acp.maxPendingPermissionsPerVm",
-        )?;
-        set_usize(
-            &mut limits.acp.max_permission_outcomes_per_session,
-            acp.max_permission_outcomes_per_session,
-            "limits.acp.maxPermissionOutcomesPerSession",
-        )?;
-        set_usize(
-            &mut limits.acp.max_permission_outcomes_per_vm,
-            acp.max_permission_outcomes_per_vm,
-            "limits.acp.maxPermissionOutcomesPerVm",
         )?;
     }
     if let Some(sqlite) = config.sqlite.as_ref() {
@@ -1548,49 +1372,6 @@ pub fn validate_vm_limits(
         "limits.jsRuntime.v8IpcMaxFrameBytes",
         limits.js_runtime.v8_ipc_max_frame_bytes as usize,
     )?;
-    validate_parent_limit(
-        "limits.acp.maxCompletedMessageBytes",
-        limits.acp.max_completed_message_bytes,
-        "limits.acp.maxTurnOutputBytes",
-        limits.acp.max_turn_output_bytes,
-    )?;
-    validate_parent_limit(
-        "limits.acp.maxCompletedMessageBytes",
-        limits.acp.max_completed_message_bytes,
-        "limits.acp.maxSessionHistoryBytes",
-        limits.acp.max_session_history_bytes,
-    )?;
-    validate_parent_limit(
-        "limits.acp.maxHistoryPageEntries",
-        limits.acp.max_history_page_entries,
-        "limits.acp.maxSessionHistoryEvents",
-        limits.acp.max_session_history_events,
-    )?;
-    validate_parent_limit(
-        "limits.acp.maxFallbackContinuationBytes",
-        limits.acp.max_fallback_continuation_bytes,
-        "limits.acp.maxSessionHistoryBytes",
-        limits.acp.max_session_history_bytes,
-    )?;
-    validate_parent_limit(
-        "limits.acp.maxPromptsPerSession",
-        limits.acp.max_prompts_per_session,
-        "limits.acp.maxPromptsPerVm",
-        limits.acp.max_prompts_per_vm,
-    )?;
-    validate_parent_limit(
-        "limits.acp.maxPendingPermissionsPerSession",
-        limits.acp.max_pending_permissions_per_session,
-        "limits.acp.maxPendingPermissionsPerVm",
-        limits.acp.max_pending_permissions_per_vm,
-    )?;
-    validate_parent_limit(
-        "limits.acp.maxPermissionOutcomesPerSession",
-        limits.acp.max_permission_outcomes_per_session,
-        "limits.acp.maxPermissionOutcomesPerVm",
-        limits.acp.max_permission_outcomes_per_vm,
-    )?;
-
     if limits.bindings.default_binding_timeout_ms > limits.bindings.max_binding_timeout_ms {
         return Err(SidecarCoreError::new(format!(
             "limits.bindings.default_binding_timeout_ms ({}) must be <= limits.bindings.max_binding_timeout_ms ({})",
@@ -1598,7 +1379,7 @@ pub fn validate_vm_limits(
         )));
     }
 
-    let nonzero_usize: [(&str, usize); 36] = [
+    let nonzero_usize = [
         (
             "limits.bindings.max_registered_collections",
             limits.bindings.max_registered_collections,
@@ -1622,72 +1403,6 @@ pub fn validate_vm_limits(
         (
             "limits.plugins.max_persisted_manifest_bytes",
             limits.plugins.max_persisted_manifest_bytes,
-        ),
-        (
-            "limits.acp.max_read_line_bytes",
-            limits.acp.max_read_line_bytes,
-        ),
-        (
-            "limits.acp.stdout_buffer_byte_limit",
-            limits.acp.stdout_buffer_byte_limit,
-        ),
-        (
-            "limits.acp.max_completed_message_bytes",
-            limits.acp.max_completed_message_bytes,
-        ),
-        (
-            "limits.acp.max_turn_output_bytes",
-            limits.acp.max_turn_output_bytes,
-        ),
-        ("limits.acp.max_prompt_bytes", limits.acp.max_prompt_bytes),
-        ("limits.acp.max_prompt_blocks", limits.acp.max_prompt_blocks),
-        (
-            "limits.acp.max_fallback_continuation_bytes",
-            limits.acp.max_fallback_continuation_bytes,
-        ),
-        (
-            "limits.acp.max_session_history_bytes",
-            limits.acp.max_session_history_bytes,
-        ),
-        (
-            "limits.acp.max_session_history_events",
-            limits.acp.max_session_history_events,
-        ),
-        (
-            "limits.acp.max_history_page_entries",
-            limits.acp.max_history_page_entries,
-        ),
-        (
-            "limits.acp.max_session_list_entries",
-            limits.acp.max_session_list_entries,
-        ),
-        (
-            "limits.acp.max_sessions_per_vm",
-            limits.acp.max_sessions_per_vm,
-        ),
-        (
-            "limits.acp.max_prompts_per_session",
-            limits.acp.max_prompts_per_session,
-        ),
-        (
-            "limits.acp.max_prompts_per_vm",
-            limits.acp.max_prompts_per_vm,
-        ),
-        (
-            "limits.acp.max_pending_permissions_per_session",
-            limits.acp.max_pending_permissions_per_session,
-        ),
-        (
-            "limits.acp.max_pending_permissions_per_vm",
-            limits.acp.max_pending_permissions_per_vm,
-        ),
-        (
-            "limits.acp.max_permission_outcomes_per_session",
-            limits.acp.max_permission_outcomes_per_session,
-        ),
-        (
-            "limits.acp.max_permission_outcomes_per_vm",
-            limits.acp.max_permission_outcomes_per_vm,
         ),
         (
             "limits.sqlite.max_result_bytes",
@@ -1797,8 +1512,8 @@ pub fn validate_vm_limits(
 mod tests {
     use super::*;
     use agentos_vm_config::{
-        AcpLimitsConfig, Http2LimitsConfig, ProcessLimitsConfig, ReactorLimitsConfig,
-        TlsLimitsConfig, UdpLimitsConfig,
+        Http2LimitsConfig, ProcessLimitsConfig, ReactorLimitsConfig, TlsLimitsConfig,
+        UdpLimitsConfig,
     };
 
     const FRAME_CAP: usize = 16 * 1024 * 1024;
@@ -1988,19 +1703,6 @@ mod tests {
                 max_pending_events: Some(64),
                 max_pending_event_bytes: Some(2 * 1024 * 1024),
             }),
-            acp: Some(AcpLimitsConfig {
-                max_prompt_bytes: Some(32 * 1024 * 1024),
-                max_prompt_blocks: Some(8_192),
-                max_fallback_continuation_bytes: Some(2 * 1024 * 1024),
-                max_sessions_per_vm: Some(123),
-                max_prompts_per_session: Some(234),
-                max_prompts_per_vm: Some(345),
-                max_pending_permissions_per_session: Some(12),
-                max_pending_permissions_per_vm: Some(23),
-                max_permission_outcomes_per_session: Some(34),
-                max_permission_outcomes_per_vm: Some(45),
-                ..AcpLimitsConfig::default()
-            }),
             ..VmLimitsConfig::default()
         };
 
@@ -2012,16 +1714,6 @@ mod tests {
         assert_eq!(limits.tls.max_buffered_bytes, 512 * 1024);
         assert_eq!(limits.http2.max_streams_per_connection, 64);
         assert_eq!(limits.http2.max_pending_event_bytes, 2 * 1024 * 1024);
-        assert_eq!(limits.acp.max_prompt_bytes, 32 * 1024 * 1024);
-        assert_eq!(limits.acp.max_prompt_blocks, 8_192);
-        assert_eq!(limits.acp.max_fallback_continuation_bytes, 2 * 1024 * 1024);
-        assert_eq!(limits.acp.max_sessions_per_vm, 123);
-        assert_eq!(limits.acp.max_prompts_per_session, 234);
-        assert_eq!(limits.acp.max_prompts_per_vm, 345);
-        assert_eq!(limits.acp.max_pending_permissions_per_session, 12);
-        assert_eq!(limits.acp.max_pending_permissions_per_vm, 23);
-        assert_eq!(limits.acp.max_permission_outcomes_per_session, 34);
-        assert_eq!(limits.acp.max_permission_outcomes_per_vm, 45);
     }
 
     #[test]
@@ -2049,41 +1741,6 @@ mod tests {
         assert!(error
             .to_string()
             .contains("limits.resources.maxSocketBufferedBytes"));
-
-        type AcpRelationshipCase = (&'static str, &'static str, fn(&mut VmLimits));
-        let acp_relationship_cases: [AcpRelationshipCase; 3] = [
-            (
-                "limits.acp.maxPromptsPerSession",
-                "limits.acp.maxPromptsPerVm",
-                |limits: &mut VmLimits| {
-                    limits.acp.max_prompts_per_session = limits.acp.max_prompts_per_vm + 1
-                },
-            ),
-            (
-                "limits.acp.maxPendingPermissionsPerSession",
-                "limits.acp.maxPendingPermissionsPerVm",
-                |limits: &mut VmLimits| {
-                    limits.acp.max_pending_permissions_per_session =
-                        limits.acp.max_pending_permissions_per_vm + 1
-                },
-            ),
-            (
-                "limits.acp.maxPermissionOutcomesPerSession",
-                "limits.acp.maxPermissionOutcomesPerVm",
-                |limits: &mut VmLimits| {
-                    limits.acp.max_permission_outcomes_per_session =
-                        limits.acp.max_permission_outcomes_per_vm + 1
-                },
-            ),
-        ];
-        for (child_path, parent_path, set_invalid) in acp_relationship_cases {
-            let mut limits = VmLimits::default();
-            set_invalid(&mut limits);
-            let error = validate_vm_limits(&limits, FRAME_CAP)
-                .expect_err("ACP per-session collection limit exceeds per-VM limit");
-            assert!(error.to_string().contains(child_path), "{error}");
-            assert!(error.to_string().contains(parent_path), "{error}");
-        }
 
         let mut limits = VmLimits::default();
         limits.reactor.operation_deadline_ms = 0;

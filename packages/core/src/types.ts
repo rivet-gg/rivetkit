@@ -1,6 +1,4 @@
 export type {
-	AgentExitEvent,
-	AgentExitHandler,
 	AgentOsCreateSidecarOptions,
 	AgentOsLimits,
 	AgentOsOptions,
@@ -8,10 +6,6 @@ export type {
 	AgentOsSidecarConfig,
 	AgentOsSidecarDescription,
 	AgentOsSidecarRuntimeConfig,
-	AgentRegistryEntry,
-	AgentRestartOutcome,
-	AgentStderrEvent,
-	AgentStderrHandler,
 	BatchReadResult,
 	BatchWriteEntry,
 	BatchWriteResult,
@@ -71,16 +65,7 @@ export type {
 	TypeScriptExecutionOptions,
 	TypeScriptFileExecutionOptions,
 } from "./language-execution.js";
-export type * from "./session-api.js";
-/**
- * An agent type id — the `name` of an `/opt/agentos` agent package manifest
- * (e.g. `"pi"`, `"claude"`). Agents are resolved by the SIDECAR from the projected
- * package manifest (`/opt/agentos/<name>/current/agentos-package.json`); the client
- * passes only the name, so any manifest `name` is a valid agent type.
- */
-export type AgentType = string;
 export type {
-	AgentBlock,
 	PackageDescriptor,
 	PackageRef,
 	SoftwarePackageRef,

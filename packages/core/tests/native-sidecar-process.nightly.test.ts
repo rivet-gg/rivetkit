@@ -43,7 +43,7 @@ import {
 const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const SIDECAR_BINARY = process.env.AGENTOS_SIDECAR_BIN
 	? resolve(process.env.AGENTOS_SIDECAR_BIN)
-	: join(REPO_ROOT, "target/debug/agentos-sidecar");
+	: join(REPO_ROOT, "target/debug/agentos-native-sidecar");
 const REGISTRY_COMMANDS_DIR = packageCommandsDir(
 	findPackageWithCommand("sh"),
 );
@@ -95,7 +95,7 @@ function nodeBuiltinsConfig(...allowedBuiltins: string[]) {
 function ensureSidecarBinaryReady(): void {
 	if (!existsSync(SIDECAR_BINARY)) {
 		throw new Error(
-			`agentos-sidecar is missing at ${SIDECAR_BINARY}; build the shared CI/test binary before running this suite`,
+			`agentos-native-sidecar is missing at ${SIDECAR_BINARY}; build the shared CI/test binary before running this suite`,
 		);
 	}
 }
@@ -389,7 +389,7 @@ describe("native sidecar process client", () => {
 	});
 
 	test("dispatches BARE sidecar_request frames to the registered handler", async () => {
-		const fixtureRoot = mkdtempSync(join(tmpdir(), "agentos-sidecar-request-"));
+		const fixtureRoot = mkdtempSync(join(tmpdir(), "agentos-native-sidecar-request-"));
 		cleanupPaths.push(fixtureRoot);
 		const capturePath = join(fixtureRoot, "captured-response.json");
 		const driverPath = join(fixtureRoot, "fake-sidecar.mjs");
@@ -496,7 +496,7 @@ describe("native sidecar process client", () => {
 	});
 
 	test("dispose forcibly terminates a sidecar that ignores stdin closure", async () => {
-		const fixtureRoot = mkdtempSync(join(tmpdir(), "agentos-sidecar-dispose-"));
+		const fixtureRoot = mkdtempSync(join(tmpdir(), "agentos-native-sidecar-dispose-"));
 		cleanupPaths.push(fixtureRoot);
 		const driverPath = join(fixtureRoot, "stuck-sidecar.mjs");
 		writeFileSync(
@@ -555,7 +555,7 @@ describe("native sidecar process client", () => {
 
 	test("caps buffered events and fails fast when 10k unmatched events arrive before draining", async () => {
 		const fixtureRoot = mkdtempSync(
-			join(tmpdir(), "agentos-sidecar-event-buffer-"),
+			join(tmpdir(), "agentos-native-sidecar-event-buffer-"),
 		);
 		cleanupPaths.push(fixtureRoot);
 		const driverPath = join(fixtureRoot, "overflow-sidecar.mjs");
@@ -643,7 +643,7 @@ describe("native sidecar process client", () => {
 
 	test("rejects in-flight requests immediately when the sidecar child exits", async () => {
 		const fixtureRoot = mkdtempSync(
-			join(tmpdir(), "agentos-sidecar-child-exit-"),
+			join(tmpdir(), "agentos-native-sidecar-child-exit-"),
 		);
 		cleanupPaths.push(fixtureRoot);
 		const driverPath = join(fixtureRoot, "fake-sidecar.mjs");
@@ -775,7 +775,7 @@ describe("native sidecar process client", () => {
 			cwd: REPO_ROOT,
 			command: join(
 				tmpdir(),
-				`agentos-sidecar-missing-${process.pid}-${Date.now()}`,
+				`agentos-native-sidecar-missing-${process.pid}-${Date.now()}`,
 			),
 			args: [],
 		});
@@ -1274,7 +1274,7 @@ describe("native sidecar process client", () => {
 	test("configures native mounts and streams stdin through the real Rust sidecar binary", async () => {
 		const fixtureRoot = mkdtempSync(join(tmpdir(), "agentos-native-sidecar-"));
 		const hostMountRoot = mkdtempSync(
-			join(tmpdir(), "agentos-sidecar-host-dir-"),
+			join(tmpdir(), "agentos-native-sidecar-host-dir-"),
 		);
 		cleanupPaths.push(fixtureRoot, hostMountRoot);
 		writeFileSync(

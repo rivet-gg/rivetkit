@@ -1,9 +1,6 @@
 pub trait NativeSidecarBridge: agentos_bridge::HostBridge {}
 impl<T> NativeSidecarBridge for T where T: agentos_bridge::HostBridge {}
 
-#[allow(dead_code, unused_imports)]
-#[path = "acp_legacy/mod.rs"]
-mod acp;
 #[allow(dead_code)]
 #[path = "../src/bootstrap.rs"]
 mod bootstrap;
@@ -14739,7 +14736,7 @@ process.stdout.write(`${JSON.stringify({
 
             write_fixture(
                 &package.join("agentos-package.json"),
-                r#"{"name":"t1-agent","version":"1.0.0","agent":{"acpEntrypoint":"x"}}"#,
+                r#"{"name":"t1-package","version":"1.0.0"}"#,
             );
             fs::create_dir_all(package.join("bin")).expect("create bin");
             std::os::unix::fs::symlink("../adapter.mjs", package.join("bin/x"))

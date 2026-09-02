@@ -1,6 +1,28 @@
 # 02: Strip Core and the Runtime
 
-**Status:** Proposed
+**Status:** Implemented
+
+## Implementation notes
+
+- The ACP wrapper sidecars, Actor Runtime Socket client, agent/session APIs,
+  adapters, agent-only software, and the obsolete browser actor wrapper are
+  deleted.
+- Core persistence now uses the temporary async local SQLite adapter with
+  owner-specific migrations, namespace checks, bounded operations, and clean
+  close semantics.
+- Packed software uses the compatibility-free v2 manifest. The runtime does not
+  decode v1.
+- `agentos-native-sidecar` is the only remaining native Core runtime artifact;
+  its fd 0/stdout/fd 3 transport and low-level ownership scopes remain generic
+  infrastructure.
+- Native-sidecar progress-lane tests use the generic VM-database service as
+  ordinary queue load after ACP deletion and reserve progress capacity for
+  every configured in-flight request.
+- Embedded TypeScript Core retains host bindings and host mounts. Neither will
+  be admitted by the hosted actor contract.
+- The stacked workspace is expected to keep failing only in the explicitly
+  deferred agentOS Apps and downstream TypeScript actor integrations until
+  steps 13 and 14 remove or migrate them.
 
 ## Outcome
 

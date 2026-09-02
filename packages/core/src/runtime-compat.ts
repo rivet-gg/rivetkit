@@ -78,7 +78,10 @@ const KERNEL_POSIX_BOOTSTRAP_DIRS = [
 	"/var/tmp",
 ] as const;
 const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
-const SIDECAR_BINARY = path.join(REPO_ROOT, "target/debug/agentos-sidecar");
+const SIDECAR_BINARY = path.join(
+	REPO_ROOT,
+	"target/debug/agentos-native-sidecar",
+);
 const SIDECAR_BUILD_INPUTS = [
 	path.join(REPO_ROOT, "Cargo.toml"),
 	path.join(REPO_ROOT, "Cargo.lock"),
@@ -86,8 +89,6 @@ const SIDECAR_BUILD_INPUTS = [
 	path.join(REPO_ROOT, "crates/build-support"),
 	path.join(REPO_ROOT, "crates/execution"),
 	path.join(REPO_ROOT, "crates/kernel"),
-	path.join(REPO_ROOT, "crates/agentos-protocol"),
-	path.join(REPO_ROOT, "crates/agentos-sidecar"),
 	path.join(REPO_ROOT, "crates/native-sidecar"),
 	path.join(REPO_ROOT, "crates/native-sidecar-core"),
 	path.join(REPO_ROOT, "crates/sidecar-protocol"),
@@ -1435,14 +1436,18 @@ function ensureNativeSidecarBinary(): string {
 	if (sidecarBinaryNeedsBuild()) {
 		const cargoBinary = findCargoBinary();
 		if (cargoBinary) {
-			execFileSync(cargoBinary, ["build", "-q", "-p", "agentos-sidecar"], {
+			execFileSync(
+				cargoBinary,
+				["build", "-q", "-p", "agentos-native-sidecar"],
+				{
 				cwd: REPO_ROOT,
 				stdio: "pipe",
-			});
+				},
+			);
 		} else if (!fsSync.existsSync(SIDECAR_BINARY)) {
 			execFileSync(
 				resolveCargoBinary(),
-				["build", "-q", "-p", "agentos-sidecar"],
+				["build", "-q", "-p", "agentos-native-sidecar"],
 				{
 					cwd: REPO_ROOT,
 					stdio: "pipe",

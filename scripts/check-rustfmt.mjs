@@ -5,7 +5,6 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const defaultRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const disabledBrowserPackages = new Set([
-	"agentos-sidecar-browser",
 	"agentos-native-sidecar-browser",
 ]);
 

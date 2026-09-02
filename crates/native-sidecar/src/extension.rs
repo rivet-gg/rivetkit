@@ -13,44 +13,13 @@ use crate::state::{SharedEventSink, SharedSidecarRequestClient, SidecarError};
 
 pub type ExtensionFuture<'a, T> = Pin<Box<dyn Future<Output = Result<T, SidecarError>> + 'a>>;
 
-/// One projected agent package's launch surface, served from sidecar-owned VM
-/// state (sourced from packed vbare manifests; packed packages ship no
-/// `agentos-package.json` for extensions to read from the guest filesystem).
-#[derive(Debug, Clone)]
-pub struct ProjectedAgentLaunchEntry {
-    pub id: String,
-    pub acp_entrypoint: String,
-    pub env: std::collections::BTreeMap<String, String>,
-    pub launch_args: Vec<String>,
-}
-
 pub trait ExtensionHost {
-    /// Grace allowed for an active ACP prompt to commit its terminal durable
-    /// state after teardown signals cancellation, before adapter escalation.
-    fn acp_termination_grace<'a>(&'a mut self) -> ExtensionFuture<'a, Duration> {
-        Box::pin(async { Ok(Duration::from_secs(3)) })
-    }
-
-    /// Return the VM-scoped ACP/session limits. Test hosts that do not own a VM
-    /// use the same generous defaults as a normal sidecar.
-    fn vm_acp_limits<'a>(
-        &'a mut self,
-        _ownership: OwnershipScope,
-    ) -> ExtensionFuture<'a, agentos_native_sidecar_core::limits::AcpLimits> {
-        Box::pin(async { Ok(agentos_native_sidecar_core::limits::AcpLimits::default()) })
-    }
-
     /// Return the VM's single resolved SQLite handle. Reads through this handle
     /// never create another transport, connection pool, or database namespace.
     fn vm_database<'a>(
         &'a mut self,
         ownership: OwnershipScope,
     ) -> ExtensionFuture<'a, Option<crate::vm_sqlite::SharedVmSqliteDatabase>>;
-
-    fn projected_agents<'a>(
-        &'a mut self,
-        ownership: OwnershipScope,
-    ) -> ExtensionFuture<'a, Vec<ProjectedAgentLaunchEntry>>;
 
     fn spawn_process<'a>(
         &'a mut self,
@@ -138,25 +107,13 @@ pub trait ExtensionHost {
 /// The mutable [`ExtensionHost`] backend exists for the direct, in-process
 /// `NativeSidecar::dispatch` API. Transports that supervise more than one
 /// request at a time provide this owned backend instead, so an extension never
-/// retains the sidecar coordinator's mutable borrow while it waits on an agent,
-/// a permission decision, process output, or cancellation.
+/// retains the sidecar coordinator's mutable borrow while it waits on process
+/// output, filesystem work, or cancellation.
 pub trait ExtensionServices: Send + Sync {
-    fn acp_termination_grace(&self) -> ExtensionFuture<'static, Duration>;
-
-    fn vm_acp_limits(
-        &self,
-        ownership: OwnershipScope,
-    ) -> ExtensionFuture<'static, agentos_native_sidecar_core::limits::AcpLimits>;
-
     fn vm_database(
         &self,
         ownership: OwnershipScope,
     ) -> ExtensionFuture<'static, Option<crate::vm_sqlite::SharedVmSqliteDatabase>>;
-
-    fn projected_agents(
-        &self,
-        ownership: OwnershipScope,
-    ) -> ExtensionFuture<'static, Vec<ProjectedAgentLaunchEntry>>;
 
     fn spawn_process(
         &self,
@@ -482,18 +439,6 @@ impl ExtensionContext {
             .await
     }
 
-    pub async fn acp_termination_grace(&mut self) -> Result<Duration, SidecarError> {
-        self.services.acp_termination_grace().await
-    }
-
-    pub async fn vm_acp_limits(
-        &mut self,
-    ) -> Result<agentos_native_sidecar_core::limits::AcpLimits, SidecarError> {
-        self.services
-            .vm_acp_limits(self.snapshot.ownership.clone())
-            .await
-    }
-
     pub async fn spawn_process(
         &mut self,
         request: ExecuteRequest,
@@ -674,16 +619,6 @@ impl ExtensionContext {
         self.services
             .guest_filesystem_call(self.snapshot.ownership.clone(), request)
             .await
-    }
-
-    /// Enumerate the VM's projected agent packages (id + launch surface) from
-    /// sidecar-owned state. This is the agent source of truth for extensions;
-    /// it reflects `ConfigureVm` and live `LinkPackage` updates.
-    pub async fn projected_agents(
-        &mut self,
-    ) -> Result<Vec<ProjectedAgentLaunchEntry>, SidecarError> {
-        let ownership = self.snapshot.ownership().clone();
-        self.services.projected_agents(ownership).await
     }
 
     pub async fn guest_filesystem_call_wire(
@@ -869,7 +804,7 @@ pub trait Extension: Send + Sync {
     /// session's ownership scope so it can release the per-session state it
     /// keyed on that session. Default is a no-op. This is the only signal an
     /// extension receives that a client has disconnected, so it is what lets an
-    /// ACP-style extension free per-session state instead of leaking it for the
+    /// extension free per-connection state instead of leaking it for the
     /// process lifetime.
     fn on_session_disposed<'a>(&'a self, _ctx: ExtensionSnapshot) -> ExtensionFuture<'a, ()> {
         Box::pin(async { Ok(()) })

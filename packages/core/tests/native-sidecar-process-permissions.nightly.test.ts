@@ -18,7 +18,7 @@ import {
 const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const SIDECAR_BINARY = process.env.AGENTOS_SIDECAR_BIN
 	? resolve(process.env.AGENTOS_SIDECAR_BIN)
-	: join(REPO_ROOT, "target/debug/agentos-sidecar");
+	: join(REPO_ROOT, "target/debug/agentos-native-sidecar");
 
 type JavaScriptVmConfigOptions = Partial<
 	Pick<
@@ -55,7 +55,7 @@ function nodeBuiltinsConfig(...allowedBuiltins: string[]) {
 function ensureSidecarBinaryReady(): void {
 	if (!existsSync(SIDECAR_BINARY)) {
 		throw new Error(
-			`agentos-sidecar is missing at ${SIDECAR_BINARY}; build the shared CI/test binary before running this suite`,
+			`agentos-native-sidecar is missing at ${SIDECAR_BINARY}; build the shared CI/test binary before running this suite`,
 		);
 	}
 }
@@ -94,7 +94,7 @@ describe("native sidecar process client permissions", () => {
 
 	test("writes create-VM config and configure permissions policies", async () => {
 		const fixtureRoot = mkdtempSync(
-			join(tmpdir(), "agentos-sidecar-permissions-"),
+			join(tmpdir(), "agentos-native-sidecar-permissions-"),
 		);
 		cleanupPaths.push(fixtureRoot);
 		const capturePath = join(fixtureRoot, "captured-requests.json");
@@ -351,7 +351,7 @@ describe("native sidecar process client permissions", () => {
 
 	test("inspection RPCs are denied by default and allowed with explicit inspect permissions", async () => {
 		const fixtureRoot = mkdtempSync(
-			join(tmpdir(), "agentos-sidecar-inspection-permissions-"),
+			join(tmpdir(), "agentos-native-sidecar-inspection-permissions-"),
 		);
 		cleanupPaths.push(fixtureRoot);
 		ensureSidecarBinaryReady();
@@ -610,7 +610,7 @@ describe("native sidecar process client permissions", () => {
 
 	test("keeps single-star fs permission globs within one path segment", async () => {
 		const fixtureRoot = mkdtempSync(
-			join(tmpdir(), "agentos-sidecar-permission-glob-"),
+			join(tmpdir(), "agentos-native-sidecar-permission-glob-"),
 		);
 		cleanupPaths.push(fixtureRoot);
 		ensureSidecarBinaryReady();

@@ -48,20 +48,20 @@ jobs:
         run: echo "RUSTUP_TOOLCHAIN=stable" >> "$GITHUB_ENV"
       # Browser support is retained in-tree but disabled during the unified
       # native sidecar reactor migration, so it must not gate native CI.
-      - run: cargo check --workspace --exclude agentos-sidecar-browser --exclude agentos-native-sidecar-browser
-      - run: cargo clippy --workspace --exclude agentos-sidecar-browser --exclude agentos-native-sidecar-browser --all-targets -- -D warnings
+      - run: cargo check --workspace --exclude agentos-native-sidecar-browser
+      - run: cargo clippy --workspace --exclude agentos-native-sidecar-browser --all-targets -- -D warnings
       - run: pnpm check-types
       - name: Build sidecars once for all TypeScript runtime suites
-        run: cargo build -p agentos-sidecar -p agentos-native-sidecar
+        run: cargo build -p agentos-native-sidecar
       - run: pnpm test
         env:
           AGENTOS_E2E_NETWORK: '1'
-          AGENTOS_SIDECAR_BIN: ${{ github.workspace }}/target/debug/agentos-sidecar
+          AGENTOS_SIDECAR_BIN: ${{ github.workspace }}/target/debug/agentos-native-sidecar
           AGENTOS_NATIVE_SIDECAR_BIN: ${{ github.workspace }}/target/debug/agentos-native-sidecar
       - run: pnpm test:nightly
         env:
           AGENTOS_E2E_NETWORK: '1'
-          AGENTOS_SIDECAR_BIN: ${{ github.workspace }}/target/debug/agentos-sidecar
+          AGENTOS_SIDECAR_BIN: ${{ github.workspace }}/target/debug/agentos-native-sidecar
           AGENTOS_NATIVE_SIDECAR_BIN: ${{ github.workspace }}/target/debug/agentos-native-sidecar
       # These opt-in gates cold-install pinned ecosystem fixtures and exercise
       # package-manager workflows inside the VM, so keep them off the cheap PR path.
@@ -75,7 +75,7 @@ jobs:
       - run: pnpm --dir packages/runtime-core test:npm-workflows
         env:
           AGENTOS_NATIVE_SIDECAR_BIN: ${{ github.workspace }}/target/debug/agentos-native-sidecar
-      - run: cargo test --workspace --exclude agentos-sidecar-browser --exclude agentos-native-sidecar-browser -- --test-threads=1
+      - run: cargo test --workspace --exclude agentos-native-sidecar-browser -- --test-threads=1
       - name: Explicit ignored runtime churn gate
         run: cargo test -p agentos-runtime multi_vm_generation_soak_has_no_accounting_or_scheduler_drift --lib -- --ignored --test-threads=1
       - name: Explicit ignored multi-VM protocol soak gate

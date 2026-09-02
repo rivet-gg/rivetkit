@@ -108,18 +108,13 @@ impl CreateVmConfig {
 #[ts(tag = "type", rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/runtime-core/src/generated/")]
 pub enum VmSqliteDescriptor {
-    /// Rivet actor SQLite reached through the actor's local runtime socket.
-    ActorUds { path: String },
-    /// A SQLite database file owned by the native sidecar host.
+    /// Temporary local SQLite database owned by the native sidecar host.
     SqliteFile { path: String },
 }
 
 impl VmSqliteDescriptor {
     fn validate(&self) -> Result<(), VmConfigError> {
         match self {
-            Self::ActorUds { path } => {
-                validate_absolute_host_path("database.path", path)?;
-            }
             Self::SqliteFile { path } => validate_absolute_host_path("database.path", path)?,
         }
         Ok(())
@@ -778,9 +773,6 @@ pub struct VmLimitsConfig {
     pub plugins: Option<PluginLimitsConfig>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
-    pub acp: Option<AcpLimitsConfig>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
     pub sqlite: Option<SqliteLimitsConfig>,
     #[serde(default, rename = "jsRuntime", skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
@@ -1228,27 +1220,6 @@ limits_struct!(BindingLimitsConfig {
 limits_struct!(PluginLimitsConfig {
     max_persisted_manifest_bytes,
     max_persisted_manifest_file_bytes,
-});
-
-limits_struct!(AcpLimitsConfig {
-    max_read_line_bytes,
-    stdout_buffer_byte_limit,
-    max_completed_message_bytes,
-    max_turn_output_bytes,
-    max_prompt_bytes,
-    max_prompt_blocks,
-    max_fallback_continuation_bytes,
-    max_session_history_bytes,
-    max_session_history_events,
-    max_history_page_entries,
-    max_session_list_entries,
-    max_sessions_per_vm,
-    max_prompts_per_session,
-    max_prompts_per_vm,
-    max_pending_permissions_per_session,
-    max_pending_permissions_per_vm,
-    max_permission_outcomes_per_session,
-    max_permission_outcomes_per_vm,
 });
 
 limits_struct!(SqliteLimitsConfig { max_result_bytes });

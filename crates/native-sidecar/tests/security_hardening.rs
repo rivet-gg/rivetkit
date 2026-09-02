@@ -170,7 +170,6 @@ fn sidecar_rejects_oversized_request_frames_before_dispatch() {
             max_frame_bytes: 512,
             compile_cache_root: Some(root.join("cache")),
             expected_auth_token: Some(String::from(TEST_AUTH_TOKEN)),
-            acp_termination_grace: Duration::from_secs(3),
             ..NativeSidecarConfig::default()
         },
     )

@@ -108,29 +108,6 @@ jobs:
           path: packages/runtime-core/commands
           if-no-files-found: error
 
-  codex-wasm:
-    name: Codex WASI
-    runs-on: [self-hosted, agentos-builder]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: nightly-2026-03-01
-          components: rust-src
-          targets: wasm32-wasip1
-      - name: Install toolchain build prerequisites
-        run: |
-          if ! command -v cmake >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install --yes cmake
-          fi
-      - run: make -C toolchain codex
-      - uses: actions/upload-artifact@v4
-        with:
-          name: codex-wasm
-          path: software/codex/wasm
-          if-no-files-found: error
-
   build-sidecar:
     needs: [context]
     name: "Build linux native artifacts (${{ matrix.platform }})"
@@ -172,21 +149,17 @@ jobs:
           sidecar_out="target/sidecar-artifacts/${{ matrix.platform }}"
           mkdir -p "$sidecar_out"
           cid=$(docker create agentos-linux-${{ matrix.platform }})
-          docker cp "$cid:/artifacts/agentos-sidecar" "$sidecar_out/agentos-sidecar"
           docker cp "$cid:/artifacts/agentos-native-sidecar" "$sidecar_out/agentos-native-sidecar"
           docker rm "$cid"
-          test -f "$sidecar_out/agentos-sidecar"
           test -f "$sidecar_out/agentos-native-sidecar"
           echo "sidecar_dir=$sidecar_out" >> "$GITHUB_OUTPUT"
       - name: Check glibc floor
         run: |
           scripts/ci/check-linux-glibc-floor.sh \
-            "${{ steps.extract.outputs.sidecar_dir }}/agentos-sidecar" \
             "${{ steps.extract.outputs.sidecar_dir }}/agentos-native-sidecar"
       - name: Smoke-run binaries in old Linux containers
         run: |
           scripts/ci/smoke-linux-artifacts.sh binary \
-            "${{ steps.extract.outputs.sidecar_dir }}/agentos-sidecar" \
             "${{ steps.extract.outputs.sidecar_dir }}/agentos-native-sidecar"
       - uses: actions/upload-artifact@v4
         with:
@@ -237,17 +210,14 @@ jobs:
           sidecar_out="target/sidecar-artifacts/${{ matrix.platform }}"
           mkdir -p "$sidecar_out"
           cid=$(docker create agentos-darwin-${{ matrix.platform }})
-          docker cp "$cid:/artifacts/agentos-sidecar" "$sidecar_out/agentos-sidecar"
           docker cp "$cid:/artifacts/agentos-native-sidecar" "$sidecar_out/agentos-native-sidecar"
           docker rm "$cid"
-          test -f "$sidecar_out/agentos-sidecar"
           test -f "$sidecar_out/agentos-native-sidecar"
           case "${{ matrix.platform }}" in
             darwin-x64) expected_arch="x86_64" ;;
             darwin-arm64) expected_arch="arm64" ;;
             *) echo "unknown darwin platform: ${{ matrix.platform }}" >&2; exit 2 ;;
           esac
-          file "$sidecar_out/agentos-sidecar" | grep -F "$expected_arch"
           file "$sidecar_out/agentos-native-sidecar" | grep -F "$expected_arch"
       - uses: actions/upload-artifact@v4
         with:
@@ -256,9 +226,9 @@ jobs:
           if-no-files-found: error
 
   publish-npm:
-    needs: [context, wasm-commands, codex-wasm, build-sidecar, build-sidecar-darwin]
+    needs: [context, wasm-commands, build-sidecar, build-sidecar-darwin]
     name: Publish npm
-    if: ${{ !cancelled() && needs.wasm-commands.result == 'success' && needs.codex-wasm.result == 'success' && needs.build-sidecar.result == 'success' && needs.build-sidecar-darwin.result == 'success' }}
+    if: ${{ !cancelled() && needs.wasm-commands.result == 'success' && needs.build-sidecar.result == 'success' && needs.build-sidecar-darwin.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -286,26 +256,16 @@ jobs:
           test -s "$commands_dir/sh"
       - uses: actions/download-artifact@v4
         with:
-          name: codex-wasm
-          path: software/codex/wasm
-      - uses: actions/download-artifact@v4
-        with:
           pattern: sidecar-*
           path: artifacts
       - name: Place sidecar binaries into platform packages
         run: |
           set -euo pipefail
           for p in $SIDECAR_PLATFORMS; do
-            agent_bin="artifacts/sidecar-${p}/agentos-sidecar"
             runtime_bin="artifacts/sidecar-${p}/agentos-native-sidecar"
-            agent_dest="packages/sidecar-binary/npm/${p}"
             runtime_dest="packages/runtime-sidecar/npm/${p}"
-            test -f "$agent_bin"
             test -f "$runtime_bin"
-            test -d "$agent_dest"
             test -d "$runtime_dest"
-            cp "$agent_bin" "${agent_dest}/agentos-sidecar"
-            chmod +x "${agent_dest}/agentos-sidecar"
             cp "$runtime_bin" "${runtime_dest}/agentos-native-sidecar"
             chmod +x "${runtime_dest}/agentos-native-sidecar"
           done
@@ -322,9 +282,7 @@ jobs:
           # Browser support is retained in-tree but intentionally disabled until
           # it has a reactor/security design independent of the native sidecar.
           npx turbo build \
-            --filter='!@rivet-dev/agentos-browser' \
             --filter='!@rivet-dev/agentos-runtime-browser' \
-            --filter='!@rivet-dev/agentos-playground' \
             --filter='!./examples/*' \
             --filter='!./examples/quickstart/*'
       - name: Finalize package versions for publish
@@ -377,10 +335,9 @@ jobs:
           mkdir -p release-assets
           for p in $SIDECAR_PLATFORMS; do
             target="${PLATFORM_TARGET[$p]}"
-            cp "artifacts/sidecar-${p}/agentos-sidecar" "release-assets/agentos-sidecar-${target}"
             cp "artifacts/sidecar-${p}/agentos-native-sidecar" "release-assets/agentos-native-sidecar-${target}"
           done
-          chmod +x release-assets/agentos-sidecar-* release-assets/agentos-native-sidecar-*
+          chmod +x release-assets/agentos-native-sidecar-*
           if [ -d crates/execution/assets/pyodide ]; then
             mkdir -p release-assets/pyodide
             cp -R crates/execution/assets/pyodide/. release-assets/pyodide/

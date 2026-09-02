@@ -1,11 +1,7 @@
 [workspace]
 resolver = "2"
-exclude = ["software", "crates/agentos-sidecar-core"]
+exclude = ["software"]
 members = [
-    "crates/actor-uds-client",
-    "crates/agentos-protocol",
-    "crates/agentos-sidecar",
-    "crates/agentos-sidecar-browser",
     "crates/client",
     "crates/bridge",
     "crates/build-support",
@@ -27,8 +23,6 @@ members = [
 # unified native sidecar reactor lands. Keep these two crates out of ordinary
 # workspace commands so dormant browser code cannot block native CI.
 default-members = [
-    "crates/agentos-protocol",
-    "crates/agentos-sidecar",
     "crates/client",
     "crates/bridge",
     "crates/build-support",
@@ -55,8 +49,6 @@ repository = "https://github.com/rivet-dev/agent-os"
 # AgentOS crates are published as a lock-step chain and are self-contained in
 # this workspace.
 [workspace.dependencies]
-agent-client-protocol-schema = "1.4.0"
-agentos-actor-uds-client = { path = "crates/actor-uds-client", version = "0.0.1" }
 agentos-bridge = { path = "crates/bridge", version = "0.0.1" }
 agentos-build-support = { path = "crates/build-support", version = "0.0.1" }
 agentos-execution = { path = "crates/execution", version = "0.0.1" }
@@ -66,10 +58,7 @@ agentos-native-sidecar = { path = "crates/native-sidecar", version = "0.0.1" }
 agentos-native-sidecar-browser = { path = "crates/native-sidecar-browser", version = "0.0.1" }
 agentos-native-sidecar-core = { path = "crates/native-sidecar-core", version = "0.0.1" }
 agentos-runtime = { path = "crates/runtime", version = "0.0.1" }
-agentos-protocol = { path = "crates/agentos-protocol", version = "0.0.1" }
 agentos-sidecar-client = { path = "crates/sidecar-client", version = "0.0.1" }
-agentos-sidecar = { path = "crates/agentos-sidecar", version = "0.0.1" }
-agentos-sidecar-browser = { path = "crates/agentos-sidecar-browser", version = "0.0.1" }
 agentos-sidecar-protocol = { path = "crates/sidecar-protocol", version = "0.0.1" }
 agentos-v8-runtime = { path = "crates/v8-runtime", version = "0.0.1" }
 agentos-vfs = { path = "crates/vfs-store", version = "0.0.1" }

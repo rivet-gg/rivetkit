@@ -1,4 +1,10 @@
-import type { JsonValue } from "./session-api.js";
+export type JsonValue =
+	| null
+	| boolean
+	| number
+	| string
+	| JsonValue[]
+	| { [key: string]: JsonValue };
 
 export type ExecutionSignal =
 	| "SIGHUP"

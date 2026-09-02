@@ -12,10 +12,10 @@ use crate::execution::{sync_process_host_writes_to_kernel, terminate_child_proce
 use crate::extension::Extension;
 use crate::process_event_broker::ProcessEventBroker;
 use crate::protocol::{
-    AgentosProjectedAgent, ConfigureVmRequest, CreateLayerRequest, CreateOverlayRequest,
-    DisposeReason, EventFrame, ExportSnapshotRequest, ImportSnapshotRequest, LinkPackageRequest,
-    ListMountsRequest, MountDescriptor, MountInfo, MountPluginDescriptor, PackageCommands,
-    ProjectedCommand, ProvidedCommandsRequest, RootFilesystemDescriptor, RootFilesystemEntry,
+    ConfigureVmRequest, CreateLayerRequest, CreateOverlayRequest, DisposeReason, EventFrame,
+    ExportSnapshotRequest, ImportSnapshotRequest, LinkPackageRequest, ListMountsRequest,
+    MountDescriptor, MountInfo, MountPluginDescriptor, PackageCommands, ProjectedCommand,
+    ProvidedCommandsRequest, RootFilesystemDescriptor, RootFilesystemEntry,
     RootFilesystemEntryEncoding, RootFilesystemLowerDescriptor, SealLayerRequest,
     SnapshotRootFilesystemRequest, VmLifecycleState,
 };
@@ -240,7 +240,6 @@ pub(crate) struct OwnedVmLifecycleRequest {
 pub(crate) struct ConfigureVmOwnedInput<B> {
     lifecycle: OwnedVmLifecycleRequest,
     bridge: crate::state::SharedBridge<B>,
-    snapshot_runtime_context: agentos_runtime::RuntimeContext,
     sidecar_requests: crate::state::SharedSidecarRequestClient,
 }
 
@@ -249,7 +248,6 @@ impl<B> Clone for ConfigureVmOwnedInput<B> {
         Self {
             lifecycle: self.lifecycle.clone(),
             bridge: self.bridge.clone(),
-            snapshot_runtime_context: self.snapshot_runtime_context.clone(),
             sidecar_requests: self.sidecar_requests.clone(),
         }
     }
@@ -379,15 +377,9 @@ where
         request: &crate::protocol::RequestFrame,
     ) -> Result<ConfigureVmOwnedInput<B>, SidecarError> {
         let lifecycle = self.prepare_vm_lifecycle_request(request)?;
-        let snapshot_runtime_context = self.runtime_context.as_ref().cloned().ok_or_else(|| {
-            SidecarError::InvalidState(String::from(
-                "ERR_AGENTOS_RUNTIME_UNAVAILABLE: snapshot pre-warm requires RuntimeContext",
-            ))
-        })?;
         Ok(ConfigureVmOwnedInput {
             lifecycle,
             bridge: self.bridge.clone(),
-            snapshot_runtime_context,
             sidecar_requests: self.sidecar_requests.clone(),
         })
     }
@@ -744,7 +736,7 @@ where
                         "failed to resolve VM SQLite database: {error}"
                     ))
                 })?;
-                crate::plugins::chunked_actor_sqlite::bootstrap_schema(database.as_ref())
+                crate::plugins::chunked_sqlite::bootstrap_schema(database.as_ref())
                     .await
                     .map_err(|error| {
                         SidecarError::InvalidState(format!(
@@ -1003,7 +995,6 @@ where
                 detached_child_event_cursor: 0,
                 signal_states: BTreeMap::new(),
                 packages_staging_root: None,
-                projected_agent_launch: BTreeMap::new(),
                 shadow_sync_inventory,
                 unix_address_registry: Arc::new(Mutex::new(BTreeMap::new())),
                 unix_socket_host_dir,
@@ -1426,6 +1417,16 @@ where
         if let Err(error) = self.bridge.clear_vm_permissions(vm_id) {
             record_vm_teardown_error(vm_id, "permission_reset", error, &mut first_error);
         }
+        if let Some(database) = vm.database.take() {
+            if let Err(error) = database.close().await {
+                record_vm_teardown_error(
+                    vm_id,
+                    "sqlite_close",
+                    SidecarError::InvalidState(format!("close VM SQLite database: {error}")),
+                    &mut first_error,
+                );
+            }
+        }
         first_error.map_or(Ok(()), Err)
     }
 
@@ -1585,7 +1586,7 @@ where
                             "failed to resolve VM SQLite database: {error}"
                         ))
                     })?;
-                    crate::plugins::chunked_actor_sqlite::bootstrap_schema(database.as_ref())
+                    crate::plugins::chunked_sqlite::bootstrap_schema(database.as_ref())
                         .await
                         .map_err(|error| {
                             SidecarError::InvalidState(format!(
@@ -1831,7 +1832,6 @@ where
                 detached_child_event_cursor: 0,
                 signal_states: BTreeMap::new(),
                 packages_staging_root: None,
-                projected_agent_launch: BTreeMap::new(),
                 shadow_sync_inventory,
                 unix_address_registry: Arc::new(Mutex::new(BTreeMap::new())),
                 unix_socket_host_dir,
@@ -1923,7 +1923,19 @@ where
                 "ERR_AGENTOS_VM_TEARDOWN_CLEANUP: vm_id={vm_id} phase=mount_shutdown error={error}"
             );
         }
-        let teardown_result = finish_vm_teardown_owned(&bridge, &vm_id, &mut self.vm);
+        let mut teardown_result = finish_vm_teardown_owned(&bridge, &vm_id, &mut self.vm);
+        if let Some(database) = self.vm.database.take() {
+            if let Err(error) = database.close().await {
+                let error =
+                    SidecarError::InvalidState(format!("close VM SQLite database: {error}"));
+                eprintln!(
+                    "ERR_AGENTOS_VM_TEARDOWN_CLEANUP: vm_id={vm_id} phase=sqlite_close error={error}"
+                );
+                if teardown_result.is_ok() {
+                    teardown_result = Err(error);
+                }
+            }
+        }
 
         cleanup_path(&self.vm.cwd, "disposed VM shadow root");
         if let Some(staging_root) = self.vm.packages_staging_root.take() {
@@ -2220,7 +2232,6 @@ where
     let ConfigureVmOwnedInput {
         lifecycle,
         bridge,
-        snapshot_runtime_context,
         sidecar_requests,
     } = input;
     let OwnedVmLifecycleRequest {
@@ -2255,7 +2266,6 @@ where
                 .collect(),
         );
     }
-    let snapshot_userland_code = resolve_agent_snapshot_bundle(&package_descriptors)?;
     let package_mounts =
         build_packages_projection(&vm_id, &package_descriptors, &payload.packages_mount_at)?;
     effective_mounts.extend(package_mounts);
@@ -2316,12 +2326,10 @@ where
             provided_commands: provided_commands.clone(),
             // jsRuntime is create-time only; preserve what create_vm stored.
             js_runtime: vm.configuration.js_runtime.clone(),
-            snapshot_userland_code: snapshot_userland_code.clone(),
             loopback_exempt_ports: payload.loopback_exempt_ports.clone(),
         };
         vm.provided_commands = provided_commands.clone();
         let projected_commands = projected_commands_from_guest_paths(&vm.command_guest_paths);
-        vm.projected_agent_launch = projected_agent_launch_from_descriptors(&package_descriptors);
         Ok(projected_commands)
     });
 
@@ -2351,46 +2359,6 @@ where
 
     let applied_mounts = effective_mounts.len() as u32;
     let configured_software = payload.software.len() as u32;
-    let agents = projected_agents_from_descriptors(&package_descriptors);
-
-    // No VM state borrow survives this point. Pre-warm continues as a
-    // supervised runtime task so lifecycle ordering is released immediately;
-    // its own bounded blocking admission and result remain fully observable.
-    if let Some(userland) = snapshot_userland_code {
-        let requested_bytes = userland.len();
-        let runtime_for_task = snapshot_runtime_context.clone();
-        if let Err(error) = snapshot_runtime_context.spawn(
-            agentos_runtime::TaskClass::Runtime,
-            async move {
-                let runtime_for_job = runtime_for_task.clone();
-                match runtime_for_task
-                    .blocking()
-                    .run(requested_bytes, move || {
-                        agentos_execution::v8_host::pre_warm_agent_snapshot(
-                            &runtime_for_job,
-                            &userland,
-                        )
-                    })
-                    .await
-                {
-                    Ok(Ok(())) => tracing::debug!(
-                        target: "agentos_native_sidecar::vm",
-                        "agent snapshot pre-warm completed"
-                    ),
-                    Ok(Err(error)) => eprintln!(
-                        "ERR_AGENTOS_SNAPSHOT_PREWARM: snapshot build failed: {error}"
-                    ),
-                    Err(error) => eprintln!(
-                        "ERR_AGENTOS_SNAPSHOT_PREWARM_ADMISSION: blocking admission or execution failed: {error}"
-                    ),
-                }
-            },
-        ) {
-            eprintln!(
-                "ERR_AGENTOS_SNAPSHOT_PREWARM_TASK_ADMISSION: supervised task admission failed: {error}"
-            );
-        }
-    }
 
     tracing::info!(target: "agentos_native_sidecar::perf", phase = "configure_vm", elapsed_ms = __t.elapsed().as_millis() as u64, applied_mounts = applied_mounts as u64, "vm phase");
     Ok(DispatchResult {
@@ -2399,7 +2367,6 @@ where
             applied_mounts,
             configured_software,
             projected_commands,
-            agents,
         ),
         events: Vec::new(),
     })
@@ -2504,10 +2471,6 @@ where
                 execution_commands,
             ))
             .map_err(kernel_error)?;
-        vm.projected_agent_launch
-            .extend(projected_agent_launch_from_descriptors(
-                std::slice::from_ref(&descriptor),
-            ));
         Ok(())
     })?;
 
@@ -2518,9 +2481,8 @@ where
             guest_path: projected_command_guest_path(command),
         })
         .collect();
-    let agents = projected_agents_from_descriptors(std::slice::from_ref(&descriptor));
     Ok(DispatchResult {
-        response: package_linked_response(&request, projected_commands, agents),
+        response: package_linked_response(&request, projected_commands),
         events: Vec::new(),
     })
 }
@@ -3512,58 +3474,6 @@ fn package_descriptors_from_wire(
         .iter()
         .map(|package| crate::package_projection::read_package_manifest_from_path(&package.path))
         .collect()
-}
-
-fn projected_agent_launch_from_descriptors(
-    packages: &[crate::package_projection::PackageDescriptor],
-) -> BTreeMap<String, crate::state::ProjectedAgentLaunch> {
-    packages
-        .iter()
-        .filter_map(|package| {
-            let acp_entrypoint = package.acp_entrypoint.clone()?;
-            Some((
-                package.name.clone(),
-                crate::state::ProjectedAgentLaunch {
-                    acp_entrypoint,
-                    env: package.agent_env.clone().into_iter().collect(),
-                    launch_args: package.agent_launch_args.clone(),
-                },
-            ))
-        })
-        .collect()
-}
-
-fn projected_agents_from_descriptors(
-    packages: &[crate::package_projection::PackageDescriptor],
-) -> Vec<AgentosProjectedAgent> {
-    packages
-        .iter()
-        .flat_map(|package| {
-            let Some(acp_entrypoint) = package.acp_entrypoint.as_ref() else {
-                return Vec::new();
-            };
-            vec![AgentosProjectedAgent {
-                id: package.name.clone(),
-                acp_entrypoint: acp_entrypoint.clone(),
-                adapter_entrypoint: format!(
-                    "{}/{}",
-                    crate::package_projection::OPT_AGENTOS_BIN,
-                    acp_entrypoint
-                ),
-            }]
-        })
-        .collect()
-}
-
-fn resolve_agent_snapshot_bundle(
-    packages: &[crate::package_projection::PackageDescriptor],
-) -> Result<Option<String>, SidecarError> {
-    for package in packages {
-        if let Some(bundle) = crate::package_projection::read_agent_snapshot_bundle(package)? {
-            return Ok(Some(bundle));
-        }
-    }
-    Ok(None)
 }
 
 fn apply_package_provides_env(

@@ -21,11 +21,6 @@ import type {
 import { type Binding, type Bindings, validateBindings } from "./bindings.js";
 import { zodToJsonSchema } from "./bindings-zod.js";
 import type {
-	JsonRpcNotification,
-	JsonRpcRequest,
-	JsonRpcResponse,
-} from "./json-rpc.js";
-import type {
 	CodeEvaluationResult,
 	CodeExecutionResult,
 	ContextDescriptor,
@@ -33,6 +28,7 @@ import type {
 	InlineExecutionOptions,
 	JavaScriptEvaluationOptions,
 	JavaScriptExecutionOptions,
+	JsonValue,
 	LanguageExecutionOptions,
 	LanguageSpawnOptions,
 	NpmPackageInstallOptions,
@@ -70,30 +66,6 @@ import {
 	getSandboxDisposeHooks,
 	resolveSandboxOptions,
 } from "./sandbox.js";
-import type {
-	AcpSessionEvent,
-	CancelPromptResult,
-	PromptResult as DurablePromptResult,
-	DurableSessionEventEntry,
-	SessionInfo as DurableSessionInfo,
-	EphemeralSessionEventEntry,
-	HistoryPage,
-	JsonValue,
-	ListSessionsInput,
-	OpenSessionInput,
-	PermissionResponse,
-	PermissionResponseResult,
-	PermissionTerminalReason,
-	PromptInput,
-	ReadHistoryInput,
-	SessionAgentInfo,
-	SessionCapabilities,
-	SessionConfig,
-	SessionPage,
-	SessionStreamEntry,
-	SessionTarget,
-	SetSessionConfigOptionInput,
-} from "./session-api.js";
 import { resolvePublishedSidecarBinary } from "./sidecar/binary.js";
 import { findCargoBinary, resolveCargoBinary } from "./sidecar/cargo.js";
 
@@ -104,173 +76,8 @@ export type {
 	NativeMountPluginDescriptor,
 } from "@rivet-dev/agentos-runtime-core/descriptors";
 export type { ConnectTerminalOptions } from "./runtime-compat.js";
-export type * from "./session-api.js";
-
-const ACP_PROTOCOL_VERSION = 1;
-const ACP_EXTENSION_NAMESPACE = "dev.rivet.agent-os.acp";
 const SHELL_DISPOSE_TIMEOUT_MS = 5_000;
 const PROCESS_OUTPUT_EVENT_LIMIT = 1_024;
-
-function safeWireU64(value: bigint): number {
-	const result = Number(value);
-	if (!Number.isSafeInteger(result) || result < 0) {
-		throw new RangeError(
-			`wire integer ${value} exceeds JavaScript's safe range`,
-		);
-	}
-	return result;
-}
-
-function decodeDurableSessionInfo(
-	value: AcpDurableSessionInfo,
-): DurableSessionInfo {
-	return {
-		sessionId: value.sessionId,
-		agent: value.agent,
-		cwd: value.cwd,
-		additionalDirectories: JSON.parse(value.additionalDirectories),
-		state: JSON.parse(value.state),
-		latestSequence: safeWireU64(value.latestSequence),
-		title: value.title ?? undefined,
-		metadata: value.metadata === null ? undefined : JSON.parse(value.metadata),
-		createdAt: value.createdAt,
-		updatedAt: value.updatedAt,
-	};
-}
-
-const PERMISSION_TERMINAL_REASONS = new Set<PermissionTerminalReason>([
-	"already_resolved",
-	"prompt_cancelled",
-	"adapter_exited",
-	"session_deleted",
-	"vm_shutdown",
-	"request_not_found",
-]);
-
-function permissionTerminalReason(
-	value: string | null,
-): PermissionTerminalReason {
-	if (
-		value !== null &&
-		PERMISSION_TERMINAL_REASONS.has(value as PermissionTerminalReason)
-	) {
-		return value as PermissionTerminalReason;
-	}
-	throw new Error(`invalid permission terminal reason: ${value ?? "missing"}`);
-}
-
-function decodeDurableSessionEvent(value: {
-	sessionId: string;
-	sequence: bigint;
-	timestamp: string;
-	event: AcpDurableEvent;
-}): DurableSessionEventEntry {
-	const envelope = {
-		durability: "durable" as const,
-		sessionId: value.sessionId,
-		sequence: safeWireU64(value.sequence),
-		timestamp: value.timestamp,
-	};
-	switch (value.event.tag) {
-		case "AcpDurableSessionUpdate": {
-			const update = JSON.parse(value.event.val.update) as {
-				sessionUpdate: AcpSessionEvent["type"];
-			} & Record<string, unknown>;
-			const { sessionUpdate: type, ...payload } = update;
-			return {
-				...envelope,
-				type,
-				...payload,
-			} as DurableSessionEventEntry;
-		}
-		case "AcpDurablePermissionRequest": {
-			const request = JSON.parse(value.event.val.request) as {
-				sessionId: string;
-			} & Record<string, unknown>;
-			const { sessionId: _sessionId, ...payload } = request;
-			return {
-				...envelope,
-				type: "permission_request",
-				requestId: value.event.val.requestId,
-				...payload,
-			} as DurableSessionEventEntry;
-		}
-		case "AcpDurablePermissionResponse": {
-			const status = value.event.val.status;
-			if (status !== "accepted" && status !== "not_pending") {
-				throw new Error(`invalid permission response event status: ${status}`);
-			}
-			const response = JSON.parse(value.event.val.response) as Record<
-				string,
-				unknown
-			>;
-			return {
-				...envelope,
-				type: "permission_response",
-				requestId: value.event.val.requestId,
-				...response,
-				status,
-				...(value.event.val.reason === null
-					? {}
-					: { reason: permissionTerminalReason(value.event.val.reason) }),
-			} as DurableSessionEventEntry;
-		}
-	}
-}
-
-function normalizeSessionCapabilities(value: unknown): SessionCapabilities {
-	const capabilities = toRecord(value);
-	const prompt = toRecord(capabilities.promptCapabilities);
-	const mcp = toRecord(capabilities.mcpCapabilities);
-	const session = toRecord(capabilities.sessionCapabilities);
-	const extensions = Object.fromEntries(
-		Object.entries(capabilities).filter(
-			([key]) =>
-				!(
-					[
-						"loadSession",
-						"promptCapabilities",
-						"mcpCapabilities",
-						"sessionCapabilities",
-					] as const
-				).includes(key as never),
-		),
-	) as Record<string, JsonValue>;
-	return {
-		protocolVersion: ACP_PROTOCOL_VERSION,
-		loadSession: capabilities.loadSession === true,
-		...(Object.keys(prompt).length > 0
-			? {
-					prompt: {
-						audio: prompt.audio === true || undefined,
-						embeddedContext: prompt.embeddedContext === true || undefined,
-						image: prompt.image === true || undefined,
-					},
-				}
-			: {}),
-		...(Object.keys(mcp).length > 0
-			? {
-					mcp: {
-						http: mcp.http === true || undefined,
-						sse: mcp.sse === true || undefined,
-					},
-				}
-			: {}),
-		...(Object.keys(session).length > 0
-			? {
-					session: {
-						list: typeof session.list === "object" || undefined,
-						resume: typeof session.resume === "object" || undefined,
-						close: typeof session.close === "object" || undefined,
-						delete: typeof session.delete === "object" || undefined,
-						additionalDirectories:
-							typeof session.additionalDirectories === "object" || undefined,
-					},
-				}
-			: {}),
-		...(Object.keys(extensions).length > 0 ? { extensions } : {}),
-	};
-}
 
 async function waitForTrackedExitPromises(
 	promises: Promise<unknown>[],
@@ -399,12 +206,6 @@ export interface BatchReadResult {
 	error?: string;
 }
 
-/** Entry in the agent registry, describing an available agent type. */
-export interface AgentRegistryEntry {
-	id: string;
-	installed: boolean;
-}
-
 import {
 	OPT_AGENTOS_ROOT,
 	type PackageDescriptor,
@@ -442,18 +243,6 @@ import {
 import type { SoftwareInput, SoftwareRoot } from "./packages.js";
 import type { PermissionTier } from "./runtime.js";
 import { allowAll, createNodeHostNetworkAdapter } from "./runtime-compat.js";
-import {
-	type AcpDurableEvent,
-	type AcpDurableSessionInfo,
-	type AcpRequest,
-	type AcpResponse,
-	AcpRuntimeKind,
-	decodeAcpCallback,
-	decodeAcpEvent,
-	decodeAcpResponse,
-	encodeAcpCallbackResponse,
-	encodeAcpRequest,
-} from "./sidecar/agentos-protocol.js";
 import { serializePermissionsForSidecar } from "./sidecar/permissions.js";
 import {
 	type AgentOsSidecarClient,
@@ -546,15 +335,6 @@ interface AgentOsVmAdmin extends InProcessSidecarVmAdmin {
 	bindingReference: string;
 }
 
-interface AcpTerminalEntry {
-	handle: ShellHandle;
-	output: string;
-	truncated: boolean;
-	outputByteLimit: number;
-	exitCode: number | null;
-	waitPromise: Promise<number>;
-}
-
 interface ShellEntry {
 	handle: ShellHandle;
 	dataHandlers: Set<(event: ShellData) => void>;
@@ -585,10 +365,8 @@ export type RootFilesystemConfig =
 	| OverlayRootFilesystemConfig
 	| NativeRootFilesystemConfig;
 
-/** VM-scoped SQLite storage shared by VFS and AgentOS durable state. */
-export type VmSqliteConfig =
-	| { type: "actor_uds"; path: string }
-	| { type: "sqlite_file"; path: string };
+/** Temporary local VM-scoped SQLite storage. */
+export type VmSqliteConfig = { type: "sqlite_file"; path: string };
 
 /**
  * Compatibility path for arbitrary caller-supplied filesystems.
@@ -689,21 +467,7 @@ export interface AgentOsLimits {
 		maxPersistedManifestBytes?: number;
 		maxPersistedManifestFileBytes?: number;
 	};
-	/** ACP adapter, active-turn, history-retention, and page limits. */
-	acp?: {
-		maxReadLineBytes?: number;
-		stdoutBufferByteLimit?: number;
-		maxCompletedMessageBytes?: number;
-		maxTurnOutputBytes?: number;
-		maxPromptBytes?: number;
-		maxPromptBlocks?: number;
-		maxFallbackContinuationBytes?: number;
-		maxSessionHistoryBytes?: number;
-		maxSessionHistoryEvents?: number;
-		maxHistoryPageEntries?: number;
-		maxSessionListEntries?: number;
-	};
-	/** Shared local-file/actor-UDS SQLite result materialization limit. */
+	/** Local SQLite result materialization limit. */
 	sqlite?: {
 		maxResultBytes?: number;
 	};
@@ -745,55 +509,6 @@ export interface AgentOsLimits {
 	};
 }
 
-export interface AgentStderrEvent {
-	sessionId: string;
-	agentType: string;
-	processId: string;
-	pid: number | null;
-	chunk: Uint8Array;
-}
-
-export type AgentStderrHandler = (event: AgentStderrEvent) => void;
-
-function defaultAgentStderrHandler(event: AgentStderrEvent): void {
-	process.stderr.write(event.chunk);
-}
-
-/**
- * Restart disposition reported on an {@link AgentExitEvent}. AgentOS never
- * respawns an adapter or replays an interrupted request implicitly.
- */
-export type AgentRestartOutcome = "not_attempted";
-
-/**
- * An unexpected ACP adapter process exit — a crash from the host's
- * perspective (any spontaneous exit before `unloadSession()`, including exit
- * code 0). The live route is evicted and must be restored explicitly.
- */
-export interface AgentExitEvent {
-	sessionId: string;
-	agentType: string;
-	/** Sidecar process id of the adapter that exited. */
-	processId: string;
-	pid: number | null;
-	/** Adapter exit code; `null` when the exit was observed indirectly. */
-	exitCode: number | null;
-	/** Always `"not_attempted"`; AgentOS does not restart adapters implicitly. */
-	restart: AgentRestartOutcome;
-	/** Always zero. */
-	restartCount: number;
-	/** Always zero. */
-	maxRestarts: number;
-}
-
-export type AgentExitHandler = (event: AgentExitEvent) => void;
-
-function defaultAgentExitHandler(event: AgentExitEvent): void {
-	process.stderr.write(
-		`[agentos] agent adapter exited unexpectedly: session=${event.sessionId} agent=${event.agentType} exitCode=${event.exitCode ?? "unknown"}; restore explicitly before retrying\n`,
-	);
-}
-
 /**
  * A near-capacity warning for one bounded limit (a queue/buffer, a saturating
  * resource cap, or a memory envelope) inside the VM runtime. Delivered the moment
@@ -832,7 +547,7 @@ export interface AgentOsOptions {
 	software?: SoftwareInput[];
 	/**
 	 * Whether to auto-include the default software bundle (`@agentos-software/common`
-	 * — `sh` + coreutils + the standard CLI tools agents rely on) in addition to
+	 * — `sh` + coreutils + the standard CLI tools programs rely on) in addition to
 	 * any `software` you pass. Defaults to `true`; set `false` for a bare VM with
 	 * only the software you list explicitly. Entries already present in `software`
 	 * are not duplicated.
@@ -853,7 +568,7 @@ export interface AgentOsOptions {
 	 * profiling workloads.
 	 */
 	highResolutionTime?: boolean;
-	/** Durable SQLite storage for VM-owned filesystem and session state. */
+	/** Durable SQLite storage for VM-owned filesystem and runtime state. */
 	database?: VmSqliteConfig;
 	/** Root filesystem configuration. Defaults to an overlay with the bundled base snapshot as its deepest lower. */
 	rootFilesystem?: RootFilesystemConfig;
@@ -863,7 +578,7 @@ export interface AgentOsOptions {
 	sandbox?: AgentOsSandboxInput;
 	/** Custom schedule driver for cron jobs. Defaults to TimerScheduleDriver. */
 	scheduleDriver?: ScheduleDriver;
-	/** Host-side bindings available to agents inside the VM. */
+	/** Trusted host-side bindings available to programs inside the VM. */
 	bindings?: Bindings[];
 	/**
 	 * Custom permission policy for the kernel. Controls access to filesystem,
@@ -881,20 +596,6 @@ export interface AgentOsOptions {
 	 */
 	limits?: AgentOsLimits;
 	/**
-	 * Called with stderr chunks from the top-level ACP-speaking agent process.
-	 * The agent process uses stdout for ACP JSON-RPC protocol traffic, so only
-	 * stderr is forwarded through this hook. Defaults to writing chunks to
-	 * `process.stderr`.
-	 */
-	onAgentStderr?: AgentStderrHandler;
-	/**
-	 * Called when the ACP adapter process behind a session exits unexpectedly.
-	 * The sidecar evicts the live
-	 * route and never retries the adapter or interrupted request implicitly.
-	 * Defaults to writing a warning line to `process.stderr`.
-	 */
-	onAgentExit?: AgentExitHandler;
-	/**
 	 * Called when a bounded limit inside the VM runtime approaches capacity
 	 * (~80%, edge-triggered with hysteresis so it does not spam). Use it to alert
 	 * on a slow consumer or a runaway guest before the limit is actually hit.
@@ -907,66 +608,6 @@ export interface AgentOsRuntimeAdmin {
 	rootView: VirtualFileSystem;
 	env: Record<string, string>;
 	sidecar: AgentOsSidecar;
-}
-
-class AcpDispatchError extends Error {
-	readonly code: number;
-	readonly data?: Record<string, unknown>;
-
-	constructor(code: number, message: string, data?: Record<string, unknown>) {
-		super(message);
-		this.name = "AcpDispatchError";
-		this.code = code;
-		this.data = data;
-	}
-}
-
-function toJsonRpcNotification(value: unknown): JsonRpcNotification {
-	if (
-		!value ||
-		typeof value !== "object" ||
-		Array.isArray(value) ||
-		(value as { jsonrpc?: unknown }).jsonrpc !== "2.0" ||
-		typeof (value as { method?: unknown }).method !== "string"
-	) {
-		throw new Error("Invalid JSON-RPC notification from sidecar");
-	}
-	return value as JsonRpcNotification;
-}
-
-function toJsonRpcResponse(value: unknown): JsonRpcResponse {
-	if (
-		!value ||
-		typeof value !== "object" ||
-		Array.isArray(value) ||
-		(value as { jsonrpc?: unknown }).jsonrpc !== "2.0" ||
-		!(
-			typeof (value as { id?: unknown }).id === "number" ||
-			typeof (value as { id?: unknown }).id === "string" ||
-			(value as { id?: unknown }).id === null
-		)
-	) {
-		throw new Error("Invalid JSON-RPC response from sidecar");
-	}
-	return value as JsonRpcResponse;
-}
-
-function toJsonRpcRequest(value: unknown): JsonRpcRequest {
-	if (
-		!value ||
-		typeof value !== "object" ||
-		Array.isArray(value) ||
-		(value as { jsonrpc?: unknown }).jsonrpc !== "2.0" ||
-		!(
-			typeof (value as { id?: unknown }).id === "number" ||
-			typeof (value as { id?: unknown }).id === "string" ||
-			(value as { id?: unknown }).id === null
-		) ||
-		typeof (value as { method?: unknown }).method !== "string"
-	) {
-		throw new Error("Invalid JSON-RPC request from ACP callback");
-	}
-	return value as JsonRpcRequest;
 }
 
 function toRecord(value: unknown): Record<string, unknown> {
@@ -1317,7 +958,7 @@ const RUNTIME_BOOTSTRAP_COMMANDS = [
 	"python3",
 ] as const;
 const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
-const SIDECAR_BINARY = join(REPO_ROOT, "target/debug/agentos-sidecar");
+const SIDECAR_BINARY = join(REPO_ROOT, "target/debug/agentos-native-sidecar");
 const SIDECAR_BUILD_INPUTS = [
 	join(REPO_ROOT, "Cargo.toml"),
 	join(REPO_ROOT, "Cargo.lock"),
@@ -1325,8 +966,6 @@ const SIDECAR_BUILD_INPUTS = [
 	join(REPO_ROOT, "crates/build-support"),
 	join(REPO_ROOT, "crates/execution"),
 	join(REPO_ROOT, "crates/kernel"),
-	join(REPO_ROOT, "crates/agentos-protocol"),
-	join(REPO_ROOT, "crates/agentos-sidecar"),
 	join(REPO_ROOT, "crates/native-sidecar"),
 	join(REPO_ROOT, "crates/native-sidecar-core"),
 	join(REPO_ROOT, "crates/sidecar-protocol"),
@@ -1548,14 +1187,14 @@ function ensureNativeSidecarBinary(): string {
 	if (sidecarBinaryNeedsBuild()) {
 		const cargoBinary = findCargoBinary();
 		if (cargoBinary) {
-			execFileSync(cargoBinary, ["build", "-q", "-p", "agentos-sidecar"], {
+			execFileSync(cargoBinary, ["build", "-q", "-p", "agentos-native-sidecar"], {
 				cwd: REPO_ROOT,
 				stdio: "pipe",
 			});
 		} else if (!existsSync(SIDECAR_BINARY)) {
 			execFileSync(
 				resolveCargoBinary(),
-				["build", "-q", "-p", "agentos-sidecar"],
+				["build", "-q", "-p", "agentos-native-sidecar"],
 				{
 					cwd: REPO_ROOT,
 					stdio: "pipe",
@@ -2935,11 +2574,6 @@ function mapExecutionCompletedEvent(
 export class AgentOs {
 	#kernel: Kernel;
 	readonly sidecar: AgentOsSidecar;
-	private _durableSessionEventHandlers = new Map<
-		string,
-		Set<(entry: SessionStreamEntry) => void>
-	>();
-	private _agentExitHandlers = new Map<string, Set<AgentExitHandler>>();
 	private _processes = new Map<
 		number,
 		{
@@ -2984,8 +2618,6 @@ export class AgentOs {
 	);
 	private _pendingShellExitPromises = new Set<Promise<number>>();
 	private _shellCounter = 0;
-	private _acpTerminals = new Map<string, AcpTerminalEntry>();
-	private _acpTerminalCounter = 0;
 	private _softwareRoots: SoftwareRoot[];
 	private _cronManager!: CronManager;
 	private _bindings: Bindings[] = [];
@@ -2999,8 +2631,6 @@ export class AgentOs {
 	private readonly _sidecarSession: AuthenticatedSession;
 	private readonly _sidecarVm: CreatedVm;
 	private readonly _disposeSidecarEventListener: () => void;
-	private readonly _agentStderrHandler?: AgentStderrHandler;
-	private readonly _agentExitHandler?: AgentExitHandler;
 	private readonly _limitWarningHandler?: LimitWarningHandler;
 	private readonly _disposeHooks: Array<() => void | Promise<void>> = [];
 
@@ -3103,26 +2733,6 @@ export class AgentOs {
 		link: this._linkSoftware.bind(this),
 	};
 
-	readonly agents = {
-		list: this._listAgents.bind(this),
-	};
-
-	readonly sessions = {
-		open: this._openSession.bind(this),
-		get: this._getSession.bind(this),
-		list: this._listSessions.bind(this),
-		delete: this._deleteSession.bind(this),
-		unload: this._unloadSession.bind(this),
-		prompt: this._prompt.bind(this),
-		cancelPrompt: this._cancelPrompt.bind(this),
-		respondPermission: this._respondPermission.bind(this),
-		readHistory: this._readHistory.bind(this),
-		getConfig: this._getSessionConfig.bind(this),
-		setConfigOption: this._setSessionConfigOption.bind(this),
-		getCapabilities: this._getSessionCapabilities.bind(this),
-		getAgentInfo: this._getSessionAgentInfo.bind(this),
-	};
-
 	readonly cron = {
 		schedule: this._scheduleCron.bind(this),
 		list: this._listCronJobs.bind(this),
@@ -3139,8 +2749,6 @@ export class AgentOs {
 		sidecarClient: SidecarProcess,
 		sidecarSession: AuthenticatedSession,
 		sidecarVm: CreatedVm,
-		agentStderrHandler?: AgentStderrHandler,
-		agentExitHandler?: AgentExitHandler,
 		limitWarningHandler?: LimitWarningHandler,
 	) {
 		this.#kernel = kernel;
@@ -3152,8 +2760,6 @@ export class AgentOs {
 		this._sidecarClient = sidecarClient;
 		this._sidecarSession = sidecarSession;
 		this._sidecarVm = sidecarVm;
-		this._agentStderrHandler = agentStderrHandler;
-		this._agentExitHandler = agentExitHandler;
 		this._limitWarningHandler = limitWarningHandler;
 		this._disposeSidecarEventListener = this._sidecarClient.onEvent((event) => {
 			this._handleSidecarEvent(event);
@@ -3180,12 +2786,8 @@ export class AgentOs {
 
 	static async create(options?: AgentOsOptions): Promise<AgentOs> {
 		options = parseAgentOsOptions(options);
-		// Default software is FULLY DYNAMIC: this package's own NON-agent
-		// @agentos-software/* dependencies (e.g. common), each default-exporting
-		// its registry-built descriptor. Agent packages are NOT projected here —
-		// openSession({ agent: id }) links the matching agent dependency into the running
-		// VM on first use, so agent closures (and pi's V8 snapshot bundle) only
-		// enter VMs that run them. Unbuilt packages throw with build
+		// Default software is resolved from this package's
+		// @agentos-software/* dependencies. Unbuilt packages throw with build
 		// instructions; opt out via defaultSoftware: false.
 		const defaultSoftware =
 			options?.defaultSoftware === false ? [] : resolveDefaultSoftware();
@@ -3212,9 +2814,7 @@ export class AgentOs {
 			return [{ path: ref.path }];
 		});
 		// All package software is projected into `/opt/agentos` by the sidecar. The
-		// client stages nothing host-side and parses NO package manifests: the
-		// sidecar owns agent resolution, agent enumeration, and agent snapshot
-		// bundle loading from the projected package dirs.
+		// client stages nothing host-side and parses no package manifests.
 		const localMounts = await resolveCompatLocalMounts(options?.mounts);
 		if (options?.bindings && options.bindings.length > 0) {
 			validateBindings(options.bindings);
@@ -3480,8 +3080,6 @@ export class AgentOs {
 				vmAdmin.sidecarClient,
 				vmAdmin.sidecarSession,
 				vmAdmin.sidecarVm,
-				options?.onAgentStderr ?? defaultAgentStderrHandler,
-				options?.onAgentExit ?? defaultAgentExitHandler,
 				options?.onLimitWarning,
 			);
 			vm._sidecarLease = sidecarLease;
@@ -5548,329 +5146,6 @@ export class AgentOs {
 		};
 	}
 
-	private async _openSession(input: OpenSessionInput): Promise<void> {
-		const response = await this._sendAcpRequest({
-			tag: "AcpOpenSessionRequest",
-			val: {
-				sessionId: input.sessionId ?? null,
-				agent: input.agent,
-				cwd: input.cwd ?? null,
-				additionalDirectories:
-					input.additionalDirectories === undefined
-						? null
-						: JSON.stringify(input.additionalDirectories),
-				env: input.env === undefined ? null : JSON.stringify(input.env),
-				mcpServers:
-					input.mcpServers === undefined
-						? null
-						: JSON.stringify(input.mcpServers),
-				permissionPolicy: input.permissionPolicy ?? null,
-				skipOsInstructions: input.skipOsInstructions ?? null,
-				additionalInstructions:
-					combineInstructions(
-						input.additionalInstructions,
-						this._bindingReference,
-					) ?? null,
-			},
-		});
-		if (response.tag !== "AcpOpenSessionResponse") {
-			throw new Error(`unexpected openSession response: ${response.tag}`);
-		}
-	}
-
-	private async _getSession(
-		input?: SessionTarget,
-	): Promise<DurableSessionInfo> {
-		const response = await this._sendAcpRequest({
-			tag: "AcpGetDurableSessionRequest",
-			val: { sessionId: input?.sessionId ?? null },
-		});
-		if (response.tag !== "AcpGetDurableSessionResponse") {
-			throw new Error(`unexpected getSession response: ${response.tag}`);
-		}
-		return decodeDurableSessionInfo(response.val.session);
-	}
-
-	private async _listSessions(input?: ListSessionsInput): Promise<SessionPage> {
-		const response = await this._sendAcpRequest({
-			tag: "AcpListDurableSessionsRequest",
-			val: { cursor: input?.cursor ?? null, limit: input?.limit ?? null },
-		});
-		if (response.tag !== "AcpListDurableSessionsResponse") {
-			throw new Error(`unexpected listSessions response: ${response.tag}`);
-		}
-		return {
-			sessions: response.val.sessions.map(decodeDurableSessionInfo),
-			nextCursor: response.val.nextCursor,
-		};
-	}
-
-	private async _deleteSession(input: SessionTarget = {}): Promise<void> {
-		const response = await this._sendAcpRequest({
-			tag: "AcpDeleteSessionRequest",
-			val: { sessionId: input.sessionId ?? null },
-		});
-		if (response.tag !== "AcpDeleteSessionResponse") {
-			throw new Error(`unexpected deleteSession response: ${response.tag}`);
-		}
-	}
-
-	private async _unloadSession(input?: SessionTarget): Promise<void> {
-		const response = await this._sendAcpRequest({
-			tag: "AcpUnloadSessionRequest",
-			val: { sessionId: input?.sessionId ?? null },
-		});
-		if (response.tag !== "AcpUnloadSessionResponse") {
-			throw new Error(`unexpected unloadSession response: ${response.tag}`);
-		}
-	}
-
-	private async _prompt(input: PromptInput): Promise<DurablePromptResult> {
-		const response = await this._sendAcpRequest({
-			tag: "AcpPromptRequest",
-			val: {
-				sessionId: input.sessionId ?? null,
-				idempotencyKey: input.idempotencyKey ?? null,
-				content: JSON.stringify(input.content),
-			},
-		});
-		if (response.tag !== "AcpPromptResponse") {
-			throw new Error(`unexpected prompt response: ${response.tag}`);
-		}
-		return {
-			sessionId: response.val.sessionId,
-			message:
-				response.val.message === null ? null : JSON.parse(response.val.message),
-			stopReason: response.val.stopReason as DurablePromptResult["stopReason"],
-		};
-	}
-
-	private async _cancelPrompt(
-		input?: SessionTarget,
-	): Promise<CancelPromptResult> {
-		const response = await this._sendAcpRequest({
-			tag: "AcpCancelPromptRequest",
-			val: { sessionId: input?.sessionId ?? null },
-		});
-		if (response.tag !== "AcpCancelPromptResponse") {
-			throw new Error(`unexpected cancelPrompt response: ${response.tag}`);
-		}
-		if (
-			response.val.status !== "cancelled" &&
-			response.val.status !== "no_active_prompt"
-		) {
-			throw new Error(`invalid cancelPrompt status: ${response.val.status}`);
-		}
-		return { status: response.val.status };
-	}
-
-	private async _respondPermission(
-		input: PermissionResponse,
-	): Promise<PermissionResponseResult> {
-		const response = await this._sendAcpRequest({
-			tag: "AcpRespondPermissionRequest",
-			val: {
-				sessionId: input.sessionId,
-				requestId: input.requestId,
-				optionId: input.optionId,
-			},
-		});
-		if (response.tag !== "AcpRespondPermissionResponse") {
-			throw new Error(`unexpected respondPermission response: ${response.tag}`);
-		}
-		if (
-			response.val.status !== "accepted" &&
-			response.val.status !== "not_pending"
-		) {
-			throw new Error(
-				`invalid respondPermission status: ${response.val.status}`,
-			);
-		}
-		if (response.val.status === "accepted") {
-			if (response.val.reason !== null) {
-				throw new Error(
-					"accepted permission response must not include a reason",
-				);
-			}
-			return { status: "accepted" };
-		}
-		return {
-			status: "not_pending",
-			reason: permissionTerminalReason(response.val.reason),
-		};
-	}
-
-	private async _readHistory(input?: ReadHistoryInput): Promise<HistoryPage> {
-		const response = await this._sendAcpRequest({
-			tag: "AcpReadHistoryRequest",
-			val: {
-				sessionId: input?.sessionId ?? null,
-				before: input?.before === undefined ? null : BigInt(input.before),
-				after: input?.after === undefined ? null : BigInt(input.after),
-				limit: input?.limit ?? null,
-			},
-		});
-		if (response.tag !== "AcpHistoryPageResponse") {
-			throw new Error(`unexpected readHistory response: ${response.tag}`);
-		}
-		return {
-			events: response.val.events.map(decodeDurableSessionEvent),
-			hasMoreBefore: response.val.hasMoreBefore,
-			hasMoreAfter: response.val.hasMoreAfter,
-		};
-	}
-
-	private async _getSessionConfig(
-		input?: SessionTarget,
-	): Promise<SessionConfig> {
-		const response = await this._sendAcpRequest({
-			tag: "AcpGetSessionConfigRequest",
-			val: { sessionId: input?.sessionId ?? null },
-		});
-		if (response.tag !== "AcpSessionConfigResponse") {
-			throw new Error(`unexpected getSessionConfig response: ${response.tag}`);
-		}
-		return {
-			revision: safeWireU64(response.val.revision),
-			options: JSON.parse(response.val.options),
-		};
-	}
-
-	private async _setSessionConfigOption(
-		input: SetSessionConfigOptionInput,
-	): Promise<SessionConfig> {
-		const response = await this._sendAcpRequest({
-			tag: "AcpSetSessionConfigOptionRequest",
-			val: {
-				sessionId: input.sessionId ?? null,
-				configId: input.configId,
-				value: JSON.stringify(input.value),
-			},
-		});
-		if (response.tag !== "AcpSessionConfigResponse") {
-			throw new Error(
-				`unexpected setSessionConfigOption response: ${response.tag}`,
-			);
-		}
-		return {
-			revision: safeWireU64(response.val.revision),
-			options: JSON.parse(response.val.options),
-		};
-	}
-
-	private async _getSessionCapabilities(
-		input?: SessionTarget,
-	): Promise<SessionCapabilities | null> {
-		const response = await this._sendAcpRequest({
-			tag: "AcpGetSessionCapabilitiesRequest",
-			val: { sessionId: input?.sessionId ?? null },
-		});
-		if (response.tag !== "AcpSessionCapabilitiesResponse") {
-			throw new Error(
-				`unexpected getSessionCapabilities response: ${response.tag}`,
-			);
-		}
-		return response.val.capabilities === null
-			? null
-			: normalizeSessionCapabilities(JSON.parse(response.val.capabilities));
-	}
-
-	private async _getSessionAgentInfo(
-		input?: SessionTarget,
-	): Promise<SessionAgentInfo | null> {
-		const response = await this._sendAcpRequest({
-			tag: "AcpGetSessionAgentInfoRequest",
-			val: { sessionId: input?.sessionId ?? null },
-		});
-		if (response.tag !== "AcpSessionAgentInfoResponse") {
-			throw new Error(
-				`unexpected getSessionAgentInfo response: ${response.tag}`,
-			);
-		}
-		return response.val.agentInfo === null
-			? null
-			: JSON.parse(response.val.agentInfo);
-	}
-
-	/** @deprecated Use `sessions.open()`. */
-	openSession(input: OpenSessionInput): Promise<void> {
-		return this.sessions.open(input);
-	}
-
-	/** @deprecated Use `sessions.get()`. */
-	getSession(input?: SessionTarget): Promise<DurableSessionInfo> {
-		return this.sessions.get(input);
-	}
-
-	/** @deprecated Use `sessions.list()`. */
-	listSessions(input?: ListSessionsInput): Promise<SessionPage> {
-		return this.sessions.list(input);
-	}
-
-	/** @deprecated Use `sessions.delete()`. */
-	deleteSession(input: SessionTarget = {}): Promise<void> {
-		return this.sessions.delete(input);
-	}
-
-	/** @deprecated Use `sessions.unload()`. */
-	unloadSession(input?: SessionTarget): Promise<void> {
-		return this.sessions.unload(input);
-	}
-
-	/** @deprecated Use `sessions.prompt()`. */
-	prompt(input: PromptInput): Promise<DurablePromptResult> {
-		return this.sessions.prompt(input);
-	}
-
-	/** @deprecated Use `sessions.cancelPrompt()`. */
-	cancelPrompt(input?: SessionTarget): Promise<CancelPromptResult> {
-		return this.sessions.cancelPrompt(input);
-	}
-
-	/** @deprecated Use `sessions.respondPermission()`. */
-	respondPermission(
-		input: PermissionResponse,
-	): Promise<PermissionResponseResult> {
-		return this.sessions.respondPermission(input);
-	}
-
-	/** @deprecated Use `sessions.readHistory()`. */
-	readHistory(input?: ReadHistoryInput): Promise<HistoryPage> {
-		return this.sessions.readHistory(input);
-	}
-
-	/** @deprecated Use `sessions.getConfig()`. */
-	getSessionConfig(input?: SessionTarget): Promise<SessionConfig> {
-		return this.sessions.getConfig(input);
-	}
-
-	/** @deprecated Use `sessions.setConfigOption()`. */
-	setSessionConfigOption(
-		input: SetSessionConfigOptionInput,
-	): Promise<SessionConfig> {
-		return this.sessions.setConfigOption(input);
-	}
-
-	/** @deprecated Use `sessions.getCapabilities()`. */
-	getSessionCapabilities(
-		input?: SessionTarget,
-	): Promise<SessionCapabilities | null> {
-		return this.sessions.getCapabilities(input);
-	}
-
-	/** @deprecated Use `sessions.getAgentInfo()`. */
-	getSessionAgentInfo(input?: SessionTarget): Promise<SessionAgentInfo | null> {
-		return this.sessions.getAgentInfo(input);
-	}
-
-	/**
-	 * Dynamically link a software package into the RUNNING VM. The package's
-	 * `bin/` commands appear under `/opt/agentos/bin` (on `$PATH`) and its `share/man`
-	 * pages under MANPATH immediately — the `/opt/agentos` mount is host-backed, so
-	 * writing into its staging dir is reflected live with no reboot. An `agent`
-	 * block registers the package for `openSession({ agent: name })`. Persists for the VM's
-	 * lifetime (and across a snapshot iff the volume persists).
-	 */
 	private async _linkSoftware(descriptor: PackageDescriptor): Promise<void> {
 		// Forward to the sidecar, which owns the `/opt/agentos` projection and
 		// appends the package to its live host-backed staging dir; the commands
@@ -5895,9 +5170,6 @@ export class AgentOs {
 			// resent only the boot packages would unproject this one.
 			this.#kernel.registerLinkedPackage(descriptor);
 		}
-		// The client parses no manifests: an `agent` block in the linked package is
-		// picked up by the sidecar (it owns the projected `/opt/agentos` and answers
-		// openSession/listAgents from it). Nothing to record client-side.
 	}
 
 	private async _listSoftware(): Promise<
@@ -5908,27 +5180,6 @@ export class AgentOs {
 			this._sidecarVm,
 		);
 	}
-
-	/**
-	 * Returns all registered agents with their installation status. Thin forwarder:
-	 * sends `AcpListAgentsRequest` and maps the response. The sidecar enumerates the
-	 * projected `/opt/agentos` packages (the client parses no manifests). Every such
-	 * agent is a package materialized into the VM, so `installed` is always `true`.
-	 */
-	private async _listAgents(): Promise<AgentRegistryEntry[]> {
-		const response = await this._sendAcpRequest({
-			tag: "AcpListAgentsRequest",
-			val: { reserved: false },
-		});
-		if (response.tag !== "AcpListAgentsResponse") {
-			throw new Error(`unexpected list_agents response: ${response.tag}`);
-		}
-		return response.val.agents.map((agent) => ({
-			id: agent.id,
-			installed: agent.installed,
-		}));
-	}
-
 	/** @deprecated Use `software.link()`. */
 	linkSoftware(descriptor: PackageDescriptor): Promise<void> {
 		return this.software.link(descriptor);
@@ -5937,76 +5188,6 @@ export class AgentOs {
 	/** @deprecated Use `software.list()`. */
 	listSoftware(): Promise<{ packageName: string; commands: string[] }[]> {
 		return this.software.list();
-	}
-
-	/** @deprecated Use `agents.list()`. */
-	listAgents(): Promise<AgentRegistryEntry[]> {
-		return this.agents.list();
-	}
-
-	private _recordAgentStderr(event: {
-		sessionId: string;
-		agentType: string;
-		processId: string;
-		chunk: ArrayBuffer;
-	}): void {
-		if (!event.sessionId) {
-			return;
-		}
-		const handler = this._agentStderrHandler;
-		if (!handler) {
-			return;
-		}
-		try {
-			handler({
-				sessionId: event.sessionId,
-				agentType: event.agentType,
-				processId: event.processId,
-				pid: null,
-				chunk: new Uint8Array(event.chunk),
-			});
-		} catch (error) {
-			console.error("AgentOS stderr handler failed", error);
-		}
-	}
-
-	private _recordAgentExit(event: {
-		sessionId: string;
-		agentType: string;
-		processId: string;
-		pid: number | null;
-		exitCode: number | null;
-		restart: string;
-		restartCount: number;
-		maxRestarts: number;
-	}): void {
-		const publicEvent: AgentExitEvent = {
-			sessionId: event.sessionId,
-			agentType: event.agentType,
-			processId: event.processId,
-			pid: event.pid,
-			exitCode: event.exitCode,
-			restart: event.restart as AgentRestartOutcome,
-			restartCount: event.restartCount,
-			maxRestarts: event.maxRestarts,
-		};
-		const handler = this._agentExitHandler;
-		if (handler) {
-			try {
-				handler(publicEvent);
-			} catch (error) {
-				console.error("AgentOS agent-exit handler failed", error);
-			}
-		}
-		for (const key of ["*", event.sessionId]) {
-			for (const subscription of this._agentExitHandlers.get(key) ?? []) {
-				try {
-					subscription(publicEvent);
-				} catch (error) {
-					console.error("AgentOS agent-exit subscription failed", error);
-				}
-			}
-		}
 	}
 
 	private _handleSidecarEvent(
@@ -6088,10 +5269,6 @@ export class AgentOs {
 			}
 			return;
 		}
-		if (event.payload.type === "ext") {
-			this._handleAcpExtEvent(event.payload.envelope);
-			return;
-		}
 		if (event.payload.type !== "structured") {
 			return;
 		}
@@ -6121,85 +5298,6 @@ export class AgentOs {
 		}
 	}
 
-	private _handleAcpExtEvent(envelope: {
-		namespace: string;
-		payload: Uint8Array;
-	}): void {
-		if (envelope.namespace !== ACP_EXTENSION_NAMESPACE) {
-			return;
-		}
-		try {
-			const event = decodeAcpEvent(envelope.payload);
-			switch (event.tag) {
-				case "AcpDurableSessionEvent": {
-					this._emitDurableSessionEvent(decodeDurableSessionEvent(event.val));
-					return;
-				}
-				case "AcpEphemeralSessionUpdateEvent": {
-					const update = JSON.parse(event.val.update) as {
-						sessionUpdate: EphemeralSessionEventEntry["type"];
-					} & Record<string, unknown>;
-					const { sessionUpdate: type, ...payload } = update;
-					this._emitDurableSessionEvent({
-						durability: "ephemeral",
-						type,
-						sessionId: event.val.sessionId,
-						afterSequence: safeWireU64(event.val.afterSequence),
-						...payload,
-					} as EphemeralSessionEventEntry);
-					return;
-				}
-				case "AcpSessionEvent":
-					return;
-				case "AcpAgentStderrEvent": {
-					this._recordAgentStderr(event.val);
-					return;
-				}
-				case "AcpAgentExitedEvent": {
-					this._recordAgentExit(event.val);
-					return;
-				}
-			}
-		} catch (error) {
-			console.error("AgentOS failed to decode an ACP sidecar event", error);
-		}
-	}
-
-	private _emitDurableSessionEvent(entry: SessionStreamEntry): void {
-		for (const handler of this._durableSessionEventHandlers.get(
-			entry.sessionId,
-		) ?? []) {
-			try {
-				handler(entry);
-			} catch (error) {
-				console.error("AgentOS session event handler failed", error);
-			}
-		}
-	}
-
-	private async _sendAcpRequest(request: AcpRequest): Promise<AcpResponse> {
-		const envelope = await this._sidecarClient.extensionRequest(
-			this._sidecarSession,
-			this._sidecarVm,
-			{
-				namespace: ACP_EXTENSION_NAMESPACE,
-				payload: encodeAcpRequest(request),
-			},
-		);
-		if (envelope.namespace !== ACP_EXTENSION_NAMESPACE) {
-			throw new Error(`unexpected ACP Ext namespace: ${envelope.namespace}`);
-		}
-		const response = decodeAcpResponse(envelope.payload);
-		if (response.tag === "AcpErrorResponse") {
-			const error = new Error(response.val.message) as Error & {
-				code?: string;
-			};
-			error.code = response.val.code;
-			throw error;
-		}
-		return response;
-	}
-
 	private _installSidecarRequestHandler(): void {
 		const context: HostCallbackContext = {
 			bindings: this._bindings,
@@ -6216,554 +5314,15 @@ export class AgentOs {
 						filesystem: this.#kernel.vfs,
 					});
 				case "ext":
-					return this._handleAcpExtSidecarRequest(request.payload.envelope);
-			}
-		});
-	}
-
-	private async _handleAcpExtSidecarRequest(envelope: {
-		namespace: string;
-		payload: Uint8Array;
-	}): Promise<SidecarResponsePayload> {
-		if (envelope.namespace !== ACP_EXTENSION_NAMESPACE) {
-			return {
-				type: "ext_result",
-				envelope: {
-					namespace: envelope.namespace,
-					payload: Buffer.from("unknown extension namespace", "utf8"),
-				},
-			};
-		}
-		const callback = decodeAcpCallback(envelope.payload);
-		switch (callback.tag) {
-			case "AcpHostRequestCallback": {
-				const response = await this._dispatchAcpSidecarRequest(
-					toJsonRpcRequest(JSON.parse(callback.val.request)),
-				);
-				return {
-					type: "ext_result",
-					envelope: {
-						namespace: ACP_EXTENSION_NAMESPACE,
-						payload: encodeAcpCallbackResponse({
-							tag: "AcpHostRequestCallbackResponse",
-							val: {
-								response: JSON.stringify(response),
-							},
-						}),
-					},
-				};
-			}
-		}
-	}
-
-	private async _dispatchAcpSidecarRequest(
-		request: JsonRpcRequest,
-	): Promise<JsonRpcResponse> {
-		try {
-			const result = await this._handleSupportedAcpSidecarRequest(request);
-			return {
-				jsonrpc: "2.0",
-				id: request.id,
-				result,
-			};
-		} catch (error) {
-			if (error instanceof AcpDispatchError) {
-				return {
-					jsonrpc: "2.0",
-					id: request.id,
-					error: {
-						code: error.code,
-						message: error.message,
-						...(error.data ? { data: error.data } : {}),
-					},
-				};
-			}
-			return {
-				jsonrpc: "2.0",
-				id: request.id,
-				error: {
-					code: -32603,
-					message: error instanceof Error ? error.message : String(error),
-				},
-			};
-		}
-	}
-
-	private async _handleSupportedAcpSidecarRequest(
-		request: JsonRpcRequest,
-	): Promise<unknown> {
-		const params = this._acpParams(request);
-		switch (request.method) {
-			case "fs/read":
-			case "fs/read_text_file":
-				return this._handleAcpReadFile(params);
-			case "fs/write":
-			case "fs/write_text_file":
-				return this._handleAcpWriteFile(params);
-			case "fs/readDir":
-			case "fs/read_dir":
-				return this._handleAcpReadDir(params);
-			case "terminal/create":
-				return this._handleAcpCreateTerminal(params);
-			case "terminal/write":
-				return this._handleAcpWriteTerminal(params);
-			case "terminal/output":
-			case "terminal/read":
-				return this._handleAcpReadTerminal(params);
-			case "terminal/wait_for_exit":
-			case "terminal/waitForExit":
-				return this._handleAcpWaitForTerminalExit(params);
-			case "terminal/kill":
-				return this._handleAcpKillTerminal(params);
-			case "terminal/release":
-			case "terminal/close":
-				return this._handleAcpReleaseTerminal(params);
-			case "terminal/resize":
-				return this._handleAcpResizeTerminal(params);
-			default:
-				throw new AcpDispatchError(
-					-32601,
-					`Method not found: ${request.method}`,
-					{
-						method: request.method,
-					},
-				);
-		}
-	}
-
-	private _acpParams(request: JsonRpcRequest): Record<string, unknown> {
-		if (!request.params) {
-			return {};
-		}
-		if (
-			typeof request.params !== "object" ||
-			request.params === null ||
-			Array.isArray(request.params)
-		) {
-			throw new AcpDispatchError(
-				-32602,
-				`${request.method} requires object params`,
-			);
-		}
-		return request.params as Record<string, unknown>;
-	}
-
-	private _requireAcpStringParam(
-		params: Record<string, unknown>,
-		name: string,
-		method: string,
-	): string {
-		const value = params[name];
-		if (typeof value !== "string") {
-			throw new AcpDispatchError(-32602, `${method} requires a string ${name}`);
-		}
-		return value;
-	}
-
-	private _optionalAcpStringParam(
-		params: Record<string, unknown>,
-		name: string,
-		method: string,
-	): string | undefined {
-		const value = params[name];
-		if (value === undefined || value === null) {
-			return undefined;
-		}
-		if (typeof value !== "string") {
-			throw new AcpDispatchError(
-				-32602,
-				`${method} requires ${name} to be a string when provided`,
-			);
-		}
-		return value;
-	}
-
-	private _optionalAcpNumberParam(
-		params: Record<string, unknown>,
-		name: string,
-		method: string,
-	): number | undefined {
-		const value = params[name];
-		if (value === undefined || value === null) {
-			return undefined;
-		}
-		if (typeof value !== "number" || !Number.isFinite(value)) {
-			throw new AcpDispatchError(
-				-32602,
-				`${method} requires ${name} to be a number when provided`,
-			);
-		}
-		return value;
-	}
-
-	private _optionalAcpStringArrayParam(
-		params: Record<string, unknown>,
-		name: string,
-		method: string,
-	): string[] | undefined {
-		const value = params[name];
-		if (value === undefined || value === null) {
-			return undefined;
-		}
-		if (
-			!Array.isArray(value) ||
-			value.some((entry) => typeof entry !== "string")
-		) {
-			throw new AcpDispatchError(
-				-32602,
-				`${method} requires ${name} to be an array of strings when provided`,
-			);
-		}
-		return [...value];
-	}
-
-	private _optionalAcpEnvParam(
-		params: Record<string, unknown>,
-		name: string,
-		method: string,
-	): Record<string, string> | undefined {
-		const value = params[name];
-		if (value === undefined || value === null) {
-			return undefined;
-		}
-		if (Array.isArray(value)) {
-			const env: Record<string, string> = {};
-			for (const entry of value) {
-				if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
-					throw new AcpDispatchError(
-						-32602,
-						`${method} requires ${name} entries to be { name, value } objects`,
-					);
-				}
-				const record = entry as Record<string, unknown>;
-				if (
-					typeof record.name !== "string" ||
-					typeof record.value !== "string"
-				) {
-					throw new AcpDispatchError(
-						-32602,
-						`${method} requires ${name} entries to be { name, value } objects`,
-					);
-				}
-				env[record.name] = record.value;
-			}
-			return env;
-		}
-		if (typeof value !== "object") {
-			throw new AcpDispatchError(
-				-32602,
-				`${method} requires ${name} to be an object or name/value array`,
-			);
-		}
-		const env: Record<string, string> = {};
-		for (const [key, entryValue] of Object.entries(
-			value as Record<string, unknown>,
-		)) {
-			if (typeof entryValue !== "string") {
-				throw new AcpDispatchError(
-					-32602,
-					`${method} requires ${name} values to be strings`,
-				);
-			}
-			env[key] = entryValue;
-		}
-		return env;
-	}
-
-	private _requireAcpTerminal(
-		params: Record<string, unknown>,
-		method: string,
-	): AcpTerminalEntry {
-		const terminalId = this._requireAcpStringParam(
-			params,
-			"terminalId",
-			method,
-		);
-		const terminal = this._acpTerminals.get(terminalId);
-		if (!terminal) {
-			throw new AcpDispatchError(
-				-32602,
-				`ACP terminal not found: ${terminalId}`,
-			);
-		}
-		return terminal;
-	}
-
-	private _appendAcpTerminalOutput(
-		terminal: AcpTerminalEntry,
-		data: Uint8Array,
-	): void {
-		const chunk = Buffer.from(data).toString("utf8");
-		if (!chunk) {
-			return;
-		}
-		terminal.output += chunk;
-		if (
-			Number.isFinite(terminal.outputByteLimit) &&
-			terminal.outputByteLimit >= 0 &&
-			terminal.output.length > terminal.outputByteLimit
-		) {
-			terminal.output = terminal.output.slice(
-				terminal.output.length - terminal.outputByteLimit,
-			);
-			terminal.truncated = true;
-		}
-	}
-
-	private async _handleAcpReadFile(
-		params: Record<string, unknown>,
-	): Promise<{ content: string }> {
-		const method = "fs/read";
-		const path = this._requireAcpStringParam(params, "path", method);
-		const line = this._optionalAcpNumberParam(params, "line", method);
-		const limit = this._optionalAcpNumberParam(params, "limit", method);
-		const encoding = this._optionalAcpStringParam(params, "encoding", method);
-		const bytes = await this.readFile(path);
-		if (encoding === "base64") {
-			return { content: Buffer.from(bytes).toString("base64") };
-		}
-		const text = new TextDecoder().decode(bytes);
-		if (line === undefined && limit === undefined) {
-			return { content: text };
-		}
-		const startLine = Math.max(1, Math.trunc(line ?? 1));
-		const lineLimit =
-			limit === undefined
-				? Number.POSITIVE_INFINITY
-				: Math.max(0, Math.trunc(limit));
-		return {
-			content: text
-				.split("\n")
-				.slice(startLine - 1, startLine - 1 + lineLimit)
-				.join("\n"),
-		};
-	}
-
-	private async _handleAcpWriteFile(
-		params: Record<string, unknown>,
-	): Promise<null> {
-		const method = "fs/write";
-		const path = this._requireAcpStringParam(params, "path", method);
-		const content = this._requireAcpStringParam(params, "content", method);
-		const encoding = this._optionalAcpStringParam(params, "encoding", method);
-		await this.writeFile(
-			path,
-			encoding === "base64" ? Buffer.from(content, "base64") : content,
-		);
-		return null;
-	}
-
-	private async _handleAcpReadDir(params: Record<string, unknown>): Promise<{
-		entries: Array<{
-			name: string;
-			path: string;
-			type: "file" | "directory" | "symlink";
-		}>;
-	}> {
-		const method = "fs/readDir";
-		const path = this._requireAcpStringParam(params, "path", method);
-		const entries = await this._vfs().readDirWithTypes(path);
-		return {
-			entries: entries
-				.filter((entry) => entry.name !== "." && entry.name !== "..")
-				.map((entry) => ({
-					name: entry.name,
-					path: path === "/" ? `/${entry.name}` : `${path}/${entry.name}`,
-					type: entry.isSymbolicLink
-						? "symlink"
-						: entry.isDirectory
-							? "directory"
-							: "file",
-				})),
-		};
-	}
-
-	private _handleAcpCreateTerminal(params: Record<string, unknown>): {
-		terminalId: string;
-	} {
-		const method = "terminal/create";
-		const command = this._requireAcpStringParam(params, "command", method);
-		const args = this._optionalAcpStringArrayParam(params, "args", method);
-		const env = this._optionalAcpEnvParam(params, "env", method);
-		const cwd = this._optionalAcpStringParam(params, "cwd", method);
-		const cols = this._optionalAcpNumberParam(params, "cols", method);
-		const rows = this._optionalAcpNumberParam(params, "rows", method);
-		const outputByteLimit = Math.max(
-			0,
-			Math.trunc(
-				this._optionalAcpNumberParam(params, "outputByteLimit", method) ??
-					1_048_576,
-			),
-		);
-		const terminalId = `acp-terminal-${++this._acpTerminalCounter}`;
-		const terminal: AcpTerminalEntry = {
-			handle: this.#kernel.openShell({
-				command,
-				...(args ? { args } : {}),
-				...(env ? { env } : {}),
-				...(cwd ? { cwd } : {}),
-				...(cols !== undefined ? { cols: Math.trunc(cols) } : {}),
-				...(rows !== undefined ? { rows: Math.trunc(rows) } : {}),
-			}),
-			output: "",
-			truncated: false,
-			outputByteLimit,
-			exitCode: null,
-			waitPromise: Promise.resolve(0),
-		};
-		terminal.handle.onData = (data) => {
-			this._appendAcpTerminalOutput(terminal, data);
-		};
-		terminal.waitPromise = terminal.handle.wait().then((exitCode) => {
-			terminal.exitCode = exitCode;
-			return exitCode;
-		});
-		this._acpTerminals.set(terminalId, terminal);
-		return { terminalId };
-	}
-
-	private async _handleAcpWriteTerminal(
-		params: Record<string, unknown>,
-	): Promise<null> {
-		const method = "terminal/write";
-		const terminal = this._requireAcpTerminal(params, method);
-		const data = this._requireAcpStringParam(params, "data", method);
-		const encoding = this._optionalAcpStringParam(params, "encoding", method);
-		await terminal.handle.write(
-			encoding === "base64" ? Buffer.from(data, "base64") : data,
-		);
-		return null;
-	}
-
-	private _handleAcpReadTerminal(params: Record<string, unknown>): {
-		output: string;
-		truncated: boolean;
-		exitStatus?: { exitCode: number; signal: null };
-	} {
-		const terminal = this._requireAcpTerminal(params, "terminal/output");
-		return {
-			output: terminal.output,
-			truncated: terminal.truncated,
-			...(terminal.exitCode !== null
-				? {
-						exitStatus: {
-							exitCode: terminal.exitCode,
-							signal: null,
+					return {
+						type: "ext_result",
+						envelope: {
+							namespace: request.payload.envelope.namespace,
+							payload: Buffer.from("extension handlers are not configured", "utf8"),
 						},
-					}
-				: {}),
-		};
-	}
-
-	private async _handleAcpWaitForTerminalExit(
-		params: Record<string, unknown>,
-	): Promise<{ exitCode: number; signal: null }> {
-		const terminal = this._requireAcpTerminal(params, "terminal/wait_for_exit");
-		const exitCode = await terminal.waitPromise;
-		return { exitCode, signal: null };
-	}
-
-	private _handleAcpKillTerminal(params: Record<string, unknown>): null {
-		const method = "terminal/kill";
-		const terminal = this._requireAcpTerminal(params, method);
-		const signal = this._optionalAcpNumberParam(params, "signal", method) ?? 15;
-		terminal.handle.kill(Math.trunc(signal));
-		return null;
-	}
-
-	private _handleAcpReleaseTerminal(params: Record<string, unknown>): null {
-		const method = "terminal/release";
-		const terminalId = this._requireAcpStringParam(
-			params,
-			"terminalId",
-			method,
-		);
-		const terminal = this._acpTerminals.get(terminalId);
-		if (!terminal) {
-			throw new AcpDispatchError(
-				-32602,
-				`ACP terminal not found: ${terminalId}`,
-			);
-		}
-		if (terminal.exitCode === null) {
-			terminal.handle.kill();
-		}
-		this._acpTerminals.delete(terminalId);
-		return null;
-	}
-
-	private _handleAcpResizeTerminal(params: Record<string, unknown>): null {
-		const method = "terminal/resize";
-		const terminal = this._requireAcpTerminal(params, method);
-		const cols = this._optionalAcpNumberParam(params, "cols", method);
-		const rows = this._optionalAcpNumberParam(params, "rows", method);
-		if (cols === undefined || rows === undefined) {
-			throw new AcpDispatchError(
-				-32602,
-				`${method} requires numeric cols and rows`,
-			);
-		}
-		terminal.handle.resize(Math.trunc(cols), Math.trunc(rows));
-		return null;
-	}
-
-	onSessionEvent(handler: (entry: SessionStreamEntry) => void): () => void;
-	onSessionEvent(
-		sessionId: string | undefined,
-		handler: (entry: SessionStreamEntry) => void,
-	): () => void;
-	onSessionEvent(
-		sessionIdOrHandler:
-			| string
-			| ((entry: SessionStreamEntry) => void)
-			| undefined,
-		maybeHandler?: (entry: SessionStreamEntry) => void,
-	): () => void {
-		const sessionId =
-			typeof sessionIdOrHandler === "string" ? sessionIdOrHandler : "main";
-		const handler =
-			typeof sessionIdOrHandler === "function"
-				? sessionIdOrHandler
-				: maybeHandler;
-		if (!handler) {
-			throw new TypeError("onSessionEvent requires a handler");
-		}
-		const handlers =
-			this._durableSessionEventHandlers.get(sessionId) ?? new Set();
-		handlers.add(handler);
-		this._durableSessionEventHandlers.set(sessionId, handlers);
-		return () => {
-			handlers.delete(handler);
-			if (handlers.size === 0) {
-				this._durableSessionEventHandlers.delete(sessionId);
+					};
 			}
-		};
-	}
-
-	/** Subscribe to unexpected adapter exits without changing session liveness. */
-	onAgentExit(handler: AgentExitHandler): () => void;
-	onAgentExit(
-		sessionId: string | undefined,
-		handler: AgentExitHandler,
-	): () => void;
-	onAgentExit(
-		sessionIdOrHandler: string | AgentExitHandler | undefined,
-		maybeHandler?: AgentExitHandler,
-	): () => void {
-		const sessionId =
-			typeof sessionIdOrHandler === "string" ? sessionIdOrHandler : "*";
-		const handler =
-			typeof sessionIdOrHandler === "function"
-				? sessionIdOrHandler
-				: maybeHandler;
-		if (!handler) throw new TypeError("onAgentExit requires a handler");
-		const handlers = this._agentExitHandlers.get(sessionId) ?? new Set();
-		handlers.add(handler);
-		this._agentExitHandlers.set(sessionId, handlers);
-		return () => {
-			handlers.delete(handler);
-			if (handlers.size === 0) this._agentExitHandlers.delete(sessionId);
-		};
+		});
 	}
 
 	// ── Cron ────────────────────────────────────────────────────
@@ -6806,27 +5365,16 @@ export class AgentOs {
 	async dispose(): Promise<void> {
 		this._cronManager.dispose();
 
-		for (const [id, entry] of this._shells) {
+		for (const entry of this._shells.values()) {
 			entry.handle.kill();
 		}
 		const shellExitPromises = [...this._pendingShellExitPromises];
 		this._shells.clear();
-		const terminalExitPromises: Promise<unknown>[] = [];
-		for (const terminal of this._acpTerminals.values()) {
-			terminal.handle.kill();
-			terminalExitPromises.push(
-				terminal.waitPromise.then(
-					() => undefined,
-					() => undefined,
-				),
-			);
-		}
-		this._acpTerminals.clear();
 		this._processes.clear();
 		this._executionOutputHandlers.clear();
 		this._executionCompletedHandlers.clear();
 		await waitForTrackedExitPromises(
-			[...shellExitPromises, ...terminalExitPromises],
+			shellExitPromises,
 			SHELL_DISPOSE_TIMEOUT_MS,
 		);
 

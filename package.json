@@ -6,30 +6,23 @@
 		"node": ">=20"
 	},
 	"scripts": {
-		"start": "pnpm exec turbo watch build --filter='!@rivet-dev/agentos-browser' --filter='!@rivet-dev/agentos-runtime-browser' --filter='!@rivet-dev/agentos-playground'",
-		"build": "pnpm exec turbo build --filter='!@rivet-dev/agentos-browser' --filter='!@rivet-dev/agentos-runtime-browser' --filter='!@rivet-dev/agentos-playground'",
-		"test": "pnpm --dir packages/core build && pnpm exec turbo test --concurrency=1 --filter='!@rivet-dev/agentos-shell' --filter='!@rivet-dev/agentos-browser' --filter='!@rivet-dev/agentos-runtime-browser' --filter='!@rivet-dev/agentos-playground'",
-		"test:nightly": "pnpm --dir packages/core build && pnpm exec turbo test:nightly --concurrency=1 --filter='!@rivet-dev/agentos-shell' --filter='!@rivet-dev/agentos-browser' --filter='!@rivet-dev/agentos-runtime-browser' --filter='!@rivet-dev/agentos-playground'",
-		"test:migration-parity": "pnpm --dir packages/core exec vitest run tests/migration-parity.test.ts --reporter=verbose",
+		"start": "pnpm exec turbo watch build --filter='!@rivet-dev/agentos-runtime-browser'",
+		"build": "pnpm exec turbo build --filter='!@rivet-dev/agentos-runtime-browser'",
+		"test": "pnpm --dir packages/core build && pnpm exec turbo test --concurrency=1 --filter='!@rivet-dev/agentos-shell' --filter='!@rivet-dev/agentos-runtime-browser'",
+		"test:nightly": "pnpm --dir packages/core build && pnpm exec turbo test:nightly --concurrency=1 --filter='!@rivet-dev/agentos-shell' --filter='!@rivet-dev/agentos-runtime-browser'",
 		"test:post-python-parity": "pnpm --dir packages/core build && pnpm --dir packages/core exec vitest run tests/agentos-base-filesystem.nightly.test.ts",
-		"test:watch": "pnpm exec turbo watch test --filter='!@rivet-dev/agentos-browser' --filter='!@rivet-dev/agentos-runtime-browser' --filter='!@rivet-dev/agentos-playground'",
+		"test:watch": "pnpm exec turbo watch test --filter='!@rivet-dev/agentos-runtime-browser'",
 		"check-layout": "node scripts/check-layout.mjs",
-		"check-types": "node scripts/verify-check-types.mjs && pnpm --dir software/codex build:types && pnpm exec turbo check-types --only --concurrency=4 --filter='!@agentos-software/codex' --filter='!@rivet-dev/agentos-browser' --filter='!@rivet-dev/agentos-runtime-browser' --filter='!@rivet-dev/agentos-playground'",
+		"check-types": "node scripts/verify-check-types.mjs && pnpm exec turbo check-types --only --concurrency=4 --filter='!@rivet-dev/agentos-runtime-browser'",
 		"lint": "pnpm biome check .",
 		"fmt": "pnpm biome check --write --diagnostic-level=error .",
 		"shell": "pnpm --filter @rivet-dev/agentos-shell shell",
 		"bench": "bash scripts/benchmarks/run-benchmarks.sh"
 	},
 	"devDependencies": {
-		"@agentos-software/claude-code": "workspace:*",
-		"@agentos-software/codex": "workspace:*",
 		"@agentos-software/common": "workspace:*",
-		"@agentos-software/opencode": "workspace:*",
-		"@agentos-software/pi": "workspace:*",
 		"@agentos-software/ripgrep": "workspace:*",
 		"@biomejs/biome": "^2.3",
-		"@copilotkit/llmock": "^1.6.0",
-		"@mariozechner/pi-coding-agent": "^0.60.0",
 		"@rivet-dev/agentos-core": "workspace:*",
 		"@rivet-dev/agentos-runtime-core": "workspace:*",
 		"@rivet-dev/agentos-test-harness": "workspace:*",
@@ -47,9 +40,7 @@
 	},
 	"pnpm": {
 		"overrides": {
-			"@rivetkit/rivetkit-wasm": "2.3.10",
-			"@mariozechner/pi-tui": "0.60.0",
-			"@mariozechner/pi-agent-core": "0.60.0"
+			"@rivetkit/rivetkit-wasm": "2.3.10"
 		}
 	}
 }

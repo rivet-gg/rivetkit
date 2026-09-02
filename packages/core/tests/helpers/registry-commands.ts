@@ -31,7 +31,6 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import codex from "@agentos-software/codex-cli";
 import coreutils from "@agentos-software/coreutils";
 import curl from "@agentos-software/curl";
 import diffutils from "@agentos-software/diffutils";
@@ -241,7 +240,6 @@ export const REGISTRY_SOFTWARE = (
 		[tree, "tree"],
 		[file, "file"],
 		[yq, "yq"],
-		[codex, "codex-cli"],
 		[curl, "curl"],
 	] as Array<[RegistryPackageRef, string]>
 ).map(([pkg, name]) => requireBuilt(pkg, name));

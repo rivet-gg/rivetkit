@@ -1602,7 +1602,7 @@ async fn targeted_public_waiter_cannot_consume_internal_process_pump_wake() {
                 producer
             };
 
-            // Start an ACP-style targeted public-event waiter while the
+            // Start a targeted public-event waiter while the
             // protocol engine is not running, then manually complete its first
             // durable probe. In the old topology this waiter next registered
             // on the runtime producer Notify and was guaranteed to steal the
@@ -1943,7 +1943,9 @@ async fn request_concurrency_real_loop_progress_service_bypasses_full_ordinary_s
             let waker = std::task::Waker::noop();
             let mut context = std::task::Context::from_waker(waker);
             for _ in 0..harness.ordinary_service_capacity {
-                let mut request = harness.extension_services.acp_termination_grace();
+                let mut request = harness
+                    .extension_services
+                    .vm_database(vm_ownership("missing", "missing", "missing"));
                 assert!(matches!(
                     request.as_mut().poll(&mut context),
                     std::task::Poll::Pending
@@ -1978,10 +1980,19 @@ async fn request_concurrency_real_loop_progress_service_bypasses_full_ordinary_s
                 "progress was admitted through its reserved service lane: {progress_error}",
             );
             for request in ordinary {
-                tokio::time::timeout(TEST_TIMEOUT, request)
+                let result = tokio::time::timeout(TEST_TIMEOUT, request)
                     .await
-                    .expect("ordinary service request drains")
-                    .expect("termination-grace service succeeds");
+                    .expect("ordinary service request drains");
+                let error = match result {
+                    Ok(_) => panic!("missing VM unexpectedly returned a database"),
+                    Err(error) => error,
+                };
+                assert!(
+                    !error
+                        .to_string()
+                        .contains("ERR_AGENTOS_EXTENSION_SERVICE_LIMIT"),
+                    "ordinary work was admitted before the engine started: {error}",
+                );
             }
             finish_cleanly(&harness, engine_task).await;
         })

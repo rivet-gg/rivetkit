@@ -229,12 +229,6 @@ type PackageDescriptor struct {
   path: str
 }
 
-type AgentosProjectedAgent struct {
-  id: str
-  acpEntrypoint: str
-  adapterEntrypoint: str
-}
-
 type LinkPackageRequest struct {
   package: PackageDescriptor
 }
@@ -257,7 +251,6 @@ type ProjectedCommand struct {
 
 type PackageLinkedResponse struct {
   projectedCommands: list<ProjectedCommand>
-  agents: list<AgentosProjectedAgent>
 }
 
 type ConfigureVmRequest struct {
@@ -825,7 +818,6 @@ type VmConfiguredResponse struct {
   appliedMounts: u32
   appliedSoftware: u32
   projectedCommands: list<ProjectedCommand>
-  agents: list<AgentosProjectedAgent>
 }
 
 type HostCallbacksRegisteredResponse struct {

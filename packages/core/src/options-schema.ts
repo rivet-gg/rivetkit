@@ -1,8 +1,6 @@
 import { z } from "zod/v4";
 import type {
-	AgentExitHandler,
 	AgentOsOptions,
-	AgentStderrHandler,
 	LimitWarningHandler,
 	NativeMountConfig,
 } from "./agent-os.js";
@@ -160,29 +158,6 @@ export const agentOsLimitsSchema = z
 			.object({
 				maxPersistedManifestBytes: positiveInteger.optional(),
 				maxPersistedManifestFileBytes: nonNegativeInteger.optional(),
-			})
-			.strict()
-			.optional(),
-		acp: z
-			.object({
-				maxReadLineBytes: positiveInteger.optional(),
-				stdoutBufferByteLimit: positiveInteger.optional(),
-				maxCompletedMessageBytes: positiveInteger.optional(),
-				maxTurnOutputBytes: positiveInteger.optional(),
-				maxPromptBytes: positiveInteger.optional(),
-				maxPromptBlocks: positiveInteger.optional(),
-				maxFallbackContinuationBytes: positiveInteger.optional(),
-				maxSessionHistoryBytes: positiveInteger.optional(),
-				maxSessionHistoryEvents: positiveInteger.optional(),
-				maxHistoryPageEntries: positiveInteger.optional(),
-				maxSessionListEntries: positiveInteger.optional(),
-				maxSessionsPerVm: positiveInteger.optional(),
-				maxPromptsPerSession: positiveInteger.optional(),
-				maxPromptsPerVm: positiveInteger.optional(),
-				maxPendingPermissionsPerSession: positiveInteger.optional(),
-				maxPendingPermissionsPerVm: positiveInteger.optional(),
-				maxPermissionOutcomesPerSession: positiveInteger.optional(),
-				maxPermissionOutcomesPerVm: positiveInteger.optional(),
 			})
 			.strict()
 			.optional(),
@@ -398,20 +373,11 @@ export const agentOsOptionFieldSchemas = {
 	allowedNodeBuiltins: stringArray.optional(),
 	highResolutionTime: z.boolean().optional(),
 	database: z
-		.discriminatedUnion("type", [
-			z
-				.object({
-					type: z.literal("actor_uds"),
-					path: z.string().min(1),
-				})
-				.strict(),
-			z
-				.object({
-					type: z.literal("sqlite_file"),
-					path: z.string().min(1),
-				})
-				.strict(),
-		])
+		.object({
+			type: z.literal("sqlite_file"),
+			path: z.string().min(1),
+		})
+		.strict()
 		.optional(),
 	rootFilesystem: rootFilesystemConfigSchema.optional(),
 	mounts: z.array(mountConfigSchema).optional(),
@@ -432,16 +398,6 @@ export const agentOsOptionFieldSchemas = {
 	permissions: permissionsSchema.optional(),
 	sidecar: sidecarConfigSchema.optional(),
 	limits: agentOsLimitsSchema.optional(),
-	onAgentStderr: z
-		.custom<AgentStderrHandler>((value) => typeof value === "function", {
-			message: "Expected function",
-		})
-		.optional(),
-	onAgentExit: z
-		.custom<AgentExitHandler>((value) => typeof value === "function", {
-			message: "Expected function",
-		})
-		.optional(),
 	onLimitWarning: z
 		.custom<LimitWarningHandler>((value) => typeof value === "function", {
 			message: "Expected function",

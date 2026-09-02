@@ -1,8 +1,8 @@
-//! Shared e2e helpers: resolve/point at the real `agentos-sidecar` binary and build VMs.
+//! Shared e2e helpers: resolve/point at the real `agentos-native-sidecar` binary and build VMs.
 //!
 //! Resolve order for the binary: `AGENTOS_SIDECAR_BIN`, then `CARGO_TARGET_DIR`, else
-//! `<workspace>/target/debug/agentos-sidecar`.
-//! Build it first with `cargo build -p agentos-sidecar`.
+//! `<workspace>/target/debug/agentos-native-sidecar`.
+//! Build it first with `cargo build -p agentos-native-sidecar`.
 
 #![allow(dead_code)]
 
@@ -38,7 +38,7 @@ pub fn ensure_sidecar_env() {
                     }
                 })
                 .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../target"));
-            let bin = target_dir.join("debug/agentos-sidecar");
+            let bin = target_dir.join("debug/agentos-native-sidecar");
             // `std::env::set_var` is `unsafe` in the Rust 2024 edition (process-global mutation that
             // can race other threads reading the environment). This runs once, single-threaded, under
             // `Once::call_once` before any VM is created. The `allow` keeps it warning-free on the
@@ -75,7 +75,7 @@ pub fn require_sidecar(test_name: &str) -> bool {
         eprintln!("skipping {message}");
         false
     } else {
-        panic!("{message}; build it with `cargo build -p agentos-sidecar` or set AGENT_OS_CLIENT_ALLOW_E2E_SKIPS=1 for local skip-only runs");
+        panic!("{message}; build it with `cargo build -p agentos-native-sidecar` or set AGENT_OS_CLIENT_ALLOW_E2E_SKIPS=1 for local skip-only runs");
     }
 }
 

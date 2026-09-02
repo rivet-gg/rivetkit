@@ -287,7 +287,7 @@ where
             return rejected(request, "configure_vm_failed", &error.to_string());
         }
         DispatchResult {
-            response: vm_configured_response(request, 0, 0, Vec::new(), Vec::new()),
+			response: vm_configured_response(request, 0, 0, Vec::new()),
             events: Vec::new(),
         }
     }

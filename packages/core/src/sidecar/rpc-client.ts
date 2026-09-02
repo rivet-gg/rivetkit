@@ -504,7 +504,7 @@ export class NativeSidecarKernelProxy {
 			if (entry.exitCode === null) {
 				// The sidecar dispose path already performs TERM/KILL escalation for any
 				// guest executions that are still live. Resolve local waiters eagerly so
-				// VM teardown does not hang on killed ACP adapter processes that never
+				// VM teardown does not hang on killed guest processes that never
 				// surface a terminal process_exited event back to the JS bridge.
 				this.finishProcess(entry, 143);
 			}
@@ -2793,7 +2793,6 @@ export type {
 	SidecarEventSelector,
 	SidecarLinkPackageResult,
 	SidecarPermissionsPolicy,
-	SidecarProjectedAgent,
 	SidecarRegisteredHostCallbackDefinition,
 	SidecarRequestFrame,
 	SidecarResponsePayload,

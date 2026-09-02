@@ -4,10 +4,6 @@
 //! discriminate path-guard violations from kernel errno failures. Public methods return
 //! [`anyhow::Result`]; the typed [`ClientError`] is carried as the `source` so callers can downcast.
 //!
-//! Durable session operations return typed client errors when the sidecar
-//! rejects an operation. ACP adapter JSON-RPC details are normalized by the
-//! sidecar and are not exposed as a second raw session API.
-
 use agentos_sidecar_client::{ProtocolCodecError, TransportError};
 
 /// Structured sidecar admission metadata kept behind one allocation so the
@@ -64,10 +60,6 @@ pub enum ClientError {
     #[error("shell not found: {0}")]
     ShellNotFound(String),
 
-    /// An ACP session with the given id was not found.
-    #[error("session not found: {0}")]
-    SessionNotFound(String),
-
     /// A kernel/sidecar operation failed. The errno `code` string (`ENOENT`, `EEXIST`, `ENOTDIR`,
     /// `EACCES`, `EISDIR`, `ENOTEMPTY`, ...) is preserved verbatim for parity with the TypeScript
     /// `KernelError`.
@@ -82,12 +74,6 @@ pub enum ClientError {
         message: String,
         details: Box<ResourceLimitDetails>,
     },
-
-    /// A durable ACP/session operation was rejected by the sidecar. The stable
-    /// wire code remains separately inspectable, matching the TypeScript
-    /// client's `Error & { code?: string }` surface.
-    #[error("ACP operation [{code}]: {message}")]
-    AcpOperation { code: String, message: String },
 
     /// A cron schedule string could not be parsed/validated.
     #[error("invalid schedule: {0}")]
@@ -172,13 +158,11 @@ impl ClientError {
                     format!("{code}: {message}")
                 }
             }
-            ClientError::AcpOperation { message, .. } => message.clone(),
             ClientError::PathNotAbsolute(_)
             | ClientError::PathNotNormalized(_)
             | ClientError::PathReadOnly(_)
             | ClientError::ProcessNotFound(_)
             | ClientError::ShellNotFound(_)
-            | ClientError::SessionNotFound(_)
             | ClientError::InvalidSchedule(_)
             | ClientError::PastSchedule(_)
             | ClientError::Transport(_)
@@ -228,21 +212,5 @@ mod tests {
             }
             other => panic!("expected resource limit, got {other:?}"),
         }
-    }
-
-    #[test]
-    fn acp_operation_keeps_code_separate_from_message() {
-        let error = ClientError::AcpOperation {
-            code: String::from("session_busy"),
-            message: String::from("session is running"),
-        };
-        match &error {
-            ClientError::AcpOperation { code, message } => {
-                assert_eq!(code, "session_busy");
-                assert_eq!(message, "session is running");
-            }
-            other => panic!("expected ACP operation error, got {other:?}"),
-        }
-        assert_eq!(error.batch_message(), "session is running");
     }
 }

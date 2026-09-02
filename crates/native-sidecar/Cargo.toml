@@ -14,7 +14,6 @@ name = "agentos-native-sidecar"
 path = "src/main.rs"
 
 [dependencies]
-agentos-actor-uds-client = { workspace = true }
 agentos-bridge = { workspace = true }
 agentos-kernel = { workspace = true }
 agentos-sidecar-protocol = { workspace = true }

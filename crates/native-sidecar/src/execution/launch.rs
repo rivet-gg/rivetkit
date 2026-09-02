@@ -2992,9 +2992,7 @@ pub(super) fn guest_runtime_identity(
             .js_runtime
             .as_ref()
             .is_some_and(|cfg| cfg.high_resolution_time.unwrap_or(false)),
-        // Userland bundle to bake into the per-sidecar snapshot. The sidecar
-        // derives this from configured agent packages with `agent.snapshot`.
-        snapshot_userland_code: vm.configuration.snapshot_userland_code.clone(),
+        snapshot_userland_code: None,
     }
 }
 
@@ -3293,7 +3291,7 @@ fn runtime_guest_path_mappings(vm: &VmState) -> Vec<RuntimeGuestPathMapping> {
 /// `host_dir`/`module_access` mounts (and the derived `/root/node_modules` root
 /// for nested mounts). When present, the V8 bridge thread resolves modules
 /// inline against this reader — concurrently with the service loop — so a large
-/// cold-start module graph never serializes behind / starves an in-flight ACP
+/// cold-start module graph never serializes behind / starves an in-flight extension
 /// `session/new` bootstrap on the single service-loop thread. The reader reads
 /// the same mounted tree the guest sees (anchored resolve-beneath, escaping-symlink
 /// refusal), never the host-direct path translator. Returns `None` when the VM

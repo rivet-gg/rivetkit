@@ -7,16 +7,6 @@ const defaultRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 const requiredPackages = [
 	{
-		name: "agentos-protocol",
-		manifestPath: "crates/agentos-protocol/Cargo.toml",
-		targets: [{ kind: "lib", name: "agentos_protocol" }],
-	},
-	{
-		name: "agentos-sidecar",
-		manifestPath: "crates/agentos-sidecar/Cargo.toml",
-		targets: [{ kind: "bin", name: "agentos-sidecar" }],
-	},
-	{
 		name: "agentos-client",
 		manifestPath: "crates/client/Cargo.toml",
 		targets: [{ kind: "lib", name: "agentos_client" }],

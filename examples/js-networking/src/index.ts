@@ -13,7 +13,7 @@
  *      loopbackExemptPorts.
  *
  * Run with:
- *   AGENTOS_SIDECAR_BIN=../../../target/debug/agentos-sidecar \
+ *   AGENTOS_SIDECAR_BIN=../../../target/debug/agentos-native-sidecar \
  *     npx tsx src/index.ts
  */
 

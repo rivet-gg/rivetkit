@@ -1279,7 +1279,7 @@ pub(crate) fn install_output_callback(
 /// Drain the SDK-spawned process registry, dropping each entry's retained sender clones and aborting
 /// its per-process output-callback tasks. Called from `shutdown` so the output tasks (which would
 /// otherwise await a `Closed` that never fires, see [`install_output_callback`]) cannot outlive the
-/// disposed VM. Mirrors the `pending_shell_exits` / ACP-terminal drain in `shutdown`.
+/// disposed VM. Mirrors the `pending_shell_exits` / terminal drain in `shutdown`.
 pub(crate) fn drain_process_output_tasks(processes: &SccHashMap<u32, ProcessEntry>) {
     let mut tasks = Vec::new();
     processes.retain(|_, entry| {

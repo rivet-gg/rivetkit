@@ -52,7 +52,7 @@ gateway, `/inspector/*`, and custom-tab assets.
 - DNS is pinned to 1.1.1.1/8.8.8.8. Docker Desktop's embedded resolver
   intermittently stops answering, which surfaces as an `EAI_AGAIN` storm during
   install.
-- `AGENTOS_SIDECAR_BIN` points at `/build/target/debug/agentos-sidecar`. Rebuild
-  it with `just dev-exec 'cargo build -p agentos-sidecar'`.
+- `AGENTOS_SIDECAR_BIN` points at `/build/target/debug/agentos-native-sidecar`.
+  Rebuild it with `just dev-exec 'cargo build -p agentos-native-sidecar'`.
 - The container publishes 6420 and 5173. Free them on the host first if another
   engine is already bound.

@@ -21,9 +21,8 @@ pub use agentos_vm_config::{VmGroupConfig, VmUserAccountConfig, VmUserConfig};
 /// and `packages/core/src/options-schema.ts::agentOsOptionsSchema`.
 #[derive(Default)]
 pub struct AgentOsConfig {
-    /// VM-scoped SQLite backend shared by VFS metadata/storage and AgentOS
-    /// durable state. Actor deployments inject `ActorUds`; standalone clients
-    /// normally provide a `SqliteFile` descriptor.
+    /// Temporary VM-scoped local SQLite backend shared by VFS metadata/storage
+    /// and agentOS durable state.
     pub database: Option<agentos_vm_config::VmSqliteDescriptor>,
     /// Initial virtual Linux credentials and account record. Defaults to `1000:1000` (`agentos`).
     pub user: Option<VmUserConfig>,
@@ -44,8 +43,6 @@ pub struct AgentOsConfig {
     pub root_filesystem: RootFilesystemConfig,
     /// Additional mounts.
     pub mounts: Vec<MountConfig>,
-    /// Extra OS instructions appended to agent sessions.
-    pub additional_instructions: Option<String>,
     /// Schedule driver used by the cron manager. Default: [`TimerScheduleDriver`].
     pub schedule_driver: Option<Arc<dyn ScheduleDriver>>,
     /// Binding collections to register.
@@ -58,7 +55,7 @@ pub struct AgentOsConfig {
     pub limits: Option<AgentOsLimits>,
     /// Sidecar placement/config. Default: shared `default` pool.
     pub sidecar: Option<AgentOsSidecarConfig>,
-    /// Absolute path to the `agentos-sidecar` binary, resolved from the npm
+    /// Absolute path to the `agentos-native-sidecar` binary, resolved from the npm
     /// package on the TypeScript side. Threaded to `SidecarProcess::spawn`
     /// (mirroring rivetkit's `engine_binary_path`) instead of relying on the
     /// `AGENTOS_SIDECAR_BIN` env var. `None` falls back to env, then `PATH`.
@@ -116,11 +113,6 @@ impl AgentOsConfigBuilder {
         self
     }
 
-    pub fn additional_instructions(mut self, instructions: impl Into<String>) -> Self {
-        self.config.additional_instructions = Some(instructions.into());
-        self
-    }
-
     pub fn schedule_driver(mut self, driver: Arc<dyn ScheduleDriver>) -> Self {
         self.config.schedule_driver = Some(driver);
         self
@@ -170,8 +162,6 @@ pub enum SoftwareKind {
     /// sidecar's command discovery can resolve guest commands (`echo`, `sh`, `grep`, ...).
     #[default]
     WasmCommands,
-    /// An agent SDK/adapter package. Not mounted as a command directory.
-    Agent,
     /// A host-binding package. Not mounted as a command directory.
     Binding,
 }
@@ -270,8 +260,6 @@ pub struct AgentOsLimits {
     pub bindings: Option<BindingLimits>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub plugins: Option<PluginLimits>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub acp: Option<AcpLimits>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sqlite: Option<SqliteLimits>,
     #[serde(default, rename = "jsRuntime", skip_serializing_if = "Option::is_none")]
@@ -472,118 +460,6 @@ pub struct PluginLimits {
         skip_serializing_if = "Option::is_none"
     )]
     pub max_persisted_manifest_file_bytes: Option<u64>,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct AcpLimits {
-    #[serde(
-        default,
-        rename = "maxReadLineBytes",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub max_read_line_bytes: Option<u64>,
-    #[serde(
-        default,
-        rename = "stdoutBufferByteLimit",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub stdout_buffer_byte_limit: Option<u64>,
-    #[serde(
-        default,
-        rename = "maxCompletedMessageBytes",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub max_completed_message_bytes: Option<u64>,
-    #[serde(
-        default,
-        rename = "maxTurnOutputBytes",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub max_turn_output_bytes: Option<u64>,
-    #[serde(
-        default,
-        rename = "maxPromptBytes",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub max_prompt_bytes: Option<u64>,
-    #[serde(
-        default,
-        rename = "maxPromptBlocks",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub max_prompt_blocks: Option<u64>,
-    #[serde(
-        default,
-        rename = "maxFallbackContinuationBytes",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub max_fallback_continuation_bytes: Option<u64>,
-    #[serde(
-        default,
-        rename = "maxSessionHistoryBytes",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub max_session_history_bytes: Option<u64>,
-    #[serde(
-        default,
-        rename = "maxSessionHistoryEvents",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub max_session_history_events: Option<u64>,
-    #[serde(
-        default,
-        rename = "maxHistoryPageEntries",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub max_history_page_entries: Option<u64>,
-    #[serde(
-        default,
-        rename = "maxSessionListEntries",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub max_session_list_entries: Option<u64>,
-    #[serde(
-        default,
-        rename = "maxSessionsPerVm",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub max_sessions_per_vm: Option<u64>,
-    #[serde(
-        default,
-        rename = "maxPromptsPerSession",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub max_prompts_per_session: Option<u64>,
-    #[serde(
-        default,
-        rename = "maxPromptsPerVm",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub max_prompts_per_vm: Option<u64>,
-    #[serde(
-        default,
-        rename = "maxPendingPermissionsPerSession",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub max_pending_permissions_per_session: Option<u64>,
-    #[serde(
-        default,
-        rename = "maxPendingPermissionsPerVm",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub max_pending_permissions_per_vm: Option<u64>,
-    #[serde(
-        default,
-        rename = "maxPermissionOutcomesPerSession",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub max_permission_outcomes_per_session: Option<u64>,
-    #[serde(
-        default,
-        rename = "maxPermissionOutcomesPerVm",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub max_permission_outcomes_per_vm: Option<u64>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]

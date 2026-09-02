@@ -76,13 +76,13 @@ const pendingExecutionSignals = new Map<string, (signal: number) => void>();
 
 const dynamicImportCache = new Map<string, unknown>();
 // For a PERSISTENT execution (ExecOptions.persistent): process.exit resolves this
-// instead of throwing, so a long-running stdio program's async exit (e.g. an ACP agent
+// instead of throwing, so a long-running stdio program's async exit
 // exiting on stdin EOF, from an async callback that can't be caught by the sync exec
 // wrapper) cleanly ends the run. Null in run-to-completion mode (exit throws as before).
 let persistentExitResolver: ((code: number) => void) | null = null;
 // Streaming stdin for a persistent execution: the host feeds more stdin while the program
 // runs (and ends it explicitly), rather than the one-shot exec stdin that auto-ends. Lets
-// the host drive a long-running stdio program (e.g. an ACP agent: write a request, read
+// the host drive a long-running stdio program (write a request, read
 // the reply, write the next) as a proper external client.
 let streamingStdinEnabled = false;
 let activeStdinPush: ((data: string) => void) | null = null;
@@ -2311,7 +2311,7 @@ async function initRuntime(payload: BrowserWorkerInitPayload): Promise<void> {
 	);
 
 	// Guest global `fetch` over the kernel-brokered network adapter (the same seam
-	// `_networkFetchRaw` uses). Real programs (e.g. the pi ACP adapter's LLM SDK) call
+	// `_networkFetchRaw` uses). Real programs call
 	// global fetch to reach their model endpoint; the adapter mediates egress (loopback
 	// routes through the kernel). Returns a real WHATWG Response (worker global) so the
 	// body is a ReadableStream the caller can stream (e.g. SSE).

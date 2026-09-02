@@ -5,7 +5,6 @@ import { join } from "node:path";
 // `publish = false` stay out of this list.
 export const RUST_CRATE_ORDER = [
 	"agentos-build-support",
-	"agentos-actor-uds-client",
 	"agentos-bridge",
 	"agentos-runtime",
 	"agentos-vfs-core",
@@ -18,9 +17,7 @@ export const RUST_CRATE_ORDER = [
 	"agentos-native-sidecar-core",
 	"agentos-sidecar-client",
 	"agentos-native-sidecar",
-	"agentos-protocol",
 	"agentos-client",
-	"agentos-sidecar",
 ] as const;
 
 export type PublishableRustCrate = (typeof RUST_CRATE_ORDER)[number];

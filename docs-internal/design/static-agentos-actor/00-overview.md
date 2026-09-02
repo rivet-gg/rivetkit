@@ -1,6 +1,6 @@
 # Static agentOS Actor Refactor
 
-**Status:** Proposed
+**Status:** In progress
 
 ## Outcome
 

@@ -306,15 +306,8 @@ export interface SidecarPackageDescriptor {
 	path: string;
 }
 
-export interface SidecarProjectedAgent {
-	id: string;
-	acpEntrypoint: string;
-	adapterEntrypoint: string;
-}
-
 export interface SidecarLinkPackageResult {
 	projectedCommands: SidecarProjectedCommand[];
-	agents: SidecarProjectedAgent[];
 }
 
 export interface SidecarProjectedCommand {
@@ -331,7 +324,6 @@ export interface SidecarVmConfiguredResponse {
 	appliedMounts: number;
 	appliedSoftware: number;
 	projectedCommands: SidecarProjectedCommand[];
-	agents: SidecarProjectedAgent[];
 }
 
 export interface SidecarFilesystemResult {
@@ -550,13 +542,12 @@ export class SidecarProcess {
 				name: command.name,
 				guestPath: command.guest_path,
 			})),
-			agents: response.payload.agents.map(fromWireProjectedAgent),
 		};
 	}
 
 	/**
 	 * Runtime dynamic `linkSoftware`: project one package into the live
-	 * `/opt/agentos` tree. Returns projected command entrypoints and agents.
+	 * `/opt/agentos` tree. Returns projected command entrypoints.
 	 */
 	async linkPackage(
 		session: AuthenticatedSession,
@@ -585,7 +576,6 @@ export class SidecarProcess {
 				name: command.name,
 				guestPath: command.guest_path,
 			})),
-			agents: response.payload.agents.map(fromWireProjectedAgent),
 		};
 	}
 
@@ -1934,17 +1924,5 @@ function toWirePackageDescriptor(descriptor: SidecarPackageDescriptor): {
 } {
 	return {
 		path: descriptor.path,
-	};
-}
-
-function fromWireProjectedAgent(agent: {
-	id: string;
-	acp_entrypoint: string;
-	adapter_entrypoint: string;
-}): SidecarProjectedAgent {
-	return {
-		id: agent.id,
-		acpEntrypoint: agent.acp_entrypoint,
-		adapterEntrypoint: agent.adapter_entrypoint,
 	};
 }

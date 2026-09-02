@@ -12,9 +12,7 @@ use crate::execution::{
     service_owned_python_socket_connect_completion, OwnedChildBridgeEventService,
     OwnedJavascriptEventService, OwnedPythonEventService, OwnedPythonSocketCompletionService,
 };
-use crate::extension::{
-    ExtensionBufferedProcessOutput, ExtensionFuture, ExtensionServices, ProjectedAgentLaunchEntry,
-};
+use crate::extension::{ExtensionBufferedProcessOutput, ExtensionFuture, ExtensionServices};
 use crate::filesystem::guest_filesystem_call_vm;
 use crate::ownership_coordinator::{
     CoordinatorOperationPermit, InternalVmEventAdmission, OwnershipCoordinator,
@@ -749,20 +747,9 @@ pub(crate) fn prepare_owned_process_event_service(
 /// extension. This channel is bounded by the request supervisor's configured
 /// in-flight limit; long extension waits remain in the caller, never here.
 pub(crate) enum ExtensionServiceCommand {
-    AcpTerminationGrace {
-        reply: Reply<Duration>,
-    },
-    VmAcpLimits {
-        ownership: OwnershipScope,
-        reply: Reply<agentos_native_sidecar_core::limits::AcpLimits>,
-    },
     VmDatabase {
         ownership: OwnershipScope,
         reply: Reply<Option<SharedVmSqliteDatabase>>,
-    },
-    ProjectedAgents {
-        ownership: OwnershipScope,
-        reply: Reply<Vec<ProjectedAgentLaunchEntry>>,
     },
     SpawnProcess {
         ownership: OwnershipScope,
@@ -846,7 +833,7 @@ pub(crate) struct RoutedExtensionServices {
     /// Wakes extension-side probes only after the protocol coordinator has
     /// drained the runtime producer queues. Runtime producers use a separate
     /// notification owned exclusively by the central process-event pump, so
-    /// an ACP/public-event waiter cannot consume the pump's only wake.
+    /// a targeted public-event waiter cannot consume the pump's only wake.
     routed_process_event_notify: Arc<Notify>,
     process_event_broker: Option<ProcessEventBroker>,
     completed_process_events: CompletedProcessEventStore,
@@ -1011,29 +998,11 @@ impl RoutedExtensionServices {
 }
 
 impl ExtensionServices for RoutedExtensionServices {
-    fn acp_termination_grace(&self) -> ExtensionFuture<'static, Duration> {
-        self.call(move |reply| ExtensionServiceCommand::AcpTerminationGrace { reply })
-    }
-
-    fn vm_acp_limits(
-        &self,
-        ownership: OwnershipScope,
-    ) -> ExtensionFuture<'static, agentos_native_sidecar_core::limits::AcpLimits> {
-        self.call(move |reply| ExtensionServiceCommand::VmAcpLimits { ownership, reply })
-    }
-
     fn vm_database(
         &self,
         ownership: OwnershipScope,
     ) -> ExtensionFuture<'static, Option<SharedVmSqliteDatabase>> {
         self.call(move |reply| ExtensionServiceCommand::VmDatabase { ownership, reply })
-    }
-
-    fn projected_agents(
-        &self,
-        ownership: OwnershipScope,
-    ) -> ExtensionFuture<'static, Vec<ProjectedAgentLaunchEntry>> {
-        self.call(move |reply| ExtensionServiceCommand::ProjectedAgents { ownership, reply })
     }
 
     fn spawn_process(
@@ -1753,9 +1722,7 @@ pub(crate) fn prepare_extension_service_command(
     command: ExtensionServiceCommand,
 ) -> PreparedExtensionServiceCommand {
     let admission_ownership = match &command {
-        ExtensionServiceCommand::VmAcpLimits { ownership, .. }
-        | ExtensionServiceCommand::VmDatabase { ownership, .. }
-        | ExtensionServiceCommand::ProjectedAgents { ownership, .. }
+        ExtensionServiceCommand::VmDatabase { ownership, .. }
         | ExtensionServiceCommand::SpawnProcess { ownership, .. }
         | ExtensionServiceCommand::WriteStdin { ownership, .. }
         | ExtensionServiceCommand::CloseStdin { ownership, .. }
@@ -1774,30 +1741,9 @@ pub(crate) fn prepare_extension_service_command(
             target.session_id.clone(),
             target.vm_id.clone(),
         )),
-        ExtensionServiceCommand::AcpTerminationGrace { .. }
-        | ExtensionServiceCommand::DisposeSessionResources { .. } => None,
+        ExtensionServiceCommand::DisposeSessionResources { .. } => None,
     };
     let prepared = match command {
-        ExtensionServiceCommand::AcpTerminationGrace { reply } => {
-            let grace = sidecar.config.acp_termination_grace;
-            prepared_command(
-                "acp_termination_grace",
-                reply,
-                move || async move { Ok(grace) },
-            )
-        }
-        ExtensionServiceCommand::VmAcpLimits { ownership, reply } => {
-            let result = (|| {
-                let (connection_id, session_id, vm_id) = sidecar.vm_scope_for(&ownership)?;
-                sidecar.require_owned_vm(&connection_id, &session_id, &vm_id)?;
-                sidecar
-                    .vms
-                    .get(&vm_id)
-                    .map(|vm| vm.limits.acp.clone())
-                    .ok_or_else(|| SidecarError::InvalidState(format!("VM not found: {vm_id}")))
-            })();
-            prepared_command("vm_acp_limits", reply, move || async move { result })
-        }
         ExtensionServiceCommand::VmDatabase { ownership, reply } => {
             let result = (|| {
                 let (connection_id, session_id, vm_id) = sidecar.vm_scope_for(&ownership)?;
@@ -1805,27 +1751,6 @@ pub(crate) fn prepare_extension_service_command(
                 Ok(sidecar.vms.get(&vm_id).and_then(|vm| vm.database.clone()))
             })();
             prepared_command("vm_database", reply, move || async move { result })
-        }
-        ExtensionServiceCommand::ProjectedAgents { ownership, reply } => {
-            let result = (|| {
-                let (connection_id, session_id, vm_id) = sidecar.vm_scope_for(&ownership)?;
-                sidecar.require_owned_vm(&connection_id, &session_id, &vm_id)?;
-                let vm = sidecar
-                    .vms
-                    .get(&vm_id)
-                    .ok_or_else(|| SidecarError::InvalidState(format!("unknown VM {vm_id}")))?;
-                Ok(vm
-                    .projected_agent_launch
-                    .iter()
-                    .map(|(id, launch)| ProjectedAgentLaunchEntry {
-                        id: id.clone(),
-                        acp_entrypoint: launch.acp_entrypoint.clone(),
-                        env: launch.env.clone(),
-                        launch_args: launch.launch_args.clone(),
-                    })
-                    .collect())
-            })();
-            prepared_command("projected_agents", reply, move || async move { result })
         }
         ExtensionServiceCommand::SpawnProcess {
             ownership,

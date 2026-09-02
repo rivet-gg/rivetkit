@@ -41,9 +41,8 @@ export { createDefaultConvergedSidecar } from "./default-sidecar.js";
 export type { WorkerHandle } from "./worker-adapter.js";
 export { BrowserWorkerAdapter } from "./worker-adapter.js";
 
-// Async-agent executor primitives (AGENTOS-WEB-ASYNC-AGENTS.md): the SAB ring,
-// the kernel-worker reactor, and the execution-worker endpoint. Generic,
-// model-agnostic; the Agent OS ACP layer composes them.
+// Asynchronous executor primitives: the SAB ring, kernel-worker reactor, and
+// execution-worker endpoint.
 export {
 	SabRing,
 	SabRingProtocolError,
@@ -69,7 +68,7 @@ export {
 	ExecutionKilledError,
 } from "./sab-execution-endpoint.js";
 
-// The converged guest-syscall handler, reusable to service an agent execution's
+// The converged guest-syscall handler, reusable to service a guest execution's
 // syscalls over the in-worker pushFrame (the kernel reactor's serviceSyscall).
 export {
 	ConvergedSyncBridgeHandler,

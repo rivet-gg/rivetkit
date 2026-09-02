@@ -31,18 +31,22 @@ fn main() {
         "cargo:rerun-if-changed={}",
         manifest_dir
             .join("package-format")
-            .join("v1.bare")
+            .join("v2.bare")
             .display()
     );
 }
 
 fn stage_package_format_schema(manifest_dir: &Path, out_dir: &Path) {
-    let source_schema = manifest_dir.join("package-format").join("v1.bare");
+    let source_schema = manifest_dir.join("package-format").join("v2.bare");
     let schema_dir = out_dir.join("package-format-schema");
     fs::create_dir_all(&schema_dir).expect("failed to create generated package schema dir");
-    let schema_changed = copy_if_changed(&source_schema, &schema_dir.join("v1.bare"));
+    let legacy_schema = schema_dir.join("v1.bare");
+    if legacy_schema.exists() {
+        fs::remove_file(&legacy_schema).expect("failed to remove staged v1 package schema");
+    }
+    let schema_changed = copy_if_changed(&source_schema, &schema_dir.join("v2.bare"));
     let generated_missing =
-        !out_dir.join("combined_imports.rs").exists() || !out_dir.join("v1_generated.rs").exists();
+        !out_dir.join("combined_imports.rs").exists() || !out_dir.join("v2_generated.rs").exists();
     if !schema_changed && !generated_missing {
         return;
     }

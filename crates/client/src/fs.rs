@@ -682,9 +682,9 @@ impl AgentOs {
     }
 
     /// List directory entries with their resolved type, mirroring the TS `readDirWithTypes` used by
-    /// the ACP `fs/readDir` host request. `.`/`..` are filtered by the caller. A symlink is reported
+    /// a typed `fs/readDir` host request. `.`/`..` are filtered by the caller. A symlink is reported
     /// as a symlink (lstat-style, not followed); other entries are stat'd as directory vs file.
-    pub(crate) async fn acp_read_dir_with_types(&self, path: &str) -> Result<Vec<VirtualDirEntry>> {
+    pub async fn read_dir_with_types(&self, path: &str) -> Result<Vec<VirtualDirEntry>> {
         Self::assert_safe_absolute_path(path)?;
         let names = self.kernel_readdir(path).await?;
         let mut entries = Vec::with_capacity(names.len());
@@ -701,14 +701,6 @@ impl AgentOs {
             });
         }
         Ok(entries)
-    }
-
-    /// Typed directory listing: each child reported with its resolved type. agentos's native
-    /// `READ_DIR` returns basenames only (`entries: list<str>`), so the type of each entry is derived
-    /// with a per-child `lstat` (a symlink is reported as such, lstat-style, not followed). Goes
-    /// through the kernel, so mounts are listed correctly. `.`/`..` are filtered.
-    pub async fn read_dir_with_types(&self, path: &str) -> Result<Vec<VirtualDirEntry>> {
-        self.acp_read_dir_with_types(path).await
     }
 
     /// Recursive BFS listing; symlinks recorded but NOT descended; a stat failure aborts the call.
@@ -936,7 +928,7 @@ impl AgentOs {
                     software: Vec::new(),
                     permissions: Some(crate::agent_os::permissions_policy(config)),
                     module_access_cwd: None,
-                    instructions: config.additional_instructions.clone().into_iter().collect(),
+                    instructions: Vec::new(),
                     projected_modules: Vec::new(),
                     command_permissions: std::collections::HashMap::new(),
                     loopback_exempt_ports: config.loopback_exempt_ports.clone(),

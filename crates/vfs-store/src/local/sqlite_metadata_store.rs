@@ -21,7 +21,7 @@ struct LocalFsMigration {
 
 // This ladder belongs to the standalone rusqlite metadata database opened by
 // `SqliteMetadataStore`. It is not interchangeable with the filesystem ladder
-// installed in the per-VM descriptor database by `chunked_actor_sqlite`.
+// installed in the per-VM descriptor database by `chunked_sqlite`.
 const LOCAL_FS_MIGRATIONS: &[LocalFsMigration] = &[
     LocalFsMigration {
         version: 1,

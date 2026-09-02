@@ -15,10 +15,6 @@
 		"test:e2e": "vitest run gigacode.e2e.test.ts --reporter=verbose --pool=threads --maxWorkers=1 --minWorkers=1"
 	},
 	"dependencies": {
-		"@agentos-software/claude-code": "workspace:*",
-		"@agentos-software/codex": "workspace:*",
-		"@agentos-software/opencode": "workspace:*",
-		"@agentos-software/pi": "workspace:*",
 		"@agentos-software/ripgrep": "workspace:*",
 		"@rivet-dev/agentos": "workspace:*",
 		"opencode-ai": "1.17.20",

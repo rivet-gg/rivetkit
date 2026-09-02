@@ -16,9 +16,6 @@
     "@agentos-software/coreutils": "workspace:*",
     "@agentos-software/ripgrep": "workspace:*",
     "@agentos-software/jq": "workspace:*",
-    "@agentos-software/claude-code": "workspace:*",
-    "@agentos-software/opencode": "workspace:*",
-    "@agentos-software/pi": "workspace:*",
     "zod": "^4.1.11",
     "@rivet-dev/agentos": "workspace:*",
     "rivetkit": "catalog:rivetkit"

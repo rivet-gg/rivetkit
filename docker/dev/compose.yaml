@@ -23,7 +23,7 @@ services:
       - 8.8.8.8
     environment:
       # Unambiguous sidecar resolution; `just dev-bootstrap` builds this path.
-      AGENTOS_SIDECAR_BIN: /build/target/debug/agentos-sidecar
+      AGENTOS_SIDECAR_BIN: /build/target/debug/agentos-native-sidecar
       RUST_BACKTRACE: "1"
       # Vite/RivetKit must listen on all interfaces to be reachable from the host.
       HOST: 0.0.0.0

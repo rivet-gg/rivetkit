@@ -25,7 +25,7 @@ test("bumpCargoVersions bumps [workspace.package] and AgentOS path deps", async 
 version = "0.2.0"
 
 [workspace.dependencies]
-agentos-protocol = { path = "crates/agentos-protocol", version = "0.2.0-rc.3" }
+agentos-sidecar-protocol = { path = "crates/sidecar-protocol", version = "0.2.0-rc.3" }
 agentos-kernel = { path = "crates/kernel", version = "0.2.0-rc.3" }
 serde = "1"
 `,
@@ -38,7 +38,7 @@ name = "agentos-excluded-core"
 version = "0.2.0"
 
 [dependencies]
-agentos-protocol = { path = "../agentos-protocol", version = "0.2.0" }
+agentos-sidecar-protocol = { path = "../sidecar-protocol", version = "0.2.0" }
 `,
 		);
 
@@ -50,7 +50,7 @@ agentos-protocol = { path = "../agentos-protocol", version = "0.2.0" }
 		// ...AgentOS-owned crate deps (path = "crates/...") bumped...
 		assert.match(
 			cargoToml,
-			/agentos-protocol = \{ path = "crates\/agentos-protocol", version = "0\.3\.0" \}/,
+			/agentos-sidecar-protocol = \{ path = "crates\/sidecar-protocol", version = "0\.3\.0" \}/,
 		);
 		assert.match(
 			cargoToml,
@@ -64,7 +64,7 @@ agentos-protocol = { path = "../agentos-protocol", version = "0.2.0" }
 		assert.match(excludedCargoToml, /version = "0\.3\.0"/);
 		assert.match(
 			excludedCargoToml,
-			/agentos-protocol = \{ path = "\.\.\/agentos-protocol", version = "0\.3\.0" \}/,
+			/agentos-sidecar-protocol = \{ path = "\.\.\/sidecar-protocol", version = "0\.3\.0" \}/,
 		);
 	} finally {
 		await rm(repoRoot, { recursive: true, force: true });
@@ -84,7 +84,6 @@ test("bumpPackageJsons injects sidecar platform optional dependencies", async ()
 			[
 				"packages:",
 				"  - packages/*",
-				"  - packages/sidecar-binary/npm/*",
 				"  - packages/runtime-sidecar/npm/*",
 				"",
 			].join("\n"),
@@ -92,12 +91,7 @@ test("bumpPackageJsons injects sidecar platform optional dependencies", async ()
 		for (const [rel, name] of [
 			["packages/agentos", "@rivet-dev/agentos"],
 			["packages/core", "@rivet-dev/agentos-core"],
-			["packages/sidecar-binary", "@rivet-dev/agentos-sidecar"],
 			["packages/runtime-sidecar", "@rivet-dev/agentos-runtime-sidecar"],
-			...DEFAULT_SIDECAR_PLATFORMS.map((platform) => [
-				`packages/sidecar-binary/npm/${platform}`,
-				`@rivet-dev/agentos-sidecar-${platform}`,
-			]),
 			...DEFAULT_SIDECAR_PLATFORMS.map((platform) => [
 				`packages/runtime-sidecar/npm/${platform}`,
 				`@rivet-dev/agentos-runtime-sidecar-${platform}`,
@@ -113,32 +107,16 @@ test("bumpPackageJsons injects sidecar platform optional dependencies", async ()
 			repository: "rivet-dev/agentos",
 		});
 
-		const sidecarManifest = JSON.parse(
-			await readFile(
-				join(repoRoot, "packages/sidecar-binary/package.json"),
-				"utf8",
-			),
-		);
-		assert.deepEqual(
-			sidecarManifest.optionalDependencies,
-			Object.fromEntries(
-				DEFAULT_SIDECAR_PLATFORMS.map((platform) => [
-					`@rivet-dev/agentos-sidecar-${platform}`,
-					"0.3.0",
-				]).sort(),
-			),
-		);
-
 		const runtimeSidecarManifest = JSON.parse(
 			await readFile(
 				join(repoRoot, "packages/runtime-sidecar/package.json"),
 				"utf8",
 			),
 		);
-		assert.deepEqual(sidecarManifest.repository, {
+		assert.deepEqual(runtimeSidecarManifest.repository, {
 			type: "git",
 			url: "https://github.com/rivet-dev/agentos.git",
-			directory: "packages/sidecar-binary",
+			directory: "packages/runtime-sidecar",
 		});
 		assert.deepEqual(
 			runtimeSidecarManifest.optionalDependencies,

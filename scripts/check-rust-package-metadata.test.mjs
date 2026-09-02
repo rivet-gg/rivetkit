@@ -20,13 +20,6 @@ function pkg(name, manifestPath, targets, overrides = {}) {
 
 const validMetadata = {
 	packages: [
-		pkg("agentos-protocol", "crates/agentos-protocol/Cargo.toml", [
-			{ kind: ["lib"], name: "agentos_protocol" },
-		]),
-		pkg("agentos-sidecar", "crates/agentos-sidecar/Cargo.toml", [
-			{ kind: ["lib"], name: "agentos_sidecar_wrapper" },
-			{ kind: ["bin"], name: "agentos-sidecar" },
-		]),
 		pkg("agentos-client", "crates/client/Cargo.toml", [
 			{ kind: ["lib"], name: "agentos_client" },
 		]),

@@ -62,8 +62,8 @@ pub use identity::{shared_guest_runtime_identity, SharedGuestRuntimeIdentity};
 pub use layers::{VmLayerStore, MAX_VM_LAYERS};
 pub use limits::{
     validate_vm_limits, virtual_os_cpu_count, virtual_os_freemem_bytes, virtual_os_totalmem_bytes,
-    vm_limits_from_config, AcpLimits, BindingLimits, HttpLimits, JsRuntimeLimits, PluginLimits,
-    PythonLimits, VmLimits, WasmLimits,
+    vm_limits_from_config, BindingLimits, HttpLimits, JsRuntimeLimits, PluginLimits, PythonLimits,
+    VmLimits, WasmLimits,
 };
 pub use net::{
     local_endpoint_value, remote_endpoint_value, socket_addr_family, socket_address_value,

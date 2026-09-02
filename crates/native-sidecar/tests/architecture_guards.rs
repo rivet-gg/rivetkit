@@ -323,10 +323,6 @@ const FS_ALLOW: &[&str] = &[
     // it never handles guest paths at runtime.
     "crates/vfs/src/package_format/mod.rs",
     "crates/vfs/src/package_format/pack.rs",
-    // ACP trace output is an operator-selected host diagnostic sink. The
-    // extension is split mechanically across its module root and restore path.
-    "crates/agentos-sidecar/src/acp/mod.rs",
-    "crates/agentos-sidecar/src/acp/restore.rs",
     // Tar-backed read-only VFS: mmaps the trusted, client-configured package
     // tar from the host and serves member byte ranges without extracting.
     // Same sanctioned read-only host-source boundary as host_dir.rs (the tar is
@@ -384,12 +380,6 @@ const NET_ALLOW: &[&str] = &[
     "crates/execution/src/v8_runtime.rs",
     // client spawns + connects to the sidecar helper
     "crates/sidecar-client/src/transport.rs",
-    // Authenticated local transport from the sidecar to the owning actor's
-    // SQLite UDS endpoint. This is local IPC, not external network egress.
-    "crates/actor-uds-client/src/lib.rs",
-    // Test-only actor SQLite UDS fixture; it opens local Unix sockets but no
-    // external network connection.
-    "crates/agentos-sidecar/src/session_store/performance_tests.rs",
 ];
 
 /// process: OS subprocess creation.
@@ -414,9 +404,6 @@ const PROCESS_ALLOW: &[&str] = &[
 const ENV_ALLOW: &[&str] = &[
     "crates/sidecar-client/src/transport.rs",
     "crates/client/src/sidecar.rs",
-    // Operator-selected ACP trace output path.
-    "crates/agentos-sidecar/src/acp/restore.rs",
-    "crates/agentos-sidecar/src/main.rs",
     "crates/execution/src/host_node.rs",
     // Node import cache reads an operator timeout knob before materializing
     // host-side runtime assets for VM startup.
@@ -631,7 +618,7 @@ fn dependency_keys(manifest: &Path) -> BTreeSet<String> {
 }
 
 #[test]
-fn generic_runtime_layers_do_not_depend_on_product_or_acp_layers() {
+fn generic_runtime_layers_do_not_depend_on_product_layers() {
     let root = repo_root();
     let lower_layers = [
         "runtime",
@@ -660,7 +647,7 @@ fn generic_runtime_layers_do_not_depend_on_product_or_acp_layers() {
     }
     assert!(
         violations.is_empty(),
-        "generic runtime layers depend on product/ACP layers:\n{}",
+        "generic runtime layers depend on product layers:\n{}",
         violations.join("\n")
     );
 }
@@ -689,7 +676,7 @@ fn native_sidecar_has_no_prompt_specific_interrupt_workaround() {
         for marker in obsolete {
             assert!(
                 !source.contains(marker),
-                "generic native-sidecar routing must not restore ACP prompt workaround marker {marker} in {relative_path}"
+                "generic native-sidecar routing must not restore protocol-specific interrupt marker {marker} in {relative_path}"
             );
         }
     }
@@ -697,7 +684,7 @@ fn native_sidecar_has_no_prompt_specific_interrupt_workaround() {
     let native_manifest = dependency_keys(&root.join("crates/native-sidecar/Cargo.toml"));
     assert!(
         !native_manifest.contains("agentos-protocol"),
-        "native-sidecar must classify extension progress without depending on ACP protocol types"
+        "native-sidecar must classify extension progress without depending on product protocol types"
     );
 
     let extension_contract =
@@ -1040,41 +1027,6 @@ fn generic_request_preparation_defers_business_handlers() {
             "host callback preparation must not execute {forbidden} before its owned future is polled"
         );
     }
-}
-
-#[test]
-fn shared_acp_runtime_has_no_adapter_name_policy() {
-    let root = repo_root();
-    let production = ["mod.rs", "runtime.rs", "restore.rs", "turn.rs"]
-        .into_iter()
-        .map(|file| {
-            let source =
-                std::fs::read_to_string(root.join("crates/agentos-sidecar/src/acp").join(file))
-                    .unwrap_or_else(|error| panic!("read native ACP module {file}: {error}"));
-            source
-                .split("#[cfg(test)]")
-                .next()
-                .unwrap_or(&source)
-                .to_owned()
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-    for adapter_name in [
-        "\"claude\"",
-        "\"codex\"",
-        "\"opencode\"",
-        "\"pi\"",
-        "\"pi-cli\"",
-    ] {
-        assert!(
-            !production.contains(adapter_name),
-            "shared ACP runtime must not branch on adapter name {adapter_name}; put launch compatibility in the AgentOS-owned package launcher"
-        );
-    }
-    assert!(
-        production.contains("ACP_APPEND_SYSTEM_PROMPT_ENV"),
-        "shared ACP runtime must use the adapter-neutral package-launch contract"
-    );
 }
 
 #[test]
@@ -1574,8 +1526,8 @@ fn production_threads_match_the_reviewed_topology_manifest() {
     let mut observed = BTreeSet::new();
     let mut unmarked = Vec::new();
     // This census covers every production crate, not only the reactor's
-    // dependency closure. ACP/session or client-side support code runs in the
-    // same sidecar process and may not introduce an unreviewed OS thread either.
+    // dependency closure. Client-side support code runs in the same sidecar
+    // process and may not introduce an unreviewed OS thread either.
     for rel in production_source_files(&root) {
         if is_excluded_file(&rel) {
             continue;
@@ -1660,10 +1612,6 @@ fn protocol_and_abort_delivery_have_no_recurring_poll_timer() {
     let root = repo_root();
     for (relative_path, forbidden) in [
         (
-            "crates/agentos-sidecar/src/acp/runtime.rs",
-            &["ACP_JSON_RPC_POLL_INTERVAL", "remaining.min(ACP_"][..],
-        ),
-        (
             "crates/native-sidecar/src/stdio.rs",
             &["write_rx.recv_timeout(Duration::from_millis(5))"][..],
         ),
@@ -1720,10 +1668,7 @@ fn standalone_wasm_wait_has_no_recurring_adapter_poll() {
 fn browser_sources_are_retained_but_disabled_from_native_build_and_publish_gates() {
     let root = repo_root();
     for relative_path in [
-        "crates/agentos-sidecar-core/src",
-        "crates/agentos-sidecar-browser/src",
         "crates/native-sidecar-browser/src",
-        "packages/browser/src",
         "packages/runtime-browser/src",
     ] {
         assert!(
@@ -1733,9 +1678,7 @@ fn browser_sources_are_retained_but_disabled_from_native_build_and_publish_gates
     }
 
     for relative_path in [
-        "crates/agentos-sidecar-browser/src/lib.rs",
         "crates/native-sidecar-browser/src/lib.rs",
-        "packages/browser/src/index.ts",
         "packages/runtime-browser/src/index.ts",
     ] {
         let source = std::fs::read_to_string(root.join(relative_path))
@@ -1763,26 +1706,13 @@ fn browser_sources_are_retained_but_disabled_from_native_build_and_publish_gates
 
     let workspace =
         std::fs::read_to_string(root.join("Cargo.toml")).expect("read workspace Cargo.toml");
-    assert!(
-        workspace.contains("exclude = [\"software\", \"crates/agentos-sidecar-core\"]"),
-        "the obsolete browser-only ACP state machine must remain outside the native workspace"
-    );
-    let obsolete_core =
-        std::fs::read_to_string(root.join("crates/agentos-sidecar-core/Cargo.toml"))
-            .expect("read obsolete browser-only ACP core manifest");
-    assert!(
-        obsolete_core.contains("publish = false"),
-        "the obsolete browser-only ACP state machine must not be publishable"
-    );
+    assert!(workspace.contains("exclude = [\"software\"]"));
     let default_members = workspace
         .split("default-members = [")
         .nth(1)
         .and_then(|tail| tail.split(']').next())
         .expect("workspace must declare default-members while browser is disabled");
-    for browser_crate in [
-        "crates/agentos-sidecar-browser",
-        "crates/native-sidecar-browser",
-    ] {
+    for browser_crate in ["crates/native-sidecar-browser"] {
         assert!(
             workspace.contains(&format!("\"{browser_crate}\"")),
             "retained browser crate must remain a workspace member: {browser_crate}"
@@ -1801,7 +1731,7 @@ fn browser_sources_are_retained_but_disabled_from_native_build_and_publish_gates
         );
     }
 
-    for browser_package in ["packages/browser", "packages/runtime-browser"] {
+    for browser_package in ["packages/runtime-browser"] {
         let manifest = std::fs::read_to_string(root.join(browser_package).join("package.json"))
             .unwrap_or_else(|error| panic!("read {browser_package}/package.json: {error}"));
         assert!(
@@ -1813,10 +1743,7 @@ fn browser_sources_are_retained_but_disabled_from_native_build_and_publish_gates
     let publish_discovery =
         std::fs::read_to_string(root.join("scripts/publish/src/lib/packages.ts"))
             .expect("read npm publish discovery");
-    for package in [
-        "@rivet-dev/agentos-browser",
-        "@rivet-dev/agentos-runtime-browser",
-    ] {
+    for package in ["@rivet-dev/agentos-runtime-browser"] {
         assert!(
             publish_discovery.contains(&format!("\"{package}\"")),
             "disabled browser package must remain explicitly denied by publish discovery: {package}"
@@ -1830,10 +1757,7 @@ fn browser_sources_are_retained_but_disabled_from_native_build_and_publish_gates
     ] {
         let source = std::fs::read_to_string(root.join(relative_path))
             .unwrap_or_else(|error| panic!("read {relative_path}: {error}"));
-        for package in [
-            "!@rivet-dev/agentos-browser",
-            "!@rivet-dev/agentos-runtime-browser",
-        ] {
+        for package in ["!@rivet-dev/agentos-runtime-browser"] {
             assert!(
                 source.contains(package),
                 "{relative_path} must explicitly filter disabled package {package}"
@@ -1848,12 +1772,11 @@ fn browser_sources_are_retained_but_disabled_from_native_build_and_publish_gates
     ] {
         let source = std::fs::read_to_string(root.join(relative_path))
             .unwrap_or_else(|error| panic!("read {relative_path}: {error}"));
-        for browser_crate in ["agentos-sidecar-browser", "agentos-native-sidecar-browser"] {
-            assert!(
-                source.contains(&format!("--exclude {browser_crate}")),
-                "{relative_path} must exclude disabled Rust crate {browser_crate}"
-            );
-        }
+        let browser_crate = "agentos-native-sidecar-browser";
+        assert!(
+            source.contains(&format!("--exclude {browser_crate}")),
+            "{relative_path} must exclude disabled Rust crate {browser_crate}"
+        );
     }
 }
 

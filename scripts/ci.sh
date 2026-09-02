@@ -48,9 +48,7 @@ run_step node --test scripts/check-rustfmt.test.mjs
 run_step node scripts/check-rustfmt.mjs
 # Browser support is retained in-tree but disabled during the unified native
 # sidecar reactor migration, so it must not gate native CI.
-run_step cargo clippy --workspace --exclude agentos-sidecar-browser --exclude agentos-native-sidecar-browser --all-targets -- -D warnings
-run_step cargo test -p agentos-protocol -- --test-threads=1
-run_step cargo test -p agentos-sidecar -- --test-threads=1
+run_step cargo clippy --workspace --exclude agentos-native-sidecar-browser --all-targets -- -D warnings
 run_step cargo test -p agentos-client -- --test-threads=1
 run_step pnpm check-types
 run_step pnpm lint

@@ -45,8 +45,7 @@
 		"@agentos-software/fd": "workspace:*",
 		"@agentos-software/tree": "workspace:*",
 		"@agentos-software/file": "workspace:*",
-		"@agentos-software/yq": "workspace:*",
-		"@agentos-software/codex-cli": "workspace:*"
+		"@agentos-software/yq": "workspace:*"
 	},
 	"devDependencies": {
 		"@agentos-software/manifest": "workspace:*",

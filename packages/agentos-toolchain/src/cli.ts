@@ -12,8 +12,7 @@ const USAGE = `agentos-toolchain — build, stage, and publish agentOS packages
 Usage:
   agentos-toolchain pack <npm-pkg | ./local-dir> [options]
       Pack an npm package or local script dir into a self-contained agentOS
-      package tar (JS agents / node closures).
-        --agent <command>   mark a bin command as the package's ACP entrypoint
+      package tar (JavaScript package closures).
         --out <tar>         output tar (default: ./<input-name>-package.tar)
         --prune-native      delete unreachable native .node addons
         --omit-optional     omit optional npm dependencies from the closure
@@ -52,7 +51,6 @@ interface ParsedArgs {
 
 /** Flags in this set take a value; all others are booleans. */
 const VALUE_FLAGS = new Set([
-	"--agent",
 	"--out",
 	"--commands-dir",
 	"--if-missing",
@@ -115,7 +113,6 @@ function main(): void {
 		}
 		case "pack": {
 			requireKnownFlags(args, [
-				"--agent",
 				"--out",
 				"--prune-native",
 				"--omit-optional",
@@ -130,7 +127,6 @@ function main(): void {
 					(args.flags.get("--out") as string | undefined) ??
 						defaultOutName(source),
 				),
-				agent: args.flags.get("--agent") as string | undefined,
 				pruneNative: args.flags.get("--prune-native") === true,
 				omitOptional: args.flags.get("--omit-optional") === true,
 			});

@@ -41,7 +41,6 @@ function createStubClient(options?: { failConfigureVm?: boolean }) {
 				appliedMounts: [],
 				appliedSoftware: [],
 				projectedCommands: [],
-				agents: [],
 			};
 		},
 		async disposeVm() {},

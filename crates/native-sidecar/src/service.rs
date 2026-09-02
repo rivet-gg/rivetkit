@@ -24,7 +24,7 @@ use crate::extension::{
 use crate::filesystem::{
     guest_filesystem_call as filesystem_guest_filesystem_call, guest_filesystem_call_vm,
 };
-use crate::limits::DEFAULT_ACP_STDOUT_BUFFER_BYTE_LIMIT;
+use crate::limits::DEFAULT_EXTENSION_OUTPUT_BUFFER_BYTE_LIMIT;
 use crate::process_event_broker::{
     ProcessEventBroker, ProcessEventBrokerError, ProcessEventIngress, ProcessEventTarget,
 };
@@ -1154,11 +1154,6 @@ where
                 "native sidecar expected_auth_token must not be empty",
             )));
         }
-        if config.acp_termination_grace.is_zero() {
-            return Err(SidecarError::InvalidState(String::from(
-                "ERR_AGENTOS_RUNTIME_CONFIG: NativeSidecarConfig.acp_termination_grace must be greater than zero",
-            )));
-        }
         let dns_resolver: agentos_kernel::dns::SharedDnsResolver = Arc::new(
             agentos_kernel::dns::HickoryDnsResolver::with_runtime(runtime_context.clone()),
         );
@@ -1306,7 +1301,7 @@ where
     /// Called unconditionally from `dispose_vm_internal` so that a fallible
     /// teardown step (root-filesystem snapshot/flush, kernel dispose, permission
     /// reset) erroring out with `?` can never strand these maps for the rest of
-    /// the process lifetime (H1). This also reclaims the ACP output-buffer map,
+    /// the process lifetime (H1). This also reclaims extension output buffers,
     /// which was previously removed only on a successful handoff and leaked on VM
     /// or session disposal (M6).
     pub(crate) fn reclaim_vm_tracking(&mut self, session_id: &str, vm_id: &str) {
@@ -1471,11 +1466,11 @@ where
         };
         match event {
             ActiveExecutionEvent::Stdout(chunk) => {
-                buffer.append_stdout(chunk, DEFAULT_ACP_STDOUT_BUFFER_BYTE_LIMIT);
+                buffer.append_stdout(chunk, DEFAULT_EXTENSION_OUTPUT_BUFFER_BYTE_LIMIT);
                 true
             }
             ActiveExecutionEvent::Stderr(chunk) => {
-                buffer.append_stderr(chunk, DEFAULT_ACP_STDOUT_BUFFER_BYTE_LIMIT);
+                buffer.append_stderr(chunk, DEFAULT_EXTENSION_OUTPUT_BUFFER_BYTE_LIMIT);
                 true
             }
             ActiveExecutionEvent::JavascriptSyncRpcRequest(_)
@@ -5019,24 +5014,6 @@ where
     B: NativeSidecarBridge + Send + 'static,
     BridgeError<B>: fmt::Debug + Send + Sync + 'static,
 {
-    fn acp_termination_grace<'a>(&'a mut self) -> ExtensionFuture<'a, Duration> {
-        Box::pin(async move { Ok(self.config.acp_termination_grace) })
-    }
-
-    fn vm_acp_limits<'a>(
-        &'a mut self,
-        ownership: OwnershipScope,
-    ) -> ExtensionFuture<'a, agentos_native_sidecar_core::limits::AcpLimits> {
-        Box::pin(async move {
-            let (connection_id, session_id, vm_id) = self.vm_scope_for(&ownership)?;
-            self.require_owned_vm(&connection_id, &session_id, &vm_id)?;
-            self.vms
-                .get(&vm_id)
-                .map(|vm| vm.limits.acp.clone())
-                .ok_or_else(|| SidecarError::InvalidState(format!("VM not found: {vm_id}")))
-        })
-    }
-
     fn vm_database<'a>(
         &'a mut self,
         ownership: OwnershipScope,
@@ -5127,34 +5104,6 @@ where
     ) -> ExtensionFuture<'a, Option<EventFrame>> {
         Box::pin(async move {
             NativeSidecar::poll_process_event(self, &ownership, &process_id, timeout).await
-        })
-    }
-
-    fn projected_agents<'a>(
-        &'a mut self,
-        ownership: OwnershipScope,
-    ) -> ExtensionFuture<'a, Vec<crate::extension::ProjectedAgentLaunchEntry>> {
-        Box::pin(async move {
-            let (connection_id, session_id, vm_id) = self.vm_scope_for(&ownership)?;
-            self.require_owned_vm(&connection_id, &session_id, &vm_id)?;
-            let vm = self
-                .vms
-                .get(&vm_id)
-                .ok_or_else(|| SidecarError::InvalidState(format!("unknown VM {vm_id}")))?;
-            Ok(vm
-                .projected_agent_launch
-                .iter()
-                .map(
-                    |(id, launch): (&String, &crate::state::ProjectedAgentLaunch)| {
-                        crate::extension::ProjectedAgentLaunchEntry {
-                            id: id.clone(),
-                            acp_entrypoint: launch.acp_entrypoint.clone(),
-                            env: launch.env.clone(),
-                            launch_args: launch.launch_args.clone(),
-                        }
-                    },
-                )
-                .collect())
         })
     }
 
@@ -7153,7 +7102,7 @@ mod dispose_lifecycle_tests {
     }
 
     // H4: the extension per-session teardown hook fires on ConnectionClosed so an
-    // ACP-style extension can release per-session state on client disconnect.
+    // Extensions can release per-connection state on client disconnect.
     #[test]
     fn connection_closed_dispose_invokes_extension_session_teardown() {
         let mut sidecar = test_sidecar();

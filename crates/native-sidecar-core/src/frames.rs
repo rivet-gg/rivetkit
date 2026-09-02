@@ -1,11 +1,11 @@
 use agentos_sidecar_protocol::protocol::{
-    AgentosProjectedAgent, AuthenticateRequest, AuthenticatedResponse, BoundUdpSnapshotResponse,
-    EventFrame, EventPayload, LayerCreatedResponse, LayerSealedResponse, ListMountsResponse,
-    ListenerSnapshotResponse, MountInfo, OverlayCreatedResponse, OwnershipScope, PackageCommands,
-    PackageLinkedResponse, ProcessExitedEvent, ProcessKilledResponse, ProcessOutputEvent,
-    ProcessSnapshotEntry, ProcessSnapshotResponse, ProcessStartedResponse, ProjectedCommand,
-    ProtocolSchema, ProvidedCommandsResponse, RejectedResponse, RequestFrame, RequestId,
-    ResponseFrame, ResponsePayload, RootFilesystemBootstrappedResponse, RootFilesystemEntry,
+    AuthenticateRequest, AuthenticatedResponse, BoundUdpSnapshotResponse, EventFrame, EventPayload,
+    LayerCreatedResponse, LayerSealedResponse, ListMountsResponse, ListenerSnapshotResponse,
+    MountInfo, OverlayCreatedResponse, OwnershipScope, PackageCommands, PackageLinkedResponse,
+    ProcessExitedEvent, ProcessKilledResponse, ProcessOutputEvent, ProcessSnapshotEntry,
+    ProcessSnapshotResponse, ProcessStartedResponse, ProjectedCommand, ProtocolSchema,
+    ProvidedCommandsResponse, RejectedResponse, RequestFrame, RequestId, ResponseFrame,
+    ResponsePayload, RootFilesystemBootstrappedResponse, RootFilesystemEntry,
     RootFilesystemSnapshotResponse, SessionOpenedResponse, SignalHandlerRegistration,
     SignalStateResponse, SnapshotExportedResponse, SnapshotImportedResponse, SocketStateEntry,
     StdinClosedResponse, StdinWrittenResponse, StreamChannel, StructuredEvent,
@@ -169,7 +169,6 @@ pub fn vm_configured_response(
     applied_mounts: u32,
     applied_software: u32,
     projected_commands: Vec<ProjectedCommand>,
-    agents: Vec<AgentosProjectedAgent>,
 ) -> ResponseFrame {
     respond(
         request,
@@ -177,7 +176,6 @@ pub fn vm_configured_response(
             applied_mounts,
             applied_software,
             projected_commands,
-            agents,
         }),
     )
 }
@@ -185,14 +183,10 @@ pub fn vm_configured_response(
 pub fn package_linked_response(
     request: &RequestFrame,
     projected_commands: Vec<ProjectedCommand>,
-    agents: Vec<AgentosProjectedAgent>,
 ) -> ResponseFrame {
     respond(
         request,
-        ResponsePayload::PackageLinked(PackageLinkedResponse {
-            projected_commands,
-            agents,
-        }),
+        ResponsePayload::PackageLinked(PackageLinkedResponse { projected_commands }),
     )
 }
 
@@ -600,7 +594,7 @@ mod tests {
             RequestPayload::Authenticate(authenticate_request()),
         );
 
-        match vm_configured_response(&request, 2, 3, Vec::new(), Vec::new()).payload {
+        match vm_configured_response(&request, 2, 3, Vec::new()).payload {
             ResponsePayload::VmConfigured(configured) => {
                 assert_eq!(configured.applied_mounts, 2);
                 assert_eq!(configured.applied_software, 3);

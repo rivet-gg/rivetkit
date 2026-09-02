@@ -113,7 +113,7 @@ pub struct AgentOsSidecar {
     pub(crate) shared_pool: Option<String>,
     pub(crate) state: AtomicU8,
     pub(crate) active_vm_count: AtomicU32,
-    /// Absolute path to the `agentos-sidecar` binary, threaded from `AgentOsConfig` when present.
+    /// Absolute path to the `agentos-native-sidecar` binary, threaded from `AgentOsConfig` when present.
     /// Otherwise `ensure_connection` resolves the Agent OS env fallback and passes an explicit path
     /// to the generic transport.
     pub(crate) sidecar_binary_path: Option<String>,
@@ -142,7 +142,7 @@ impl AgentOsSidecar {
     }
 
     /// Get (or lazily establish) the shared sidecar process + authenticated connection. The first
-    /// caller spawns the `agentos-sidecar` child and runs the `Authenticate` handshake; subsequent
+    /// caller spawns the native sidecar child and runs the `Authenticate` handshake; subsequent
     /// callers reuse the same transport + connection id. This is what makes a shared sidecar host
     /// multiple VMs in one process.
     pub(crate) async fn ensure_connection(
@@ -209,7 +209,7 @@ impl AgentOsSidecar {
         self.sidecar_binary_path
             .clone()
             .or_else(|| std::env::var(AGENTOS_SIDECAR_BIN_ENV).ok())
-            .unwrap_or_else(|| "agentos-sidecar".to_string())
+            .unwrap_or_else(|| "agentos-native-sidecar".to_string())
     }
 
     /// Snapshot the sidecar's current state. SYNC.
@@ -364,7 +364,7 @@ fn shared_sidecar_pool_limit_error() -> ClientError {
 }
 
 impl AgentOs {
-    /// Create an explicit sidecar handle. `sidecar_id` defaults to `agentos-sidecar-<uuid>`.
+    /// Create an explicit sidecar handle. `sidecar_id` defaults to `agentos-native-sidecar-<uuid>`.
     ///
     /// Parity with TypeScript `createAgentOsSidecarInternal`: the explicit handle carries an
     /// `Explicit` placement whose `sidecar_id` echoes the resolved id and has no shared pool.
@@ -372,7 +372,7 @@ impl AgentOs {
         sidecar_id: Option<String>,
     ) -> Result<Arc<AgentOsSidecar>, ClientError> {
         let sidecar_id =
-            sidecar_id.unwrap_or_else(|| format!("agentos-sidecar-{}", Uuid::new_v4()));
+            sidecar_id.unwrap_or_else(|| format!("agentos-native-sidecar-{}", Uuid::new_v4()));
         let placement = AgentOsSidecarPlacement::Explicit {
             sidecar_id: sidecar_id.clone(),
         };
@@ -488,12 +488,12 @@ mod tests {
     fn sidecar_binary_path_uses_agent_os_env_fallback() {
         let _guard = ENV_LOCK.lock().expect("env lock");
         let previous = std::env::var(AGENTOS_SIDECAR_BIN_ENV).ok();
-        std::env::set_var(AGENTOS_SIDECAR_BIN_ENV, "/tmp/agentos-sidecar");
+        std::env::set_var(AGENTOS_SIDECAR_BIN_ENV, "/tmp/agentos-native-sidecar");
         let sidecar = shared("env-test", SidecarState::Ready);
 
         assert_eq!(
             sidecar.resolved_sidecar_binary_path(),
-            "/tmp/agentos-sidecar"
+            "/tmp/agentos-native-sidecar"
         );
 
         restore_env(AGENTOS_SIDECAR_BIN_ENV, previous);
@@ -506,7 +506,10 @@ mod tests {
         std::env::remove_var(AGENTOS_SIDECAR_BIN_ENV);
         let sidecar = shared("default-test", SidecarState::Ready);
 
-        assert_eq!(sidecar.resolved_sidecar_binary_path(), "agentos-sidecar");
+        assert_eq!(
+            sidecar.resolved_sidecar_binary_path(),
+            "agentos-native-sidecar"
+        );
 
         restore_env(AGENTOS_SIDECAR_BIN_ENV, previous);
     }

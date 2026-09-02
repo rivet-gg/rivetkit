@@ -218,7 +218,6 @@ describe("generated sidecar protocol", () => {
 						appliedMounts: 2,
 						appliedSoftware: 0,
 						projectedCommands: [],
-						agents: [],
 					},
 				},
 			},
@@ -241,7 +240,6 @@ describe("generated sidecar protocol", () => {
 				applied_mounts: 2,
 				applied_software: 0,
 				projected_commands: [],
-				agents: [],
 			},
 		});
 	});

@@ -82,14 +82,7 @@ install-gigacode:
 shell *args:
 	#!/usr/bin/env bash
 	set -euo pipefail
-	actor_mode=false
-	for arg in "$@"; do
-		if [[ "$arg" == "--actor" ]]; then
-			actor_mode=true
-		fi
-	done
 	if [[ ! -x packages/shell/node_modules/.bin/tsx \
-		|| ! -e packages/shell/node_modules/@agentos-software/codex-cli \
 		|| ! -d packages/build-tools/node_modules ]]; then
 		pnpm install --force
 	fi
@@ -124,27 +117,9 @@ shell *args:
 		pnpm --filter @rivet-dev/agentos-core build
 		pnpm --filter @rivet-dev/agentos build
 	fi
-	if [[ "$actor_mode" == true ]]; then
-		r6_root="${AGENTOS_R6_ROOT:-$PWD/../r6}"
-		rivetkit_loader="$r6_root/rivetkit-typescript/packages/rivetkit/node_modules/tsx/dist/loader.mjs"
-		if [[ ! -e "$r6_root/pnpm-lock.yaml" ]]; then
-			echo "just shell --actor requires the Rivet repo at $r6_root (override with AGENTOS_R6_ROOT)" >&2
-			exit 1
-		fi
-		if [[ ! -e "$rivetkit_loader" ]]; then
-			pnpm --dir "$r6_root" install --frozen-lockfile --filter 'rivetkit...'
-		fi
-		if [[ ! -e "$r6_root/shared/typescript/virtual-websocket/dist/mod.js" \
-			|| ! -e "$r6_root/rivetkit-typescript/packages/traces/dist/tsup/index.js" \
-			|| ! -e "$r6_root/rivetkit-typescript/packages/workflow-engine/dist/tsup/index.js" \
-			|| ! -e "$r6_root/engine/sdks/typescript/envoy-protocol/dist/index.js" \
-			|| ! -e "$r6_root/rivetkit-typescript/packages/rivetkit-wasm/pkg/rivetkit_wasm.js" ]]; then
-			pnpm --dir "$r6_root" --filter 'rivetkit...' build
-		fi
-	fi
-	CARGO_TARGET_DIR="$PWD/target" cargo build -p agentos-sidecar
+	CARGO_TARGET_DIR="$PWD/target" cargo build -p agentos-native-sidecar
 	env \
-		AGENTOS_SIDECAR_BIN="$PWD/target/debug/agentos-sidecar" \
+		AGENTOS_SIDECAR_BIN="$PWD/target/debug/agentos-native-sidecar" \
 		NODE_OPTIONS="--no-deprecation ${NODE_OPTIONS:-}" \
 		pnpm --filter @rivet-dev/agentos-shell exec tsx src/main.ts "$@"
 
@@ -386,11 +361,9 @@ dev-bootstrap:
 		just toolchain-copy-commands; \
 		echo "==> software packages"; \
 		pnpm --filter "@agentos-software/*" \
-			--filter "!@agentos-software/codex" \
-			--filter "!@agentos-software/codex-cli" \
 			--filter "!@agentos-software/everything" build; \
-		echo "==> agentos-sidecar (debug)"; \
-		cargo build -p agentos-sidecar; \
+		echo "==> agentos-native-sidecar (debug)"; \
+		cargo build -p agentos-native-sidecar; \
 		echo "==> workspace TypeScript"; \
 		pnpm --filter @rivet-dev/agentos-core --filter @rivet-dev/agentos-runtime-core build; \
 		pnpm --filter @rivet-dev/agentos build; \

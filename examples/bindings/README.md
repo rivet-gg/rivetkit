@@ -1,26 +1,24 @@
 ---
 title: "Bindings"
-description: "Expose host functions to the agent as CLI commands via Zod-typed bindings."
+description: "Expose trusted host functions to embedded VMs as Zod-typed commands."
 category: "Reference"
 order: 3
 ---
 
-Give an agent access to your own host code—API calls, database lookups, internal services—through type-safe inputs and an auto-generated CLI surface inside the VM.
+Give embedded VM programs access to trusted host code—API calls, database lookups, and internal services—through type-safe inputs and an auto-generated CLI surface.
 
 ## How it works
 
-A binding collection bundles a `name`, a `description`, and a map of named `bindings`. Each binding declares a Zod `inputSchema`, an `execute` handler that runs on the host, and optional `examples`. Pass collections to `agentOS({ bindings: [...] })`; AgentOS exposes each collection as `/usr/local/bin/agentos-{name}` inside the VM. When an agent invokes a binding, its schema validates the arguments before the handler executes host-side.
+A binding collection bundles a `name`, a `description`, and a map of named `bindings`. Each binding declares a Zod `inputSchema`, an `execute` handler that runs on the host, and optional `examples`. Pass collections to `AgentOs.create({ bindings: [...] })`; agentOS exposes each collection as `/usr/local/bin/agentos-{name}` inside the VM. The hosted actor intentionally does not expose bindings because its guest cannot be trusted with host capabilities.
 
 ## Run it
 
 ```sh
 npm install
-ANTHROPIC_API_KEY=sk-... npx tsx server.ts
-# in another terminal:
-npx tsx client.ts
+WEATHER_API_KEY=... npx tsx exec-bash.ts
 ```
 
-The agent receives the prompt, calls the `weather` forecast binding, and answers using the host-side result.
+The guest command calls the `weather` binding and writes the host-side result into the VM filesystem.
 
 ## Source
 

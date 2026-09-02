@@ -7,11 +7,11 @@ export const MAX_BINDING_DESCRIPTION_LENGTH = 200;
  * A single binding that executes on the host.
  */
 export interface Binding<INPUT = any, OUTPUT = any> {
-	/** Description shown to the agent in --help and prompt docs. Max 200 characters. */
+	/** Description shown to guest programs in generated help. Max 200 characters. */
 	description: string;
 	/** Zod schema for the input. Drives CLI flag generation and validation. */
 	inputSchema: ZodType<INPUT>;
-	/** Runs on the host when the agent invokes the binding. */
+	/** Runs on the host when a guest program invokes the binding. */
 	execute: (input: INPUT) => Promise<OUTPUT> | OUTPUT;
 	/** Examples included in auto-generated prompt docs. */
 	examples?: BindingExample<INPUT>[];

@@ -6,12 +6,12 @@ import {
 } from "../src/sandbox.js";
 
 describe("AgentOsOptions validation", () => {
-	test("accepts the path-only actor runtime socket descriptor", () => {
+	test("accepts the temporary local SQLite descriptor", () => {
 		expect(
 			agentOsOptionsSchema.safeParse({
 				database: {
-					type: "actor_uds",
-					path: "/tmp/actor-runtime.sock",
+					type: "sqlite_file",
+					path: "/tmp/agentos.sqlite",
 				},
 			}).success,
 		).toBe(true);
@@ -23,8 +23,8 @@ describe("AgentOsOptions validation", () => {
 				rootFilesystem: {
 					type: "native",
 					plugin: {
-						id: "chunked_actor_sqlite",
-						config: { path: "/tmp/actor.sock" },
+						id: "chunked_sqlite",
+						config: { namespace: "root" },
 					},
 				},
 			}).success,

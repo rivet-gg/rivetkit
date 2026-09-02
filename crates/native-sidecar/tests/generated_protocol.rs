@@ -151,7 +151,6 @@ fn live_bare_codec_decodes_generated_response_bytes() {
             applied_mounts: 2,
             applied_software: 0,
             projected_commands: Vec::new(),
-            agents: Vec::new(),
         }),
     });
     let payload = serde_bare::to_vec(&generated).expect("encode generated response");
@@ -168,7 +167,6 @@ fn live_bare_codec_decodes_generated_response_bytes() {
                 applied_mounts: 2,
                 applied_software: 0,
                 projected_commands: Vec::new(),
-                agents: Vec::new(),
             }),
         )),
     );

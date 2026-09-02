@@ -1496,7 +1496,7 @@ async fn run_async(
         runtime_context.clone(),
     )?;
     // The reader may classify only the extension's opaque payload; it never
-    // interprets ACP or another extension protocol. Arc-backed extensions make
+    // interprets an extension protocol. Arc-backed extensions make
     // this immutable route table safe to share with the dedicated reader.
     let extension_routes = Arc::new(sidecar.extensions.clone());
     let (stdin_tx, stdin_rx) =
@@ -4179,7 +4179,7 @@ fn request_operation_metadata(
             | RequestPayload::LinkPackageRequest(_)
     );
     let vm_concurrency = match &request.payload {
-        // Extension payloads are opaque to the core. ACP and other extensions
+        // Extension payloads are opaque to the core. Extensions
         // own any protocol-specific conflict state in their route handlers.
         RequestPayload::ExtEnvelope(_) => VmConcurrencyClass::OwnershipOnly,
         _ => match &request.ownership {
@@ -5130,7 +5130,9 @@ mod tests {
     ) -> (ProtocolFrameWriter, Arc<ProtocolOutputQueue>) {
         let codec = WireFrameCodec::new(4096);
         let ordinary_capacity = capacity.max(2);
-        let control_capacity = capacity.max(max_in_flight.saturating_add(3));
+        let control_capacity = capacity
+            .max(max_in_flight.saturating_add(3))
+            .max(max_in_flight.saturating_mul(2).saturating_add(1));
         let output = Arc::new(ProtocolOutputQueue::new(
             ordinary_capacity,
             control_capacity,
@@ -5145,8 +5147,8 @@ mod tests {
         protocol.max_terminal_frames = max_in_flight;
         protocol.max_terminal_bytes = max_in_flight.saturating_mul(maximum_encoded_bytes);
         protocol.terminal_fallback_bytes = maximum_encoded_bytes;
-        protocol.max_progress_frames = 1;
-        protocol.max_progress_bytes = maximum_encoded_bytes;
+        protocol.max_progress_frames = max_in_flight;
+        protocol.max_progress_bytes = max_in_flight.saturating_mul(maximum_encoded_bytes);
         protocol.max_rejection_frames = 1;
         protocol.max_rejection_bytes = maximum_encoded_bytes;
         (
@@ -8456,7 +8458,7 @@ export async function loadPyodide() {
         let (writer, output) = test_frame_writer(8);
         assert!(fill_ordinary_output(&writer) > 0);
 
-        // ACP cancel is classified as a progress request; its exactly-once
+        // Cancellation may be classified as a progress request; its exactly-once
         // acknowledgement therefore uses the reserved progress response path.
         let cancel_reservation = writer
             .try_reserve_progress(1)
@@ -9216,7 +9218,7 @@ export async function loadPyodide() {
 
     #[tokio::test]
     async fn protocol_output_progress_burst_cannot_starve_terminal_response() {
-        let (writer, output) = test_frame_writer(16);
+        let (writer, output) = test_frame_writer_with_inflight(16, 2);
         writer
             .try_send_progress(queue_test_sidecar_request(-1))
             .expect("queue first progress frame");

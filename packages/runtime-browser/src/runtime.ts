@@ -135,7 +135,7 @@ export interface ExecOptions {
 	 * finishes and microtasks drain, the executor keeps the worker event loop alive
 	 * for async I/O (stdin events, timers, stream pumps) until the program calls
 	 * `process.exit` (or a safety timeout). Needed for long-running stdio servers such
-	 * as an ACP agent that reads requests and replies asynchronously. Default false
+	 * as a long-running program that reads requests and replies asynchronously. Default false
 	 * (run-to-completion).
 	 */
 	persistent?: boolean;

@@ -1,12 +1,12 @@
 {
 	"name": "@rivet-dev/agentos-runtime-sidecar",
 	"version": "0.0.1",
-	"description": "Platform-specific resolver for the AgentOS language execution native sidecar binary",
+	"description": "Platform-specific resolver for the agentOS language execution native sidecar binary",
 	"license": "Apache-2.0",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/rivet-dev/agentos.git",
-		"directory": "packages/sidecar"
+		"directory": "packages/runtime-sidecar"
 	},
 	"main": "./index.js",
 	"types": "./index.d.ts",
