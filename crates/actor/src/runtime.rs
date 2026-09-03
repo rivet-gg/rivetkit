@@ -251,6 +251,20 @@ impl RuntimeController {
         let state = self.state.lock().await;
         snapshot(&state)
     }
+
+    pub(crate) async fn vm(&self) -> Result<AgentOs> {
+        let state = self.state.lock().await;
+        if state.lifecycle != RuntimeLifecycleState::Ready {
+            return Err(anyhow!(
+                "runtime_not_ready: agentOS runtime is {:?}; inspect runtime.status and retry",
+                state.lifecycle
+            ));
+        }
+        state
+            .vm
+            .clone()
+            .ok_or_else(|| anyhow!("runtime_not_ready: ready runtime has no Core VM"))
+    }
 }
 
 fn snapshot(state: &RuntimeState) -> RuntimeStatus {

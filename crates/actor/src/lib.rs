@@ -1,8 +1,10 @@
 #![forbid(unsafe_code)]
 
+mod action_set;
 mod actions;
 mod config;
 mod events;
+mod filesystem;
 mod runtime;
 mod store;
 
@@ -12,21 +14,35 @@ use std::sync::Arc;
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use rivetkit::prelude::*;
-use rivetkit::{action, Actor, Registry};
+use rivetkit::{action, Actor, ActorConfig, Registry};
 use serde::{Deserialize, Serialize};
 use tokio::sync::{Mutex, OwnedSemaphorePermit, Semaphore};
 
 pub use actions::{ConfigGet, RuntimeRestart, RuntimeStatusGet};
-pub use config::{AgentOsActorConfig, AgentOsActorConfigInput};
+pub use config::{
+    AgentOsActorConfig, AgentOsActorConfigInput, HostedFilesystemBackend,
+    HostedFilesystemBackendInput, HostedFilesystemConfig, HostedFilesystemConfigInput,
+    HostedFilesystemMount, HostedFilesystemMountInput, HostedRootFilesystem,
+    HostedRootFilesystemInput,
+};
 pub use events::{RuntimeBooted, RuntimeLimitWarning, RuntimeShutdown};
+pub use filesystem::{
+    FileBytes, FileContentInput, FilesystemDirectoryEntry, FilesystemExists, FilesystemExport,
+    FilesystemListMounts, FilesystemMkdir, FilesystemMove, FilesystemReadFile, FilesystemReadFiles,
+    FilesystemReadResult, FilesystemReaddir, FilesystemReaddirEntries, FilesystemReaddirRecursive,
+    FilesystemRemove, FilesystemStat, FilesystemWriteEntry, FilesystemWriteFile,
+    FilesystemWriteFiles, FilesystemWriteResult,
+};
 pub use runtime::{
     CoreSidecarStatus, PackageStartupStatus, RuntimeIssue, RuntimeLifecycleState, RuntimeStatus,
 };
 
+use action_set::AgentOsActionSet;
 use runtime::RuntimeController;
 
 pub const ACTOR_NAME: &str = "agentOS";
 const ACTION_CONCURRENCY_LIMIT: usize = 64;
+const ACTOR_MESSAGE_SIZE_LIMIT: u32 = 1024 * 1024;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -97,7 +113,7 @@ pub struct AgentOsActor {
 impl Actor for AgentOsActor {
     type State = AgentOsActorState;
     type Input = AgentOsActorCreateInput;
-    type Actions = (ConfigGet, RuntimeStatusGet, RuntimeRestart);
+    type Actions = AgentOsActionSet;
     type Events = (RuntimeBooted, RuntimeShutdown, RuntimeLimitWarning);
     type Queue = ();
     type ConnParams = ();
@@ -207,7 +223,14 @@ impl AgentOsActor {
 
 pub fn registry() -> Registry {
     let mut registry = Registry::new();
-    registry.register_actor::<AgentOsActor>(ACTOR_NAME);
+    registry.register_actor_with::<AgentOsActor>(
+        ACTOR_NAME,
+        ActorConfig {
+            max_incoming_message_size: ACTOR_MESSAGE_SIZE_LIMIT,
+            max_outgoing_message_size: ACTOR_MESSAGE_SIZE_LIMIT,
+            ..ActorConfig::default()
+        },
+    );
     registry
 }
 
@@ -225,7 +248,25 @@ mod tests {
                 .into_iter()
                 .map(|entry| entry.name)
                 .collect::<Vec<_>>(),
-            ["config.get", "runtime.status", "runtime.restart"]
+            [
+                "config.get",
+                "runtime.status",
+                "runtime.restart",
+                "filesystem.readFile",
+                "filesystem.writeFile",
+                "filesystem.readFiles",
+                "filesystem.writeFiles",
+                "filesystem.stat",
+                "filesystem.mkdir",
+                "filesystem.readdir",
+                "filesystem.readdirEntries",
+                "filesystem.readdirRecursive",
+                "filesystem.exists",
+                "filesystem.move",
+                "filesystem.remove",
+                "filesystem.export",
+                "filesystem.listMounts",
+            ]
         );
         assert_eq!(
             <AgentOsActor as Actor>::Events::entries()

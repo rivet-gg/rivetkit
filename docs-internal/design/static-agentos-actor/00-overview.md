@@ -414,22 +414,22 @@ degraded, stopping, and failed states.
 
 ### Filesystem
 
-| Action | Core operation |
-| --- | --- |
-| `filesystem.readFile` | `filesystem.readFile` |
-| `filesystem.writeFile` | `filesystem.writeFile` |
-| `filesystem.readFiles` | `filesystem.readFiles` |
-| `filesystem.writeFiles` | `filesystem.writeFiles` |
-| `filesystem.stat` | `filesystem.stat` |
-| `filesystem.mkdir` | `filesystem.mkdir` |
-| `filesystem.readdir` | `filesystem.readdir` |
-| `filesystem.readdirEntries` | `filesystem.readdirEntries` |
-| `filesystem.readdirRecursive` | `filesystem.readdirRecursive` |
-| `filesystem.exists` | `filesystem.exists` |
-| `filesystem.move` | `filesystem.move` |
-| `filesystem.remove` | `filesystem.remove` |
-| `filesystem.export` | `filesystem.export` |
-| `filesystem.listMounts` | live Core mount enumeration |
+| Action | Input | Result |
+| --- | --- | --- |
+| `filesystem.readFile` | `{ path, maxBytes? }` | byte string |
+| `filesystem.writeFile` | `{ path, content }` | none |
+| `filesystem.readFiles` | `{ paths, maxBytes? }` | per-path content or error |
+| `filesystem.writeFiles` | `{ entries }` | per-path success or error |
+| `filesystem.stat` | `{ path }` | `VirtualStat` |
+| `filesystem.mkdir` | `{ path, recursive? }` | none |
+| `filesystem.readdir` | `{ path }` | names |
+| `filesystem.readdirEntries` | `{ path }` | typed entries |
+| `filesystem.readdirRecursive` | `{ path, maxDepth?, exclude? }` | typed recursive entries |
+| `filesystem.exists` | `{ path }` | boolean |
+| `filesystem.move` | `{ from, to }` | none |
+| `filesystem.remove` | `{ path, recursive? }` | none |
+| `filesystem.export` | `{ maxBytes? }` | root snapshot |
+| `filesystem.listMounts` | none | live Core mount enumeration |
 
 Binary fields use a transport-safe byte representation selected by the generated
 contract. Bulk and export operations have explicit item and byte limits. If full
