@@ -1,6 +1,7 @@
 # 09: Implement the Process-Local Package Cache
 
-**Status:** Proposed
+**Status:** Implemented for the process-lifetime MVP. Persistent cache recovery,
+HTTP validator indexes, and explicit warm orchestration remain deferred.
 
 ## Outcome
 
@@ -13,15 +14,15 @@ path.
 
 ## Component API
 
-The cache exposes an internal async interface equivalent to:
+Core exposes process initialization and bounded status, while package resolution
+uses an internal async interface equivalent to:
 
 ```text
-get(digest) -> CacheHit | CacheMiss
-get_or_fetch(remote_source, fetcher) -> CachedArtifact
-pin(digest, actor_runtime_generation) -> Pin
-release(pin) -> void
-warm(resolved_remote_sources, deadline) -> WarmReport
-record_access(digest) -> void
+configure_process_package_cache(options) -> result
+PackageResolver.resolve(source) -> VerifiedPackage
+get(digest) -> VerifiedPackage | CacheMiss
+get_or_acquire(flight_key, expected_digest?, acquisition) -> VerifiedPackage
+drop(VerifiedPackage) -> release pin
 stats() -> CacheStats
 ```
 
@@ -29,39 +30,52 @@ Callers never read or write a cache path directly. `CachedArtifact` returns a
 read-only mmap/blob handle supported by Core/VFS package projection. Extending
 the actor API to accept a private host cache path is explicitly out of scope.
 
+`VerifiedPackage` is the pin. Cache entries and live installations share the
+same immutable artifact handle; eviction is legal only when the cache owns the
+last handle. Step 10 builds bounded `warm` orchestration on top of exact-digest
+`PackageResolver.resolve` calls.
+
 ## Storage model
 
 - Key immutable objects by verified `.aospkg` digest, not a mutable object-store
   path.
-- Maintain a bounded advisory index from normalized URL plus HTTP validators to
-  resolved digest and verified metadata.
 - Acquire into a uniquely created private staging object behind the cache
   implementation.
 - Verify before atomically publishing an immutable digest entry.
 - Treat existing digest objects as immutable. A size or content mismatch is
   corruption, not a reason to overwrite silently.
+- Maintain a separately bounded, short-TTL advisory source-key index so actors
+  resolving the same URL immediately after a preload can reuse its digest.
 - Keep actor-specific writable filesystem overlays outside this cache.
-- Recover the bounded index from private object metadata or a small local
-  database without trusting incomplete staging objects.
+- Store cache objects in a private process-lifetime temporary directory with
+  read-only permissions after publication.
 
-The implementation may use operator-owned local storage internally, but neither
-the actor contract nor the Core package API can name, open, or mount that storage
-as a host path.
+Neither the actor contract nor the Core package source DTO can name, open, or
+mount cache storage as a host path. Trusted embedded Core can inspect the pinned
+path already required by the sidecar projection boundary.
+
+Persistent local cache recovery and a bounded URL/ETag index are not part of
+this MVP. The central coordinator in step 10 supplies a fresh process with exact
+URL/digest identities to warm, so persistence is an optional later optimization
+rather than a correctness dependency.
 
 ## Single-flight behavior
 
 Concurrent requests for the same known digest share one bounded acquisition
 future per process. When the digest is omitted, concurrent requests for the same
-normalized URL share a short-lived resolution flight and then join the digest
-entry. Requests for different content use a global acquisition semaphore.
+normalized URL (or trusted path string) share a short-lived resolution flight
+and then join the digest entry. Requests for different content use a global
+acquisition semaphore.
 
 - Success wakes all waiters with the same immutable handle.
 - Failure wakes all waiters with the same typed failure and removes the flight so
   a later bounded retry can occur.
 - Waiter cancellation does not cancel a fetch still required by other waiters.
-- A flight has a deadline and cannot remain permanently registered.
+- A flight has a configurable deadline and cannot remain permanently registered.
 - URL-resolution flights are advisory and never make URL text the immutable
   content key.
+- The total number of distinct pending flight keys is bounded separately from
+  active acquisitions, preventing unique URLs from growing an unbounded map.
 
 ## Eviction and pinning
 
@@ -73,10 +87,9 @@ persist high-frequency access synchronously.
   entries fails with a typed capacity error.
 - Over-limit pinned bytes are visible in metrics and status. The cache does not
   delete a live package to force itself under limit.
-- Eviction removes URL-to-digest indexes before the object and tolerates a
-  process crash between those operations.
 - Different URLs that resolve to the same digest store one object.
-- Startup cleans stale temporary files using a bounded scan and age threshold.
+- The private temporary directory is released with the process. Persistent
+  staging cleanup is deferred with persistent cache recovery.
 
 ## Process ownership
 
@@ -85,48 +98,74 @@ Actor shutdown releases only its pins. Process shutdown performs a bounded flush
 of access metadata and usage observations but does not make correctness depend
 on that flush.
 
-The cache configuration is operator-owned:
+The cache configuration is operator-owned and first-write-once per process:
 
-- Cache storage implementation and capacity.
 - Maximum bytes and object count.
 - Maximum concurrent resolutions and downloads.
-- Download and verification timeouts.
-- Temporary file expiry.
-- Near-capacity warning threshold.
+- Maximum distinct pending acquisitions.
+- Acquisition timeout.
+- Maximum advisory source-index entries and their short TTL.
 
 No actor action may raise these process-wide limits.
 
+The compiled actor entry point accepts:
+
+- `--package-cache-max-bytes`
+- `--package-cache-max-entries`
+- `--package-cache-max-concurrent-acquisitions`
+- `--package-cache-max-pending-acquisitions`
+- `--package-cache-acquisition-timeout-ms`
+- `--package-cache-max-source-entries`
+- `--package-cache-source-ttl-ms`
+
+Embedded Core may call `configure_process_package_cache` before constructing a
+resolver. Repeating the same options is idempotent; changing options after the
+first resolver exists returns a typed configuration error.
+
 ## Observability
 
-Record bounded-cardinality metrics for hits, misses, coalesced waiters,
-downloads, verification failures, inserted and evicted bytes, pinned bytes,
-capacity failures, warm duration, and cleanup. Package names may be logged for
-debugging but should not become unbounded metric labels.
+`process_package_cache_stats` reports entries, advisory source entries, bytes,
+pinned entries, pending acquisitions, hits, misses, coalesced waiters,
+acquisitions, evictions, and capacity failures without package labels. Near
+pending-key, byte, object, and source-index limits emit structured tracing
+warnings naming the startup option to raise.
 
 Every background cleanup or index flush failure is logged. Corruption is
 quarantined or removed with an explicit record; it is never treated as a cache
 hit.
 
-## Tests
+## Implemented tests
 
-- Hit, miss, insert, restart recovery, and URL-to-digest index behavior.
-- Hundreds of concurrent same-digest requests cause one fetch.
-- Independent digests honor the global acquisition bound.
-- Canceled waiters and failed single flights clean up.
-- LRU order, byte capacity, object capacity, pins, and over-limit pinned state.
-- Crash-shaped partial temp files and index/object disagreement.
-- Digest mismatch and immutable object corruption.
-- Multiple URLs sharing one content digest.
-- Actor runtime restart releases the old generation's pins.
-- Warm deadline returns a partial report without leaking tasks.
+- One hundred concurrent same-source requests cause one acquisition and share
+  one digest artifact.
+- A recent unresolved source-key lookup reuses the digest entry through the
+  bounded short-TTL index.
+- A failed flight is removed before its callers wake, so an immediate retry
+  starts a fresh acquisition.
+- A timed-out flight releases its pending slot and permits an immediate retry.
+- Distinct pending keys hit the typed configured bound.
+- A pinned package blocks entry eviction; releasing its handle permits LRU
+  eviction and removes the old immutable file.
+- Path and URL sources with identical bytes converge on one digest entry.
+- Digest mismatch and malformed package validation remain typed.
+- Actor entry-point cache flags parse positive bounded values.
+- The real sidecar install/uninstall test projects from the cached immutable
+  path and releases the live installation pin.
+
+Step 10 adds warm deadlines and actor-startup behavior. Persistent cache
+recovery, crash-shaped staging cleanup, URL validator indexes, and explicit
+corruption quarantine remain follow-up optimizations if measurements justify
+them.
 
 ## Acceptance criteria
 
 - Package bytes are acquired and verified at most once concurrently per
-  process and digest.
+  process for a known digest or normalized unresolved source key.
 - Cache entries are immutable and content-addressed.
 - Live VM packages remain pinned.
 - Disk, memory, concurrency, cleanup, and metadata are bounded by default.
+- Distinct pending acquisitions are bounded independently from active network
+  work and fail with an error naming the startup option to raise.
 - An empty or failed cache only affects latency; exact desired artifacts remain
   available from their durable URL and pinned digest.
 - Cache internals do not appear in actor creation or mutable config.
@@ -134,5 +173,5 @@ hit.
 ## Dependencies and follow-up
 
 Depends on the URL/path-to-verified-package contract in step 08. Step 10 reads a
-central advisory hot set and calls `warm`; it does not bypass this cache or
-introduce a host path.
+central advisory hot set and resolves exact digest-pinned sources through this
+cache; it does not bypass the cache or introduce a host path.

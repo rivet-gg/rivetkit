@@ -8,7 +8,7 @@ use agentos_sidecar_client::{ProtocolCodecError, TransportError};
 
 /// Structured sidecar admission metadata kept behind one allocation so the
 /// public [`ClientError`] remains cheap to return through every SDK method.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ResourceLimitDetails {
     pub limit_name: Option<String>,
     pub configured_limit: Option<u64>,
@@ -26,7 +26,7 @@ pub struct ResourceLimitDetails {
 }
 
 /// Typed error taxonomy for the client SDK.
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, Clone)]
 pub enum ClientError {
     /// A filesystem path was not absolute (did not start with `/`).
     ///
@@ -108,6 +108,34 @@ pub enum ClientError {
     /// Trusted host I/O failed while acquiring or staging a package.
     #[error("package I/O failed: {0}")]
     PackageIo(String),
+
+    /// The process-local immutable package cache cannot admit another object
+    /// without evicting a package still pinned by a live VM.
+    #[error(
+        "package cache capacity exceeded: requested {requested} bytes with {current} of {limit} bytes in use; raise ProcessPackageCacheOptions.max_bytes or uninstall pinned software"
+    )]
+    PackageCacheCapacity {
+        requested: u64,
+        current: u64,
+        limit: u64,
+    },
+
+    #[error(
+        "package cache entry limit exceeded: {current} of {limit} entries are in use; raise ProcessPackageCacheOptions.max_entries or uninstall pinned software"
+    )]
+    PackageCacheEntryCapacity { current: usize, limit: usize },
+
+    /// Too many distinct acquisitions are waiting in the process. The bound
+    /// prevents unique untrusted URLs from growing the single-flight table.
+    #[error(
+        "package cache pending acquisition limit {limit} reached; raise ProcessPackageCacheOptions.max_pending_acquisitions"
+    )]
+    PackageCachePendingLimit { limit: usize },
+
+    /// A process cache was already initialized with different operator-owned
+    /// limits. Process-global configuration is first-write-once by design.
+    #[error("package cache is already configured differently: {0}")]
+    PackageCacheConfiguration(String),
 
     /// An exact content-addressed installed package was not present.
     #[error("software package not found: {0}")]
@@ -201,6 +229,10 @@ impl ClientError {
             | ClientError::PackageDigestMismatch { .. }
             | ClientError::InvalidPackageFormat(_)
             | ClientError::PackageIo(_)
+            | ClientError::PackageCacheCapacity { .. }
+            | ClientError::PackageCacheEntryCapacity { .. }
+            | ClientError::PackageCachePendingLimit { .. }
+            | ClientError::PackageCacheConfiguration(_)
             | ClientError::SoftwareNotFound(_)
             | ClientError::Transport(_)
             | ClientError::Sidecar(_) => self.to_string(),

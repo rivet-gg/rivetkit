@@ -16,6 +16,7 @@ path = "src/main.rs"
 [dependencies]
 agentos-actor = { workspace = true }
 agentos-bridge = { workspace = true }
+agentos-client = { workspace = true }
 agentos-kernel = { workspace = true }
 agentos-sidecar-protocol = { workspace = true }
 agentos-native-sidecar-core = { workspace = true }

@@ -167,6 +167,7 @@ dependencies = [
  "aes-gcm",
  "agentos-actor",
  "agentos-bridge",
+ "agentos-client",
  "agentos-execution",
  "agentos-kernel",
  "agentos-native-sidecar-core",

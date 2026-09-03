@@ -1,16 +1,19 @@
+use std::collections::BTreeMap;
 use std::fmt;
-use std::io::Read;
+use std::io::{Read, Write};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
 use futures::StreamExt;
+use once_cell::sync::OnceCell;
 use reqwest::header::{ACCEPT_ENCODING, LOCATION};
 use reqwest::{redirect, StatusCode, Url};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::sync::{Mutex, Notify, Semaphore};
 
 use crate::ClientError;
 
@@ -18,6 +21,13 @@ pub const DEFAULT_MAX_PACKAGE_BYTES: u64 = 512 * 1024 * 1024;
 pub const DEFAULT_PACKAGE_DOWNLOAD_TIMEOUT_MS: u64 = 30_000;
 pub const DEFAULT_PACKAGE_CONNECT_TIMEOUT_MS: u64 = 5_000;
 pub const DEFAULT_PACKAGE_REDIRECT_LIMIT: usize = 3;
+pub const DEFAULT_PACKAGE_CACHE_MAX_BYTES: u64 = 2 * 1024 * 1024 * 1024;
+pub const DEFAULT_PACKAGE_CACHE_MAX_ENTRIES: usize = 256;
+pub const DEFAULT_PACKAGE_CACHE_MAX_CONCURRENT_ACQUISITIONS: usize = 8;
+pub const DEFAULT_PACKAGE_CACHE_MAX_PENDING_ACQUISITIONS: usize = 64;
+pub const DEFAULT_PACKAGE_CACHE_ACQUISITION_TIMEOUT_MS: u64 = 60_000;
+pub const DEFAULT_PACKAGE_CACHE_MAX_SOURCE_ENTRIES: usize = 1024;
+pub const DEFAULT_PACKAGE_CACHE_SOURCE_TTL_MS: u64 = 60_000;
 const MAX_PACKAGE_URL_BYTES: usize = 4 * 1024;
 const MAX_PACKAGE_RESPONSE_HEADERS: usize = 128;
 const MAX_PACKAGE_RESPONSE_HEADER_BYTES: usize = 64 * 1024;
@@ -31,6 +41,114 @@ const MAX_PACKAGE_ENTRY_BYTES: usize = 4 * 1024;
 const MAX_PACKAGE_PROVIDES_ENV: usize = 1024;
 const MAX_PACKAGE_PROVIDES_FILES: usize = 1024;
 const DOWNLOAD_CHUNK_BYTES: usize = 64 * 1024;
+
+static PROCESS_PACKAGE_CACHE: OnceCell<Arc<ProcessPackageCache>> = OnceCell::new();
+
+/// Operator-owned limits for the one package cache shared by all Core clients
+/// in this process. Hosted actor inputs cannot override these values.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProcessPackageCacheOptions {
+    pub max_bytes: u64,
+    pub max_entries: usize,
+    pub max_concurrent_acquisitions: usize,
+    pub max_pending_acquisitions: usize,
+    pub acquisition_timeout_ms: u64,
+    pub max_source_entries: usize,
+    pub source_ttl_ms: u64,
+}
+
+impl Default for ProcessPackageCacheOptions {
+    fn default() -> Self {
+        Self {
+            max_bytes: DEFAULT_PACKAGE_CACHE_MAX_BYTES,
+            max_entries: DEFAULT_PACKAGE_CACHE_MAX_ENTRIES,
+            max_concurrent_acquisitions: DEFAULT_PACKAGE_CACHE_MAX_CONCURRENT_ACQUISITIONS,
+            max_pending_acquisitions: DEFAULT_PACKAGE_CACHE_MAX_PENDING_ACQUISITIONS,
+            acquisition_timeout_ms: DEFAULT_PACKAGE_CACHE_ACQUISITION_TIMEOUT_MS,
+            max_source_entries: DEFAULT_PACKAGE_CACHE_MAX_SOURCE_ENTRIES,
+            source_ttl_ms: DEFAULT_PACKAGE_CACHE_SOURCE_TTL_MS,
+        }
+    }
+}
+
+impl ProcessPackageCacheOptions {
+    pub fn validate(&self) -> Result<(), ClientError> {
+        if self.max_bytes == 0
+            || self.max_entries == 0
+            || self.max_concurrent_acquisitions == 0
+            || self.max_pending_acquisitions == 0
+            || self.acquisition_timeout_ms == 0
+            || self.max_source_entries == 0
+            || self.source_ttl_ms == 0
+        {
+            return Err(ClientError::PackageCacheConfiguration(String::from(
+                "package cache byte, entry, source-index, concurrent acquisition, pending acquisition, and timeout limits must be greater than zero",
+            )));
+        }
+        if self.max_pending_acquisitions < self.max_concurrent_acquisitions {
+            return Err(ClientError::PackageCacheConfiguration(String::from(
+                "max_pending_acquisitions must be at least max_concurrent_acquisitions",
+            )));
+        }
+        Ok(())
+    }
+}
+
+/// A bounded snapshot of process-cache state. Counters saturate instead of
+/// wrapping; package identities are deliberately not exposed as metric labels.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProcessPackageCacheStats {
+    pub entries: usize,
+    pub source_entries: usize,
+    pub bytes: u64,
+    pub pinned_entries: usize,
+    pub pending_acquisitions: usize,
+    pub hits: u64,
+    pub misses: u64,
+    pub coalesced_waiters: u64,
+    pub acquisitions: u64,
+    pub evictions: u64,
+    pub capacity_failures: u64,
+}
+
+/// Configure the process cache before constructing a [`PackageResolver`]. A
+/// repeated identical call is idempotent; a different second configuration is
+/// rejected so actors cannot silently change process-wide limits.
+pub fn configure_process_package_cache(
+    options: ProcessPackageCacheOptions,
+) -> Result<(), ClientError> {
+    options.validate()?;
+    if let Some(cache) = PROCESS_PACKAGE_CACHE.get() {
+        if cache.options == options {
+            return Ok(());
+        }
+        return Err(ClientError::PackageCacheConfiguration(format!(
+            "existing options are {:?}, requested options are {options:?}",
+            cache.options
+        )));
+    }
+    let cache = Arc::new(ProcessPackageCache::new(options.clone())?);
+    match PROCESS_PACKAGE_CACHE.set(cache) {
+        Ok(()) => Ok(()),
+        Err(_) => configure_process_package_cache(options),
+    }
+}
+
+fn process_package_cache() -> Result<Arc<ProcessPackageCache>, ClientError> {
+    if PROCESS_PACKAGE_CACHE.get().is_none() {
+        configure_process_package_cache(ProcessPackageCacheOptions::default())?;
+    }
+    PROCESS_PACKAGE_CACHE.get().cloned().ok_or_else(|| {
+        ClientError::PackageCacheConfiguration(String::from(
+            "process package cache initialization did not publish a cache",
+        ))
+    })
+}
+
+pub async fn process_package_cache_stats() -> Result<ProcessPackageCacheStats, ClientError> {
+    Ok(process_package_cache()?.stats().await)
+}
 
 /// Trusted Core package locator. Hosted adapters must define their own URL-only
 /// DTO rather than deserializing this enum directly.
@@ -126,6 +244,7 @@ impl VerifiedPackage {
         match self.backing.as_ref() {
             PackageBacking::Owned(path) => path.as_ref(),
             PackageBacking::Borrowed(path) => path,
+            PackageBacking::Cached(artifact) => &artifact.path,
         }
     }
 }
@@ -133,6 +252,530 @@ impl VerifiedPackage {
 enum PackageBacking {
     Owned(tempfile::TempPath),
     Borrowed(PathBuf),
+    Cached(Arc<CachedPackageArtifact>),
+}
+
+struct CachedPackageArtifact {
+    path: PathBuf,
+    package_id: String,
+    digest: String,
+    size: u64,
+    manifest: PackageManifestInfo,
+}
+
+struct CachedPackageEntry {
+    artifact: Arc<CachedPackageArtifact>,
+    last_access: u64,
+}
+
+struct CachedSourceEntry {
+    digest: String,
+    resolved_at: std::time::Instant,
+    last_access: u64,
+}
+
+struct PackageAcquisitionFlight {
+    result: Mutex<Option<Result<VerifiedPackage, ClientError>>>,
+    ready: Notify,
+}
+
+impl PackageAcquisitionFlight {
+    fn new() -> Self {
+        Self {
+            result: Mutex::new(None),
+            ready: Notify::new(),
+        }
+    }
+
+    async fn wait(&self) -> Result<VerifiedPackage, ClientError> {
+        loop {
+            let notified = self.ready.notified();
+            if let Some(result) = self.result.lock().await.clone() {
+                return result;
+            }
+            notified.await;
+        }
+    }
+
+    async fn finish(&self, result: Result<VerifiedPackage, ClientError>) {
+        *self.result.lock().await = Some(result);
+        self.ready.notify_waiters();
+    }
+}
+
+struct ProcessPackageCacheState {
+    entries: BTreeMap<String, CachedPackageEntry>,
+    source_index: BTreeMap<String, CachedSourceEntry>,
+    flights: BTreeMap<String, Arc<PackageAcquisitionFlight>>,
+    bytes: u64,
+    access_clock: u64,
+    hits: u64,
+    misses: u64,
+    coalesced_waiters: u64,
+    acquisitions: u64,
+    evictions: u64,
+    capacity_failures: u64,
+}
+
+struct ProcessPackageCache {
+    options: ProcessPackageCacheOptions,
+    root: tempfile::TempDir,
+    acquisition_slots: Arc<Semaphore>,
+    state: Mutex<ProcessPackageCacheState>,
+}
+
+impl ProcessPackageCache {
+    fn new(options: ProcessPackageCacheOptions) -> Result<Self, ClientError> {
+        options.validate()?;
+        let root = tempfile::Builder::new()
+            .prefix("agentos-process-package-cache-")
+            .tempdir()
+            .map_err(|error| {
+                ClientError::PackageIo(format!("create process package cache: {error}"))
+            })?;
+        Ok(Self {
+            acquisition_slots: Arc::new(Semaphore::new(options.max_concurrent_acquisitions)),
+            options,
+            root,
+            state: Mutex::new(ProcessPackageCacheState {
+                entries: BTreeMap::new(),
+                source_index: BTreeMap::new(),
+                flights: BTreeMap::new(),
+                bytes: 0,
+                access_clock: 0,
+                hits: 0,
+                misses: 0,
+                coalesced_waiters: 0,
+                acquisitions: 0,
+                evictions: 0,
+                capacity_failures: 0,
+            }),
+        })
+    }
+
+    async fn get(self: &Arc<Self>, digest: &str) -> Option<VerifiedPackage> {
+        let mut state = self.state.lock().await;
+        let artifact = state
+            .entries
+            .get(digest)
+            .map(|entry| Arc::clone(&entry.artifact))?;
+        state.access_clock = state.access_clock.saturating_add(1);
+        let access = state.access_clock;
+        if let Some(entry) = state.entries.get_mut(digest) {
+            entry.last_access = access;
+        }
+        state.hits = state.hits.saturating_add(1);
+        Some(cached_verified_package(artifact))
+    }
+
+    async fn get_source(self: &Arc<Self>, source_key: &str) -> Option<VerifiedPackage> {
+        let mut state = self.state.lock().await;
+        let (digest, expired) = state.source_index.get(source_key).map(|entry| {
+            (
+                entry.digest.clone(),
+                entry.resolved_at.elapsed() > Duration::from_millis(self.options.source_ttl_ms),
+            )
+        })?;
+        if expired {
+            state.source_index.remove(source_key);
+            return None;
+        }
+        let Some(artifact) = state
+            .entries
+            .get(&digest)
+            .map(|entry| Arc::clone(&entry.artifact))
+        else {
+            state.source_index.remove(source_key);
+            return None;
+        };
+        state.access_clock = state.access_clock.saturating_add(1);
+        let access = state.access_clock;
+        if let Some(entry) = state.entries.get_mut(&digest) {
+            entry.last_access = access;
+        }
+        if let Some(entry) = state.source_index.get_mut(source_key) {
+            entry.last_access = access;
+        }
+        state.hits = state.hits.saturating_add(1);
+        Some(cached_verified_package(artifact))
+    }
+
+    async fn record_source(&self, source_key: String, digest: String) {
+        let mut state = self.state.lock().await;
+        if !state.entries.contains_key(&digest) {
+            return;
+        }
+        state.access_clock = state.access_clock.saturating_add(1);
+        let access = state.access_clock;
+        if !state.source_index.contains_key(&source_key)
+            && state.source_index.len() >= self.options.max_source_entries
+        {
+            if let Some(oldest) = state
+                .source_index
+                .iter()
+                .min_by_key(|(_, entry)| entry.last_access)
+                .map(|(source, _)| source.clone())
+            {
+                state.source_index.remove(&oldest);
+            }
+        }
+        state.source_index.insert(
+            source_key,
+            CachedSourceEntry {
+                digest,
+                resolved_at: std::time::Instant::now(),
+                last_access: access,
+            },
+        );
+        if state.source_index.len() * 100 / self.options.max_source_entries >= 80 {
+            tracing::warn!(
+                limit = "process_package_cache_source_entries",
+                observed = state.source_index.len(),
+                capacity = self.options.max_source_entries,
+                configuration_path = "ProcessPackageCacheOptions.max_source_entries",
+                "process package cache source index approaching configured limit"
+            );
+        }
+    }
+
+    async fn get_or_acquire<F>(
+        self: &Arc<Self>,
+        flight_key: String,
+        expected_digest: Option<&str>,
+        acquisition: F,
+    ) -> Result<VerifiedPackage, ClientError>
+    where
+        F: std::future::Future<Output = Result<VerifiedPackage, ClientError>> + Send + 'static,
+    {
+        if let Some(digest) = expected_digest {
+            if let Some(package) = self.get(digest).await {
+                return Ok(package);
+            }
+        } else if let Some(package) = self.get_source(&flight_key).await {
+            return Ok(package);
+        }
+
+        let (flight, leader) = {
+            let mut state = self.state.lock().await;
+            state.misses = state.misses.saturating_add(1);
+            if let Some(flight) = state.flights.get(&flight_key).cloned() {
+                state.coalesced_waiters = state.coalesced_waiters.saturating_add(1);
+                (flight, false)
+            } else {
+                if state.flights.len() >= self.options.max_pending_acquisitions {
+                    return Err(ClientError::PackageCachePendingLimit {
+                        limit: self.options.max_pending_acquisitions,
+                    });
+                }
+                let flight = Arc::new(PackageAcquisitionFlight::new());
+                state.flights.insert(flight_key.clone(), flight.clone());
+                if state.flights.len() * 100 / self.options.max_pending_acquisitions >= 80 {
+                    tracing::warn!(
+                        limit = "process_package_cache_pending_acquisitions",
+                        observed = state.flights.len(),
+                        capacity = self.options.max_pending_acquisitions,
+                        configuration_path = "ProcessPackageCacheOptions.max_pending_acquisitions",
+                        "process package cache pending acquisitions approaching configured limit"
+                    );
+                }
+                (flight, true)
+            }
+        };
+
+        if leader {
+            let cache = Arc::clone(self);
+            let completion = Arc::clone(&flight);
+            let record_source = expected_digest.is_none();
+            tokio::spawn(async move {
+                let result = tokio::time::timeout(
+                    Duration::from_millis(cache.options.acquisition_timeout_ms),
+                    cache.run_acquisition(acquisition),
+                )
+                .await
+                .unwrap_or_else(|_| {
+                    Err(ClientError::PackageDownload(format!(
+                        "package cache acquisition exceeded {}ms; raise ProcessPackageCacheOptions.acquisition_timeout_ms",
+                        cache.options.acquisition_timeout_ms
+                    )))
+                });
+                if record_source {
+                    if let Ok(package) = &result {
+                        cache
+                            .record_source(flight_key.clone(), package.digest.clone())
+                            .await;
+                    }
+                }
+                {
+                    let mut state = cache.state.lock().await;
+                    if state
+                        .flights
+                        .get(&flight_key)
+                        .is_some_and(|registered| Arc::ptr_eq(registered, &completion))
+                    {
+                        state.flights.remove(&flight_key);
+                    }
+                }
+                completion.finish(result).await;
+            });
+        } else {
+            drop(acquisition);
+        }
+        flight.wait().await
+    }
+
+    async fn run_acquisition<F>(
+        self: &Arc<Self>,
+        acquisition: F,
+    ) -> Result<VerifiedPackage, ClientError>
+    where
+        F: std::future::Future<Output = Result<VerifiedPackage, ClientError>> + Send + 'static,
+    {
+        let _permit = Arc::clone(&self.acquisition_slots)
+            .acquire_owned()
+            .await
+            .map_err(|_| {
+                ClientError::PackageCacheConfiguration(String::from(
+                    "process package cache acquisition semaphore closed",
+                ))
+            })?;
+        {
+            let mut state = self.state.lock().await;
+            state.acquisitions = state.acquisitions.saturating_add(1);
+        }
+        let package = acquisition.await?;
+        self.insert(package).await
+    }
+
+    async fn insert(
+        self: &Arc<Self>,
+        package: VerifiedPackage,
+    ) -> Result<VerifiedPackage, ClientError> {
+        {
+            let mut state = self.state.lock().await;
+            if let Some(entry) = state.entries.get(&package.digest) {
+                return Ok(cached_verified_package(Arc::clone(&entry.artifact)));
+            }
+            if package.size > self.options.max_bytes {
+                state.capacity_failures = state.capacity_failures.saturating_add(1);
+                return Err(ClientError::PackageCacheCapacity {
+                    requested: package.size,
+                    current: state.bytes,
+                    limit: self.options.max_bytes,
+                });
+            }
+        }
+
+        let staged = stage_cached_package(
+            package.path().to_path_buf(),
+            self.root.path().to_path_buf(),
+            package.size,
+            package.digest.clone(),
+        )
+        .await?;
+        let mut state = self.state.lock().await;
+        if let Some(entry) = state.entries.get(&package.digest) {
+            return Ok(cached_verified_package(Arc::clone(&entry.artifact)));
+        }
+        self.evict_for_insert(&mut state, package.size)?;
+
+        let digest_hex = package.digest.strip_prefix("sha256:").ok_or_else(|| {
+            ClientError::PackageCacheConfiguration(String::from(
+                "verified package digest lost its sha256 prefix",
+            ))
+        })?;
+        let path = self.root.path().join(format!("{digest_hex}.aospkg"));
+        staged.persist_noclobber(&path).map_err(|error| {
+            ClientError::PackageIo(format!("publish immutable cached package: {error}"))
+        })?;
+        let mut permissions = match std::fs::metadata(&path) {
+            Ok(metadata) => metadata.permissions(),
+            Err(error) => {
+                remove_failed_cache_publication(&path, "metadata failure");
+                return Err(ClientError::PackageIo(format!(
+                    "stat cached package: {error}"
+                )));
+            }
+        };
+        permissions.set_readonly(true);
+        if let Err(error) = std::fs::set_permissions(&path, permissions) {
+            remove_failed_cache_publication(&path, "permission failure");
+            return Err(ClientError::PackageIo(format!(
+                "make cached package immutable: {error}"
+            )));
+        }
+        let artifact = Arc::new(CachedPackageArtifact {
+            path,
+            package_id: package.package_id,
+            digest: package.digest.clone(),
+            size: package.size,
+            manifest: package.manifest,
+        });
+        state.access_clock = state.access_clock.saturating_add(1);
+        let access = state.access_clock;
+        state.bytes = state.bytes.saturating_add(artifact.size);
+        state.entries.insert(
+            artifact.digest.clone(),
+            CachedPackageEntry {
+                artifact: Arc::clone(&artifact),
+                last_access: access,
+            },
+        );
+        if state.bytes.saturating_mul(100) / self.options.max_bytes >= 80
+            || state.entries.len() * 100 / self.options.max_entries >= 80
+        {
+            tracing::warn!(
+                limit = "process_package_cache_capacity",
+                observed_bytes = state.bytes,
+                capacity_bytes = self.options.max_bytes,
+                observed_entries = state.entries.len(),
+                capacity_entries = self.options.max_entries,
+                configuration_path = "ProcessPackageCacheOptions",
+                "process package cache approaching configured capacity"
+            );
+        }
+        Ok(cached_verified_package(artifact))
+    }
+
+    fn evict_for_insert(
+        &self,
+        state: &mut ProcessPackageCacheState,
+        requested: u64,
+    ) -> Result<(), ClientError> {
+        while state.entries.len() >= self.options.max_entries
+            || state.bytes.saturating_add(requested) > self.options.max_bytes
+        {
+            let victim = state
+                .entries
+                .iter()
+                .filter(|(_, entry)| Arc::strong_count(&entry.artifact) == 1)
+                .min_by_key(|(_, entry)| entry.last_access)
+                .map(|(digest, _)| digest.clone());
+            let Some(victim) = victim else {
+                state.capacity_failures = state.capacity_failures.saturating_add(1);
+                if state.entries.len() >= self.options.max_entries {
+                    return Err(ClientError::PackageCacheEntryCapacity {
+                        current: state.entries.len(),
+                        limit: self.options.max_entries,
+                    });
+                }
+                return Err(ClientError::PackageCacheCapacity {
+                    requested,
+                    current: state.bytes,
+                    limit: self.options.max_bytes,
+                });
+            };
+            let entry = state
+                .entries
+                .remove(&victim)
+                .expect("selected package cache victim must remain registered");
+            if let Err(error) = std::fs::remove_file(&entry.artifact.path) {
+                state.entries.insert(victim, entry);
+                return Err(ClientError::PackageIo(format!(
+                    "evict cached package: {error}"
+                )));
+            }
+            state.bytes = state.bytes.saturating_sub(entry.artifact.size);
+            state
+                .source_index
+                .retain(|_, source| source.digest != victim);
+            state.evictions = state.evictions.saturating_add(1);
+        }
+        Ok(())
+    }
+
+    async fn stats(&self) -> ProcessPackageCacheStats {
+        let state = self.state.lock().await;
+        ProcessPackageCacheStats {
+            entries: state.entries.len(),
+            source_entries: state.source_index.len(),
+            bytes: state.bytes,
+            pinned_entries: state
+                .entries
+                .values()
+                .filter(|entry| Arc::strong_count(&entry.artifact) > 1)
+                .count(),
+            pending_acquisitions: state.flights.len(),
+            hits: state.hits,
+            misses: state.misses,
+            coalesced_waiters: state.coalesced_waiters,
+            acquisitions: state.acquisitions,
+            evictions: state.evictions,
+            capacity_failures: state.capacity_failures,
+        }
+    }
+}
+
+fn remove_failed_cache_publication(path: &Path, failure: &'static str) {
+    if let Err(cleanup_error) = std::fs::remove_file(path) {
+        tracing::error!(
+            %cleanup_error,
+            cache_path = %path.display(),
+            %failure,
+            "failed to remove unsuccessfully published cached package"
+        );
+    }
+}
+
+fn cached_verified_package(artifact: Arc<CachedPackageArtifact>) -> VerifiedPackage {
+    VerifiedPackage {
+        package_id: artifact.package_id.clone(),
+        digest: artifact.digest.clone(),
+        size: artifact.size,
+        manifest: artifact.manifest.clone(),
+        backing: Arc::new(PackageBacking::Cached(artifact)),
+    }
+}
+
+async fn stage_cached_package(
+    source: PathBuf,
+    root: PathBuf,
+    expected_size: u64,
+    expected_digest: String,
+) -> Result<tempfile::TempPath, ClientError> {
+    tokio::task::spawn_blocking(move || {
+        let mut source = std::fs::File::open(&source)
+            .map_err(|error| ClientError::PackageIo(format!("open verified package: {error}")))?;
+        let mut staged = tempfile::Builder::new()
+            .prefix(".package-staging-")
+            .tempfile_in(root)
+            .map_err(|error| {
+                ClientError::PackageIo(format!("create package cache staging file: {error}"))
+            })?;
+        let mut hasher = Sha256::new();
+        let mut buffer = vec![0u8; DOWNLOAD_CHUNK_BYTES];
+        let mut copied = 0u64;
+        loop {
+            let count = source.read(&mut buffer).map_err(|error| {
+                ClientError::PackageIo(format!("read verified package for cache: {error}"))
+            })?;
+            if count == 0 {
+                break;
+            }
+            staged.as_file_mut().write_all(&buffer[..count]).map_err(|error| {
+                ClientError::PackageIo(format!("copy package into process cache: {error}"))
+            })?;
+            hasher.update(&buffer[..count]);
+            copied = copied.saturating_add(count as u64);
+        }
+        if copied != expected_size {
+            return Err(ClientError::PackageIo(format!(
+                "verified package changed while caching: expected {expected_size} bytes, copied {copied}"
+            )));
+        }
+        let copied_digest = format!("sha256:{}", hex_digest(hasher.finalize().as_slice()));
+        if copied_digest != expected_digest {
+            return Err(ClientError::PackageDigestMismatch {
+                expected: expected_digest,
+                actual: copied_digest,
+            });
+        }
+        staged.as_file().sync_all().map_err(|error| {
+            ClientError::PackageIo(format!("sync package cache staging file: {error}"))
+        })?;
+        Ok(staged.into_temp_path())
+    })
+    .await
+    .map_err(|error| ClientError::PackageIo(format!("package cache task failed: {error}")))?
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -159,18 +802,56 @@ impl From<&VerifiedPackage> for InstalledSoftware {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct PackageResolver {
     options: PackageResolverOptions,
+    cache: Arc<ProcessPackageCache>,
 }
 
 impl PackageResolver {
     pub fn new(options: PackageResolverOptions) -> Result<Self, ClientError> {
         options.validate()?;
-        Ok(Self { options })
+        Ok(Self {
+            options,
+            cache: process_package_cache()?,
+        })
     }
 
     pub async fn resolve(&self, source: PackageSource) -> Result<VerifiedPackage, ClientError> {
+        self.validate_source(&source)?;
+        let expected_digest = match &source {
+            PackageSource::Url {
+                expected_digest, ..
+            }
+            | PackageSource::Path {
+                expected_digest, ..
+            } => normalize_expected_digest(expected_digest.as_deref())?,
+        };
+        let flight_key = if let Some(digest) = &expected_digest {
+            format!("digest:{digest}")
+        } else {
+            match &source {
+                PackageSource::Url { url, .. } => {
+                    format!("url:{}", parse_package_url(url)?.as_str())
+                }
+                PackageSource::Path { path, .. } => format!("path:{path}"),
+            }
+        };
+        let resolver = self.clone();
+        let package = self
+            .cache
+            .get_or_acquire(flight_key, expected_digest.as_deref(), async move {
+                resolver.resolve_uncached(source).await
+            })
+            .await?;
+        enforce_package_size(package.size, self.options.max_package_bytes)?;
+        Ok(package)
+    }
+
+    async fn resolve_uncached(
+        &self,
+        source: PackageSource,
+    ) -> Result<VerifiedPackage, ClientError> {
         match source {
             PackageSource::Url {
                 url,
@@ -181,6 +862,10 @@ impl PackageResolver {
                 expected_digest,
             } => self.resolve_path(&path, expected_digest.as_deref()).await,
         }
+    }
+
+    pub async fn cache_stats(&self) -> ProcessPackageCacheStats {
+        self.cache.stats().await
     }
 
     /// Validate source syntax and digest form without opening a path, resolving
@@ -320,12 +1005,12 @@ impl PackageResolver {
                     String::from("package response failed while reading the body")
                 })
             })?;
-            size = size.checked_add(chunk.len() as u64).ok_or_else(|| {
-                ClientError::PackageTooLarge {
+            size = size
+                .checked_add(chunk.len() as u64)
+                .ok_or(ClientError::PackageTooLarge {
                     observed: u64::MAX,
                     limit: self.options.max_package_bytes,
-                }
-            })?;
+                })?;
             enforce_package_size(size, self.options.max_package_bytes)?;
             hasher.update(&chunk);
             file.write_all(&chunk).await.map_err(|error| {
@@ -423,7 +1108,7 @@ async fn digest_file(path: &Path, limit: u64) -> Result<String, ClientError> {
         }
         size = size
             .checked_add(count as u64)
-            .ok_or_else(|| ClientError::PackageTooLarge {
+            .ok_or(ClientError::PackageTooLarge {
                 observed: u64::MAX,
                 limit,
             })?;
@@ -466,6 +1151,12 @@ async fn validate_package_file(
                 header.index.len()
             )));
         }
+        // Decode and validate the bounded mount index before immutable bytes
+        // enter the shared cache. Projection reuses the same VFS parser and
+        // mmap path, so cache hits cannot defer malformed-index failures until
+        // a VM mutation.
+        vfs::posix::TarFileSystem::open(&path)
+            .map_err(|error| ClientError::InvalidPackageFormat(error.to_string()))?;
         let manifest = vfs::package_format::read_manifest_chunk_from_file(&path)
             .map_err(|error| ClientError::InvalidPackageFormat(error.to_string()))?;
         validate_manifest_component("name", &manifest.name, MAX_PACKAGE_NAME_BYTES)?;
@@ -769,16 +1460,21 @@ fn package_request_error(label: &str, error: &reqwest::Error) -> ClientError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
     fn test_package() -> Vec<u8> {
+        test_package_with_version("1.0.0")
+    }
+
+    fn test_package_with_version(version: &str) -> Vec<u8> {
         let mut builder = tar::Builder::new(Vec::<u8>::new());
-        let manifest = br#"{"name":"demo","version":"1.0.0"}"#;
+        let manifest = format!(r#"{{"name":"demo","version":"{version}"}}"#);
         let mut header = tar::Header::new_gnu();
         header.set_size(manifest.len() as u64);
         header.set_mode(0o644);
         header.set_cksum();
         builder
-            .append_data(&mut header, "agentos-package.json", &manifest[..])
+            .append_data(&mut header, "agentos-package.json", manifest.as_bytes())
             .unwrap();
         let command = b"#!/bin/sh\necho demo\n";
         let mut header = tar::Header::new_gnu();
@@ -792,6 +1488,33 @@ mod tests {
         vfs::package_format::pack::pack_aospkg_from_tar_bytes(&tar)
             .unwrap()
             .0
+    }
+
+    async fn uncached_package(path: PathBuf) -> Result<VerifiedPackage, ClientError> {
+        let size = tokio::fs::metadata(&path)
+            .await
+            .map_err(|error| ClientError::PackageIo(error.to_string()))?
+            .len();
+        let digest = digest_file(&path, DEFAULT_MAX_PACKAGE_BYTES).await?;
+        let manifest = validate_package_file(path.clone(), size).await?;
+        Ok(verified_package(
+            digest,
+            size,
+            manifest,
+            PackageBacking::Borrowed(path),
+        ))
+    }
+
+    fn test_cache_options() -> ProcessPackageCacheOptions {
+        ProcessPackageCacheOptions {
+            max_bytes: 16 * 1024 * 1024,
+            max_entries: 8,
+            max_concurrent_acquisitions: 2,
+            max_pending_acquisitions: 128,
+            acquisition_timeout_ms: 5_000,
+            max_source_entries: 32,
+            source_ttl_ms: 5_000,
+        }
     }
 
     #[test]
@@ -874,7 +1597,7 @@ mod tests {
         let from_url = url_resolver
             .resolve(PackageSource::Url {
                 url: format!("http://{address}/demo.aospkg"),
-                expected_digest: Some(from_path.digest.clone()),
+                expected_digest: None,
             })
             .await
             .unwrap();
@@ -899,5 +1622,259 @@ mod tests {
             .await
             .expect_err("digest mismatch must fail");
         assert!(matches!(error, ClientError::PackageDigestMismatch { .. }));
+    }
+
+    #[tokio::test]
+    async fn concurrent_same_source_uses_one_acquisition() {
+        const CALLERS: usize = 100;
+        let package = tempfile::NamedTempFile::new().unwrap();
+        std::fs::write(package.path(), test_package()).unwrap();
+        let package_path = package.path().to_path_buf();
+        let cache = Arc::new(ProcessPackageCache::new(test_cache_options()).unwrap());
+        let start = Arc::new(tokio::sync::Barrier::new(CALLERS + 1));
+        let acquisition_gate = Arc::new(Semaphore::new(0));
+        let acquisitions = Arc::new(AtomicUsize::new(0));
+        let mut tasks = Vec::with_capacity(CALLERS);
+        for _ in 0..CALLERS {
+            let cache = Arc::clone(&cache);
+            let start = Arc::clone(&start);
+            let gate = Arc::clone(&acquisition_gate);
+            let acquisitions = Arc::clone(&acquisitions);
+            let path = package_path.clone();
+            tasks.push(tokio::spawn(async move {
+                start.wait().await;
+                cache
+                    .get_or_acquire(
+                        String::from("url:https://example.test/demo"),
+                        None,
+                        async move {
+                            acquisitions.fetch_add(1, Ordering::SeqCst);
+                            gate.acquire_owned()
+                                .await
+                                .expect("test acquisition gate")
+                                .forget();
+                            uncached_package(path).await
+                        },
+                    )
+                    .await
+            }));
+        }
+        start.wait().await;
+        tokio::time::timeout(Duration::from_secs(2), async {
+            loop {
+                if cache.stats().await.coalesced_waiters == (CALLERS - 1) as u64 {
+                    break;
+                }
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("all callers join one flight");
+        acquisition_gate.add_permits(1);
+
+        let mut resolved = Vec::with_capacity(CALLERS);
+        for task in tasks {
+            resolved.push(task.await.unwrap().unwrap());
+        }
+        assert_eq!(acquisitions.load(Ordering::SeqCst), 1);
+        assert!(resolved
+            .iter()
+            .all(|package| package.digest == resolved[0].digest));
+        let stats = cache.stats().await;
+        assert_eq!(stats.acquisitions, 1);
+        assert_eq!(stats.coalesced_waiters, (CALLERS - 1) as u64);
+        assert_eq!(stats.entries, 1);
+        assert_eq!(stats.pinned_entries, 1);
+    }
+
+    #[tokio::test]
+    async fn recent_source_resolution_reuses_the_digest_entry() {
+        let package = tempfile::NamedTempFile::new().unwrap();
+        std::fs::write(package.path(), test_package()).unwrap();
+        let cache = Arc::new(ProcessPackageCache::new(test_cache_options()).unwrap());
+        let acquisitions = Arc::new(AtomicUsize::new(0));
+        let source_key = String::from("url:https://example.test/demo");
+
+        let first_count = Arc::clone(&acquisitions);
+        let first_path = package.path().to_path_buf();
+        let first = cache
+            .get_or_acquire(source_key.clone(), None, async move {
+                first_count.fetch_add(1, Ordering::SeqCst);
+                uncached_package(first_path).await
+            })
+            .await
+            .unwrap();
+        let second_count = Arc::clone(&acquisitions);
+        let second_path = package.path().to_path_buf();
+        let second = cache
+            .get_or_acquire(source_key, None, async move {
+                second_count.fetch_add(1, Ordering::SeqCst);
+                uncached_package(second_path).await
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(first.digest, second.digest);
+        assert_eq!(acquisitions.load(Ordering::SeqCst), 1);
+        let stats = cache.stats().await;
+        assert_eq!(stats.source_entries, 1);
+        assert_eq!(stats.hits, 1);
+    }
+
+    #[tokio::test]
+    async fn failed_flight_is_removed_before_retry() {
+        let package = tempfile::NamedTempFile::new().unwrap();
+        std::fs::write(package.path(), test_package()).unwrap();
+        let cache = Arc::new(ProcessPackageCache::new(test_cache_options()).unwrap());
+
+        let error = cache
+            .get_or_acquire(String::from("failure"), None, async {
+                Err(ClientError::PackageDownload(String::from(
+                    "injected acquisition failure",
+                )))
+            })
+            .await
+            .expect_err("first acquisition must fail");
+        assert!(matches!(error, ClientError::PackageDownload(_)));
+
+        let resolved = cache
+            .get_or_acquire(
+                String::from("failure"),
+                None,
+                uncached_package(package.path().to_path_buf()),
+            )
+            .await
+            .expect("retry starts a fresh acquisition");
+        assert_eq!(resolved.manifest.name, "demo");
+        let stats = cache.stats().await;
+        assert_eq!(stats.acquisitions, 2);
+        assert_eq!(stats.pending_acquisitions, 0);
+    }
+
+    #[tokio::test]
+    async fn timed_out_flight_is_removed_before_retry() {
+        let package = tempfile::NamedTempFile::new().unwrap();
+        std::fs::write(package.path(), test_package()).unwrap();
+        let mut options = test_cache_options();
+        // Leave enough headroom for the successful retry to validate and copy
+        // its package even when the test suite is contending for disk I/O.
+        options.acquisition_timeout_ms = 250;
+        let cache = Arc::new(ProcessPackageCache::new(options).unwrap());
+
+        let error = cache
+            .get_or_acquire(String::from("timeout"), None, async {
+                std::future::pending::<Result<VerifiedPackage, ClientError>>().await
+            })
+            .await
+            .expect_err("acquisition must time out");
+        assert!(error.to_string().contains("acquisition_timeout_ms"));
+
+        let resolved = cache
+            .get_or_acquire(
+                String::from("timeout"),
+                None,
+                uncached_package(package.path().to_path_buf()),
+            )
+            .await
+            .expect("retry starts after timed-out flight cleanup");
+        assert_eq!(resolved.manifest.name, "demo");
+        assert_eq!(cache.stats().await.pending_acquisitions, 0);
+    }
+
+    #[tokio::test]
+    async fn pinned_entries_block_eviction_then_lru_evicts_after_release() {
+        let first = tempfile::NamedTempFile::new().unwrap();
+        let second = tempfile::NamedTempFile::new().unwrap();
+        std::fs::write(first.path(), test_package_with_version("1.0.0")).unwrap();
+        std::fs::write(second.path(), test_package_with_version("2.0.0")).unwrap();
+        let mut options = test_cache_options();
+        options.max_entries = 1;
+        let cache = Arc::new(ProcessPackageCache::new(options).unwrap());
+
+        let installed_first = cache
+            .get_or_acquire(
+                String::from("first"),
+                None,
+                uncached_package(first.path().to_path_buf()),
+            )
+            .await
+            .unwrap();
+        let first_digest = installed_first.digest.clone();
+        let error = cache
+            .get_or_acquire(
+                String::from("second"),
+                None,
+                uncached_package(second.path().to_path_buf()),
+            )
+            .await
+            .expect_err("a live package pin must block eviction");
+        assert!(matches!(
+            error,
+            ClientError::PackageCacheEntryCapacity { .. }
+        ));
+
+        drop(installed_first);
+        let installed_second = cache
+            .get_or_acquire(
+                String::from("second-retry"),
+                None,
+                uncached_package(second.path().to_path_buf()),
+            )
+            .await
+            .unwrap();
+        assert_ne!(installed_second.digest, first_digest);
+        assert!(cache.get(&first_digest).await.is_none());
+        let stats = cache.stats().await;
+        assert_eq!(stats.entries, 1);
+        assert_eq!(stats.evictions, 1);
+        assert_eq!(stats.capacity_failures, 1);
+    }
+
+    #[tokio::test]
+    async fn distinct_pending_source_keys_are_bounded() {
+        let package = tempfile::NamedTempFile::new().unwrap();
+        std::fs::write(package.path(), test_package()).unwrap();
+        let mut options = test_cache_options();
+        options.max_concurrent_acquisitions = 1;
+        options.max_pending_acquisitions = 1;
+        let cache = Arc::new(ProcessPackageCache::new(options).unwrap());
+        let gate = Arc::new(Semaphore::new(0));
+        let leader_cache = Arc::clone(&cache);
+        let leader_gate = Arc::clone(&gate);
+        let path = package.path().to_path_buf();
+        let leader = tokio::spawn(async move {
+            leader_cache
+                .get_or_acquire(String::from("first"), None, async move {
+                    leader_gate
+                        .acquire_owned()
+                        .await
+                        .expect("test pending gate")
+                        .forget();
+                    uncached_package(path).await
+                })
+                .await
+        });
+        tokio::time::timeout(Duration::from_secs(2), async {
+            while cache.stats().await.pending_acquisitions != 1 {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("leader registers its flight");
+
+        let error = cache
+            .get_or_acquire(
+                String::from("second"),
+                None,
+                uncached_package(package.path().to_path_buf()),
+            )
+            .await
+            .expect_err("distinct pending source must hit the bound");
+        assert!(matches!(
+            error,
+            ClientError::PackageCachePendingLimit { limit: 1 }
+        ));
+        gate.add_permits(1);
+        leader.await.unwrap().unwrap();
     }
 }

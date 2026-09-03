@@ -81,8 +81,9 @@ pub use process::{
 pub use net::{HttpRequest, HttpResponse, HttpStreamChunk, HttpStreamHead};
 
 pub use software::{
-    InstalledSoftware, PackageManifestInfo, PackageResolver, PackageResolverOptions, PackageSource,
-    VerifiedPackage,
+    configure_process_package_cache, process_package_cache_stats, InstalledSoftware,
+    PackageManifestInfo, PackageResolver, PackageResolverOptions, PackageSource,
+    ProcessPackageCacheOptions, ProcessPackageCacheStats, VerifiedPackage,
 };
 
 pub use fs::{

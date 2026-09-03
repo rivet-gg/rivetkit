@@ -47,6 +47,66 @@ fn parse_entrypoint(args: &mut impl Iterator<Item = String>) -> Result<Entrypoin
     }
 }
 
+fn parse_actor_cache_options(
+    mut args: impl Iterator<Item = String>,
+) -> Result<agentos_client::ProcessPackageCacheOptions, String> {
+    let mut options = agentos_client::ProcessPackageCacheOptions::default();
+    while let Some(argument) = args.next() {
+        let (name, inline_value) = argument
+            .split_once('=')
+            .map_or((argument.as_str(), None), |(name, value)| {
+                (name, Some(value.to_owned()))
+            });
+        let value = match inline_value {
+            Some(value) => value,
+            None => args
+                .next()
+                .ok_or_else(|| format!("{name} requires a positive integer"))?,
+        };
+        match name {
+            "--package-cache-max-bytes" => {
+                options.max_bytes = parse_positive_actor_option(name, &value)?;
+            }
+            "--package-cache-max-entries" => {
+                options.max_entries = parse_positive_actor_option(name, &value)?;
+            }
+            "--package-cache-max-concurrent-acquisitions" => {
+                options.max_concurrent_acquisitions = parse_positive_actor_option(name, &value)?;
+            }
+            "--package-cache-max-pending-acquisitions" => {
+                options.max_pending_acquisitions = parse_positive_actor_option(name, &value)?;
+            }
+            "--package-cache-acquisition-timeout-ms" => {
+                options.acquisition_timeout_ms = parse_positive_actor_option(name, &value)?;
+            }
+            "--package-cache-max-source-entries" => {
+                options.max_source_entries = parse_positive_actor_option(name, &value)?;
+            }
+            "--package-cache-source-ttl-ms" => {
+                options.source_ttl_ms = parse_positive_actor_option(name, &value)?;
+            }
+            _ => return Err(format!("unknown agentOS actor argument: {argument}")),
+        }
+    }
+    options
+        .validate()
+        .map_err(|error| format!("invalid agentOS actor package cache configuration: {error}"))?;
+    Ok(options)
+}
+
+fn parse_positive_actor_option<T>(name: &str, value: &str) -> Result<T, String>
+where
+    T: std::str::FromStr + PartialEq + From<u8>,
+{
+    let parsed = value
+        .parse::<T>()
+        .map_err(|_| format!("{name} requires a positive integer, received {value:?}"))?;
+    if parsed == T::from(0) {
+        return Err(format!("{name} must be greater than zero"));
+    }
+    Ok(parsed)
+}
+
 fn main() {
     // Default to WARN so near-limit / backpressure warnings actually surface
     // (they were swallowed at ERROR-only); operators can tune via AGENTOS_LOG
@@ -78,10 +138,10 @@ fn main() {
     }
 }
 
-fn run_actor(mut args: impl Iterator<Item = String>) -> Result<(), String> {
-    if let Some(argument) = args.next() {
-        return Err(format!("unknown agentOS actor argument: {argument}"));
-    }
+fn run_actor(args: impl Iterator<Item = String>) -> Result<(), String> {
+    let cache_options = parse_actor_cache_options(args)?;
+    agentos_client::configure_process_package_cache(cache_options)
+        .map_err(|error| format!("configure agentOS process package cache: {error}"))?;
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -114,7 +174,7 @@ fn run_sidecar(args: impl Iterator<Item = String>) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_entrypoint, parse_runtime_config, Entrypoint};
+    use super::{parse_actor_cache_options, parse_entrypoint, parse_runtime_config, Entrypoint};
 
     #[test]
     fn executable_entrypoints_are_fixed() {
@@ -144,5 +204,42 @@ mod tests {
         let error = parse_runtime_config([String::from("--max-active-vms=0")].into_iter())
             .expect_err("zero executor limit must fail");
         assert!(error.contains("greater than zero"));
+    }
+
+    #[test]
+    fn actor_package_cache_limits_are_startup_only_and_bounded() {
+        let options = parse_actor_cache_options(
+            [
+                String::from("--package-cache-max-bytes=1024"),
+                String::from("--package-cache-max-entries"),
+                String::from("4"),
+                String::from("--package-cache-max-concurrent-acquisitions=2"),
+                String::from("--package-cache-max-pending-acquisitions=8"),
+                String::from("--package-cache-acquisition-timeout-ms=9000"),
+                String::from("--package-cache-max-source-entries=16"),
+                String::from("--package-cache-source-ttl-ms=30000"),
+            ]
+            .into_iter(),
+        )
+        .expect("parse actor package cache limits");
+        assert_eq!(options.max_bytes, 1024);
+        assert_eq!(options.max_entries, 4);
+        assert_eq!(options.max_concurrent_acquisitions, 2);
+        assert_eq!(options.max_pending_acquisitions, 8);
+        assert_eq!(options.acquisition_timeout_ms, 9000);
+        assert_eq!(options.max_source_entries, 16);
+        assert_eq!(options.source_ttl_ms, 30000);
+        assert!(parse_actor_cache_options(
+            [String::from("--package-cache-max-entries=0")].into_iter()
+        )
+        .is_err());
+        assert!(parse_actor_cache_options(
+            [
+                String::from("--package-cache-max-concurrent-acquisitions=9"),
+                String::from("--package-cache-max-pending-acquisitions=8"),
+            ]
+            .into_iter()
+        )
+        .is_err());
     }
 }
