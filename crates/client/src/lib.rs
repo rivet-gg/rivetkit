@@ -84,6 +84,7 @@ pub use software::{
     configure_process_package_cache, process_package_cache_stats, InstalledSoftware,
     PackageManifestInfo, PackageResolver, PackageResolverOptions, PackageSource,
     ProcessPackageCacheOptions, ProcessPackageCacheStats, VerifiedPackage,
+    DEFAULT_MAX_PACKAGE_BYTES,
 };
 
 pub use fs::{

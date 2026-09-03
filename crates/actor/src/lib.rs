@@ -8,6 +8,7 @@ mod events;
 mod filesystem;
 mod language;
 mod network;
+mod preload;
 mod process;
 mod runtime;
 mod software;
@@ -44,6 +45,14 @@ pub use filesystem::{
 };
 pub use language::*;
 pub use network::*;
+pub use preload::{
+    configure_process_preload, PreloadArtifact, PreloadBaselineReplaced, PreloadCoordinatorActor,
+    PreloadCoordinatorConfig, PreloadCoordinatorConfigInput, PreloadCoordinatorCreateInput,
+    PreloadCoordinatorStatus, PreloadGetPlan, PreloadPlan, PreloadProcessOptions,
+    PreloadRecordUsage, PreloadReplaceBaseline, PreloadStatus, PreloadUsageAccepted,
+    PreloadUsageObservation, ProcessPreloadReport, PRELOAD_COORDINATOR_ACTOR_KEY,
+    PRELOAD_COORDINATOR_ACTOR_NAME, PRELOAD_PROTOCOL_VERSION,
+};
 pub use process::*;
 pub use runtime::{
     CoreSidecarStatus, PackageStartupStatus, RuntimeIssue, RuntimeLifecycleState, RuntimeStatus,
@@ -171,12 +180,19 @@ impl Actor for AgentOsActor {
         ctx.set_state(AgentOsActorState {
             config: durable.clone(),
         });
+        // The first agentOS actor created in a process performs the one bounded
+        // advisory warm. Concurrent and later actors share its OnceCell result.
+        let process_preload = preload::warm_process_once(ctx).await;
         let actor = Self {
             runtime: RuntimeController::new(ctx.actor_id(), durable.revision),
             config: Mutex::new(durable.clone()),
             action_admission: Arc::new(Semaphore::new(ACTION_CONCURRENCY_LIMIT)),
             config_mutation: Mutex::new(()),
         };
+        actor
+            .runtime
+            .set_process_preload_report(&process_preload)
+            .await;
 
         // A failed Core boot does not make runtime.status unreachable. Persist
         // the failure and let the actor start in the failed lifecycle state.
@@ -257,6 +273,14 @@ pub fn registry() -> Registry {
     let mut registry = Registry::new();
     registry.register_actor_with::<AgentOsActor>(
         ACTOR_NAME,
+        ActorConfig {
+            max_incoming_message_size: ACTOR_MESSAGE_SIZE_LIMIT,
+            max_outgoing_message_size: ACTOR_MESSAGE_SIZE_LIMIT,
+            ..ActorConfig::default()
+        },
+    );
+    registry.register_actor_with::<PreloadCoordinatorActor>(
+        PRELOAD_COORDINATOR_ACTOR_NAME,
         ActorConfig {
             max_incoming_message_size: ACTOR_MESSAGE_SIZE_LIMIT,
             max_outgoing_message_size: ACTOR_MESSAGE_SIZE_LIMIT,

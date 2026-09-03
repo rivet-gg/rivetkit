@@ -819,6 +819,10 @@ impl PackageResolver {
 
     pub async fn resolve(&self, source: PackageSource) -> Result<VerifiedPackage, ClientError> {
         self.validate_source(&source)?;
+        let source_key = match &source {
+            PackageSource::Url { url, .. } => format!("url:{}", parse_package_url(url)?.as_str()),
+            PackageSource::Path { path, .. } => format!("path:{path}"),
+        };
         let expected_digest = match &source {
             PackageSource::Url {
                 expected_digest, ..
@@ -830,12 +834,7 @@ impl PackageResolver {
         let flight_key = if let Some(digest) = &expected_digest {
             format!("digest:{digest}")
         } else {
-            match &source {
-                PackageSource::Url { url, .. } => {
-                    format!("url:{}", parse_package_url(url)?.as_str())
-                }
-                PackageSource::Path { path, .. } => format!("path:{path}"),
-            }
+            source_key.clone()
         };
         let resolver = self.clone();
         let package = self
@@ -845,6 +844,14 @@ impl PackageResolver {
             })
             .await?;
         enforce_package_size(package.size, self.options.max_package_bytes)?;
+        // Exact coordinator preloads use a digest flight for correctness. Also
+        // remember the bounded short-lived source alias so a later actor whose
+        // creation input names only the same URL can reuse the warmed object.
+        if expected_digest.is_some() {
+            self.cache
+                .record_source(source_key, package.digest.clone())
+                .await;
+        }
         Ok(package)
     }
 
@@ -1719,6 +1726,38 @@ mod tests {
         let stats = cache.stats().await;
         assert_eq!(stats.source_entries, 1);
         assert_eq!(stats.hits, 1);
+    }
+
+    #[tokio::test]
+    async fn exact_resolution_primes_the_advisory_source_alias() {
+        let bytes = test_package();
+        let package = tempfile::NamedTempFile::new().unwrap();
+        std::fs::write(package.path(), &bytes).unwrap();
+        let path = package.path().to_string_lossy().into_owned();
+        let expected_digest = format!("sha256:{}", hex_digest(Sha256::digest(&bytes).as_slice()));
+        let resolver = PackageResolver {
+            options: PackageResolverOptions::default(),
+            cache: Arc::new(ProcessPackageCache::new(test_cache_options()).unwrap()),
+        };
+
+        let exact = resolver
+            .resolve(PackageSource::Path {
+                path: path.clone(),
+                expected_digest: Some(expected_digest.clone()),
+            })
+            .await
+            .unwrap();
+        std::fs::remove_file(&path).unwrap();
+        let from_alias = resolver
+            .resolve(PackageSource::Path {
+                path,
+                expected_digest: None,
+            })
+            .await
+            .expect("unresolved source reuses exact preload alias");
+        assert_eq!(from_alias.digest, expected_digest);
+        assert_eq!(from_alias.digest, exact.digest);
+        assert_eq!(resolver.cache_stats().await.acquisitions, 1);
     }
 
     #[tokio::test]

@@ -47,10 +47,17 @@ fn parse_entrypoint(args: &mut impl Iterator<Item = String>) -> Result<Entrypoin
     }
 }
 
-fn parse_actor_cache_options(
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ActorProcessOptions {
+    package_cache: agentos_client::ProcessPackageCacheOptions,
+    preload: agentos_actor::PreloadProcessOptions,
+}
+
+fn parse_actor_options(
     mut args: impl Iterator<Item = String>,
-) -> Result<agentos_client::ProcessPackageCacheOptions, String> {
-    let mut options = agentos_client::ProcessPackageCacheOptions::default();
+) -> Result<ActorProcessOptions, String> {
+    let mut package_cache = agentos_client::ProcessPackageCacheOptions::default();
+    let mut preload = agentos_actor::PreloadProcessOptions::default();
     while let Some(argument) = args.next() {
         let (name, inline_value) = argument
             .split_once('=')
@@ -65,33 +72,64 @@ fn parse_actor_cache_options(
         };
         match name {
             "--package-cache-max-bytes" => {
-                options.max_bytes = parse_positive_actor_option(name, &value)?;
+                package_cache.max_bytes = parse_positive_actor_option(name, &value)?;
             }
             "--package-cache-max-entries" => {
-                options.max_entries = parse_positive_actor_option(name, &value)?;
+                package_cache.max_entries = parse_positive_actor_option(name, &value)?;
             }
             "--package-cache-max-concurrent-acquisitions" => {
-                options.max_concurrent_acquisitions = parse_positive_actor_option(name, &value)?;
+                package_cache.max_concurrent_acquisitions =
+                    parse_positive_actor_option(name, &value)?;
             }
             "--package-cache-max-pending-acquisitions" => {
-                options.max_pending_acquisitions = parse_positive_actor_option(name, &value)?;
+                package_cache.max_pending_acquisitions = parse_positive_actor_option(name, &value)?;
             }
             "--package-cache-acquisition-timeout-ms" => {
-                options.acquisition_timeout_ms = parse_positive_actor_option(name, &value)?;
+                package_cache.acquisition_timeout_ms = parse_positive_actor_option(name, &value)?;
             }
             "--package-cache-max-source-entries" => {
-                options.max_source_entries = parse_positive_actor_option(name, &value)?;
+                package_cache.max_source_entries = parse_positive_actor_option(name, &value)?;
             }
             "--package-cache-source-ttl-ms" => {
-                options.source_ttl_ms = parse_positive_actor_option(name, &value)?;
+                package_cache.source_ttl_ms = parse_positive_actor_option(name, &value)?;
+            }
+            "--preload-startup-deadline-ms" => {
+                preload.startup_deadline_ms = parse_positive_actor_option(name, &value)?;
+            }
+            "--preload-plan-read-timeout-ms" => {
+                preload.plan_read_timeout_ms = parse_positive_actor_option(name, &value)?;
+            }
+            "--preload-max-plan-entries" => {
+                preload.max_plan_entries = parse_positive_actor_option(name, &value)?;
+            }
+            "--preload-max-plan-bytes" => {
+                preload.max_plan_bytes = parse_positive_actor_option(name, &value)?;
+            }
+            "--preload-warm-concurrency" => {
+                preload.warm_concurrency = parse_positive_actor_option(name, &value)?;
+            }
+            "--preload-max-observation-entries" => {
+                preload.max_observation_entries = parse_positive_actor_option(name, &value)?;
+            }
+            "--preload-flush-interval-ms" => {
+                preload.flush_interval_ms = parse_positive_actor_option(name, &value)?;
+            }
+            "--preload-action-timeout-ms" => {
+                preload.action_timeout_ms = parse_positive_actor_option(name, &value)?;
             }
             _ => return Err(format!("unknown agentOS actor argument: {argument}")),
         }
     }
-    options
+    package_cache
         .validate()
         .map_err(|error| format!("invalid agentOS actor package cache configuration: {error}"))?;
-    Ok(options)
+    preload
+        .validate()
+        .map_err(|error| format!("invalid agentOS actor preload configuration: {error:#}"))?;
+    Ok(ActorProcessOptions {
+        package_cache,
+        preload,
+    })
 }
 
 fn parse_positive_actor_option<T>(name: &str, value: &str) -> Result<T, String>
@@ -139,9 +177,11 @@ fn main() {
 }
 
 fn run_actor(args: impl Iterator<Item = String>) -> Result<(), String> {
-    let cache_options = parse_actor_cache_options(args)?;
-    agentos_client::configure_process_package_cache(cache_options)
+    let options = parse_actor_options(args)?;
+    agentos_client::configure_process_package_cache(options.package_cache)
         .map_err(|error| format!("configure agentOS process package cache: {error}"))?;
+    agentos_actor::configure_process_preload(options.preload)
+        .map_err(|error| format!("configure agentOS process preload: {error:#}"))?;
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -174,7 +214,7 @@ fn run_sidecar(args: impl Iterator<Item = String>) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_actor_cache_options, parse_entrypoint, parse_runtime_config, Entrypoint};
+    use super::{parse_actor_options, parse_entrypoint, parse_runtime_config, Entrypoint};
 
     #[test]
     fn executable_entrypoints_are_fixed() {
@@ -208,7 +248,7 @@ mod tests {
 
     #[test]
     fn actor_package_cache_limits_are_startup_only_and_bounded() {
-        let options = parse_actor_cache_options(
+        let options = parse_actor_options(
             [
                 String::from("--package-cache-max-bytes=1024"),
                 String::from("--package-cache-max-entries"),
@@ -218,22 +258,38 @@ mod tests {
                 String::from("--package-cache-acquisition-timeout-ms=9000"),
                 String::from("--package-cache-max-source-entries=16"),
                 String::from("--package-cache-source-ttl-ms=30000"),
+                String::from("--preload-startup-deadline-ms=5000"),
+                String::from("--preload-plan-read-timeout-ms=1000"),
+                String::from("--preload-max-plan-entries=8"),
+                String::from("--preload-max-plan-bytes=2048"),
+                String::from("--preload-warm-concurrency=2"),
+                String::from("--preload-max-observation-entries=6"),
+                String::from("--preload-flush-interval-ms=60000"),
+                String::from("--preload-action-timeout-ms=2000"),
             ]
             .into_iter(),
         )
         .expect("parse actor package cache limits");
-        assert_eq!(options.max_bytes, 1024);
-        assert_eq!(options.max_entries, 4);
-        assert_eq!(options.max_concurrent_acquisitions, 2);
-        assert_eq!(options.max_pending_acquisitions, 8);
-        assert_eq!(options.acquisition_timeout_ms, 9000);
-        assert_eq!(options.max_source_entries, 16);
-        assert_eq!(options.source_ttl_ms, 30000);
-        assert!(parse_actor_cache_options(
-            [String::from("--package-cache-max-entries=0")].into_iter()
-        )
-        .is_err());
-        assert!(parse_actor_cache_options(
+        assert_eq!(options.package_cache.max_bytes, 1024);
+        assert_eq!(options.package_cache.max_entries, 4);
+        assert_eq!(options.package_cache.max_concurrent_acquisitions, 2);
+        assert_eq!(options.package_cache.max_pending_acquisitions, 8);
+        assert_eq!(options.package_cache.acquisition_timeout_ms, 9000);
+        assert_eq!(options.package_cache.max_source_entries, 16);
+        assert_eq!(options.package_cache.source_ttl_ms, 30000);
+        assert_eq!(options.preload.startup_deadline_ms, 5000);
+        assert_eq!(options.preload.plan_read_timeout_ms, 1000);
+        assert_eq!(options.preload.max_plan_entries, 8);
+        assert_eq!(options.preload.max_plan_bytes, 2048);
+        assert_eq!(options.preload.warm_concurrency, 2);
+        assert_eq!(options.preload.max_observation_entries, 6);
+        assert_eq!(options.preload.flush_interval_ms, 60000);
+        assert_eq!(options.preload.action_timeout_ms, 2000);
+        assert!(
+            parse_actor_options([String::from("--package-cache-max-entries=0")].into_iter())
+                .is_err()
+        );
+        assert!(parse_actor_options(
             [
                 String::from("--package-cache-max-concurrent-acquisitions=9"),
                 String::from("--package-cache-max-pending-acquisitions=8"),

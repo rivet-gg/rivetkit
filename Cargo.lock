@@ -58,6 +58,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "ciborium",
+ "futures",
  "hex",
  "http 1.4.2",
  "rivetkit",

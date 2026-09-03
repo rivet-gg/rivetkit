@@ -9,6 +9,7 @@ use sha2::{Digest, Sha256};
 use tokio::sync::Mutex;
 
 use crate::config::{AgentOsActorConfig, RemotePackageSource};
+use crate::preload::ProcessPreloadReport;
 
 const INITIALIZATION_TIMEOUT: Duration = Duration::from_secs(30);
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
@@ -41,6 +42,11 @@ pub struct PackageStartupStatus {
     pub required_ready: u32,
     pub optional_preload_total: u32,
     pub optional_preload_ready: u32,
+    pub optional_preload_failed: u32,
+    pub optional_preload_skipped: u32,
+    pub optional_preload_warmed_bytes: u64,
+    pub optional_preload_deadline_hit: bool,
+    pub optional_preload_coordinator_available: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -106,12 +112,28 @@ impl RuntimeController {
                     required_ready: 0,
                     optional_preload_total: 0,
                     optional_preload_ready: 0,
+                    optional_preload_failed: 0,
+                    optional_preload_skipped: 0,
+                    optional_preload_warmed_bytes: 0,
+                    optional_preload_deadline_hit: false,
+                    optional_preload_coordinator_available: false,
                 },
                 issues: VecDeque::new(),
                 resolved_software: Vec::new(),
                 vm: None,
             }),
         }
+    }
+
+    pub(crate) async fn set_process_preload_report(&self, report: &ProcessPreloadReport) {
+        let mut state = self.state.lock().await;
+        state.packages.optional_preload_total = report.total;
+        state.packages.optional_preload_ready = report.ready;
+        state.packages.optional_preload_failed = report.failed;
+        state.packages.optional_preload_skipped = report.skipped;
+        state.packages.optional_preload_warmed_bytes = report.warmed_bytes;
+        state.packages.optional_preload_deadline_hit = report.deadline_hit;
+        state.packages.optional_preload_coordinator_available = report.coordinator_available;
     }
 
     pub(crate) async fn boot(

@@ -140,6 +140,8 @@ hit.
   one digest artifact.
 - A recent unresolved source-key lookup reuses the digest entry through the
   bounded short-TTL index.
+- An exact digest preload also seeds its bounded source alias, allowing a later
+  unresolved lookup of the same URL to reuse the warmed digest object.
 - A failed flight is removed before its callers wake, so an immediate retry
   starts a fresh acquisition.
 - A timed-out flight releases its pending slot and permits an immediate retry.

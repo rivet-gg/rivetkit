@@ -90,6 +90,7 @@ impl Handles<SoftwareInstall> for AgentOsActor {
                 .iter()
                 .any(|entry| entry.package_id.as_deref() == Some(installed.package_id.as_str()))
             {
+                crate::preload::observe_software_usage(&source.url, &installed).await;
                 return Ok(SoftwareMutationResult {
                     software: installed,
                     config_revision: current.revision,
@@ -121,6 +122,7 @@ impl Handles<SoftwareInstall> for AgentOsActor {
             self.runtime
                 .set_applied_config_revision(next.revision)
                 .await;
+            crate::preload::observe_software_usage(&source.url, &installed).await;
             Ok(SoftwareMutationResult {
                 software: installed,
                 config_revision: next.revision,
@@ -214,6 +216,9 @@ impl AgentOsActor {
         }
         if changed {
             persist_snapshot(self, ctx, &next).await?;
+        }
+        for resolved in self.runtime.resolved_software().await {
+            crate::preload::observe_software_usage(&resolved.url, &resolved.installed).await;
         }
         Ok(())
     }
