@@ -4706,8 +4706,8 @@ export class AgentOs {
 
 	/**
 	 * Fetch an HTTP endpoint inside the VM while preserving duplicate response
-	 * headers and arbitrary binary bodies. agentOS Apps uses this compatibility
-	 * surface for its direct actor API.
+	 * headers and arbitrary binary bodies. This compatibility surface supports
+	 * fetch-like callers that proxy requests into a guest VM.
 	 */
 	async fetch(port: number, request: Request): Promise<Response> {
 		const url = new URL(request.url);

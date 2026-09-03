@@ -1,7 +1,6 @@
 packages:
   - packages/agentos-bindgen
   - packages/agentos-sandbox
-  - packages/agentos-apps
   - packages/agentos
   - packages/agentos-toolchain
   - packages/eve
@@ -22,8 +21,6 @@ packages:
   - software/*
   - test-harness
   - examples/*
-  - benchmarks/agentos-apps
-  - tests/e2e/agentos-apps
   # Nested example packages (e.g. examples/quickstart/hello-world) so every
   # embeddable example is a workspace member that `turbo check-types` covers.
   - examples/*/*

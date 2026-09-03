@@ -63,14 +63,13 @@ test("sanity check passes for the agent-os workspace", () => {
 	assert(names.has("@rivet-dev/agentos"));
 });
 
-test("publishes only new agentOS Apps software packages in lockstep", () => {
+test("publishes only platform-owned software packages in lockstep", () => {
 	const names = discoverPackages(repoRoot).map((pkg) => pkg.name);
 
-	assert(LOCKSTEP_SOFTWARE_PACKAGES.has("@agentos-software/apps-builder"));
+	assert(LOCKSTEP_SOFTWARE_PACKAGES.has("@agentos-software/common"));
 	assert(LOCKSTEP_SOFTWARE_PACKAGES.has("@agentos-software/sh"));
 	assert(!LOCKSTEP_SOFTWARE_PACKAGES.has("@agentos-software/tar"));
-	assert(names.includes("@rivet-dev/agentos-apps"));
-	assert(names.includes("@agentos-software/apps-builder"));
+	assert(names.includes("@agentos-software/common"));
 	assert(names.includes("@agentos-software/sh"));
 	assert(!names.includes("@agentos-software/tar"));
 });

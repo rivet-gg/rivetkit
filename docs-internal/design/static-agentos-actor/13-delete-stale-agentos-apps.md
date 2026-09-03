@@ -1,6 +1,6 @@
 # 13: Delete the Stale agentOS Apps Copy
 
-**Status:** Proposed
+**Status:** Implemented
 
 ## Outcome
 
@@ -12,10 +12,26 @@ agentOS.
 This is a deletion revision. It does not migrate Dynamic Apps, add compatibility
 exports, or place app lifecycle hooks in the static `agentOS` actor.
 
+## Implemented deletion
+
+- Removed `@rivet-dev/agentos-apps`, its inspector assets, unit tests, and
+  package documentation.
+- Removed all six `examples/apps-*` projects plus the dedicated E2E and load
+  suites.
+- Removed `@agentos-software/apps-builder`, which existed only to build the
+  stale Apps implementation.
+- Removed the three obsolete internal Apps designs and their graphics source.
+- Removed workspace importers, lockfile entries, and Apps-specific publish
+  discovery/version tests.
+- Removed the final retained Core comment that described its generic fetch
+  compatibility method in terms of Apps.
+
 ## Scope
 
 - Delete `packages/agentos-apps` and remove it from workspace, Turbo, build,
   test, lint, and publish discovery.
+- Delete the Apps-only `@agentos-software/apps-builder` package and its
+  lockstep-publishing rules.
 - Delete agentOS Apps examples under `examples/`.
 - Delete its end-to-end tests and benchmarks.
 - Delete internal and public design pages, graphics, navigation, and runnable
@@ -52,6 +68,13 @@ that repository after the static actor contract is available.
 - Publish discovery contains no agentOS Apps package or artifact.
 - Public documentation build and link checks pass after route and navigation
   deletion.
+
+The frozen install, publish tests, publish TypeScript check, fixed-version
+check, and retained package build paths pass. The root build and typecheck still
+fail in the known downstream integrations that import the deleted TypeScript
+actor exports (`@rivet-dev/agentos/client`, `agentOS`, and `setup`). Step 14
+owns those migrations; this revision deliberately does not restore compatibility
+exports to make an intermediate stack green.
 
 ## Acceptance criteria
 

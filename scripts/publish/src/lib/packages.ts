@@ -69,12 +69,11 @@ const SIDECAR_BINARY_PACKAGE_DIRS = [
 ] as const;
 
 /**
- * Runtime packages consumed directly by lockstep AgentOS packages. Ordinary
+ * Runtime packages consumed directly by lockstep agentOS packages. Ordinary
  * registry software keeps its independent release flow.
  */
 export const LOCKSTEP_SOFTWARE_PACKAGES = new Set([
 	"@agentos-software/common",
-	"@agentos-software/apps-builder",
 	"@agentos-software/sh",
 ]);
 
@@ -222,12 +221,6 @@ export function assertDiscoverySanity(packages: Package[]): void {
 			"@rivet-dev/agentos",
 			"@rivet-dev/agentos-core",
 			"@rivet-dev/agentos-runtime-sidecar",
-		);
-	}
-	if (byName.has("@rivet-dev/agentos-apps")) {
-		required.push(
-			"@agentos-software/apps-builder",
-			"@agentos-software/sh",
 		);
 	}
 	const missing = required.filter((r) => !byName.has(r));
