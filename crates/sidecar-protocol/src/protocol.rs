@@ -502,6 +502,9 @@ fn to_generated_request_payload(
         RequestPayload::LinkPackage(inner) => {
             generated_protocol::RequestPayload::LinkPackageRequest(inner.clone())
         }
+        RequestPayload::UnlinkPackage(inner) => {
+            generated_protocol::RequestPayload::UnlinkPackageRequest(inner.clone())
+        }
         RequestPayload::ProvidedCommands(_) => {
             generated_protocol::RequestPayload::ProvidedCommandsRequest
         }
@@ -705,6 +708,9 @@ fn from_generated_request_payload(
         }
         generated_protocol::RequestPayload::LinkPackageRequest(inner) => {
             RequestPayload::LinkPackage(inner)
+        }
+        generated_protocol::RequestPayload::UnlinkPackageRequest(inner) => {
+            RequestPayload::UnlinkPackage(inner)
         }
         generated_protocol::RequestPayload::ProvidedCommandsRequest => {
             RequestPayload::ProvidedCommands(ProvidedCommandsRequest {})
@@ -956,6 +962,9 @@ fn to_generated_response_payload(
         ResponsePayload::PackageLinked(inner) => {
             generated_protocol::ResponsePayload::PackageLinkedResponse(inner.clone())
         }
+        ResponsePayload::PackageUnlinked(inner) => {
+            generated_protocol::ResponsePayload::PackageUnlinkedResponse(inner.clone())
+        }
         ResponsePayload::ProvidedCommands(inner) => {
             generated_protocol::ResponsePayload::ProvidedCommandsResponse(inner.clone())
         }
@@ -1126,6 +1135,9 @@ fn from_generated_response_payload(
         }
         generated_protocol::ResponsePayload::PackageLinkedResponse(inner) => {
             ResponsePayload::PackageLinked(inner)
+        }
+        generated_protocol::ResponsePayload::PackageUnlinkedResponse(inner) => {
+            ResponsePayload::PackageUnlinked(inner)
         }
         generated_protocol::ResponsePayload::ProvidedCommandsResponse(inner) => {
             ResponsePayload::ProvidedCommands(inner)
@@ -1541,6 +1553,7 @@ pub enum RequestPayload {
     ResizePty(ResizePtyRequest),
     GetResourceSnapshot(GetResourceSnapshotRequest),
     LinkPackage(LinkPackageRequest),
+    UnlinkPackage(UnlinkPackageRequest),
     ProvidedCommands(ProvidedCommandsRequest),
     ShellExecution(ShellExecutionRequest),
     ArgvExecution(ArgvExecutionRequest),
@@ -1612,6 +1625,7 @@ pub enum ResponsePayload {
     PtyResized(PtyResizedResponse),
     ResourceSnapshot(ResourceSnapshotResponse),
     PackageLinked(PackageLinkedResponse),
+    PackageUnlinked(PackageUnlinkedResponse),
     ProvidedCommands(ProvidedCommandsResponse),
     ExecutionAccepted(ExecutionAcceptedResponse),
     ExecutionCompleted(ExecutionCompletedResponse),
@@ -1731,6 +1745,7 @@ pub type PackageDescriptor = crate::wire::PackageDescriptor;
 pub type PackageCommands = crate::wire::PackageCommands;
 pub type ProjectedCommand = crate::wire::ProjectedCommand;
 pub type LinkPackageRequest = crate::wire::LinkPackageRequest;
+pub type UnlinkPackageRequest = crate::wire::UnlinkPackageRequest;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct ProvidedCommandsRequest {}
@@ -1738,6 +1753,7 @@ pub struct ProvidedCommandsRequest {}
 pub type GuestKernelResultResponse = crate::wire::GuestKernelResultResponse;
 pub type PtyResizedResponse = crate::wire::PtyResizedResponse;
 pub type PackageLinkedResponse = crate::wire::PackageLinkedResponse;
+pub type PackageUnlinkedResponse = crate::wire::PackageUnlinkedResponse;
 pub type ProvidedCommandsResponse = crate::wire::ProvidedCommandsResponse;
 
 pub type SnapshotRootFilesystemRequest = crate::wire::SnapshotRootFilesystemRequest;
@@ -2029,6 +2045,7 @@ impl_bare_newtype_union_enum!(
         CloseExecutionStdin(CloseExecutionStdinRequest) = 62,
         ResizeExecutionPty(ResizeExecutionPtyRequest) = 63,
         ReadExecutionOutput(ReadExecutionOutputRequest) = 64,
+        UnlinkPackage(UnlinkPackageRequest) = 65,
     }
 );
 
@@ -2082,6 +2099,7 @@ impl_bare_newtype_union_enum!(
         ExecutionDeleted(ExecutionDeletedResponse) = 42,
         ExecutionIo(ExecutionIoResponse) = 43,
         ExecutionOutputPage(ExecutionOutputPageResponse) = 44,
+        PackageUnlinked(PackageUnlinkedResponse) = 45,
     }
 );
 
@@ -2664,6 +2682,7 @@ enum ExpectedResponseKind {
     GuestKernelResult,
     PtyResized,
     PackageLinked,
+    PackageUnlinked,
     ProvidedCommands,
     MountsListed,
     ExecutionOperation,
@@ -2720,6 +2739,7 @@ impl ExpectedResponseKind {
             Self::GuestKernelResult => "guest_kernel_result",
             Self::PtyResized => "pty_resized",
             Self::PackageLinked => "package_linked",
+            Self::PackageUnlinked => "package_unlinked",
             Self::ProvidedCommands => "provided_commands_response",
             Self::MountsListed => "mounts_listed",
             Self::ExecutionOperation => "execution_operation",
@@ -2794,6 +2814,7 @@ impl RequestPayload {
             | Self::GuestKernelCall(_)
             | Self::ResizePty(_)
             | Self::LinkPackage(_)
+            | Self::UnlinkPackage(_)
             | Self::ProvidedCommands(_)
             | Self::ShellExecution(_)
             | Self::ArgvExecution(_)
@@ -2866,6 +2887,7 @@ impl RequestPayload {
             Self::GuestKernelCall(_) => ExpectedResponseKind::GuestKernelResult,
             Self::ResizePty(_) => ExpectedResponseKind::PtyResized,
             Self::LinkPackage(_) => ExpectedResponseKind::PackageLinked,
+            Self::UnlinkPackage(_) => ExpectedResponseKind::PackageUnlinked,
             Self::ProvidedCommands(_) => ExpectedResponseKind::ProvidedCommands,
             Self::ShellExecution(_)
             | Self::ArgvExecution(_)
@@ -2953,6 +2975,7 @@ impl ResponsePayload {
             | Self::GuestKernelResult(_)
             | Self::PtyResized(_)
             | Self::PackageLinked(_)
+            | Self::PackageUnlinked(_)
             | Self::ProvidedCommands(_)
             | Self::ExecutionAccepted(_)
             | Self::ExecutionCompleted(_)
@@ -3004,6 +3027,7 @@ impl ResponsePayload {
             Self::GuestKernelResult(_) => "guest_kernel_result",
             Self::PtyResized(_) => "pty_resized",
             Self::PackageLinked(_) => "package_linked",
+            Self::PackageUnlinked(_) => "package_unlinked",
             Self::ProvidedCommands(_) => "provided_commands_response",
             Self::ExecutionAccepted(_) => "execution_accepted",
             Self::ExecutionCompleted(_) => "execution_completed",

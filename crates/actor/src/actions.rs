@@ -67,6 +67,7 @@ impl Handles<RuntimeRestart> for AgentOsActor {
     fn handle(self: Arc<Self>, ctx: Ctx<Self>, _action: RuntimeRestart) -> Self::Future {
         Box::pin(async move {
             let _permit = self.admit_action()?;
+            let _mutation = self.config_mutation.lock().await;
             let before = self.runtime.status().await;
             self.runtime
                 .stop("restart")
@@ -83,6 +84,7 @@ impl Handles<RuntimeRestart> for AgentOsActor {
             let observed_status = self.runtime.status().await;
             self.mark_runtime_result(&ctx, &observed_status).await?;
             let status = boot_result.context("boot replacement runtime")?;
+            self.pin_runtime_software(&ctx).await?;
             ctx.emit(RuntimeBooted {
                 generation: status.generation,
                 config_revision: desired.revision,

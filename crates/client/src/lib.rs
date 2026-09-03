@@ -24,6 +24,7 @@ pub mod language_execution;
 pub mod net;
 pub mod process;
 pub mod sidecar;
+pub mod software;
 pub mod stream;
 pub mod transport;
 
@@ -78,6 +79,11 @@ pub use process::{
 };
 
 pub use net::{HttpRequest, HttpResponse, HttpStreamChunk, HttpStreamHead};
+
+pub use software::{
+    InstalledSoftware, PackageManifestInfo, PackageResolver, PackageResolverOptions, PackageSource,
+    VerifiedPackage,
+};
 
 pub use fs::{
     BatchReadResult, BatchWriteEntry, BatchWriteResult, DirEntry, DirEntryType,

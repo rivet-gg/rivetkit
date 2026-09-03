@@ -1,21 +1,23 @@
 # 08: Implement URL-Based Software Installation
 
-**Status:** Proposed
+**Status:** Implemented; process-local caching and publication migration remain
+in steps 09 and 14.
 
 ## Outcome
 
-Install standalone `.aospkg` software from remote URLs, cache the verified
-content at process scope, memory-map the immutable package bytes, and project
-them through Core/VFS under `/opt/agentos`.
+Install standalone `.aospkg` software from remote URLs, verify and pin the
+immutable bytes for the live VM, and project them through Core/VFS under
+`/opt/agentos`. Trusted embedded Core callers can use the same resolver with a
+local `.aospkg` path.
 
-The URL is only a locator. Package identity and cache correctness come from the
+The URL is only a locator. Package identity and installation correctness come from the
 digest of the downloaded bytes. The hosted Rust actor never accepts or opens a
 local path, host mount, file URL, descriptor, or caller-supplied filesystem.
 
-Remove npm from agentOS registry-software distribution. Publish `.aospkg`
-artifacts to stable HTTPS URLs backed initially by S3-compatible object storage.
-Do not implement package names, semantic versions, ranges, dist-tags, dependency
-resolution, or a registry protocol in this refactor.
+This revision does not add package names, semantic versions, ranges, dist-tags,
+dependency resolution, or a registry protocol. Removing registry-software npm
+publication and uploading `.aospkg` artifacts to S3-compatible object storage
+is step 14.
 
 ## Public actor actions
 
@@ -36,7 +38,7 @@ interface UninstallSoftwareInput {
 }
 ```
 
-- `software.install`: resolve, verify, cache, and durably add one remote package.
+- `software.install`: resolve, verify, project, and durably add one remote package.
 - `software.uninstall`: remove one exact installed package from desired state.
 - `software.list`: return Core's live installed `/opt/agentos` package view.
 
@@ -46,9 +48,14 @@ resolved digest, exact size, bounded manifest metadata, config revision, and
 application state.
 
 Installing the same resolved digest is idempotent. A conflicting package or
-command projection fails with a typed Core error. Uninstalling an absent exact id
-is either an explicit not-found error or a documented no-op; choose one behavior
-before generating the client.
+command projection fails with a typed Core error. Uninstalling an absent exact
+id returns `software_not_found`.
+
+`software.install` and `software.uninstall` serialize with other durable config
+mutations and accept `expectedRevision`. A successful mutation increments the
+complete config revision. If durable persistence fails after a live Core change,
+the actor attempts the inverse Core operation and reports both failures if that
+rollback also fails.
 
 ## Core source model
 
@@ -71,12 +78,16 @@ manual conversion must make it impossible for an actor request to construct the
 Both sources converge immediately on the same verified immutable package:
 
 1. Open the source through the appropriate trusted Core adapter.
-2. Read it under byte, time, redirect, and concurrency limits.
+2. Read it under byte, time, header, and redirect limits.
 3. Compute and verify its digest and size.
 4. Parse and validate the `.aospkg` format and bounded manifest.
-5. Publish the content into the process-local digest cache.
-6. Memory-map or otherwise pin the immutable cached bytes.
-7. Project packages and commands through VFS under `/opt/agentos`.
+5. Pin the verified immutable file for the live installation. URL downloads use
+   a private temporary file; path sources retain the canonical trusted path.
+6. Project packages and commands through VFS under `/opt/agentos`.
+
+Step 09 replaces the per-resolution URL temporary file with the process-local
+digest cache and shared single-flight acquisition without changing this source
+or installed-package API.
 
 Core owns verification, mmap lifetime, collision handling, and VFS projection.
 The actor owns only URL DTO validation, durable actor state, action routing, and
@@ -92,19 +103,21 @@ installation and would require a separate immutable-snapshot design.
 
 ## Durable package state
 
-Creation config and `config.set` may include a bounded list of
-`RemotePackageSource`. `software.install` and `software.uninstall` are
-domain-specific mutations of that same durable desired package set; they do not
+Creation config may include a bounded list of `RemotePackageSource`.
+`config.set` adds full-list replacement in step 11. `software.install` and
+`software.uninstall` are domain-specific mutations of that same durable desired
+package set; they do not
 create a second authoritative software database.
 
 When the caller omits `digest`, the first successful fetch computes it and the
 actor persists the resolved URL, digest, size, and package id. From that point
 the digest is pinned:
 
-- A cache hit reuses bytes by digest.
-- A cache miss may fetch the URL again but must reproduce the persisted digest.
-- Changed bytes at the same URL return `software_source_changed`; they never
-  silently upgrade an existing actor.
+- Step 09 cache hits reuse bytes by digest.
+- A missing local copy may fetch the URL again but must reproduce the persisted
+  digest.
+- Changed bytes at the same URL return a typed package-digest mismatch; they
+  never silently upgrade an existing actor.
 - Installing the URL again explicitly may resolve new bytes and replace or add
   them according to the package collision rules.
 
@@ -112,12 +125,11 @@ the digest is pinned:
 `config.get` reports the complete durable desired sources and reconciliation
 state. This distinction keeps pending or failed installation visible.
 
-## URL and cache semantics
+## URL semantics
 
-The content cache is keyed by digest. A URL-to-digest index is only an advisory
-lookup and may use bounded HTTP validators such as ETag or Last-Modified. URL
-text alone is not an immutable cache key because servers can replace bytes at
-the same location.
+The installed identity is the lower-case `sha256:<64 hex>` digest of the exact
+artifact bytes. URL text alone is not an immutable identity because servers can
+replace bytes at the same location.
 
 URL handling must:
 
@@ -126,9 +138,12 @@ URL handling must:
 - Reject `file:`, `data:`, Unix socket, and other non-HTTP schemes.
 - Revalidate every redirect and enforce a small redirect limit.
 - Use no ambient cookies, cloud credentials, proxy credentials, or host auth.
-- Bound URL bytes, DNS/connect/read time, object bytes, concurrent downloads,
-  response headers, decompression, and retries.
-- Apply the actor service's network-egress/SSRF policy before connecting.
+- Bound URL bytes, DNS/connect/read time, object bytes, response headers, and
+  redirects. Request identity encoding so compressed transfer expansion cannot
+  bypass the byte limit.
+- Resolve and pin a bounded public address set before connecting. Reject
+  loopback, private, link-local, multicast, documentation, and other special
+  addresses; local-test HTTP permits only loopback.
 - Redact URL userinfo and sensitive query parameters from logs and errors.
 
 Direct durable URLs should be stable and re-fetchable. Expiring presigned URLs
@@ -136,9 +151,10 @@ are a poor durable source because a cold cache may need the artifact after the
 signature expires. Private registry authentication and renewable download URLs
 belong in the later registry design.
 
-## System cache and preloading
+## Deferred system cache and preloading
 
-One process-local content-addressed cache is shared by actors in the process.
+Step 09 adds one process-local content-addressed cache shared by actors in the
+process.
 The cache stores verified immutable `.aospkg` content, not writable installed
 filesystems. Each VM receives its own package projection backed by the same
 memory-mapped bytes.
@@ -148,7 +164,9 @@ warm packages before an actor starts because the URL is globally resolvable.
 Usage messages remain approximate and coalesced; only desired package state is a
 correctness source.
 
-## Remove npm publication
+## Deferred npm publication removal
+
+Step 14 performs all work in this section; none of it is part of this revision:
 
 - Remove `@agentos-software/*` from npm publish discovery.
 - Remove runtime imports of software package JavaScript descriptors.
@@ -164,7 +182,7 @@ correctness source.
 This does not remove npm from untrusted guest JavaScript projects.
 `javascript.npm.*` remains a guest execution feature with normal VM policy.
 
-## Artifact publication
+## Deferred artifact publication
 
 Use immutable object keys such as:
 
@@ -184,28 +202,29 @@ bucket, credentials, and upload policy are never actor configuration.
 
 ## Local testing
 
-The publisher may write artifacts to a temporary directory for deterministic
-tests. Actor integration tests serve that directory through a local HTTP or S3
-emulator and install by URL. The actor never receives the temporary host path.
+Resolver tests pack artifacts into a temporary directory and serve them through
+an explicit loopback HTTP test server. The actor never receives the temporary
+host path. Publisher-local artifact generation remains step 14.
 
-Use the same download, digest, cache, mmap, and projection path as production.
-Local HTTP is enabled only by explicit test configuration.
+Use the same download, digest, validation, and projection path as production.
+Local HTTP is enabled only by the operator environment
+`AGENTOS_ALLOW_INSECURE_LOCAL_PACKAGE_HTTP=1`; it is not an actor config field.
 
-## Tests
+## Implemented tests
 
-- Install/list/uninstall through the hosted actor using only URL sources.
 - Embedded Core path and URL sources converge on identical verified packages.
 - Actor decoding cannot construct a path source, including malformed or
   adversarial tagged input.
-- Same URL and bytes, same URL with changed bytes, different URLs with identical
-  bytes, expected-digest mismatch, truncation, oversize, and timeout.
-- Scheme rejection, redirect validation, SSRF policy, DNS rebinding defenses,
-  credential isolation, and log redaction.
-- Concurrent same-digest installs perform one acquisition per process.
-- Package and command collisions return stable typed errors.
-- Desired versus live installed views during failure and restart.
-- Cold-cache restart re-fetches and requires the pinned digest.
-- Publish discovery contains no npm-published registry-software packages.
+- URL/path content identity, expected-digest mismatch, digest syntax, scheme and
+  address rejection, and URL redaction.
+- Actor action registration and URL-only creation normalization.
+- Real sidecar install/list/uninstall projection, including removal of only the
+  cosmetic VFS mountpoints created by the package.
+- Unlink request and response wire round trips.
+
+Step 09 adds concurrent acquisition, cache identity, eviction, and pin tests.
+Step 11 adds full desired-versus-live replacement and restart reconciliation
+tests. Step 14 adds publisher and hosted actor URL smoke tests.
 
 ## Acceptance criteria
 
@@ -213,11 +232,12 @@ Local HTTP is enabled only by explicit test configuration.
 - No hosted DTO can identify or open a host or guest filesystem path.
 - Core supports trusted embedded path sources and remote URL sources through one
   verified package pipeline.
-- Cached content is keyed by digest and safely memory-mapped across VM
-  projections.
+- Installed content is keyed by digest and pinned for the lifetime of its live
+  projection; process-wide deduplication is deferred to step 09.
 - A mutable URL cannot silently change an actor's installed package.
 - `software.list` reflects the live installed view.
-- Registry software is no longer published to or resolved from npm.
+- The actor and Core installation APIs do not resolve package names or npm
+  metadata. Removing npm publication is deferred to step 14.
 - No semantic-versioning or registry protocol is implemented.
 - A future registry can return `{ url, digest, size }` without changing the Core
   installation boundary.
@@ -227,5 +247,6 @@ Local HTTP is enabled only by explicit test configuration.
 Depends on the filesystem projection in step 04 and actor foundation in step 03.
 Step 09 implements the process-local content cache. Step 10 preloads exact URL
 and digest identities. Step 11 reconciles the durable package set alongside full
-config replacement. Package installation from an actor filesystem and the
-name/version registry remain follow-up work in step 15.
+config replacement. Step 14 removes npm registry-software publication and adds
+S3-compatible artifact publication. Package installation from an actor
+filesystem and a possible future name/version registry remain step 15 work.

@@ -10,6 +10,7 @@ mod language;
 mod network;
 mod process;
 mod runtime;
+mod software;
 mod store;
 
 use std::str::FromStr;
@@ -27,7 +28,7 @@ pub use config::{
     AgentOsActorConfig, AgentOsActorConfigInput, HostedFilesystemBackend,
     HostedFilesystemBackendInput, HostedFilesystemConfig, HostedFilesystemConfigInput,
     HostedFilesystemMount, HostedFilesystemMountInput, HostedRootFilesystem,
-    HostedRootFilesystemInput,
+    HostedRootFilesystemInput, RemotePackageSource, RemotePackageSourceInput,
 };
 pub use cron::*;
 pub use events::{
@@ -47,6 +48,7 @@ pub use process::*;
 pub use runtime::{
     CoreSidecarStatus, PackageStartupStatus, RuntimeIssue, RuntimeLifecycleState, RuntimeStatus,
 };
+pub use software::{SoftwareInstall, SoftwareList, SoftwareMutationResult, SoftwareUninstall};
 
 use action_set::AgentOsActionSet;
 use runtime::RuntimeController;
@@ -118,6 +120,7 @@ pub struct AgentOsActor {
     config: Mutex<ConfigSnapshot>,
     runtime: RuntimeController,
     action_admission: Arc<Semaphore>,
+    config_mutation: Mutex<()>,
 }
 
 #[async_trait]
@@ -172,12 +175,16 @@ impl Actor for AgentOsActor {
             runtime: RuntimeController::new(ctx.actor_id(), durable.revision),
             config: Mutex::new(durable.clone()),
             action_admission: Arc::new(Semaphore::new(ACTION_CONCURRENCY_LIMIT)),
+            config_mutation: Mutex::new(()),
         };
 
         // A failed Core boot does not make runtime.status unreachable. Persist
         // the failure and let the actor start in the failed lifecycle state.
         match actor.runtime.boot(&durable.desired, durable.revision).await {
-            Ok(status) => actor.mark_runtime_result(ctx, &status).await?,
+            Ok(status) => {
+                actor.pin_runtime_software(ctx).await?;
+                actor.mark_runtime_result(ctx, &status).await?;
+            }
             Err(error) => {
                 tracing::error!(?error, actor_id = %ctx.actor_id(), "agentOS runtime boot failed");
                 let status = actor.runtime.status().await;
@@ -348,6 +355,9 @@ mod tests {
                 "cron.list",
                 "cron.cancel",
                 "__agentos.cron.invoke",
+                "software.install",
+                "software.uninstall",
+                "software.list",
             ]
         );
         assert_eq!(

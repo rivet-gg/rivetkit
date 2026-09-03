@@ -8,7 +8,7 @@ use agentos_sidecar_protocol::protocol::{
     ImportSnapshotRequest, KillProcessRequest, LinkPackageRequest, ListMountsRequest,
     OpenSessionRequest, OwnershipScope, ProvidedCommandsRequest, RegisterHostCallbacksRequest,
     RequestFrame, RequestPayload, ResizePtyRequest, SealLayerRequest,
-    SnapshotRootFilesystemRequest, VmFetchRequest, WriteStdinRequest,
+    SnapshotRootFilesystemRequest, UnlinkPackageRequest, VmFetchRequest, WriteStdinRequest,
 };
 
 pub const UNSUPPORTED_HOST_CALLBACK_DIRECTION_CODE: &str = "unsupported_direction";
@@ -55,6 +55,7 @@ pub enum RequestRoute {
     GetSignalState(GetSignalStateRequest),
     GetZombieTimerCount(GetZombieTimerCountRequest),
     LinkPackage(LinkPackageRequest),
+    UnlinkPackage(UnlinkPackageRequest),
     ProvidedCommands(ProvidedCommandsRequest),
     ExecutionOperation(RequestPayload),
     ExecutionLifecycle(RequestPayload),
@@ -99,6 +100,7 @@ pub fn route_request_payload(request: &RequestFrame) -> RequestRoute {
         RequestPayload::GetSignalState(payload) => RequestRoute::GetSignalState(payload),
         RequestPayload::GetZombieTimerCount(payload) => RequestRoute::GetZombieTimerCount(payload),
         RequestPayload::LinkPackage(payload) => RequestRoute::LinkPackage(payload),
+        RequestPayload::UnlinkPackage(payload) => RequestRoute::UnlinkPackage(payload),
         RequestPayload::ProvidedCommands(payload) => RequestRoute::ProvidedCommands(payload),
         payload @ (RequestPayload::ShellExecution(_)
         | RequestPayload::ArgvExecution(_)
@@ -169,6 +171,7 @@ pub fn request_dispatch_mode(request: &RequestFrame) -> RequestDispatchMode {
         | RequestPayload::GetSignalState(_)
         | RequestPayload::GetZombieTimerCount(_)
         | RequestPayload::LinkPackage(_)
+        | RequestPayload::UnlinkPackage(_)
         | RequestPayload::ProvidedCommands(_)
         | RequestPayload::ShellExecution(_)
         | RequestPayload::ArgvExecution(_)

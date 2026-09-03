@@ -88,6 +88,11 @@ export type LiveRequestPayload =
 	| {
 			type: "link_package";
 			package: LivePackageDescriptor;
+			package_id: string;
+	  }
+	| {
+			type: "unlink_package";
+			package_id: string;
 	  }
 	| {
 			type: "provided_commands";
@@ -394,7 +399,13 @@ export function toGeneratedRequestPayload(
 				tag: "LinkPackageRequest",
 				val: {
 					package: toGeneratedPackageDescriptor(payload.package),
+					packageId: payload.package_id,
 				},
+			};
+		case "unlink_package":
+			return {
+				tag: "UnlinkPackageRequest",
+				val: { packageId: payload.package_id },
 			};
 		case "provided_commands":
 			return {

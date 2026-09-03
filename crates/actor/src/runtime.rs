@@ -2,13 +2,13 @@ use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use agentos_client::{AgentOs, SidecarState};
+use agentos_client::{AgentOs, InstalledSoftware, SidecarState};
 use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tokio::sync::Mutex;
 
-use crate::config::AgentOsActorConfig;
+use crate::config::{AgentOsActorConfig, RemotePackageSource};
 
 const INITIALIZATION_TIMEOUT: Duration = Duration::from_secs(30);
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
@@ -79,7 +79,14 @@ struct RuntimeState {
     last_shutdown_at_ms: Option<i64>,
     packages: PackageStartupStatus,
     issues: VecDeque<RuntimeIssue>,
+    resolved_software: Vec<ResolvedSoftware>,
     vm: Option<AgentOs>,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct ResolvedSoftware {
+    pub(crate) url: String,
+    pub(crate) installed: InstalledSoftware,
 }
 
 impl RuntimeController {
@@ -101,6 +108,7 @@ impl RuntimeController {
                     optional_preload_ready: 0,
                 },
                 issues: VecDeque::new(),
+                resolved_software: Vec::new(),
                 vm: None,
             }),
         }
@@ -121,6 +129,10 @@ impl RuntimeController {
                 .generation
                 .checked_add(1)
                 .ok_or_else(|| anyhow!("runtime generation overflow"))?;
+            state.packages.required_total = u32::try_from(desired.software.len())
+                .context("required software count exceeds u32")?;
+            state.packages.required_ready = 0;
+            state.resolved_software.clear();
         }
 
         let binary_path = std::env::current_exe()
@@ -142,13 +154,54 @@ impl RuntimeController {
             Some(database_path.to_string_lossy().into_owned()),
         );
 
-        match tokio::time::timeout(INITIALIZATION_TIMEOUT, AgentOs::create(config)).await {
-            Ok(Ok(vm)) => {
+        let desired_software = desired.software.clone();
+        let initialize = async {
+            let vm = AgentOs::create(config).await?;
+            {
+                let mut state = self.state.lock().await;
+                state.lifecycle = RuntimeLifecycleState::Preloading;
+            }
+            let mut resolved = Vec::with_capacity(desired_software.len());
+            for source in desired_software {
+                let installed = match vm.install_software(source.to_core()).await {
+                    Ok(installed) => installed,
+                    Err(error) => {
+                        return match vm.shutdown().await {
+                            Ok(()) => Err(error),
+                            Err(shutdown_error) => Err(agentos_client::ClientError::Sidecar(
+                                format!(
+                                    "required package installation failed: {error}; cleanup failed: {shutdown_error}"
+                                ),
+                            )),
+                        };
+                    }
+                };
+                resolved.push(ResolvedSoftware {
+                    url: source.url,
+                    installed,
+                });
+                let mut state = self.state.lock().await;
+                state.packages.required_ready = state
+                    .packages
+                    .required_ready
+                    .checked_add(1)
+                    .ok_or_else(|| {
+                        agentos_client::ClientError::Sidecar(String::from(
+                            "required package readiness count overflow",
+                        ))
+                    })?;
+            }
+            Ok::<_, agentos_client::ClientError>((vm, resolved))
+        };
+
+        match tokio::time::timeout(INITIALIZATION_TIMEOUT, initialize).await {
+            Ok(Ok((vm, resolved_software))) => {
                 let booted_at_ms = now_ms()?;
                 let mut state = self.state.lock().await;
                 state.lifecycle = RuntimeLifecycleState::Ready;
                 state.applied_config_revision = Some(revision);
                 state.last_boot_at_ms = Some(booted_at_ms);
+                state.resolved_software = resolved_software;
                 state.vm = Some(vm);
                 Ok(snapshot(&state))
             }
@@ -193,6 +246,63 @@ impl RuntimeController {
         Ok(self.status().await)
     }
 
+    pub(crate) async fn install_software(
+        &self,
+        source: &RemotePackageSource,
+    ) -> Result<InstalledSoftware> {
+        let _operation = self.operation.lock().await;
+        let vm = self.vm().await?;
+        let installed = vm
+            .install_software(source.to_core())
+            .await
+            .context("install software in agentOS Core")?;
+        let mut state = self.state.lock().await;
+        if !state
+            .resolved_software
+            .iter()
+            .any(|entry| entry.installed.package_id == installed.package_id)
+        {
+            state.resolved_software.push(ResolvedSoftware {
+                url: source.url.clone(),
+                installed: installed.clone(),
+            });
+            state.packages.required_total = state.packages.required_total.saturating_add(1);
+            state.packages.required_ready = state.packages.required_ready.saturating_add(1);
+        }
+        Ok(installed)
+    }
+
+    pub(crate) async fn uninstall_software(&self, package_id: &str) -> Result<InstalledSoftware> {
+        let _operation = self.operation.lock().await;
+        let vm = self.vm().await?;
+        let removed = vm
+            .uninstall_software(package_id)
+            .await
+            .context("uninstall software from agentOS Core")?;
+        let mut state = self.state.lock().await;
+        state
+            .resolved_software
+            .retain(|entry| entry.installed.package_id != package_id);
+        state.packages.required_total = state.packages.required_total.saturating_sub(1);
+        state.packages.required_ready = state.packages.required_ready.saturating_sub(1);
+        Ok(removed)
+    }
+
+    pub(crate) async fn list_software(&self) -> Result<Vec<InstalledSoftware>> {
+        let vm = self.vm().await?;
+        Ok(vm.installed_software())
+    }
+
+    pub(crate) async fn resolved_software(&self) -> Vec<ResolvedSoftware> {
+        self.state.lock().await.resolved_software.clone()
+    }
+
+    pub(crate) async fn set_applied_config_revision(&self, revision: u64) {
+        let mut state = self.state.lock().await;
+        state.desired_config_revision = revision;
+        state.applied_config_revision = Some(revision);
+    }
+
     async fn stop_inner(&self, reason: &str) -> Result<()> {
         let vm = {
             let mut state = self.state.lock().await;
@@ -200,6 +310,8 @@ impl RuntimeController {
                 return Ok(());
             };
             state.lifecycle = RuntimeLifecycleState::Stopping;
+            state.resolved_software.clear();
+            state.packages.required_ready = 0;
             vm
         };
 

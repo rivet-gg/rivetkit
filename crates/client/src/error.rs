@@ -83,6 +83,36 @@ pub enum ClientError {
     #[error("schedule is in the past: {0}")]
     PastSchedule(String),
 
+    /// A package source failed validation before any guest-visible mutation.
+    #[error("invalid package source: {0}")]
+    InvalidPackageSource(String),
+
+    /// Remote package acquisition failed under the configured bounded policy.
+    #[error("package download failed: {0}")]
+    PackageDownload(String),
+
+    /// A package exceeded the configured acquisition byte limit.
+    #[error(
+        "package is {observed} bytes; limit is {limit}; raise package_resolver.max_package_bytes"
+    )]
+    PackageTooLarge { observed: u64, limit: u64 },
+
+    /// The acquired bytes did not match the caller-pinned content identity.
+    #[error("package digest mismatch: expected {expected}, got {actual}")]
+    PackageDigestMismatch { expected: String, actual: String },
+
+    /// A downloaded file was not a bounded valid `.aospkg` container.
+    #[error("invalid .aospkg: {0}")]
+    InvalidPackageFormat(String),
+
+    /// Trusted host I/O failed while acquiring or staging a package.
+    #[error("package I/O failed: {0}")]
+    PackageIo(String),
+
+    /// An exact content-addressed installed package was not present.
+    #[error("software package not found: {0}")]
+    SoftwareNotFound(String),
+
     /// A framing/codec failure on the sidecar transport.
     #[error("transport error: {0}")]
     Transport(#[from] ProtocolCodecError),
@@ -165,6 +195,13 @@ impl ClientError {
             | ClientError::ShellNotFound(_)
             | ClientError::InvalidSchedule(_)
             | ClientError::PastSchedule(_)
+            | ClientError::InvalidPackageSource(_)
+            | ClientError::PackageDownload(_)
+            | ClientError::PackageTooLarge { .. }
+            | ClientError::PackageDigestMismatch { .. }
+            | ClientError::InvalidPackageFormat(_)
+            | ClientError::PackageIo(_)
+            | ClientError::SoftwareNotFound(_)
             | ClientError::Transport(_)
             | ClientError::Sidecar(_) => self.to_string(),
         }

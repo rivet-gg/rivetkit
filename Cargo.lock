@@ -90,6 +90,7 @@ version = "0.0.1"
 dependencies = [
  "agentos-bridge",
  "agentos-sidecar-client",
+ "agentos-vfs-core",
  "agentos-vm-config",
  "anyhow",
  "async-trait",
@@ -100,10 +101,14 @@ dependencies = [
  "http 1.4.2",
  "once_cell",
  "parking_lot",
+ "reqwest",
  "scc 2.4.0",
  "serde",
  "serde_bare",
  "serde_json",
+ "sha2 0.10.9",
+ "tar",
+ "tempfile",
  "thiserror 2.0.18",
  "tokio",
  "tokio-util",
@@ -3900,6 +3905,7 @@ dependencies = [
  "bytes",
  "encoding_rs",
  "futures-core",
+ "futures-util",
  "h2 0.4.15",
  "http 1.4.2",
  "http-body 1.0.1",
@@ -3922,12 +3928,14 @@ dependencies = [
  "sync_wrapper",
  "tokio",
  "tokio-rustls 0.26.4",
+ "tokio-util",
  "tower",
  "tower-http",
  "tower-service",
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+ "wasm-streams",
  "web-sys",
  "webpki-roots 1.0.8",
 ]
@@ -5676,6 +5684,19 @@ checksum = "ac92cf547bc18d27ecc521015c08c353b4f18b84ab388bb6d1b6b682c620d9b6"
 dependencies = [
  "leb128fmt",
  "wasmparser",
+]
+
+[[package]]
+name = "wasm-streams"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "15053d8d85c7eccdbefef60f06769760a563c7f0a9d6902a13d35c7800b0ad65"
+dependencies = [
+ "futures-util",
+ "js-sys",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]

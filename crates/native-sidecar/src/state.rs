@@ -984,6 +984,10 @@ pub(crate) struct VmState {
     pub(crate) dns: VmDnsConfig,
     pub(crate) listen_policy: VmListenPolicy,
     pub(crate) create_loopback_exempt_ports: BTreeSet<u16>,
+    /// Guest environment before package `provides.env` defaults are applied.
+    /// Dynamic package link/unlink rebuilds from this source so uninstall does
+    /// not leave stale package-owned variables behind.
+    pub(crate) base_guest_env: BTreeMap<String, String>,
     pub(crate) guest_env: BTreeMap<String, String>,
     pub(crate) requested_runtime: GuestRuntimeKind,
     pub(crate) root_filesystem_mode: RootFilesystemMode,
@@ -1002,6 +1006,14 @@ pub(crate) struct VmState {
     pub(crate) layers: VmLayerStore,
     pub(crate) command_guest_paths: BTreeMap<String, String>,
     pub(crate) provided_commands: BTreeMap<String, Vec<String>>,
+    /// Package manifests in projection order. This is sidecar-owned live state
+    /// used to rebuild package environment and command projections after a
+    /// dynamic unlink.
+    pub(crate) package_descriptors: Vec<(String, crate::package_projection::PackageDescriptor)>,
+    /// Cosmetic mountpoints materialized by the VFS for each package. Unlink
+    /// removes only entries created for that package, revealing pre-existing
+    /// paths underneath package-provided overlays without deleting them.
+    pub(crate) package_created_mountpoints: BTreeMap<String, BTreeSet<String>>,
     pub(crate) command_permissions: BTreeMap<String, WasmPermissionTier>,
     pub(crate) bindings: BTreeMap<String, RegisterHostCallbacksRequest>,
     pub(crate) active_processes: BTreeMap<String, ActiveProcess>,

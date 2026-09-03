@@ -109,6 +109,10 @@ export type LiveResponsePayload =
 			projected_commands: LiveProjectedCommand[];
 	  }
 	| {
+			type: "package_unlinked";
+			removed_commands: string[];
+	  }
+	| {
 			type: "provided_commands_response";
 			packages: LivePackageCommands[];
 	  }
@@ -325,6 +329,11 @@ export function fromGeneratedResponsePayload(
 					name: command.name,
 					guest_path: command.guestPath,
 				})),
+			};
+		case "PackageUnlinkedResponse":
+			return {
+				type: "package_unlinked",
+				removed_commands: [...payload.val.removedCommands],
 			};
 		case "ProvidedCommandsResponse":
 			return {

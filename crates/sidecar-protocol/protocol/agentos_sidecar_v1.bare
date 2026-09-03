@@ -231,6 +231,11 @@ type PackageDescriptor struct {
 
 type LinkPackageRequest struct {
   package: PackageDescriptor
+  packageId: str
+}
+
+type UnlinkPackageRequest struct {
+  packageId: str
 }
 
 type PackageCommands struct {
@@ -251,6 +256,10 @@ type ProjectedCommand struct {
 
 type PackageLinkedResponse struct {
   projectedCommands: list<ProjectedCommand>
+}
+
+type PackageUnlinkedResponse struct {
+  removedCommands: list<str>
 }
 
 type ConfigureVmRequest struct {
@@ -781,7 +790,8 @@ type RequestPayload union {
   WriteExecutionStdinRequest |
   CloseExecutionStdinRequest |
   ResizeExecutionPtyRequest |
-  ReadExecutionOutputRequest
+  ReadExecutionOutputRequest |
+  UnlinkPackageRequest
 }
 
 type RequestFrame struct {
@@ -1191,7 +1201,8 @@ type ResponsePayload union {
   ExecutionListResponse |
   ExecutionDeletedResponse |
   ExecutionIoResponse |
-  ExecutionOutputPageResponse
+  ExecutionOutputPageResponse |
+  PackageUnlinkedResponse
 }
 
 type ResponseFrame struct {

@@ -2,10 +2,10 @@ use agentos_sidecar_protocol::protocol::{
     AuthenticateRequest, AuthenticatedResponse, BoundUdpSnapshotResponse, EventFrame, EventPayload,
     LayerCreatedResponse, LayerSealedResponse, ListMountsResponse, ListenerSnapshotResponse,
     MountInfo, OverlayCreatedResponse, OwnershipScope, PackageCommands, PackageLinkedResponse,
-    ProcessExitedEvent, ProcessKilledResponse, ProcessOutputEvent, ProcessSnapshotEntry,
-    ProcessSnapshotResponse, ProcessStartedResponse, ProjectedCommand, ProtocolSchema,
-    ProvidedCommandsResponse, RejectedResponse, RequestFrame, RequestId, ResponseFrame,
-    ResponsePayload, RootFilesystemBootstrappedResponse, RootFilesystemEntry,
+    PackageUnlinkedResponse, ProcessExitedEvent, ProcessKilledResponse, ProcessOutputEvent,
+    ProcessSnapshotEntry, ProcessSnapshotResponse, ProcessStartedResponse, ProjectedCommand,
+    ProtocolSchema, ProvidedCommandsResponse, RejectedResponse, RequestFrame, RequestId,
+    ResponseFrame, ResponsePayload, RootFilesystemBootstrappedResponse, RootFilesystemEntry,
     RootFilesystemSnapshotResponse, SessionOpenedResponse, SignalHandlerRegistration,
     SignalStateResponse, SnapshotExportedResponse, SnapshotImportedResponse, SocketStateEntry,
     StdinClosedResponse, StdinWrittenResponse, StreamChannel, StructuredEvent,
@@ -187,6 +187,16 @@ pub fn package_linked_response(
     respond(
         request,
         ResponsePayload::PackageLinked(PackageLinkedResponse { projected_commands }),
+    )
+}
+
+pub fn package_unlinked_response(
+    request: &RequestFrame,
+    removed_commands: Vec<String>,
+) -> ResponseFrame {
+    respond(
+        request,
+        ResponsePayload::PackageUnlinked(PackageUnlinkedResponse { removed_commands }),
     )
 }
 

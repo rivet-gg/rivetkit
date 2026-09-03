@@ -1334,4 +1334,35 @@ mod tests {
             ));
         }
     }
+
+    #[test]
+    fn package_unlink_frames_round_trip() {
+        let codec = WireFrameCodec::default();
+        let ownership = OwnershipScope::VmOwnership(VmOwnership {
+            connection_id: String::from("connection"),
+            session_id: String::from("session"),
+            vm_id: String::from("vm"),
+        });
+        let request = ProtocolFrame::RequestFrame(RequestFrame {
+            schema: protocol_schema(),
+            request_id: 1,
+            ownership: ownership.clone(),
+            payload: RequestPayload::UnlinkPackageRequest(UnlinkPackageRequest {
+                package_id: String::from("sha256:package"),
+            }),
+        });
+        let response = ProtocolFrame::ResponseFrame(ResponseFrame {
+            schema: protocol_schema(),
+            request_id: 1,
+            ownership,
+            payload: ResponsePayload::PackageUnlinkedResponse(PackageUnlinkedResponse {
+                removed_commands: vec![String::from("tool")],
+            }),
+        });
+
+        for frame in [request, response] {
+            let encoded = codec.encode(&frame).expect("encode frame");
+            assert_eq!(codec.decode(&encoded).expect("decode frame"), frame);
+        }
+    }
 }

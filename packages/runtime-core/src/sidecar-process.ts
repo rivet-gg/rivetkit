@@ -553,6 +553,7 @@ export class SidecarProcess {
 		session: AuthenticatedSession,
 		vm: CreatedVm,
 		descriptor: SidecarPackageDescriptor,
+		packageId = `path:${descriptor.path}`,
 	): Promise<SidecarLinkPackageResult> {
 		const response = await this.sendRequest({
 			ownership: {
@@ -564,6 +565,7 @@ export class SidecarProcess {
 			payload: {
 				type: "link_package",
 				package: toWirePackageDescriptor(descriptor),
+				package_id: packageId,
 			},
 		});
 		if (response.payload.type !== "package_linked") {
@@ -577,6 +579,28 @@ export class SidecarProcess {
 				guestPath: command.guest_path,
 			})),
 		};
+	}
+
+	async unlinkPackage(
+		session: AuthenticatedSession,
+		vm: CreatedVm,
+		packageId: string,
+	): Promise<string[]> {
+		const response = await this.sendRequest({
+			ownership: {
+				scope: "vm",
+				connection_id: session.connectionId,
+				session_id: session.sessionId,
+				vm_id: vm.vmId,
+			},
+			payload: { type: "unlink_package", package_id: packageId },
+		});
+		if (response.payload.type !== "package_unlinked") {
+			throw new Error(
+				`unexpected unlink_package response: ${response.payload.type}`,
+			);
+		}
+		return response.payload.removed_commands;
 	}
 
 	async providedCommands(

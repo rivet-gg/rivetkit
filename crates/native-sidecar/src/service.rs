@@ -2175,6 +2175,7 @@ where
                 self.get_zombie_timer_count(&request, payload).await
             }
             RequestRoute::LinkPackage(payload) => self.link_package(&request, payload).await,
+            RequestRoute::UnlinkPackage(payload) => self.unlink_package(&request, payload).await,
             RequestRoute::ProvidedCommands(payload) => {
                 self.provided_commands(&request, payload).await
             }
@@ -2238,6 +2239,7 @@ where
                 | RequestRoute::CreateOverlay(_)
                 | RequestRoute::SnapshotRootFilesystem(_)
                 | RequestRoute::LinkPackage(_)
+                | RequestRoute::UnlinkPackage(_)
                 | RequestRoute::Execute(_)
                 | RequestRoute::ExecutionOperation(_)
                 | RequestRoute::ExecutionLifecycle(_)
@@ -2447,6 +2449,10 @@ where
             }
             RequestRoute::LinkPackage(payload) => {
                 let future = self.link_package(&request, payload);
+                return Ok(Some(PreparedRequest::from_vm_command(request, future)));
+            }
+            RequestRoute::UnlinkPackage(payload) => {
+                let future = self.unlink_package(&request, payload);
                 return Ok(Some(PreparedRequest::from_vm_command(request, future)));
             }
             RequestRoute::Execute(payload) => {

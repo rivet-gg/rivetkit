@@ -35,6 +35,9 @@ pub struct AgentOsConfig {
     /// Guest mount point for the package projection. Default `/opt/agentos`
     /// (agentos's `OPT_AGENTOS_ROOT`) when `None`.
     pub packages_mount_at: Option<String>,
+    /// Trusted Core package acquisition limits and local-test transport policy.
+    /// Hosted actor callers cannot configure this process-owned policy.
+    pub package_resolver: crate::software::PackageResolverOptions,
     /// Loopback ports exempt from the default outbound-to-host block.
     pub loopback_exempt_ports: Vec<u16>,
     /// Allowed Node.js builtins. Default: the hardened native-bridge set.
@@ -85,6 +88,11 @@ impl AgentOsConfigBuilder {
 
     pub fn packages_mount_at(mut self, mount_at: impl Into<String>) -> Self {
         self.config.packages_mount_at = Some(mount_at.into());
+        self
+    }
+
+    pub fn package_resolver(mut self, options: crate::software::PackageResolverOptions) -> Self {
+        self.config.package_resolver = options;
         self
     }
 

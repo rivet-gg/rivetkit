@@ -2845,6 +2845,7 @@ async fn run_protocol_engine(engine: ProtocolEngine) -> Result<(), Box<dyn Error
     tracing::debug!(
         ?report,
         reason = ?drain.reason,
+        terminal_error = drain.terminal_error.as_deref(),
         "protocol drain completed"
     );
     cleanup_connections(
@@ -4177,6 +4178,7 @@ fn request_operation_metadata(
             | RequestPayload::CreateOverlayRequest(_)
             | RequestPayload::SnapshotRootFilesystemRequest(_)
             | RequestPayload::LinkPackageRequest(_)
+            | RequestPayload::UnlinkPackageRequest(_)
     );
     let vm_concurrency = match &request.payload {
         // Extension payloads are opaque to the core. Extensions

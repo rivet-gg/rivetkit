@@ -17,7 +17,7 @@ use crate::protocol::{
     MountDescriptor, MountInfo, MountPluginDescriptor, PackageCommands, ProjectedCommand,
     ProvidedCommandsRequest, RootFilesystemDescriptor, RootFilesystemEntry,
     RootFilesystemEntryEncoding, RootFilesystemLowerDescriptor, SealLayerRequest,
-    SnapshotRootFilesystemRequest, VmLifecycleState,
+    SnapshotRootFilesystemRequest, UnlinkPackageRequest, VmLifecycleState,
 };
 use crate::request_operations::OperationCancellationReason;
 use crate::service::{
@@ -55,12 +55,12 @@ use agentos_native_sidecar_core::ca::{
 use agentos_native_sidecar_core::permissions::{allow_all_policy, deny_all_policy};
 use agentos_native_sidecar_core::{
     layer_created_response, layer_sealed_response, mounts_listed_response,
-    overlay_created_response, package_linked_response, protocol_root_filesystem_mode,
-    provided_commands_response, root_filesystem_bootstrapped_response,
-    root_filesystem_protocol_descriptor_from_config, root_filesystem_snapshot_response,
-    snapshot_exported_response, snapshot_imported_response, vm_configured_response,
-    vm_created_response, vm_disposed_response, vm_lifecycle_event as shared_vm_lifecycle_event,
-    VmLayerStore,
+    overlay_created_response, package_linked_response, package_unlinked_response,
+    protocol_root_filesystem_mode, provided_commands_response,
+    root_filesystem_bootstrapped_response, root_filesystem_protocol_descriptor_from_config,
+    root_filesystem_snapshot_response, snapshot_exported_response, snapshot_imported_response,
+    vm_configured_response, vm_created_response, vm_disposed_response,
+    vm_lifecycle_event as shared_vm_lifecycle_event, VmLayerStore,
 };
 use agentos_runtime::accounting::{ResourceClass, ResourceLedger, ResourceLimit};
 use agentos_runtime::capability::CapabilityRegistry;
@@ -959,6 +959,7 @@ where
                 dns,
                 listen_policy,
                 create_loopback_exempt_ports,
+                base_guest_env: guest_env.clone(),
                 guest_env,
                 requested_runtime: payload.runtime,
                 root_filesystem_mode: protocol_root_filesystem_mode(root_filesystem.mode),
@@ -977,6 +978,8 @@ where
                 layers: VmLayerStore::default(),
                 command_guest_paths,
                 provided_commands: BTreeMap::new(),
+                package_descriptors: Vec::new(),
+                package_created_mountpoints: BTreeMap::new(),
                 command_permissions: BTreeMap::new(),
                 bindings: BTreeMap::new(),
                 active_processes: BTreeMap::new(),
@@ -1058,6 +1061,17 @@ where
     ) -> impl std::future::Future<Output = Result<DispatchResult, SidecarError>> + 'static {
         let input = self.prepare_link_package_request(request);
         async move { link_package_owned(input?, payload).await }
+    }
+
+    /// Remove one exact dynamically linked package and rebuild the live
+    /// package-derived environment and command projection.
+    pub(crate) fn unlink_package(
+        &mut self,
+        request: &crate::protocol::RequestFrame,
+        payload: UnlinkPackageRequest,
+    ) -> impl std::future::Future<Output = Result<DispatchResult, SidecarError>> + 'static {
+        let input = self.prepare_link_package_request(request);
+        async move { unlink_package_owned(input?, payload).await }
     }
 
     pub(crate) fn provided_commands(
@@ -1796,6 +1810,7 @@ where
                 dns,
                 listen_policy,
                 create_loopback_exempt_ports,
+                base_guest_env: guest_env.clone(),
                 guest_env,
                 requested_runtime: payload.runtime,
                 root_filesystem_mode: protocol_root_filesystem_mode(root_filesystem.mode),
@@ -1814,6 +1829,8 @@ where
                 layers: VmLayerStore::default(),
                 command_guest_paths,
                 provided_commands: BTreeMap::new(),
+                package_descriptors: Vec::new(),
+                package_created_mountpoints: BTreeMap::new(),
                 command_permissions: BTreeMap::new(),
                 bindings: BTreeMap::new(),
                 active_processes: BTreeMap::new(),
@@ -2266,14 +2283,40 @@ where
                 .collect(),
         );
     }
-    let package_mounts =
+    let mut package_mounts =
         build_packages_projection(&vm_id, &package_descriptors, &payload.packages_mount_at)?;
+    append_package_provides_mounts(&mut package_mounts, &package_descriptors)?;
+    let package_mount_paths = payload
+        .packages
+        .iter()
+        .zip(package_descriptors.iter())
+        .map(|(package, descriptor)| {
+            Ok((
+                format!("path:{}", package.path),
+                package_mount_paths(&vm_id, descriptor, &payload.packages_mount_at)?,
+            ))
+        })
+        .collect::<Result<BTreeMap<_, _>, SidecarError>>()?;
     effective_mounts.extend(package_mounts);
-    append_package_provides_mounts(&mut effective_mounts, &package_descriptors)?;
     let mount_plugins = build_mount_plugin_registry::<B>()?;
 
     bridge.set_vm_permissions(&vm_id, &allow_all_policy())?;
     let reconfigure_result = vm.try_command("configure VM", |vm| {
+        let existing_created_mountpoints = vm.package_created_mountpoints.clone();
+        let mut created_mountpoints = BTreeMap::new();
+        for (package_id, paths) in &package_mount_paths {
+            let existing = existing_created_mountpoints.get(package_id);
+            let mut created = BTreeSet::new();
+            for path in paths {
+                if existing.is_some_and(|paths| paths.contains(path))
+                    || !vm.kernel.exists(path).map_err(kernel_error)?
+                {
+                    created.insert(path.clone());
+                }
+            }
+            created_mountpoints.insert(package_id.clone(), created);
+        }
+        vm.guest_env = vm.base_guest_env.clone();
         apply_package_provides_env(&mut vm.guest_env, &package_descriptors);
         let mount_context = MountPluginContext {
             bridge: bridge.clone(),
@@ -2329,6 +2372,13 @@ where
             loopback_exempt_ports: payload.loopback_exempt_ports.clone(),
         };
         vm.provided_commands = provided_commands.clone();
+        vm.package_descriptors = payload
+            .packages
+            .iter()
+            .zip(package_descriptors.iter().cloned())
+            .map(|(package, descriptor)| (format!("path:{}", package.path), descriptor))
+            .collect();
+        vm.package_created_mountpoints = created_mountpoints;
         let projected_commands = projected_commands_from_guest_paths(&vm.command_guest_paths);
         Ok(projected_commands)
     });
@@ -2394,11 +2444,17 @@ where
     } = lifecycle;
     let descriptor =
         crate::package_projection::read_package_manifest_from_path(&payload.package.path)?;
-    let new_mounts = build_packages_projection(
+    if payload.package_id.is_empty() || payload.package_id.len() > 128 {
+        return Err(SidecarError::InvalidState(String::from(
+            "package id must contain 1..=128 bytes",
+        )));
+    }
+    let mut new_mounts = build_packages_projection(
         &vm_id,
         std::slice::from_ref(&descriptor),
         crate::package_projection::OPT_AGENTOS_ROOT,
     )?;
+    append_package_provides_mounts(&mut new_mounts, std::slice::from_ref(&descriptor))?;
     let commands = descriptor
         .commands
         .iter()
@@ -2407,12 +2463,11 @@ where
     let mount_plugins = build_mount_plugin_registry::<B>()?;
 
     vm.try_command("link VM package", |vm| {
-        if new_mounts.iter().all(|mount| {
-            vm.configuration
-                .mounts
-                .iter()
-                .any(|existing| existing.guest_path == mount.guest_path)
-        }) {
+        if vm
+            .package_descriptors
+            .iter()
+            .any(|(package_id, _)| package_id == &payload.package_id)
+        {
             return Ok(());
         }
         for mount in &new_mounts {
@@ -2438,6 +2493,18 @@ where
                 )));
             }
         }
+        let created_mountpoints = new_mounts
+            .iter()
+            .map(|mount| {
+                vm.kernel
+                    .exists(&mount.guest_path)
+                    .map(|exists| (!exists).then(|| mount.guest_path.clone()))
+                    .map_err(kernel_error)
+            })
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .flatten()
+            .collect();
         let mount_context = MountPluginContext {
             bridge,
             runtime_context: vm.runtime_context.clone(),
@@ -2450,27 +2517,11 @@ where
         };
         mount_leaf_descriptors(&mount_plugins, vm, &new_mounts, mount_context)?;
         vm.configuration.mounts.extend(new_mounts);
-        vm.provided_commands
-            .insert(descriptor.name.clone(), commands.clone());
-        vm.configuration
-            .provided_commands
-            .insert(descriptor.name.clone(), commands.clone());
-        for command in &commands {
-            vm.command_guest_paths
-                .entry(command.clone())
-                .or_insert_with(|| projected_command_guest_path(command));
-        }
-        let command_guest_paths = vm.command_guest_paths.clone();
-        refresh_guest_command_path_env(&mut vm.guest_env, &command_guest_paths);
-        let mut execution_commands =
-            vec![String::from(JAVASCRIPT_COMMAND), String::from(WASM_COMMAND)];
-        execution_commands.extend(vm.command_guest_paths.keys().cloned());
-        vm.kernel
-            .register_driver(CommandDriver::new(
-                EXECUTION_DRIVER_NAME,
-                execution_commands,
-            ))
-            .map_err(kernel_error)?;
+        vm.package_descriptors
+            .push((payload.package_id.clone(), descriptor.clone()));
+        vm.package_created_mountpoints
+            .insert(payload.package_id.clone(), created_mountpoints);
+        refresh_package_runtime_state(vm)?;
         Ok(())
     })?;
 
@@ -2483,6 +2534,111 @@ where
         .collect();
     Ok(DispatchResult {
         response: package_linked_response(&request, projected_commands),
+        events: Vec::new(),
+    })
+}
+
+pub(crate) async fn unlink_package_owned<B>(
+    input: LinkPackageOwnedInput<B>,
+    payload: UnlinkPackageRequest,
+) -> Result<DispatchResult, SidecarError>
+where
+    B: NativeSidecarBridge + Send + 'static,
+    BridgeError<B>: fmt::Debug + Send + Sync + 'static,
+{
+    if payload.package_id.is_empty() || payload.package_id.len() > 128 {
+        return Err(SidecarError::InvalidState(String::from(
+            "package id must contain 1..=128 bytes",
+        )));
+    }
+    let LinkPackageOwnedInput {
+        lifecycle,
+        bridge,
+        sidecar_requests: _,
+    } = input;
+    let OwnedVmLifecycleRequest {
+        request,
+        connection_id: _,
+        session_id: _,
+        vm_id,
+        vm,
+    } = lifecycle;
+
+    let removed_commands = vm.try_command("unlink VM package", |vm| {
+        let descriptor = vm
+            .package_descriptors
+            .iter()
+            .find(|(package_id, _)| package_id == &payload.package_id)
+            .map(|(_, descriptor)| descriptor.clone())
+            .ok_or_else(|| {
+                SidecarError::InvalidState(format!(
+                    "software package not found: {}",
+                    payload.package_id
+                ))
+            })?;
+        let mut package_mounts = build_packages_projection(
+            &vm_id,
+            std::slice::from_ref(&descriptor),
+            crate::package_projection::OPT_AGENTOS_ROOT,
+        )?;
+        append_package_provides_mounts(&mut package_mounts, std::slice::from_ref(&descriptor))?;
+        let created_mountpoints = vm
+            .package_created_mountpoints
+            .get(&payload.package_id)
+            .cloned()
+            .unwrap_or_default();
+        let target_paths = package_mounts
+            .iter()
+            .map(|mount| mount.guest_path.clone())
+            .collect::<BTreeSet<_>>();
+        if let Some(missing) = target_paths.iter().find(|path| {
+            !vm.configuration
+                .mounts
+                .iter()
+                .any(|mount| &mount.guest_path == *path)
+        }) {
+            return Err(SidecarError::InvalidState(format!(
+                "software package {} is missing its live mount at {missing}",
+                payload.package_id
+            )));
+        }
+
+        let mut ordered_paths = target_paths.iter().collect::<Vec<_>>();
+        ordered_paths.sort_by_key(|path| std::cmp::Reverse(mount_path_depth(path)));
+        for path in ordered_paths {
+            vm.kernel.unmount_filesystem(path).map_err(kernel_error)?;
+            emit_security_audit_event(
+                &bridge,
+                &vm_id,
+                "security.mount.unmounted",
+                audit_fields([
+                    (String::from("guest_path"), path.clone()),
+                    (String::from("plugin_id"), String::from("agentos_packages")),
+                    (String::from("read_only"), String::from("true")),
+                ]),
+            );
+        }
+        let mut created_paths = created_mountpoints.iter().collect::<Vec<_>>();
+        created_paths.sort_by_key(|path| std::cmp::Reverse(mount_path_depth(path)));
+        for path in created_paths {
+            vm.kernel.remove_path(path, true).map_err(kernel_error)?;
+        }
+        vm.configuration
+            .mounts
+            .retain(|mount| !target_paths.contains(&mount.guest_path));
+        vm.package_descriptors
+            .retain(|(package_id, _)| package_id != &payload.package_id);
+        vm.package_created_mountpoints.remove(&payload.package_id);
+        refresh_package_runtime_state(vm)?;
+        Ok(descriptor
+            .commands
+            .into_iter()
+            .map(|target| target.command)
+            .collect::<Vec<_>>())
+    })?;
+
+    Ok(DispatchResult {
+        response: package_unlinked_response(&request, removed_commands),
         events: Vec::new(),
     })
 }
@@ -3405,6 +3561,16 @@ fn build_packages_projection(
     )
 }
 
+fn package_mount_paths(
+    vm_id: &str,
+    package: &crate::package_projection::PackageDescriptor,
+    mount_at: &str,
+) -> Result<BTreeSet<String>, SidecarError> {
+    let mut mounts = build_packages_projection(vm_id, std::slice::from_ref(package), mount_at)?;
+    append_package_provides_mounts(&mut mounts, std::slice::from_ref(package))?;
+    Ok(mounts.into_iter().map(|mount| mount.guest_path).collect())
+}
+
 fn package_leaf_mount_to_descriptor(
     mount: crate::package_projection::PackageLeafMount,
 ) -> MountDescriptor {
@@ -3490,6 +3656,45 @@ fn apply_package_provides_env(
                 .or_insert_with(|| value.clone());
         }
     }
+}
+
+fn refresh_package_runtime_state(vm: &mut VmState) -> Result<(), SidecarError> {
+    let descriptors = vm
+        .package_descriptors
+        .iter()
+        .map(|(_, descriptor)| descriptor.clone())
+        .collect::<Vec<_>>();
+    vm.guest_env = vm.base_guest_env.clone();
+    apply_package_provides_env(&mut vm.guest_env, &descriptors);
+
+    vm.command_guest_paths = discover_command_guest_paths(&mut vm.kernel);
+    let mut provided_commands = BTreeMap::new();
+    for descriptor in &descriptors {
+        let commands = descriptor
+            .commands
+            .iter()
+            .map(|target| target.command.clone())
+            .collect::<Vec<_>>();
+        for command in &commands {
+            vm.command_guest_paths
+                .entry(command.clone())
+                .or_insert_with(|| projected_command_guest_path(command));
+        }
+        provided_commands.insert(descriptor.name.clone(), commands);
+    }
+    vm.provided_commands = provided_commands.clone();
+    vm.configuration.provided_commands = provided_commands;
+
+    let command_guest_paths = vm.command_guest_paths.clone();
+    refresh_guest_command_path_env(&mut vm.guest_env, &command_guest_paths);
+    let mut execution_commands = vec![String::from(JAVASCRIPT_COMMAND), String::from(WASM_COMMAND)];
+    execution_commands.extend(vm.command_guest_paths.keys().cloned());
+    vm.kernel
+        .register_driver(CommandDriver::new(
+            EXECUTION_DRIVER_NAME,
+            execution_commands,
+        ))
+        .map_err(kernel_error)
 }
 
 fn append_package_provides_mounts(

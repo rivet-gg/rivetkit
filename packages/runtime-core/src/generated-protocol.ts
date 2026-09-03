@@ -1184,16 +1184,33 @@ export function writePackageDescriptor(bc: bare.ByteCursor, x: PackageDescriptor
 
 export type LinkPackageRequest = {
     readonly package: PackageDescriptor
+    readonly packageId: string
 }
 
 export function readLinkPackageRequest(bc: bare.ByteCursor): LinkPackageRequest {
     return {
         package: readPackageDescriptor(bc),
+        packageId: bare.readString(bc),
     }
 }
 
 export function writeLinkPackageRequest(bc: bare.ByteCursor, x: LinkPackageRequest): void {
     writePackageDescriptor(bc, x.package)
+    bare.writeString(bc, x.packageId)
+}
+
+export type UnlinkPackageRequest = {
+    readonly packageId: string
+}
+
+export function readUnlinkPackageRequest(bc: bare.ByteCursor): UnlinkPackageRequest {
+    return {
+        packageId: bare.readString(bc),
+    }
+}
+
+export function writeUnlinkPackageRequest(bc: bare.ByteCursor, x: UnlinkPackageRequest): void {
+    bare.writeString(bc, x.packageId)
 }
 
 export type PackageCommands = {
@@ -1296,6 +1313,20 @@ export function readPackageLinkedResponse(bc: bare.ByteCursor): PackageLinkedRes
 
 export function writePackageLinkedResponse(bc: bare.ByteCursor, x: PackageLinkedResponse): void {
     write13(bc, x.projectedCommands)
+}
+
+export type PackageUnlinkedResponse = {
+    readonly removedCommands: readonly string[]
+}
+
+export function readPackageUnlinkedResponse(bc: bare.ByteCursor): PackageUnlinkedResponse {
+    return {
+        removedCommands: read6(bc),
+    }
+}
+
+export function writePackageUnlinkedResponse(bc: bare.ByteCursor, x: PackageUnlinkedResponse): void {
+    write6(bc, x.removedCommands)
 }
 
 function read14(bc: bare.ByteCursor): readonly MountDescriptor[] {
@@ -3400,6 +3431,7 @@ export type RequestPayload =
     | { readonly tag: "CloseExecutionStdinRequest"; readonly val: CloseExecutionStdinRequest }
     | { readonly tag: "ResizeExecutionPtyRequest"; readonly val: ResizeExecutionPtyRequest }
     | { readonly tag: "ReadExecutionOutputRequest"; readonly val: ReadExecutionOutputRequest }
+    | { readonly tag: "UnlinkPackageRequest"; readonly val: UnlinkPackageRequest }
 
 export function readRequestPayload(bc: bare.ByteCursor): RequestPayload {
     const offset = bc.offset
@@ -3535,6 +3567,8 @@ export function readRequestPayload(bc: bare.ByteCursor): RequestPayload {
             return { tag: "ResizeExecutionPtyRequest", val: readResizeExecutionPtyRequest(bc) }
         case 64:
             return { tag: "ReadExecutionOutputRequest", val: readReadExecutionOutputRequest(bc) }
+        case 65:
+            return { tag: "UnlinkPackageRequest", val: readUnlinkPackageRequest(bc) }
         default: {
             bc.offset = offset
             throw new bare.BareError(offset, "invalid tag")
@@ -3860,6 +3894,11 @@ export function writeRequestPayload(bc: bare.ByteCursor, x: RequestPayload): voi
         case "ReadExecutionOutputRequest": {
             bare.writeU8(bc, 64)
             writeReadExecutionOutputRequest(bc, x.val)
+            break
+        }
+        case "UnlinkPackageRequest": {
+            bare.writeU8(bc, 65)
+            writeUnlinkPackageRequest(bc, x.val)
             break
         }
     }
@@ -5391,6 +5430,7 @@ export type ResponsePayload =
     | { readonly tag: "ExecutionDeletedResponse"; readonly val: ExecutionDeletedResponse }
     | { readonly tag: "ExecutionIoResponse"; readonly val: ExecutionIoResponse }
     | { readonly tag: "ExecutionOutputPageResponse"; readonly val: ExecutionOutputPageResponse }
+    | { readonly tag: "PackageUnlinkedResponse"; readonly val: PackageUnlinkedResponse }
 
 export function readResponsePayload(bc: bare.ByteCursor): ResponsePayload {
     const offset = bc.offset
@@ -5486,6 +5526,8 @@ export function readResponsePayload(bc: bare.ByteCursor): ResponsePayload {
             return { tag: "ExecutionIoResponse", val: readExecutionIoResponse(bc) }
         case 44:
             return { tag: "ExecutionOutputPageResponse", val: readExecutionOutputPageResponse(bc) }
+        case 45:
+            return { tag: "PackageUnlinkedResponse", val: readPackageUnlinkedResponse(bc) }
         default: {
             bc.offset = offset
             throw new bare.BareError(offset, "invalid tag")
@@ -5718,6 +5760,11 @@ export function writeResponsePayload(bc: bare.ByteCursor, x: ResponsePayload): v
         case "ExecutionOutputPageResponse": {
             bare.writeU8(bc, 44)
             writeExecutionOutputPageResponse(bc, x.val)
+            break
+        }
+        case "PackageUnlinkedResponse": {
+            bare.writeU8(bc, 45)
+            writePackageUnlinkedResponse(bc, x.val)
             break
         }
     }

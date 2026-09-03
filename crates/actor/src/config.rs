@@ -1,8 +1,9 @@
 use std::collections::BTreeSet;
 
 use agentos_client::{
-    AgentOsConfig, AgentOsLimits, MountConfig, MountPlugin, RootFilesystemConfig,
-    RootFilesystemKind, RootFilesystemMode, VmSqliteDescriptor, VmUserConfig,
+    AgentOsConfig, AgentOsLimits, MountConfig, MountPlugin, PackageResolver,
+    PackageResolverOptions, PackageSource, RootFilesystemConfig, RootFilesystemKind,
+    RootFilesystemMode, VmSqliteDescriptor, VmUserConfig,
 };
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
@@ -13,6 +14,7 @@ const MAX_LOOPBACK_EXEMPT_PORTS: usize = 256;
 const MAX_HOSTED_MOUNTS: usize = 32;
 const MAX_FILESYSTEM_PATH_BYTES: usize = 4 * 1024;
 const MAX_FILESYSTEM_NAMESPACE_BYTES: usize = 128;
+pub(crate) const MAX_REMOTE_SOFTWARE: usize = 128;
 
 /// Callback-free configuration accepted by the hosted actor.
 ///
@@ -33,6 +35,8 @@ pub struct AgentOsActorConfigInput {
     pub limits: Option<AgentOsLimits>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub filesystem: Option<HostedFilesystemConfigInput>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub software: Option<Vec<RemotePackageSourceInput>>,
 }
 
 /// Complete persisted actor configuration for the fields supported by this
@@ -46,6 +50,30 @@ pub struct AgentOsActorConfig {
     pub loopback_exempt_ports: Vec<u16>,
     pub limits: Option<AgentOsLimits>,
     pub filesystem: HostedFilesystemConfig,
+    pub software: Vec<RemotePackageSource>,
+}
+
+/// URL-only hosted package input. This is intentionally not a serde wrapper
+/// around Core's `PackageSource`, whose trusted `Path` variant must remain
+/// impossible to construct through an actor action or creation payload.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RemotePackageSourceInput {
+    pub url: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub digest: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RemotePackageSource {
+    pub url: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub digest: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub package_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -137,12 +165,14 @@ impl AgentOsActorConfig {
         let loopback_exempt_ports =
             normalize_loopback_ports(input.loopback_exempt_ports.unwrap_or_default())?;
         let filesystem = normalize_filesystem(input.filesystem.unwrap_or_default())?;
+        let software = normalize_remote_software(input.software.unwrap_or_default())?;
         let config = Self {
             user: input.user,
             allowed_node_builtins,
             loopback_exempt_ports,
             limits: input.limits,
             filesystem,
+            software,
         };
 
         // Reuse the Rust Core client's VM serializer and canonical vm-config
@@ -170,8 +200,66 @@ impl AgentOsActorConfig {
             .collect();
         config.sidecar_binary_path = sidecar_binary_path;
         config.database = database_path.map(|path| VmSqliteDescriptor::SqliteFile { path });
+        if std::env::var("AGENTOS_ALLOW_INSECURE_LOCAL_PACKAGE_HTTP").as_deref() == Ok("1") {
+            config.package_resolver.allow_insecure_local_http = true;
+        }
         config
     }
+}
+
+impl RemotePackageSource {
+    pub(crate) fn to_core(&self) -> PackageSource {
+        PackageSource::Url {
+            url: self.url.clone(),
+            expected_digest: self.digest.clone(),
+        }
+    }
+
+    pub(crate) fn resolved(url: String, installed: &agentos_client::InstalledSoftware) -> Self {
+        Self {
+            url,
+            digest: Some(installed.digest.clone()),
+            size: Some(installed.size),
+            package_id: Some(installed.package_id.clone()),
+        }
+    }
+}
+
+pub(crate) fn normalize_remote_source(
+    source: RemotePackageSourceInput,
+) -> Result<RemotePackageSource> {
+    let resolver = PackageResolver::new(PackageResolverOptions::default())?;
+    resolver.validate_source(&PackageSource::Url {
+        url: source.url.clone(),
+        expected_digest: source.digest.clone(),
+    })?;
+    Ok(RemotePackageSource {
+        package_id: source.digest.clone(),
+        url: source.url,
+        digest: source.digest,
+        size: None,
+    })
+}
+
+fn normalize_remote_software(
+    sources: Vec<RemotePackageSourceInput>,
+) -> Result<Vec<RemotePackageSource>> {
+    if sources.len() > MAX_REMOTE_SOFTWARE {
+        bail!(
+            "software exceeds limit of {MAX_REMOTE_SOFTWARE}; reduce the package source collection"
+        );
+    }
+    let mut seen = BTreeSet::new();
+    let mut normalized = Vec::with_capacity(sources.len());
+    for source in sources {
+        let source = normalize_remote_source(source)?;
+        let identity = (source.url.clone(), source.digest.clone());
+        if !seen.insert(identity) {
+            continue;
+        }
+        normalized.push(source);
+    }
+    Ok(normalized)
 }
 
 impl HostedRootFilesystem {

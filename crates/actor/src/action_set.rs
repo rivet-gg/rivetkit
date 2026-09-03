@@ -23,6 +23,7 @@ use crate::process::{
     TerminalClose, TerminalList, TerminalOpen, TerminalResize, TerminalSnapshot, TerminalWait,
     TerminalWrite,
 };
+use crate::software::{SoftwareInstall, SoftwareList, SoftwareUninstall};
 use crate::{AgentOsActor, ConfigGet, RuntimeRestart, RuntimeStatusGet};
 
 type DispatchFuture = Pin<Box<dyn Future<Output = Result<Vec<u8>>> + Send>>;
@@ -154,4 +155,7 @@ action_registry!(
     CronList,
     CronCancel,
     CronInvoke,
+    SoftwareInstall,
+    SoftwareUninstall,
+    SoftwareList,
 );

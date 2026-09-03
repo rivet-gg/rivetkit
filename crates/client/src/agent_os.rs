@@ -129,6 +129,9 @@ pub(crate) struct AgentOsInner {
     pub(crate) vm_id: String,
     /// Projected command names and guest entrypoints reported by the sidecar.
     pub(crate) projected_commands: parking_lot::Mutex<BTreeMap<String, String>>,
+    pub(crate) package_resolver: crate::software::PackageResolver,
+    pub(crate) software_operation: tokio::sync::Mutex<()>,
+    pub(crate) installed_software: parking_lot::Mutex<BTreeMap<String, InstalledSoftwareEntry>>,
 
     // Process registries.
     pub(crate) process_registry_lock: parking_lot::Mutex<()>,
@@ -170,6 +173,14 @@ pub(crate) struct AgentOsInner {
     pub(crate) sidecar_lease: parking_lot::Mutex<Option<AgentOsSidecarVmLease>>,
     pub(crate) dynamic_mounts: parking_lot::Mutex<Vec<wire::MountDescriptor>>,
     pub(crate) disposed: AtomicBool,
+}
+
+#[derive(Clone)]
+pub(crate) struct InstalledSoftwareEntry {
+    pub(crate) info: crate::software::InstalledSoftware,
+    /// Pins URL-acquired temporary bytes for at least the lifetime of the live
+    /// sidecar projection. Step 09 replaces this with a process-cache pin.
+    pub(crate) _package: crate::software::VerifiedPackage,
 }
 
 impl AgentOs {
@@ -239,6 +250,7 @@ impl AgentOs {
             | wire::ResponsePayload::GuestKernelResultResponse(_)
             | wire::ResponsePayload::ResourceSnapshotResponse(_)
             | wire::ResponsePayload::PackageLinkedResponse(_)
+            | wire::ResponsePayload::PackageUnlinkedResponse(_)
             | wire::ResponsePayload::ProvidedCommandsResponse(_)
             | wire::ResponsePayload::ListMountsResponse(_)
             | wire::ResponsePayload::ExecutionAcceptedResponse(_)
@@ -318,6 +330,7 @@ impl AgentOs {
             | wire::ResponsePayload::GuestKernelResultResponse(_)
             | wire::ResponsePayload::ResourceSnapshotResponse(_)
             | wire::ResponsePayload::PackageLinkedResponse(_)
+            | wire::ResponsePayload::PackageUnlinkedResponse(_)
             | wire::ResponsePayload::ProvidedCommandsResponse(_)
             | wire::ResponsePayload::ListMountsResponse(_)
             | wire::ResponsePayload::ExecutionAcceptedResponse(_)
@@ -415,6 +428,7 @@ impl AgentOs {
             | wire::ResponsePayload::GuestKernelResultResponse(_)
             | wire::ResponsePayload::ResourceSnapshotResponse(_)
             | wire::ResponsePayload::PackageLinkedResponse(_)
+            | wire::ResponsePayload::PackageUnlinkedResponse(_)
             | wire::ResponsePayload::ProvidedCommandsResponse(_)
             | wire::ResponsePayload::ListMountsResponse(_)
             | wire::ResponsePayload::ExecutionAcceptedResponse(_)
@@ -508,6 +522,7 @@ impl AgentOs {
                     | wire::ResponsePayload::GuestKernelResultResponse(_)
                     | wire::ResponsePayload::ResourceSnapshotResponse(_)
                     | wire::ResponsePayload::PackageLinkedResponse(_)
+                    | wire::ResponsePayload::PackageUnlinkedResponse(_)
                     | wire::ResponsePayload::ProvidedCommandsResponse(_)
                     | wire::ResponsePayload::ListMountsResponse(_)
                     | wire::ResponsePayload::ExecutionAcceptedResponse(_)
@@ -554,6 +569,11 @@ impl AgentOs {
             session_id,
             vm_id,
             projected_commands: parking_lot::Mutex::new(projected_commands),
+            package_resolver: crate::software::PackageResolver::new(
+                config.package_resolver.clone(),
+            )?,
+            software_operation: tokio::sync::Mutex::new(()),
+            installed_software: parking_lot::Mutex::new(BTreeMap::new()),
             process_registry_lock: parking_lot::Mutex::new(()),
             processes: SccHashMap::new(),
             process_counter: AtomicU64::new(1),
@@ -601,6 +621,95 @@ impl AgentOs {
     /// so the package's commands appear under `/opt/agentos/bin` (on `$PATH`)
     /// immediately with no reboot. Errors if a command name is already linked.
     pub async fn link_software(&self, descriptor: PackageDescriptor) -> Result<(), ClientError> {
+        let package_id = format!("path:{}", descriptor.path);
+        self.link_software_path(&descriptor.path, &package_id).await
+    }
+
+    /// Resolve, verify, and project one exact software artifact. URL and path
+    /// sources converge before the sidecar sees the trusted immutable path.
+    pub async fn install_software(
+        &self,
+        source: crate::software::PackageSource,
+    ) -> Result<crate::software::InstalledSoftware, ClientError> {
+        let _operation = self.inner.software_operation.lock().await;
+        let package = self.inner.package_resolver.resolve(source).await?;
+        if let Some(existing) = self
+            .inner
+            .installed_software
+            .lock()
+            .get(&package.package_id)
+            .cloned()
+        {
+            return Ok(existing.info);
+        }
+        let path = package.path().to_str().ok_or_else(|| {
+            ClientError::PackageIo(String::from("verified package path is not valid UTF-8"))
+        })?;
+        self.link_software_path(path, &package.package_id).await?;
+        let info = crate::software::InstalledSoftware::from(&package);
+        self.inner.installed_software.lock().insert(
+            package.package_id.clone(),
+            InstalledSoftwareEntry {
+                info: info.clone(),
+                _package: package,
+            },
+        );
+        Ok(info)
+    }
+
+    /// Remove one exact package identity from the live VM. Missing ids are a
+    /// typed error so actor desired state cannot silently drift from Core.
+    pub async fn uninstall_software(
+        &self,
+        package_id: &str,
+    ) -> Result<crate::software::InstalledSoftware, ClientError> {
+        let _operation = self.inner.software_operation.lock().await;
+        let installed = self
+            .inner
+            .installed_software
+            .lock()
+            .get(package_id)
+            .cloned()
+            .ok_or_else(|| ClientError::SoftwareNotFound(package_id.to_owned()))?;
+        let inner = self.inner();
+        let response = self
+            .transport()
+            .request_wire(
+                wire_vm_ownership(&inner.connection_id, &inner.session_id, &inner.vm_id),
+                wire::RequestPayload::UnlinkPackageRequest(wire::UnlinkPackageRequest {
+                    package_id: package_id.to_owned(),
+                }),
+            )
+            .await?;
+        match response {
+            wire::ResponsePayload::PackageUnlinkedResponse(unlinked) => {
+                let mut commands = inner.projected_commands.lock();
+                for command in unlinked.removed_commands {
+                    commands.remove(&command);
+                }
+                inner.installed_software.lock().remove(package_id);
+                Ok(installed.info)
+            }
+            wire::ResponsePayload::RejectedResponse(rejected) => Err(rejected_to_error(rejected)),
+            other => Err(ClientError::Sidecar(format!(
+                "unexpected unlink_package response: {other:?}"
+            ))),
+        }
+    }
+
+    /// Content-addressed packages installed through [`Self::install_software`].
+    /// The legacy package-name view remains available through
+    /// [`Self::list_software`] for trusted path configuration.
+    pub fn installed_software(&self) -> Vec<crate::software::InstalledSoftware> {
+        self.inner
+            .installed_software
+            .lock()
+            .values()
+            .map(|entry| entry.info.clone())
+            .collect()
+    }
+
+    async fn link_software_path(&self, path: &str, package_id: &str) -> Result<(), ClientError> {
         let inner = self.inner();
         let response = self
             .transport()
@@ -610,8 +719,9 @@ impl AgentOs {
                     // The wire `PackageDescriptor` carries the packed package
                     // `path`; the sidecar reads metadata from that payload.
                     package: wire::PackageDescriptor {
-                        path: descriptor.path,
+                        path: path.to_owned(),
                     },
+                    package_id: package_id.to_owned(),
                 }),
             )
             .await?;
@@ -880,6 +990,7 @@ fn serialize_create_vm_config_for_sidecar(
 }
 
 pub(crate) fn validate_config(config: &AgentOsConfig) -> Result<(), ClientError> {
+    config.package_resolver.validate()?;
     let create = serialize_create_vm_config_for_sidecar(config)?;
     create
         .validate(wire::DEFAULT_MAX_FRAME_BYTES)
