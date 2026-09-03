@@ -14,6 +14,7 @@ use crate::{store, AgentOsActor, AgentOsActorConfig, AgentOsActorConfigInput, Co
 
 pub(crate) type BoxFuture<T> = Pin<Box<dyn Future<Output = Result<T>> + Send>>;
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ConfigGet;
 
@@ -23,6 +24,7 @@ impl Action for ConfigGet {
     const NAME: &'static str = "config.get";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ConfigSet {
@@ -37,6 +39,7 @@ impl Action for ConfigSet {
     const NAME: &'static str = "config.set";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RuntimeStatusGet;
 
@@ -46,6 +49,7 @@ impl Action for RuntimeStatusGet {
     const NAME: &'static str = "runtime.status";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RuntimeRestart;
 

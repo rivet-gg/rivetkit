@@ -27,6 +27,7 @@ const MAX_WAIT_MS: u64 = 5 * 60 * 1_000;
 const DEFAULT_WAIT_MS: u64 = 30 * 1_000;
 const MAX_TERMINAL_DIMENSION: u16 = 4_096;
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ActorProcessId {
@@ -34,6 +35,7 @@ pub struct ActorProcessId {
     pub pid: u32,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ActorTerminalId {
@@ -41,6 +43,7 @@ pub struct ActorTerminalId {
     pub shell_id: String,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ActorExecOptions {
@@ -83,6 +86,7 @@ impl ActorExecOptions {
     }
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActorExecResult {
@@ -91,6 +95,7 @@ pub struct ActorExecResult {
     pub stderr: String,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ProcessExec {
@@ -104,6 +109,7 @@ impl Action for ProcessExec {
     const NAME: &'static str = "process.exec";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ProcessExecFile {
@@ -119,6 +125,7 @@ impl Action for ProcessExecFile {
     const NAME: &'static str = "process.execFile";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ActorSpawnOptions {
@@ -159,6 +166,7 @@ impl ActorSpawnOptions {
     }
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ProcessSpawn {
@@ -176,6 +184,7 @@ impl Action for ProcessSpawn {
 
 macro_rules! process_id_action {
     ($name:ident, $output:ty, $wire_name:literal) => {
+        #[cfg_attr(feature = "contract", derive(ts_rs::TS))]
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
         #[serde(rename_all = "camelCase", deny_unknown_fields)]
         pub struct $name {
@@ -193,6 +202,7 @@ process_id_action!(ProcessGet, ActorProcessInfo, "process.get");
 process_id_action!(ProcessWait, ActorProcessExit, "process.wait");
 process_id_action!(ProcessCloseStdin, (), "process.closeStdin");
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActorProcessInfo {
@@ -204,6 +214,7 @@ pub struct ActorProcessInfo {
     pub started_at: i64,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActorProcessExit {
@@ -211,6 +222,7 @@ pub struct ActorProcessExit {
     pub exit_code: i32,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProcessList;
 
@@ -219,6 +231,7 @@ impl Action for ProcessList {
     const NAME: &'static str = "process.list";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProcessTree;
 
@@ -227,6 +240,7 @@ impl Action for ProcessTree {
     const NAME: &'static str = "process.tree";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActorProcessTree {
@@ -234,6 +248,7 @@ pub struct ActorProcessTree {
     pub roots: Vec<ProcessTreeNode>,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ActorSignal {
     #[serde(rename = "SIGTERM")]
@@ -254,6 +269,7 @@ impl ActorSignal {
     }
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ProcessSignal {
@@ -266,6 +282,7 @@ impl Action for ProcessSignal {
     const NAME: &'static str = "process.signal";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ProcessWriteStdin {
@@ -278,6 +295,7 @@ impl Action for ProcessWriteStdin {
     const NAME: &'static str = "process.writeStdin";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ProcessResizePty {
@@ -291,6 +309,7 @@ impl Action for ProcessResizePty {
     const NAME: &'static str = "process.resizePty";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ProcessReadOutput {
@@ -308,6 +327,7 @@ impl Action for ProcessReadOutput {
     const NAME: &'static str = "process.readOutput";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActorProcessOutputReplay {
@@ -318,6 +338,7 @@ pub struct ActorProcessOutputReplay {
     pub truncated: bool,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActorProcessOutputEvent {
@@ -327,6 +348,7 @@ pub struct ActorProcessOutputEvent {
     pub timestamp_ms: i64,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ActorTerminalOptions {
@@ -367,6 +389,7 @@ impl ActorTerminalOptions {
     }
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct TerminalOpen {
@@ -379,6 +402,7 @@ impl Action for TerminalOpen {
     const NAME: &'static str = "terminal.open";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TerminalList;
 
@@ -387,6 +411,7 @@ impl Action for TerminalList {
     const NAME: &'static str = "terminal.list";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActorTerminalInfo {
@@ -396,6 +421,7 @@ pub struct ActorTerminalInfo {
     pub exit_code: Option<i32>,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct TerminalSnapshot {
@@ -411,6 +437,7 @@ impl Action for TerminalSnapshot {
     const NAME: &'static str = "terminal.snapshot";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActorTerminalSnapshot {
@@ -422,6 +449,7 @@ pub struct ActorTerminalSnapshot {
     pub truncated: bool,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActorTerminalOutputEvent {
@@ -431,6 +459,7 @@ pub struct ActorTerminalOutputEvent {
     pub timestamp_ms: i64,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct TerminalWrite {
@@ -443,6 +472,7 @@ impl Action for TerminalWrite {
     const NAME: &'static str = "terminal.write";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct TerminalResize {
@@ -458,6 +488,7 @@ impl Action for TerminalResize {
 
 macro_rules! terminal_id_action {
     ($name:ident, $output:ty, $wire_name:literal) => {
+        #[cfg_attr(feature = "contract", derive(ts_rs::TS))]
         #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
         #[serde(rename_all = "camelCase", deny_unknown_fields)]
         pub struct $name {
@@ -474,6 +505,7 @@ macro_rules! terminal_id_action {
 terminal_id_action!(TerminalWait, ActorTerminalExit, "terminal.wait");
 terminal_id_action!(TerminalClose, (), "terminal.close");
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActorTerminalExit {

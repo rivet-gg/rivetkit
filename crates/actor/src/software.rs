@@ -14,6 +14,7 @@ use crate::{store, AgentOsActor, AgentOsActorState, ConfigApplyState, ConfigSnap
 
 type BoxFuture<T> = Pin<Box<dyn Future<Output = Result<T>> + Send>>;
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct SoftwareInstall {
@@ -28,6 +29,7 @@ impl Action for SoftwareInstall {
     const NAME: &'static str = "software.install";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct SoftwareUninstall {
@@ -42,6 +44,7 @@ impl Action for SoftwareUninstall {
     const NAME: &'static str = "software.uninstall";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SoftwareList;
 
@@ -51,6 +54,7 @@ impl Action for SoftwareList {
     const NAME: &'static str = "software.list";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SoftwareMutationResult {

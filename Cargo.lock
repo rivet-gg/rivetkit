@@ -69,7 +69,17 @@ dependencies = [
  "tempfile",
  "tokio",
  "tracing",
+ "ts-rs",
  "uuid",
+]
+
+[[package]]
+name = "agentos-bindgen-export"
+version = "0.0.1"
+dependencies = [
+ "agentos-actor",
+ "anyhow",
+ "serde_json",
 ]
 
 [[package]]
@@ -114,6 +124,7 @@ dependencies = [
  "tokio",
  "tokio-util",
  "tracing",
+ "ts-rs",
  "uuid",
 ]
 
@@ -5349,6 +5360,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e640d9b0964e9d39df633548591090ab92f7a4567bc31d3891af23471a3365c6"
 dependencies = [
  "lazy_static",
+ "serde_json",
  "thiserror 2.0.18",
  "ts-rs-macros",
 ]

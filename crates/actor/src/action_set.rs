@@ -58,6 +58,28 @@ where
 
 macro_rules! action_registry {
     ($($action:ty),+ $(,)?) => {
+        #[cfg(feature = "contract")]
+        pub(crate) fn contract() -> Vec<crate::contract::ActionContract> {
+            vec![$(
+                crate::contract::ActionContract {
+                    name: <$action as Action>::NAME,
+                    public: !<$action as Action>::NAME.starts_with("__"),
+                    input: crate::contract::input::<$action>(),
+                    output: crate::contract::output::<<$action as Action>::Output>(),
+                }
+            ),+]
+        }
+
+        #[cfg(feature = "contract")]
+        pub(crate) fn collect_contract_types(types: &mut crate::contract::TypeCollector) {
+            $(
+                if !<$action as Action>::NAME.starts_with("__") {
+                    types.collect::<$action>();
+                    types.collect::<<$action as Action>::Output>();
+                }
+            )+
+        }
+
         impl ActionSet<AgentOsActor> for AgentOsActionSet {
             fn entries() -> Vec<ActionEntry<AgentOsActor>> {
                 vec![$(ActionEntry::new(<$action as Action>::NAME)),+]

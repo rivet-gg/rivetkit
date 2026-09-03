@@ -96,6 +96,7 @@ impl ProcessPackageCacheOptions {
 
 /// A bounded snapshot of process-cache state. Counters saturate instead of
 /// wrapping; package identities are deliberately not exposed as metric labels.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProcessPackageCacheStats {
@@ -208,6 +209,7 @@ impl PackageResolverOptions {
     }
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PackageManifestInfo {
@@ -778,6 +780,7 @@ async fn stage_cached_package(
     .map_err(|error| ClientError::PackageIo(format!("package cache task failed: {error}")))?
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InstalledSoftware {

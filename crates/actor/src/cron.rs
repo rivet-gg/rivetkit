@@ -19,6 +19,7 @@ const DEFAULT_CRON_HISTORY: i64 = 32;
 const MAX_CRON_HISTORY: i64 = 256;
 const MAX_CRON_ERROR_BYTES: usize = 16 * 1024;
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct CronSchedule {
@@ -41,6 +42,7 @@ impl Action for CronSchedule {
     const NAME: &'static str = "cron.schedule";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CronList;
 
@@ -49,6 +51,7 @@ impl Action for CronList {
     const NAME: &'static str = "cron.list";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CronCancel {
@@ -60,6 +63,7 @@ impl Action for CronCancel {
     const NAME: &'static str = "cron.cancel";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActorCronJob {
@@ -75,6 +79,7 @@ pub struct ActorCronJob {
     pub max_history: i64,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct CronInvoke {

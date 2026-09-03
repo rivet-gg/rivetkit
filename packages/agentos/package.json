@@ -27,13 +27,15 @@
 		"node": ">=22.0.0"
 	},
 	"scripts": {
-		"build": "tsup src/index.ts",
-		"check-types": "tsc --noEmit"
+		"build": "pnpm --dir ../agentos-bindgen check && tsup src/index.ts",
+		"check-types": "pnpm --dir ../agentos-bindgen check && tsc --noEmit"
 	},
 	"dependencies": {
-		"@rivet-dev/agentos-core": "workspace:*"
+		"@rivet-dev/agentos-core": "workspace:*",
+		"rivetkit": "catalog:rivetkit"
 	},
 	"devDependencies": {
+		"@rivet-dev/agentos-bindgen": "workspace:*",
 		"tsup": "^8.4.0",
 		"typescript": "^5.7.3"
 	}

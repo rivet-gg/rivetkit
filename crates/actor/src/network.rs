@@ -29,6 +29,7 @@ fn default_http_method() -> String {
     String::from("GET")
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ActorHttpRequest {
@@ -83,6 +84,7 @@ impl ActorHttpRequest {
     }
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActorHttpResponse {
@@ -92,6 +94,7 @@ pub struct ActorHttpResponse {
     pub body: FileBytes,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ActorFetchStreamId {
@@ -100,6 +103,7 @@ pub struct ActorFetchStreamId {
     pub expires_at_ms: i64,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActorFetchStreamHead {
@@ -109,6 +113,7 @@ pub struct ActorFetchStreamHead {
     pub headers: Vec<(String, String)>,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActorFetchStreamChunk {
@@ -116,6 +121,7 @@ pub struct ActorFetchStreamChunk {
     pub done: bool,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct NetworkFetch {
@@ -127,6 +133,7 @@ impl Action for NetworkFetch {
     const NAME: &'static str = "network.fetch";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct NetworkFetchStreamStart {
@@ -138,6 +145,7 @@ impl Action for NetworkFetchStreamStart {
     const NAME: &'static str = "network.fetchStream.start";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct NetworkFetchStreamRead {
@@ -151,6 +159,7 @@ impl Action for NetworkFetchStreamRead {
     const NAME: &'static str = "network.fetchStream.read";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct NetworkFetchStreamCancel {
@@ -162,6 +171,7 @@ impl Action for NetworkFetchStreamCancel {
     const NAME: &'static str = "network.fetchStream.cancel";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct NetworkPreviewCreate {
@@ -175,6 +185,7 @@ impl Action for NetworkPreviewCreate {
     const NAME: &'static str = "network.preview.create";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActorPreview {
@@ -184,6 +195,7 @@ pub struct ActorPreview {
     pub expires_at_ms: i64,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct NetworkPreviewExpire {

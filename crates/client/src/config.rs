@@ -220,6 +220,7 @@ pub fn default_environment() -> BTreeMap<String, String> {
 
 /// The kind of a software package, which decides how it is mounted into the VM. Mirrors the TS
 /// descriptor `type` discriminator (`packages/core/src/packages.ts`).
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum SoftwareKind {
@@ -232,6 +233,7 @@ pub enum SoftwareKind {
 }
 
 /// A flattened software package input.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SoftwareInput {
     pub package: String,
@@ -245,6 +247,7 @@ pub struct SoftwareInput {
 /// A reference to a packed `.aospkg` package for the `/opt/agentos`
 /// projection. A directory path remains accepted for local transition
 /// fixtures.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PackageRef {
     /// Serialized as `packagePath` — the single package-ref spelling on every
@@ -315,6 +318,8 @@ pub struct Bindings {
 
 /// Operator-tunable runtime limits for a VM. Every field is optional; unset fields fall back to the
 /// sidecar defaults.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
+#[cfg_attr(feature = "contract", ts(rename_all = "camelCase"))]
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AgentOsLimits {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -337,6 +342,8 @@ pub struct AgentOsLimits {
     pub process: Option<ProcessLimits>,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
+#[cfg_attr(feature = "contract", ts(rename_all = "camelCase"))]
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ResourceLimits {
     #[serde(default, rename = "cpuCount", skip_serializing_if = "Option::is_none")]
@@ -449,6 +456,8 @@ pub struct ResourceLimits {
     pub max_wasm_stack_bytes: Option<u64>,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
+#[cfg_attr(feature = "contract", ts(rename_all = "camelCase"))]
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HttpLimits {
     #[serde(
@@ -459,6 +468,8 @@ pub struct HttpLimits {
     pub max_fetch_response_bytes: Option<u64>,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
+#[cfg_attr(feature = "contract", ts(rename_all = "camelCase"))]
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BindingLimits {
     #[serde(
@@ -511,6 +522,8 @@ pub struct BindingLimits {
     pub max_binding_example_input_bytes: Option<u64>,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
+#[cfg_attr(feature = "contract", ts(rename_all = "camelCase"))]
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PluginLimits {
     #[serde(
@@ -527,6 +540,8 @@ pub struct PluginLimits {
     pub max_persisted_manifest_file_bytes: Option<u64>,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
+#[cfg_attr(feature = "contract", ts(rename_all = "camelCase"))]
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SqliteLimits {
     #[serde(
@@ -537,6 +552,8 @@ pub struct SqliteLimits {
     pub max_result_bytes: Option<u64>,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
+#[cfg_attr(feature = "contract", ts(rename_all = "camelCase"))]
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct JsRuntimeLimits {
     #[serde(
@@ -595,6 +612,8 @@ pub struct JsRuntimeLimits {
     pub v8_ipc_max_frame_bytes: Option<u64>,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
+#[cfg_attr(feature = "contract", ts(rename_all = "camelCase"))]
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PythonLimits {
     #[serde(
@@ -623,6 +642,8 @@ pub struct PythonLimits {
     pub vfs_rpc_timeout_ms: Option<u64>,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
+#[cfg_attr(feature = "contract", ts(rename_all = "camelCase"))]
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WasmLimits {
     #[serde(
@@ -663,6 +684,8 @@ pub struct WasmLimits {
     pub runner_cpu_time_limit_ms: Option<u64>,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
+#[cfg_attr(feature = "contract", ts(rename_all = "camelCase"))]
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProcessLimits {
     #[serde(
@@ -702,6 +725,8 @@ pub struct ProcessLimits {
 // ---------------------------------------------------------------------------
 
 /// Top-level permission policy. All domains optional (`allowAll` when omitted).
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
+#[cfg_attr(feature = "contract", ts(rename_all = "camelCase"))]
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Permissions {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -723,6 +748,7 @@ pub struct Permissions {
 }
 
 /// `"allow"` or `"deny"`.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PermissionMode {
@@ -731,6 +757,7 @@ pub enum PermissionMode {
 }
 
 /// `PermissionMode | RulePermissions<FsPermissionRule>`.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum FsPermissions {
@@ -739,6 +766,7 @@ pub enum FsPermissions {
 }
 
 /// `PermissionMode | RulePermissions<PatternPermissionRule>` (network/childProcess/process/env/binding).
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum PatternPermissions {
@@ -747,6 +775,8 @@ pub enum PatternPermissions {
 }
 
 /// `{ default?: PermissionMode; rules: T[] }`.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
+#[cfg_attr(feature = "contract", ts(rename_all = "camelCase"))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RulePermissions<T> {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -755,6 +785,8 @@ pub struct RulePermissions<T> {
 }
 
 /// `{ mode; operations?; paths? }`.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
+#[cfg_attr(feature = "contract", ts(rename_all = "camelCase"))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FsPermissionRule {
     pub mode: PermissionMode,
@@ -765,6 +797,8 @@ pub struct FsPermissionRule {
 }
 
 /// `{ mode; operations?; patterns? }`.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
+#[cfg_attr(feature = "contract", ts(rename_all = "camelCase"))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PatternPermissionRule {
     pub mode: PermissionMode,
@@ -779,6 +813,7 @@ pub struct PatternPermissionRule {
 // ---------------------------------------------------------------------------
 
 /// Root filesystem configuration. Default: overlay + bundled base snapshot.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RootFilesystemConfig {
     #[serde(default, rename = "type")]
@@ -810,6 +845,7 @@ impl Default for RootFilesystemConfig {
 }
 
 /// The root filesystem kind.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum RootFilesystemKind {
@@ -819,6 +855,7 @@ pub enum RootFilesystemKind {
 }
 
 /// Root filesystem mode.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum RootFilesystemMode {
@@ -827,6 +864,7 @@ pub enum RootFilesystemMode {
 }
 
 /// A lower (immutable) snapshot layer input.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "kebab-case")]
 pub enum RootLowerInput {
@@ -867,6 +905,7 @@ pub enum MountConfig {
 }
 
 /// A native mount plugin descriptor.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MountPlugin {
     pub id: String,
@@ -898,6 +937,7 @@ pub fn node_modules_mount(host_node_modules_dir: impl Into<String>) -> MountConf
 }
 
 /// Overlay mount filesystem config.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OverlayMountConfig {
     #[serde(rename = "type")]

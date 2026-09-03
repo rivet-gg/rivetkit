@@ -18,15 +18,25 @@ const MAX_DIRECTORY_ENTRIES: usize = 4_096;
 const MAX_DIRECTORY_RESULT_BYTES: usize = 512 * 1024;
 const MAX_RECURSION_DEPTH: u32 = 64;
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
-pub struct FileBytes(#[serde(with = "serde_bytes")] pub Vec<u8>);
+pub struct FileBytes(
+    #[serde(with = "serde_bytes")]
+    #[cfg_attr(feature = "contract", ts(type = "Uint8Array"))]
+    pub Vec<u8>,
+);
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum FileContentInput {
     Text(String),
-    Bytes(#[serde(with = "serde_bytes")] Vec<u8>),
+    Bytes(
+        #[serde(with = "serde_bytes")]
+        #[cfg_attr(feature = "contract", ts(type = "Uint8Array"))]
+        Vec<u8>,
+    ),
 }
 
 impl FileContentInput {
@@ -47,6 +57,7 @@ impl FileContentInput {
 
 macro_rules! path_action {
     ($name:ident, $output:ty, $wire_name:literal) => {
+        #[cfg_attr(feature = "contract", derive(ts_rs::TS))]
         #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
         #[serde(rename_all = "camelCase", deny_unknown_fields)]
         pub struct $name {
@@ -60,6 +71,7 @@ macro_rules! path_action {
     };
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct FilesystemReadFile {
@@ -73,6 +85,7 @@ impl Action for FilesystemReadFile {
     const NAME: &'static str = "filesystem.readFile";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct FilesystemWriteFile {
@@ -85,6 +98,7 @@ impl Action for FilesystemWriteFile {
     const NAME: &'static str = "filesystem.writeFile";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct FilesystemReadFiles {
@@ -98,6 +112,7 @@ impl Action for FilesystemReadFiles {
     const NAME: &'static str = "filesystem.readFiles";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FilesystemReadResult {
@@ -108,6 +123,7 @@ pub struct FilesystemReadResult {
     pub error: Option<String>,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct FilesystemWriteFiles {
@@ -119,6 +135,7 @@ impl Action for FilesystemWriteFiles {
     const NAME: &'static str = "filesystem.writeFiles";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct FilesystemWriteEntry {
@@ -126,6 +143,7 @@ pub struct FilesystemWriteEntry {
     pub content: FileContentInput,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FilesystemWriteResult {
@@ -137,6 +155,7 @@ pub struct FilesystemWriteResult {
 
 path_action!(FilesystemStat, VirtualStat, "filesystem.stat");
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct FilesystemMkdir {
@@ -157,6 +176,7 @@ path_action!(
     "filesystem.readdirEntries"
 );
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FilesystemDirectoryEntry {
@@ -165,6 +185,7 @@ pub struct FilesystemDirectoryEntry {
     pub is_symbolic_link: bool,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct FilesystemReaddirRecursive {
@@ -182,6 +203,7 @@ impl Action for FilesystemReaddirRecursive {
 
 path_action!(FilesystemExists, bool, "filesystem.exists");
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct FilesystemMove {
@@ -194,6 +216,7 @@ impl Action for FilesystemMove {
     const NAME: &'static str = "filesystem.move";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct FilesystemRemove {
@@ -207,6 +230,7 @@ impl Action for FilesystemRemove {
     const NAME: &'static str = "filesystem.remove";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct FilesystemExport {
@@ -219,6 +243,7 @@ impl Action for FilesystemExport {
     const NAME: &'static str = "filesystem.export";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FilesystemListMounts;
 

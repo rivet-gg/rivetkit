@@ -60,6 +60,7 @@ impl From<&[u8]> for FileContent {
 }
 
 /// An entry returned by `readdir_recursive`.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DirEntry {
     pub path: String,
@@ -69,6 +70,7 @@ pub struct DirEntry {
 }
 
 /// The type of a directory entry.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum DirEntryType {
@@ -120,6 +122,7 @@ pub struct RemoveOptions {
     pub recursive: bool,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DynamicMountDescriptor {
     pub path: String,
@@ -129,6 +132,7 @@ pub struct DynamicMountDescriptor {
     pub read_only: bool,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MountInfo {
     pub path: String,
@@ -138,6 +142,7 @@ pub struct MountInfo {
 }
 
 /// Stat result. 16 fields; `*_ms` time fields are `f64` (JS ms, possibly fractional).
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct VirtualStat {
     pub mode: u32,
@@ -176,6 +181,7 @@ pub struct VirtualDirEntry {
 // ---------------------------------------------------------------------------
 
 /// `{ kind: "snapshot-export"; source }`.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RootSnapshotExport {
     pub kind: SnapshotExportKind,
@@ -183,6 +189,7 @@ pub struct RootSnapshotExport {
 }
 
 /// The literal `"snapshot-export"` tag.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SnapshotExportKind {
     #[serde(rename = "snapshot-export")]
@@ -190,6 +197,7 @@ pub enum SnapshotExportKind {
 }
 
 /// `{ format: "agentos-filesystem-snapshot-v1"; filesystem: { entries } }`.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FilesystemSnapshotExport {
     pub format: String,
@@ -197,12 +205,14 @@ pub struct FilesystemSnapshotExport {
 }
 
 /// `{ entries: FilesystemEntry[] }`.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FilesystemSnapshotEntries {
     pub entries: Vec<FilesystemEntry>,
 }
 
 /// A single snapshot entry. `mode` is an OCTAL STRING (e.g. `"0755"`). `content` is utf8 or base64.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FilesystemEntry {
     pub path: String,
@@ -220,6 +230,7 @@ pub struct FilesystemEntry {
 }
 
 /// Snapshot content encoding.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum FilesystemEntryEncoding {

@@ -1612,7 +1612,13 @@ importers:
       '@rivet-dev/agentos-core':
         specifier: workspace:*
         version: link:../core
+      rivetkit:
+        specifier: catalog:rivetkit
+        version: 2.3.10(@opentelemetry/api@1.9.0)(better-sqlite3@12.8.0)(pyodide@0.28.3(bufferutil@4.1.0))(sql.js@1.14.1)(ws@8.21.0(bufferutil@4.1.0))
     devDependencies:
+      '@rivet-dev/agentos-bindgen':
+        specifier: workspace:*
+        version: link:../agentos-bindgen
       tsup:
         specifier: ^8.4.0
         version: 8.5.1(@microsoft/api-extractor@7.43.0(@types/node@24.13.2))(jiti@2.7.0)(postcss@8.5.22)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.9.0)
@@ -1659,6 +1665,12 @@ importers:
       vitest:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.19.15)(lightningcss@1.33.0)
+
+  packages/agentos-bindgen:
+    devDependencies:
+      '@biomejs/biome':
+        specifier: ^2.3
+        version: 2.4.10
 
   packages/agentos-sandbox:
     dependencies:

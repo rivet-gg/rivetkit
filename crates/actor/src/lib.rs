@@ -3,6 +3,8 @@
 mod action_set;
 mod actions;
 mod config;
+#[cfg(feature = "contract")]
+pub mod contract;
 mod cron;
 mod events;
 mod filesystem;
@@ -67,6 +69,7 @@ pub const ACTOR_NAME: &str = "agentOS";
 const ACTION_CONCURRENCY_LIMIT: usize = 64;
 const ACTOR_MESSAGE_SIZE_LIMIT: u32 = 1024 * 1024;
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct AgentOsActorCreateInput {
@@ -74,6 +77,7 @@ pub struct AgentOsActorCreateInput {
     pub config: Option<AgentOsActorConfigInput>,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ConfigApplyState {
@@ -108,6 +112,7 @@ impl FromStr for ConfigApplyState {
     }
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ConfigSnapshot {
@@ -121,6 +126,7 @@ pub struct ConfigSnapshot {
     pub updated_at_ms: i64,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentOsActorState {

@@ -1,4 +1,5 @@
 packages:
+  - packages/agentos-bindgen
   - packages/agentos-sandbox
   - packages/agentos-apps
   - packages/agentos

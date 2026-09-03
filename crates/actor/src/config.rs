@@ -35,6 +35,7 @@ const CONFIG_PACKAGE_RESOLUTION_TIMEOUT: Duration = Duration::from_secs(60);
 /// accepts bindings, host mounts, local package paths, a sidecar handle, or a
 /// custom scheduler. Later feature revisions extend this closed shape with the
 /// serializable hosted filesystem and remote-package descriptors.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct AgentOsActorConfigInput {
@@ -63,6 +64,7 @@ pub struct AgentOsActorConfigInput {
 /// Complete persisted actor configuration for the fields supported by this
 /// revision. Optional values are explicit Core-default selections, not omitted
 /// input, and collections are always materialized.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct AgentOsActorConfig {
@@ -81,6 +83,7 @@ pub struct AgentOsActorConfig {
 /// URL-only hosted package input. This is intentionally not a serde wrapper
 /// around Core's `PackageSource`, whose trusted `Path` variant must remain
 /// impossible to construct through an actor action or creation payload.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct RemotePackageSourceInput {
@@ -95,6 +98,7 @@ pub struct RemotePackageSourceInput {
     pub package_id: Option<String>,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct RemotePackageSource {
@@ -112,6 +116,7 @@ pub const MAX_PREVIEW_TTL_MS: u64 = 24 * 60 * 60 * 1_000;
 pub const MAX_ACTIVE_PREVIEWS: u32 = 128;
 pub const DEFAULT_PREVIEW_TTL_MS: u64 = 15 * 60 * 1_000;
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct PreviewPolicyInput {
@@ -123,6 +128,7 @@ pub struct PreviewPolicyInput {
     pub max_active: Option<u32>,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct PreviewPolicy {
@@ -141,15 +147,19 @@ impl Default for PreviewPolicy {
     }
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct HostedFilesystemConfigInput {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub root: Option<HostedRootFilesystemInput>,
+    #[cfg_attr(feature = "contract", ts(optional, as = "Option<_>"))]
     #[serde(default)]
     pub mounts: Vec<HostedFilesystemMountInput>,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
+#[cfg_attr(feature = "contract", ts(tag = "type", rename_all = "kebab-case"))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum HostedRootFilesystemInput {
@@ -157,20 +167,25 @@ pub enum HostedRootFilesystemInput {
     ActorSqlite {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         namespace: Option<String>,
+        #[cfg_attr(feature = "contract", ts(optional, as = "Option<_>"))]
         #[serde(default, rename = "readOnly")]
         read_only: bool,
     },
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct HostedFilesystemMountInput {
     pub path: String,
     pub backend: HostedFilesystemBackendInput,
+    #[cfg_attr(feature = "contract", ts(optional, as = "Option<_>"))]
     #[serde(default)]
     pub read_only: bool,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
+#[cfg_attr(feature = "contract", ts(tag = "type", rename_all = "kebab-case"))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum HostedFilesystemBackendInput {
@@ -180,6 +195,7 @@ pub enum HostedFilesystemBackendInput {
     },
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct HostedFilesystemConfig {
@@ -196,6 +212,8 @@ impl Default for HostedFilesystemConfig {
     }
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
+#[cfg_attr(feature = "contract", ts(tag = "type", rename_all = "kebab-case"))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum HostedRootFilesystem {
@@ -207,6 +225,7 @@ pub enum HostedRootFilesystem {
     },
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct HostedFilesystemMount {
@@ -215,6 +234,8 @@ pub struct HostedFilesystemMount {
     pub read_only: bool,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
+#[cfg_attr(feature = "contract", ts(tag = "type", rename_all = "kebab-case"))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum HostedFilesystemBackend {

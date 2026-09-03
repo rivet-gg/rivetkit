@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{ActorProcessId, ActorSignal, ActorTerminalId, FileBytes};
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RuntimeBooted {
@@ -15,6 +16,7 @@ impl Event for RuntimeBooted {
     const NAME: &'static str = "runtime.booted";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RuntimeShutdown {
@@ -27,6 +29,7 @@ impl Event for RuntimeShutdown {
     const NAME: &'static str = "runtime.shutdown";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RuntimeLimitWarning {
@@ -40,6 +43,7 @@ impl Event for RuntimeLimitWarning {
     const NAME: &'static str = "runtime.limitWarning";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProcessOutputEvent {
@@ -54,6 +58,7 @@ impl Event for ProcessOutputEvent {
     const NAME: &'static str = "process.output";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProcessExitEvent {
@@ -67,6 +72,7 @@ impl Event for ProcessExitEvent {
     const NAME: &'static str = "process.exit";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TerminalDataEvent {
@@ -81,6 +87,7 @@ impl Event for TerminalDataEvent {
     const NAME: &'static str = "terminal.data";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TerminalStderrEvent {
@@ -94,6 +101,7 @@ impl Event for TerminalStderrEvent {
     const NAME: &'static str = "terminal.stderr";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TerminalExitEvent {
@@ -105,6 +113,7 @@ impl Event for TerminalExitEvent {
     const NAME: &'static str = "terminal.exit";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CronFiredEvent {

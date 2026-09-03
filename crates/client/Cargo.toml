@@ -6,6 +6,10 @@ license.workspace = true
 repository.workspace = true
 description = "High-level Rust client SDK for the Agent OS native sidecar (1:1 port of the TypeScript AgentOs client)"
 
+[features]
+default = []
+contract = ["dep:ts-rs"]
+
 [dependencies]
 # Reuse the agentos BARE wire schema + IPC transport. No new wire types are defined here.
 agentos-sidecar-client = { workspace = true }
@@ -32,6 +36,7 @@ thiserror = "2"
 tokio = { version = "1", features = ["fs", "io-util", "macros", "net", "process", "rt", "rt-multi-thread", "sync", "time"] }
 tokio-util = "0.7"
 tracing = "0.1"
+ts-rs = { version = "10.1", features = ["no-serde-warnings", "serde-compat", "serde-json-impl"], optional = true }
 uuid = { version = "1", features = ["v4"] }
 vfs = { workspace = true }
 

@@ -38,6 +38,7 @@ const MAX_DIAGNOSTICS: usize = 1_024;
 const MAX_DIAGNOSTIC_BYTES: usize = 512 * 1024;
 const MAX_TERMINAL_DIMENSION: u16 = 4_096;
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ActorContextId {
@@ -45,6 +46,7 @@ pub struct ActorContextId {
     pub context_id: String,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActorContextDescriptor {
@@ -56,6 +58,7 @@ pub struct ActorContextDescriptor {
     pub last_completed_at_ms: Option<u64>,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ActorOutputCapture {
@@ -65,6 +68,7 @@ pub enum ActorOutputCapture {
     All,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ActorExecutionOutputOptions {
@@ -87,6 +91,7 @@ impl ActorExecutionOutputOptions {
     }
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ActorExecutionPtyOptions {
@@ -116,6 +121,7 @@ impl ActorExecutionPtyOptions {
     }
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ActorLanguageExecutionOptions {
@@ -176,6 +182,7 @@ impl ActorLanguageExecutionOptions {
     }
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ActorLanguageSpawnOptions {
@@ -221,6 +228,7 @@ impl ActorLanguageSpawnOptions {
     }
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ActorInlineExecutionOptions {
@@ -248,6 +256,7 @@ impl ActorInlineExecutionOptions {
     }
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ActorJavaScriptModuleFormat {
@@ -256,6 +265,7 @@ pub enum ActorJavaScriptModuleFormat {
     CommonJs,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ActorJavaScriptExecutionOptions {
@@ -289,6 +299,7 @@ impl ActorJavaScriptExecutionOptions {
     }
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ActorTypeScriptExecutionOptions {
@@ -327,6 +338,7 @@ impl ActorTypeScriptExecutionOptions {
     }
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ActorTypeScriptCheckOptions {
@@ -382,6 +394,7 @@ impl ActorTypeScriptCheckOptions {
     }
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ActorNpmInstallOptions {
@@ -452,6 +465,7 @@ impl ActorNpmInstallOptions {
     }
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ActorPythonInstallOptions {
@@ -529,6 +543,7 @@ impl ActorPythonInstallOptions {
     }
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ActorExecutionOutcome {
@@ -538,6 +553,7 @@ pub enum ActorExecutionOutcome {
     TimedOut,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActorExecutionError {
@@ -548,6 +564,7 @@ pub struct ActorExecutionError {
     pub details: Option<serde_json::Value>,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActorExecutionDescriptor {
@@ -564,6 +581,7 @@ pub struct ActorExecutionDescriptor {
     pub last_exit_code: Option<i32>,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActorCodeExecutionResult {
@@ -577,6 +595,7 @@ pub struct ActorCodeExecutionResult {
     pub stderr_truncated: Option<bool>,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActorCodeEvaluationResult {
@@ -584,6 +603,7 @@ pub struct ActorCodeEvaluationResult {
     pub value: Option<serde_json::Value>,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActorTypeScriptDiagnostic {
@@ -595,6 +615,7 @@ pub struct ActorTypeScriptDiagnostic {
     pub column: Option<u32>,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActorTypeScriptCheckResult {
@@ -603,6 +624,7 @@ pub struct ActorTypeScriptCheckResult {
     pub diagnostics: Vec<ActorTypeScriptDiagnostic>,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ContextsCreate {
@@ -616,6 +638,7 @@ impl Action for ContextsCreate {
 
 macro_rules! context_action {
     ($name:ident, $output:ty, $action_name:literal) => {
+        #[cfg_attr(feature = "contract", derive(ts_rs::TS))]
         #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
         #[serde(rename_all = "camelCase", deny_unknown_fields)]
         pub struct $name {
@@ -633,6 +656,7 @@ context_action!(ContextsGet, ActorContextDescriptor, "contexts.get");
 context_action!(ContextsReset, ActorContextDescriptor, "contexts.reset");
 context_action!(ContextsDelete, (), "contexts.delete");
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ContextsList;
 
@@ -643,6 +667,7 @@ impl Action for ContextsList {
 
 macro_rules! source_action {
     ($name:ident, $options:ty, $output:ty, $action_name:literal, $field:ident) => {
+        #[cfg_attr(feature = "contract", derive(ts_rs::TS))]
         #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
         #[serde(rename_all = "camelCase", deny_unknown_fields)]
         pub struct $name {
@@ -701,6 +726,7 @@ source_action!(
     script
 );
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct JavaScriptNpmInstall {
@@ -715,6 +741,7 @@ impl Action for JavaScriptNpmInstall {
     const NAME: &'static str = "javascript.npm.install";
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct JavaScriptNpmRunPackage {
@@ -773,6 +800,7 @@ source_action!(
     source
 );
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct TypeScriptCheckProject {
@@ -835,6 +863,7 @@ source_action!(
     module
 );
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct PythonInstall {

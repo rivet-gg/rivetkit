@@ -52,6 +52,7 @@ pub(crate) const SYNTHETIC_PID_BASE: u64 = 1_000_000;
 // ---------------------------------------------------------------------------
 
 /// Timing-mitigation mode for an execution.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TimingMitigation {
@@ -115,6 +116,7 @@ pub struct ExecResult {
 }
 
 /// `stdio` mode for a spawn.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SpawnStdio {
@@ -137,6 +139,7 @@ pub struct SpawnOptions {
     pub retain_output: bool,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ProcessStream {
@@ -144,6 +147,7 @@ pub enum ProcessStream {
     Stderr,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProcessOutput {
     pub pid: u32,
@@ -154,6 +158,7 @@ pub struct ProcessOutput {
     pub timestamp_ms: Option<i64>,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProcessOutputEvent {
     pub pid: u32,
@@ -164,6 +169,7 @@ pub struct ProcessOutputEvent {
     pub timestamp_ms: i64,
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProcessOutputReplay {
     pub pid: u32,
@@ -268,6 +274,7 @@ impl ProcessOutputReplayBuffer {
     }
 }
 
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProcessExit {
     pub pid: u32,
@@ -276,6 +283,7 @@ pub struct ProcessExit {
 }
 
 /// Public JSON info for SDK-spawned processes.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SpawnedProcessInfo {
     pub pid: u32,
@@ -290,12 +298,14 @@ pub struct SpawnedProcessInfo {
 }
 
 /// The pid returned by `spawn`.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SpawnHandle {
     pub pid: u32,
 }
 
 /// Process status from the kernel process table.
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ProcessStatus {
@@ -304,6 +314,7 @@ pub enum ProcessStatus {
 }
 
 /// Full kernel process info (TS `KernelProcessInfo`).
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ProcessInfo {
     pub pid: u32,
@@ -324,6 +335,7 @@ pub struct ProcessInfo {
 }
 
 /// A node in the process forest (`ProcessInfo` + children).
+#[cfg_attr(feature = "contract", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ProcessTreeNode {
     #[serde(flatten)]
