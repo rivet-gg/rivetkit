@@ -8,6 +8,7 @@ description = "Static Rust RivetKit actor for the hosted agentOS API"
 
 [dependencies]
 agentos-client = { workspace = true }
+agentos-sidecar-client = { workspace = true }
 anyhow = "1"
 async-trait = "0.1"
 ciborium = "0.2"

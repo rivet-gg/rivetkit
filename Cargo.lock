@@ -54,6 +54,7 @@ name = "agentos-actor"
 version = "0.0.1"
 dependencies = [
  "agentos-client",
+ "agentos-sidecar-client",
  "anyhow",
  "async-trait",
  "ciborium",

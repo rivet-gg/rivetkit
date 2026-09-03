@@ -1,6 +1,6 @@
 # 06: Implement Language Execution and Contexts
 
-**Status:** Proposed
+**Status:** Implemented; cross-client conformance deferred to step 14
 
 ## Outcome
 
@@ -21,9 +21,11 @@ Moving creation from the old top-level `createContext` action into
 breaking change.
 
 Context ids are bounded, normalized by Core, and scoped to the current VM. The
-actor does not serialize live language heap state into actor SQLite. Desired
-configuration may declare bootstrap contexts later, but interactive context
-contents are runtime state.
+actor returns `{ generation, contextId }` handles and rejects them after a
+runtime restart, matching the process and terminal handle model. The actor does
+not serialize live language heap state into actor SQLite. Desired configuration
+may declare bootstrap contexts later, but interactive context contents are
+runtime state.
 
 ## JavaScript actions
 
@@ -78,6 +80,11 @@ contents are runtime state.
 language-execution API. It may download normal project dependencies into the
 guest filesystem subject to network and resource policy.
 
+For the MVP, `javascript.npm.install` uses one bounded request shape. An empty
+`packages` list installs the current guest project and permits `frozen`; a
+non-empty list installs those packages and permits `dev` and `global`. These
+option groups are mutually exclusive.
+
 The software API designed in step 08 downloads standalone agentOS `.aospkg`
 artifacts from URLs, caches verified content by digest, and projects them through
 VFS under `/opt/agentos`. It does not use npm. The guest package-manager APIs and
@@ -111,6 +118,28 @@ cannot confuse them.
   creation/action schemas.
 - Hostile payloads cannot block trusted Tokio workers or escape configured
   permissions.
+
+## Implementation notes
+
+- All 28 actions are individually typed and registered under their dotted
+  names. Together with steps 03–05, the actor currently exposes 64 actions.
+- Inline calls translate directly into Rust Core options. Captured output,
+  evaluation values, errors, and TypeScript diagnostics are converted to a
+  camel-case actor DTO and bounded to a 768 KiB encoded result.
+- Binary stdin and output use CBOR byte strings. Evaluation inputs, compiler
+  options, and structured result values remain structured CBOR/JSON values; the
+  actor does not turn the whole result into an opaque JSON string.
+- Spawned language executions always enable Core's bounded replay, return the
+  same generation-scoped process handle as `process.spawn`, and attach the same
+  `process.output` and `process.exit` forwarding path.
+- Embedded Rust Core now honors `retain_events: false` for language spawns;
+  actor spawns opt in explicitly rather than forcing retention for every Core
+  caller.
+- Context creation returns its normalized descriptor. Reset returns the
+  refreshed descriptor; delete returns no value.
+- Source, paths, contexts, arguments, environment, stdin, JSON values, package
+  lists, install indexes, timeouts, diagnostics, and encoded results all have
+  explicit actor-bound limits.
 
 ## Acceptance criteria
 

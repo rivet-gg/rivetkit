@@ -498,6 +498,7 @@ impl AgentOs {
         source: impl Into<String>,
         options: LanguageSpawnOptions,
     ) -> ClientResult<ProcessDescriptor> {
+        let retain_events = options.retain_events;
         let operation_id = format!("process-{}", uuid::Uuid::new_v4());
         background_submission(
             self,
@@ -515,6 +516,7 @@ impl AgentOs {
             )
             .await?,
             "javascript",
+            retain_events,
         )
     }
 
@@ -523,6 +525,7 @@ impl AgentOs {
         path: impl Into<String>,
         options: LanguageSpawnOptions,
     ) -> ClientResult<ProcessDescriptor> {
+        let retain_events = options.retain_events;
         let operation_id = format!("process-{}", uuid::Uuid::new_v4());
         background_submission(
             self,
@@ -537,6 +540,7 @@ impl AgentOs {
             )
             .await?,
             "javascript",
+            retain_events,
         )
     }
 
@@ -629,6 +633,7 @@ impl AgentOs {
         source: impl Into<String>,
         options: LanguageSpawnOptions,
     ) -> ClientResult<ProcessDescriptor> {
+        let retain_events = options.retain_events;
         let operation_id = format!("process-{}", uuid::Uuid::new_v4());
         background_submission(
             self,
@@ -647,6 +652,7 @@ impl AgentOs {
             )
             .await?,
             "javascript",
+            retain_events,
         )
     }
 
@@ -655,6 +661,7 @@ impl AgentOs {
         path: impl Into<String>,
         options: LanguageSpawnOptions,
     ) -> ClientResult<ProcessDescriptor> {
+        let retain_events = options.retain_events;
         let operation_id = format!("process-{}", uuid::Uuid::new_v4());
         background_submission(
             self,
@@ -671,6 +678,7 @@ impl AgentOs {
             )
             .await?,
             "javascript",
+            retain_events,
         )
     }
 
@@ -896,6 +904,7 @@ impl AgentOs {
         source: impl Into<String>,
         options: LanguageSpawnOptions,
     ) -> ClientResult<ProcessDescriptor> {
+        let retain_events = options.retain_events;
         let operation_id = format!("process-{}", uuid::Uuid::new_v4());
         background_submission(
             self,
@@ -909,6 +918,7 @@ impl AgentOs {
             )
             .await?,
             "python",
+            retain_events,
         )
     }
 
@@ -917,6 +927,7 @@ impl AgentOs {
         path: impl Into<String>,
         options: LanguageSpawnOptions,
     ) -> ClientResult<ProcessDescriptor> {
+        let retain_events = options.retain_events;
         let operation_id = format!("process-{}", uuid::Uuid::new_v4());
         background_submission(
             self,
@@ -931,6 +942,7 @@ impl AgentOs {
             )
             .await?,
             "python",
+            retain_events,
         )
     }
 
@@ -939,6 +951,7 @@ impl AgentOs {
         module: impl Into<String>,
         options: LanguageSpawnOptions,
     ) -> ClientResult<ProcessDescriptor> {
+        let retain_events = options.retain_events;
         let operation_id = format!("process-{}", uuid::Uuid::new_v4());
         background_submission(
             self,
@@ -953,6 +966,7 @@ impl AgentOs {
             )
             .await?,
             "python",
+            retain_events,
         )
     }
 
@@ -988,7 +1002,7 @@ impl AgentOs {
         )
     }
 
-    pub async fn create_context(&self, context_id: &str) -> ClientResult<()> {
+    pub async fn create_context(&self, context_id: &str) -> ClientResult<ContextDescriptor> {
         match self
             .transport()
             .request_wire(
@@ -999,7 +1013,9 @@ impl AgentOs {
             )
             .await?
         {
-            wire::ResponsePayload::ExecutionDescriptorResponse(_) => Ok(()),
+            wire::ResponsePayload::ExecutionDescriptorResponse(response) => {
+                Ok(context_descriptor(response.execution))
+            }
             wire::ResponsePayload::RejectedResponse(rejected) => {
                 Err(ClientError::from_rejection(rejected))
             }
@@ -1294,6 +1310,7 @@ fn background_submission(
     client: &AgentOs,
     submission: ExecutionSubmission,
     language: &str,
+    retain_events: bool,
 ) -> ClientResult<ProcessDescriptor> {
     match submission {
         ExecutionSubmission::Background(descriptor) => {
@@ -1312,7 +1329,8 @@ fn background_submission(
             let (output_tx, _) = broadcast::channel::<ProcessOutput>(1024);
             let (exit_tx, _) = watch::channel::<Option<i32>>(None);
             let (kernel_pid_tx, _) = watch::channel(Some(pid));
-            let replay = Arc::new(parking_lot::Mutex::new(ProcessOutputReplayBuffer::new()));
+            let replay = retain_events
+                .then(|| Arc::new(parking_lot::Mutex::new(ProcessOutputReplayBuffer::new())));
             let entry = ProcessEntry {
                 command: format!("{language} source"),
                 args: Vec::new(),
@@ -1323,7 +1341,7 @@ fn background_submission(
                 process_id: process_id.clone(),
                 kernel_pid: kernel_pid_tx,
                 output_tasks: Vec::new(),
-                replay: Some(replay.clone()),
+                replay: replay.clone(),
                 started_at: descriptor.created_at_ms as i64,
             };
             let _ = client.inner().processes.insert(pid, entry);
@@ -1347,15 +1365,16 @@ fn background_submission(
                                     (ProcessStream::Stderr, &stderr_tx)
                                 }
                             };
-                            let replay_event =
-                                replay.lock().push(pid, stream.clone(), &output.chunk);
+                            let replay_event = replay.as_ref().map(|replay| {
+                                replay.lock().push(pid, stream.clone(), &output.chunk)
+                            });
                             let _ = tx.send(output.chunk.clone());
                             let _ = output_tx.send(ProcessOutput {
                                 pid,
                                 stream,
                                 data: output.chunk,
-                                sequence: Some(replay_event.sequence),
-                                timestamp_ms: Some(replay_event.timestamp_ms),
+                                sequence: replay_event.as_ref().map(|event| event.sequence),
+                                timestamp_ms: replay_event.as_ref().map(|event| event.timestamp_ms),
                             });
                         }
                         wire::EventPayload::ExecutionCompletedEvent(completed)

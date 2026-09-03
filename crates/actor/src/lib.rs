@@ -5,6 +5,7 @@ mod actions;
 mod config;
 mod events;
 mod filesystem;
+mod language;
 mod process;
 mod runtime;
 mod store;
@@ -37,6 +38,7 @@ pub use filesystem::{
     FilesystemRemove, FilesystemStat, FilesystemWriteEntry, FilesystemWriteFile,
     FilesystemWriteFiles, FilesystemWriteResult,
 };
+pub use language::*;
 pub use process::*;
 pub use runtime::{
     CoreSidecarStatus, PackageStartupStatus, RuntimeIssue, RuntimeLifecycleState, RuntimeStatus,
@@ -299,6 +301,34 @@ mod tests {
                 "terminal.resize",
                 "terminal.wait",
                 "terminal.close",
+                "contexts.create",
+                "contexts.get",
+                "contexts.list",
+                "contexts.reset",
+                "contexts.delete",
+                "javascript.execute",
+                "javascript.evaluate",
+                "javascript.executeFile",
+                "javascript.spawn",
+                "javascript.spawnFile",
+                "javascript.npm.install",
+                "javascript.npm.runScript",
+                "javascript.npm.runPackage",
+                "typescript.execute",
+                "typescript.evaluate",
+                "typescript.executeFile",
+                "typescript.spawn",
+                "typescript.spawnFile",
+                "typescript.check",
+                "typescript.checkProject",
+                "python.execute",
+                "python.evaluate",
+                "python.executeFile",
+                "python.executeModule",
+                "python.spawn",
+                "python.spawnFile",
+                "python.spawnModule",
+                "python.install",
             ]
         );
         assert_eq!(

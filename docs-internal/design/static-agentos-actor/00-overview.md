@@ -467,13 +467,16 @@ become a bounded chunk stream before release.
 
 ### Execution contexts
 
-| Action | Core operation |
-| --- | --- |
-| `contexts.create` | create a named execution context |
-| `contexts.get` | inspect one context |
-| `contexts.list` | enumerate contexts |
-| `contexts.reset` | reset context state |
-| `contexts.delete` | delete a context |
+Context handles are `{ generation, contextId }`; a runtime restart invalidates
+old handles.
+
+| Action | Input | Result |
+| --- | --- | --- |
+| `contexts.create` | `{ contextId }` | normalized context descriptor |
+| `contexts.get` | context handle | context descriptor |
+| `contexts.list` | none | bounded context descriptors |
+| `contexts.reset` | context handle | refreshed context descriptor |
+| `contexts.delete` | context handle | none |
 
 ### JavaScript and npm execution
 
@@ -490,7 +493,8 @@ become a bounded chunk stream before release.
 
 The npm actions in this group operate inside the guest project. They are
 different from URL-installed `.aospkg` registry software projected under
-`/opt/agentos`.
+`/opt/agentos`. For `javascript.npm.install`, an empty package list means
+install the guest project; a non-empty list installs those explicit packages.
 
 ### TypeScript
 
