@@ -2,6 +2,7 @@
 resolver = "2"
 exclude = ["software"]
 members = [
+    "crates/actor",
     "crates/client",
     "crates/bridge",
     "crates/build-support",
@@ -49,8 +50,10 @@ repository = "https://github.com/rivet-dev/agent-os"
 # AgentOS crates are published as a lock-step chain and are self-contained in
 # this workspace.
 [workspace.dependencies]
+agentos-actor = { path = "crates/actor", version = "0.0.1" }
 agentos-bridge = { path = "crates/bridge", version = "0.0.1" }
 agentos-build-support = { path = "crates/build-support", version = "0.0.1" }
+agentos-client = { path = "crates/client", version = "0.0.1" }
 agentos-execution = { path = "crates/execution", version = "0.0.1" }
 agentos-kernel = { path = "crates/kernel", version = "0.0.1" }
 agentos-native-baseline = { path = "crates/native-baseline", version = "0.0.1" }

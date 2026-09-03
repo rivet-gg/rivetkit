@@ -872,6 +872,15 @@ fn serialize_create_vm_config_for_sidecar(
     })
 }
 
+pub(crate) fn validate_config(config: &AgentOsConfig) -> Result<(), ClientError> {
+    let create = serialize_create_vm_config_for_sidecar(config)?;
+    create
+        .validate(wire::DEFAULT_MAX_FRAME_BYTES)
+        .map_err(|error| ClientError::Sidecar(format!("invalid VM config: {error}")))?;
+    serialize_mounts(config)?;
+    Ok(())
+}
+
 fn serialize_root_filesystem_config_for_sidecar(
     config: &RootFilesystemConfig,
 ) -> Result<

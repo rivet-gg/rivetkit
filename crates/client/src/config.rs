@@ -13,7 +13,7 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 
 use crate::fs::VirtualFileSystem;
-pub use agentos_vm_config::{VmGroupConfig, VmUserAccountConfig, VmUserConfig};
+pub use agentos_vm_config::{VmGroupConfig, VmSqliteDescriptor, VmUserAccountConfig, VmUserConfig};
 
 /// Resolved client options (= TS `AgentOsOptions`). All fields optional with documented defaults.
 ///
@@ -150,6 +150,17 @@ impl AgentOsConfigBuilder {
 
     pub fn build(self) -> AgentOsConfig {
         self.config
+    }
+}
+
+impl AgentOsConfig {
+    /// Validate the complete VM configuration without starting a sidecar.
+    ///
+    /// Hosted adapters use this to reject invalid creation input before Rivet
+    /// persists actor state. The same serializer is used by [`AgentOs::create`](crate::AgentOs::create),
+    /// so validation cannot drift into an actor-owned copy.
+    pub fn validate(&self) -> Result<(), crate::ClientError> {
+        crate::agent_os::validate_config(self)
     }
 }
 

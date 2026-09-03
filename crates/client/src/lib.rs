@@ -67,7 +67,8 @@ pub use config::{
     PythonLimits, ResourceLimits, RootFilesystemConfig, RootFilesystemKind, RootFilesystemMode,
     RootLowerInput, RulePermissions, ScheduleCallback, ScheduleDriver, ScheduleEntry,
     ScheduleHandle, SidecarJsBridgeCall, SidecarJsBridgeCallback, SoftwareInput, SoftwareKind,
-    TimerScheduleDriver, VmGroupConfig, VmUserAccountConfig, VmUserConfig, WasmLimits,
+    TimerScheduleDriver, VmGroupConfig, VmSqliteDescriptor, VmUserAccountConfig, VmUserConfig,
+    WasmLimits,
 };
 
 pub use process::{

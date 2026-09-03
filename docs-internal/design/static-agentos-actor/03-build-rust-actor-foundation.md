@@ -1,6 +1,6 @@
 # 03: Build the Rust Actor Foundation
 
-**Status:** In progress
+**Status:** Implemented; deployment smoke deferred to step 14
 
 ## Outcome
 
@@ -18,7 +18,9 @@ new architecture before feature actions are layered on.
 - Produce one release binary with explicit entry point selection:
   - Normal mode runs the Rivet `agentOS` actor.
   - Internal sidecar mode runs the generic native sidecar used by Core.
-- Select mode from a fixed internal CLI/subcommand or environment contract.
+- Select mode from a fixed CLI contract: `actor` runs the hosted actor, while
+  `sidecar` (or no argument for Core-client compatibility) runs the internal
+  native sidecar. Unknown modes fail before either runtime starts.
   Actor callers cannot choose an arbitrary executable.
 - Package the binary as an agentOS release artifact without introducing a second
   version stream.
@@ -174,3 +176,20 @@ Depends on steps 01 and 02. Steps 04 through 10 add feature layers. Step 11
 finishes dynamic configuration and reconciliation across those layers. Step 12
 publishes the generated TypeScript surface only after the Rust contract is
 complete.
+
+## Implementation notes
+
+- The actor lives in `crates/actor` and uses the published Rust RivetKit SDK;
+  this project does not modify RivetKit.
+- Foundation config supports `user`, `allowedNodeBuiltins`,
+  `loopbackExemptPorts`, and `limits`. The closed input rejects later fields
+  until their owning feature revision lands.
+- Actor configuration is bootstrapped through RivetKit state, then loaded from
+  or initialized into the independent `agentos_actor_*` SQLite schema. On wake,
+  the SQLite row is authoritative and refreshes the RivetKit state snapshot.
+- The proof-of-concept Core database uses an operator-owned local path derived
+  from a SHA-256 digest of the actor id. No caller-controlled host path appears
+  in the actor contract.
+- Targeted actor and executable-entrypoint tests pass. The Rivet deployment
+  smoke remains in step 14 because it requires the packaged binary plus the
+  deployment configuration owned by that cutover revision.

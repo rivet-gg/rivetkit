@@ -14,6 +14,7 @@ name = "agentos-native-sidecar"
 path = "src/main.rs"
 
 [dependencies]
+agentos-actor = { workspace = true }
 agentos-bridge = { workspace = true }
 agentos-kernel = { workspace = true }
 agentos-sidecar-protocol = { workspace = true }
@@ -72,7 +73,7 @@ sha2 = "0.10"
 shlex = "1.3"
 socket2 = "0.6"
 thiserror = "2"
-tokio = { version = "1", features = ["io-std", "io-util", "macros", "net", "rt", "rt-multi-thread", "sync", "time"] }
+tokio = { version = "1", features = ["io-std", "io-util", "macros", "net", "rt", "rt-multi-thread", "signal", "sync", "time"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt"] }
 ureq = { version = "2.10", features = ["json"] }

@@ -31,6 +31,22 @@ fn parse_runtime_config(
     Ok(config)
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Entrypoint {
+    Actor,
+    Sidecar,
+}
+
+fn parse_entrypoint(args: &mut impl Iterator<Item = String>) -> Result<Entrypoint, String> {
+    match args.next().as_deref() {
+        None | Some("sidecar") => Ok(Entrypoint::Sidecar),
+        Some("actor") => Ok(Entrypoint::Actor),
+        Some(argument) => Err(format!(
+            "unknown agentOS entry point {argument:?}; expected 'actor' or 'sidecar'"
+        )),
+    }
+}
+
 fn main() {
     // Default to WARN so near-limit / backpressure warnings actually surface
     // (they were swallowed at ERROR-only); operators can tune via AGENTOS_LOG
@@ -44,37 +60,76 @@ fn main() {
         .with_writer(std::io::stderr)
         .with_max_level(level)
         .init();
+    let mut args = std::env::args().skip(1);
+    let entrypoint = match parse_entrypoint(&mut args) {
+        Ok(entrypoint) => entrypoint,
+        Err(error) => {
+            tracing::error!(%error, "invalid agentOS executable entry point");
+            std::process::exit(2);
+        }
+    };
+    let result = match entrypoint {
+        Entrypoint::Actor => run_actor(args),
+        Entrypoint::Sidecar => run_sidecar(args),
+    };
+    if let Err(error) = result {
+        tracing::error!(?error, "agentOS executable failed");
+        std::process::exit(1);
+    }
+}
+
+fn run_actor(mut args: impl Iterator<Item = String>) -> Result<(), String> {
+    if let Some(argument) = args.next() {
+        return Err(format!("unknown agentOS actor argument: {argument}"));
+    }
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .map_err(|error| format!("build agentOS actor runtime: {error}"))?;
+    runtime
+        .block_on(agentos_actor::registry().start())
+        .map_err(|error| format!("run agentOS actor: {error:#}"))
+}
+
+fn run_sidecar(args: impl Iterator<Item = String>) -> Result<(), String> {
     if let Err(error) = fcntl(CONTROL_FD, FcntlArg::F_GETFD) {
         tracing::error!(
             ?error,
             fd = CONTROL_FD,
             "missing inherited sidecar response/control descriptor"
         );
-        std::process::exit(1);
+        return Err(format!(
+            "missing inherited sidecar response/control descriptor: {error}"
+        ));
     }
-    let runtime_config = match parse_runtime_config(std::env::args().skip(1)) {
-        Ok(config) => config,
-        Err(error) => {
-            tracing::error!(%error, "invalid agentOS sidecar configuration");
-            std::process::exit(1);
-        }
-    };
+    let runtime_config = parse_runtime_config(args)?;
     // SAFETY: the process launch contract reserves fd 3 for the inherited
     // response/control socket and transfers its sole ownership to the sidecar.
     // The fcntl probe above establishes that the descriptor is open before it
     // is adopted.
     let control_fd = unsafe { OwnedFd::from_raw_fd(CONTROL_FD) };
-    if let Err(error) =
-        agentos_native_sidecar::stdio::run_with_runtime_config(control_fd, runtime_config)
-    {
-        tracing::error!(?error, "agentos-native-sidecar startup failed");
-        std::process::exit(1);
-    }
+    agentos_native_sidecar::stdio::run_with_runtime_config(control_fd, runtime_config)
+        .map_err(|error| format!("run agentOS native sidecar: {error:#}"))
 }
 
 #[cfg(test)]
 mod tests {
-    use super::parse_runtime_config;
+    use super::{parse_entrypoint, parse_runtime_config, Entrypoint};
+
+    #[test]
+    fn executable_entrypoints_are_fixed() {
+        assert_eq!(
+            parse_entrypoint(&mut std::iter::empty()).expect("default entrypoint"),
+            Entrypoint::Sidecar
+        );
+        assert_eq!(
+            parse_entrypoint(&mut [String::from("actor")].into_iter()).expect("actor entrypoint"),
+            Entrypoint::Actor
+        );
+        assert!(parse_entrypoint(&mut [String::from("unknown")].into_iter())
+            .expect_err("unknown entrypoint must fail")
+            .contains("expected 'actor' or 'sidecar'"));
+    }
 
     #[test]
     fn runtime_executor_limit_is_uncapped_by_default_and_configurable() {
