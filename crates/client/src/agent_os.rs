@@ -957,7 +957,10 @@ fn serialize_create_vm_config_for_sidecar(
     Ok(vm_config::CreateVmConfig {
         database: config.database.clone(),
         cwd: None,
-        env: BTreeMap::new(),
+        env: config
+            .environment
+            .clone()
+            .unwrap_or_else(crate::config::default_environment),
         user: config.user.clone(),
         root_filesystem,
         permissions: Some(permissions_policy_config(config)),
@@ -971,13 +974,13 @@ fn serialize_create_vm_config_for_sidecar(
         // exactly those (`Some([])` denies all). Platform/module-resolution
         // keep their engine defaults (full Node emulation), matching prior
         // behavior where Agent OS only ever constrained the builtin allow-list.
-        js_runtime: config.allowed_node_builtins.as_ref().map(|allowed| {
-            vm_config::JsRuntimeConfig {
-                platform: vm_config::JsRuntimePlatform::default(),
-                module_resolution: vm_config::JsModuleResolution::default(),
-                allowed_builtins: Some(allowed.clone()),
-                high_resolution_time: None,
-            }
+        js_runtime: (config.allowed_node_builtins.is_some()
+            || config.high_resolution_time.is_some())
+        .then(|| vm_config::JsRuntimeConfig {
+            platform: vm_config::JsRuntimePlatform::default(),
+            module_resolution: vm_config::JsModuleResolution::default(),
+            allowed_builtins: config.allowed_node_builtins.clone(),
+            high_resolution_time: config.high_resolution_time,
         }),
         bootstrap_commands: Some(vec![
             String::from("node"),
@@ -2899,6 +2902,8 @@ fn rejected_to_error(rejected: wire::RejectedResponse) -> ClientError {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+
     use super::{
         default_permissions_policy, permissions_policy, serialize_create_vm_config_for_sidecar,
         serialize_root_filesystem_config_for_sidecar,
@@ -3116,6 +3121,36 @@ mod tests {
             serde_json::json!({ "databasePath": "/tmp/agentos-root.sqlite" })
         );
         assert!(native_root.read_only);
+    }
+
+    #[test]
+    fn create_vm_config_preserves_environment_and_timer_policy() {
+        let environment = BTreeMap::from([
+            (String::from("EMPTY"), String::new()),
+            (String::from("PATH"), String::from("/opt/agentos/bin")),
+        ]);
+        let config = serialize_create_vm_config_for_sidecar(&AgentOsConfig {
+            environment: Some(environment.clone()),
+            high_resolution_time: Some(false),
+            ..Default::default()
+        })
+        .expect("serialize create VM config");
+
+        assert_eq!(config.env, environment);
+        let js_runtime = config.js_runtime.expect("explicit timer policy");
+        assert_eq!(js_runtime.allowed_builtins, None);
+        assert_eq!(js_runtime.high_resolution_time, Some(false));
+
+        let empty = serialize_create_vm_config_for_sidecar(&AgentOsConfig {
+            environment: Some(BTreeMap::new()),
+            ..Default::default()
+        })
+        .expect("serialize empty environment");
+        assert!(empty.env.is_empty());
+
+        let defaulted = serialize_create_vm_config_for_sidecar(&AgentOsConfig::default())
+            .expect("serialize default environment");
+        assert_eq!(defaulted.env, crate::config::default_environment());
     }
 
     #[test]

@@ -644,6 +644,8 @@ fn validate_artifact(artifact: &PreloadArtifact) -> Result<()> {
     let normalized = normalize_remote_source(RemotePackageSourceInput {
         url: artifact.url.clone(),
         digest: Some(artifact.digest.clone()),
+        size: None,
+        package_id: None,
     })?;
     if normalized.digest.as_deref() != Some(&artifact.digest) {
         bail!("preload artifact digest was not preserved by package validation");

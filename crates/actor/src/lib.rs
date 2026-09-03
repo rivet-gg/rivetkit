@@ -24,12 +24,13 @@ use rivetkit::{action, Actor, ActorConfig, Registry, Request, Response};
 use serde::{Deserialize, Serialize};
 use tokio::sync::{Mutex, OwnedSemaphorePermit, Semaphore};
 
-pub use actions::{ConfigGet, RuntimeRestart, RuntimeStatusGet};
+pub use actions::{ConfigGet, ConfigSet, RuntimeRestart, RuntimeStatusGet};
 pub use config::{
     AgentOsActorConfig, AgentOsActorConfigInput, HostedFilesystemBackend,
     HostedFilesystemBackendInput, HostedFilesystemConfig, HostedFilesystemConfigInput,
     HostedFilesystemMount, HostedFilesystemMountInput, HostedRootFilesystem,
-    HostedRootFilesystemInput, RemotePackageSource, RemotePackageSourceInput,
+    HostedRootFilesystemInput, PreviewPolicy, PreviewPolicyInput, RemotePackageSource,
+    RemotePackageSourceInput,
 };
 pub use cron::*;
 pub use events::{
@@ -113,6 +114,7 @@ pub struct ConfigSnapshot {
     pub revision: u64,
     pub desired: AgentOsActorConfig,
     pub applied_revision: Option<u64>,
+    #[serde(rename = "state")]
     pub status: ConfigApplyState,
     pub issues: Vec<RuntimeIssue>,
     pub created_at_ms: i64,
@@ -306,6 +308,7 @@ mod tests {
                 .collect::<Vec<_>>(),
             [
                 "config.get",
+                "config.set",
                 "runtime.status",
                 "runtime.restart",
                 "filesystem.readFile",

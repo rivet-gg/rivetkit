@@ -541,6 +541,11 @@ export interface AgentOsOptions {
 	/** Initial virtual Linux credentials and account record. Defaults to `1000:1000` (`agentos`). */
 	user?: VmUserConfig;
 	/**
+	 * Complete initial VM environment. Omission selects Core's base environment;
+	 * an explicit empty object starts with an empty environment.
+	 */
+	environment?: Record<string, string>;
+	/**
 	 * Software to install in the VM. Each entry is a package-dir ref. Arrays are
 	 * flattened, so meta-packages that export arrays of sub-packages work directly.
 	 */
@@ -2858,7 +2863,10 @@ export class AgentOs {
 			};
 
 			try {
-				const env: Record<string, string> = getBaseEnvironment();
+				const env: Record<string, string> =
+					options?.environment !== undefined
+						? { ...options.environment }
+						: getBaseEnvironment();
 				// Guest command paths. The sidecar owns the `/opt/agentos` projection and
 				// reports the exact projected package commands after `configureVm`.
 				// Binding-shim commands are added below.

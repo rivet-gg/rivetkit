@@ -55,8 +55,7 @@ impl Action for SoftwareList {
 #[serde(rename_all = "camelCase")]
 pub struct SoftwareMutationResult {
     pub software: InstalledSoftware,
-    pub config_revision: u64,
-    pub application_state: ConfigApplyState,
+    pub config: ConfigSnapshot,
 }
 
 impl Handles<SoftwareInstall> for AgentOsActor {
@@ -93,8 +92,7 @@ impl Handles<SoftwareInstall> for AgentOsActor {
                 crate::preload::observe_software_usage(&source.url, &installed).await;
                 return Ok(SoftwareMutationResult {
                     software: installed,
-                    config_revision: current.revision,
-                    application_state: current.status,
+                    config: current,
                 });
             }
 
@@ -125,8 +123,7 @@ impl Handles<SoftwareInstall> for AgentOsActor {
             crate::preload::observe_software_usage(&source.url, &installed).await;
             Ok(SoftwareMutationResult {
                 software: installed,
-                config_revision: next.revision,
-                application_state: next.status,
+                config: next,
             })
         })
     }
@@ -174,8 +171,7 @@ impl Handles<SoftwareUninstall> for AgentOsActor {
                 .await;
             Ok(SoftwareMutationResult {
                 software: removed,
-                config_revision: next.revision,
-                application_state: next.status,
+                config: next,
             })
         })
     }
@@ -224,7 +220,7 @@ impl AgentOsActor {
     }
 }
 
-async fn persist_snapshot(
+pub(crate) async fn persist_snapshot(
     actor: &AgentOsActor,
     ctx: &Ctx<AgentOsActor>,
     snapshot: &ConfigSnapshot,
@@ -237,11 +233,11 @@ async fn persist_snapshot(
     Ok(())
 }
 
-fn require_revision(snapshot: &ConfigSnapshot, expected: Option<u64>) -> Result<()> {
+pub(crate) fn require_revision(snapshot: &ConfigSnapshot, expected: Option<u64>) -> Result<()> {
     if let Some(expected) = expected {
         if expected != snapshot.revision {
             bail!(
-                "config_revision_mismatch: expected revision {expected}, current revision is {}",
+                "config_conflict: expected revision {expected}, current revision is {}",
                 snapshot.revision
             );
         }

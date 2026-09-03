@@ -7,6 +7,7 @@ use rivetkit::{Action, Ctx, Handles, Request, Response};
 use serde::{Deserialize, Serialize};
 
 use crate::actions::BoxFuture;
+use crate::config::MIN_PREVIEW_TTL_MS;
 use crate::runtime::now_ms;
 use crate::store::{self, PreviewLease};
 use crate::{AgentOsActor, FileBytes, FileContentInput};
@@ -22,10 +23,6 @@ const DEFAULT_STREAM_CHUNK_BYTES: u32 = 64 * 1024;
 const MAX_STREAM_ID_BYTES: usize = 256;
 const MAX_STREAM_LIFETIME_MS: i64 = 60 * 60 * 1_000;
 const MAX_PREVIEW_TOKEN_BYTES: usize = 128;
-const MAX_PREVIEWS: usize = 128;
-const MIN_PREVIEW_TTL_MS: u64 = 1_000;
-const MAX_PREVIEW_TTL_MS: u64 = 24 * 60 * 60 * 1_000;
-const DEFAULT_PREVIEW_TTL_MS: u64 = 15 * 60 * 1_000;
 const PREVIEW_PREFIX: &str = "/preview/";
 
 fn default_http_method() -> String {
@@ -295,10 +292,12 @@ impl Handles<NetworkPreviewCreate> for AgentOsActor {
                 bail!("invalid_input: preview port must be between 1 and 65535");
             }
             self.runtime.vm().await?;
-            let ttl_ms = action.ttl_ms.unwrap_or(DEFAULT_PREVIEW_TTL_MS);
-            if !(MIN_PREVIEW_TTL_MS..=MAX_PREVIEW_TTL_MS).contains(&ttl_ms) {
+            let preview = self.snapshot().await.desired.preview;
+            let ttl_ms = action.ttl_ms.unwrap_or(preview.default_ttl_ms);
+            if !(MIN_PREVIEW_TTL_MS..=preview.max_ttl_ms).contains(&ttl_ms) {
                 bail!(
-                    "limit_exceeded: preview ttlMs must be between {MIN_PREVIEW_TTL_MS} and {MAX_PREVIEW_TTL_MS}"
+                    "limit_exceeded: preview ttlMs must be between {MIN_PREVIEW_TTL_MS} and {}; raise config.preview.maxTtlMs up to its actor maximum",
+                    preview.max_ttl_ms
                 );
             }
             let created_at_ms = now_ms()?;
@@ -311,7 +310,13 @@ impl Handles<NetworkPreviewCreate> for AgentOsActor {
                 port: action.port,
                 expires_at_ms,
             };
-            store::create_preview(&ctx, &lease, created_at_ms, MAX_PREVIEWS).await?;
+            store::create_preview(
+                &ctx,
+                &lease,
+                created_at_ms,
+                usize::try_from(preview.max_active).context("preview maxActive exceeds usize")?,
+            )
+            .await?;
             Ok(ActorPreview {
                 path: format!("{PREVIEW_PREFIX}{token}/"),
                 token,

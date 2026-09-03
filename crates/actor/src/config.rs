@@ -1,20 +1,33 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
+use std::time::Duration;
 
 use agentos_client::{
-    AgentOsConfig, AgentOsLimits, MountConfig, MountPlugin, PackageResolver,
-    PackageResolverOptions, PackageSource, RootFilesystemConfig, RootFilesystemKind,
-    RootFilesystemMode, VmSqliteDescriptor, VmUserConfig,
+    AgentOsConfig, AgentOsLimits, FsPermissionRule, FsPermissions, MountConfig, MountPlugin,
+    PackageResolver, PackageResolverOptions, PackageSource, PatternPermissionRule,
+    PatternPermissions, Permissions, RootFilesystemConfig, RootFilesystemKind, RootFilesystemMode,
+    RulePermissions, VmSqliteDescriptor, VmUserConfig,
 };
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
+use futures::{stream, StreamExt, TryStreamExt};
 use serde::{Deserialize, Serialize};
 
 const MAX_ALLOWED_NODE_BUILTINS: usize = 256;
 const MAX_ALLOWED_NODE_BUILTIN_BYTES: usize = 128;
 const MAX_LOOPBACK_EXEMPT_PORTS: usize = 256;
+const MAX_ENVIRONMENT_ENTRIES: usize = 256;
+const MAX_ENVIRONMENT_KEY_BYTES: usize = 256;
+const MAX_ENVIRONMENT_VALUE_BYTES: usize = 8 * 1024;
+const MAX_ENVIRONMENT_BYTES: usize = 64 * 1024;
+const MAX_PERMISSION_RULES_PER_DOMAIN: usize = 256;
+const MAX_PERMISSION_VALUES_PER_RULE: usize = 128;
+const MAX_PERMISSION_VALUE_BYTES: usize = 4 * 1024;
+const MAX_PERMISSION_CONFIG_BYTES: usize = 256 * 1024;
 const MAX_HOSTED_MOUNTS: usize = 32;
 const MAX_FILESYSTEM_PATH_BYTES: usize = 4 * 1024;
 const MAX_FILESYSTEM_NAMESPACE_BYTES: usize = 128;
 pub(crate) const MAX_REMOTE_SOFTWARE: usize = 128;
+const CONFIG_PACKAGE_RESOLUTION_CONCURRENCY: usize = 8;
+const CONFIG_PACKAGE_RESOLUTION_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// Callback-free configuration accepted by the hosted actor.
 ///
@@ -28,15 +41,23 @@ pub struct AgentOsActorConfigInput {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub user: Option<VmUserConfig>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub environment: Option<BTreeMap<String, String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub allowed_node_builtins: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub high_resolution_time: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub loopback_exempt_ports: Option<Vec<u16>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub limits: Option<AgentOsLimits>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub permissions: Option<Permissions>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub filesystem: Option<HostedFilesystemConfigInput>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub software: Option<Vec<RemotePackageSourceInput>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preview: Option<PreviewPolicyInput>,
 }
 
 /// Complete persisted actor configuration for the fields supported by this
@@ -46,11 +67,15 @@ pub struct AgentOsActorConfigInput {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct AgentOsActorConfig {
     pub user: Option<VmUserConfig>,
+    pub environment: Option<BTreeMap<String, String>>,
     pub allowed_node_builtins: Option<Vec<String>>,
+    pub high_resolution_time: bool,
     pub loopback_exempt_ports: Vec<u16>,
     pub limits: Option<AgentOsLimits>,
+    pub permissions: Option<Permissions>,
     pub filesystem: HostedFilesystemConfig,
     pub software: Vec<RemotePackageSource>,
+    pub preview: PreviewPolicy,
 }
 
 /// URL-only hosted package input. This is intentionally not a serde wrapper
@@ -62,6 +87,12 @@ pub struct RemotePackageSourceInput {
     pub url: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub digest: Option<String>,
+    /// Resolution metadata is accepted so a `config.get` snapshot can be sent
+    /// back to `config.set`. Core re-resolves the source and never trusts it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub package_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -74,6 +105,40 @@ pub struct RemotePackageSource {
     pub size: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub package_id: Option<String>,
+}
+
+pub const MIN_PREVIEW_TTL_MS: u64 = 1_000;
+pub const MAX_PREVIEW_TTL_MS: u64 = 24 * 60 * 60 * 1_000;
+pub const MAX_ACTIVE_PREVIEWS: u32 = 128;
+pub const DEFAULT_PREVIEW_TTL_MS: u64 = 15 * 60 * 1_000;
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PreviewPolicyInput {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_ttl_ms: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_ttl_ms: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_active: Option<u32>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PreviewPolicy {
+    pub default_ttl_ms: u64,
+    pub max_ttl_ms: u64,
+    pub max_active: u32,
+}
+
+impl Default for PreviewPolicy {
+    fn default() -> Self {
+        Self {
+            default_ttl_ms: DEFAULT_PREVIEW_TTL_MS,
+            max_ttl_ms: MAX_PREVIEW_TTL_MS,
+            max_active: MAX_ACTIVE_PREVIEWS,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -158,6 +223,7 @@ pub enum HostedFilesystemBackend {
 
 impl AgentOsActorConfig {
     pub fn normalize(input: AgentOsActorConfigInput) -> Result<Self> {
+        validate_environment(input.environment.as_ref())?;
         let allowed_node_builtins = input
             .allowed_node_builtins
             .map(normalize_allowed_node_builtins)
@@ -166,13 +232,19 @@ impl AgentOsActorConfig {
             normalize_loopback_ports(input.loopback_exempt_ports.unwrap_or_default())?;
         let filesystem = normalize_filesystem(input.filesystem.unwrap_or_default())?;
         let software = normalize_remote_software(input.software.unwrap_or_default())?;
+        validate_permissions(input.permissions.as_ref())?;
+        let preview = normalize_preview_policy(input.preview.unwrap_or_default())?;
         let config = Self {
             user: input.user,
+            environment: input.environment,
             allowed_node_builtins,
+            high_resolution_time: input.high_resolution_time.unwrap_or(false),
             loopback_exempt_ports,
             limits: input.limits,
+            permissions: input.permissions,
             filesystem,
             software,
+            preview,
         };
 
         // Reuse the Rust Core client's VM serializer and canonical vm-config
@@ -188,9 +260,12 @@ impl AgentOsActorConfig {
     ) -> AgentOsConfig {
         let mut config = AgentOsConfig::default();
         config.user = self.user.clone();
+        config.environment = self.environment.clone();
         config.allowed_node_builtins = self.allowed_node_builtins.clone();
+        config.high_resolution_time = Some(self.high_resolution_time);
         config.loopback_exempt_ports = self.loopback_exempt_ports.clone();
         config.limits = self.limits.clone();
+        config.permissions = self.permissions.clone();
         config.root_filesystem = self.filesystem.root.to_core();
         config.mounts = self
             .filesystem
@@ -204,6 +279,20 @@ impl AgentOsActorConfig {
             config.package_resolver.allow_insecure_local_http = true;
         }
         config
+    }
+
+    /// Actor gateway policy can apply immediately; every other field is part
+    /// of the Core VM creation contract and requires runtime replacement.
+    pub(crate) fn core_runtime_eq(&self, other: &Self) -> bool {
+        self.user == other.user
+            && self.environment == other.environment
+            && self.allowed_node_builtins == other.allowed_node_builtins
+            && self.high_resolution_time == other.high_resolution_time
+            && self.loopback_exempt_ports == other.loopback_exempt_ports
+            && self.limits == other.limits
+            && self.permissions == other.permissions
+            && self.filesystem == other.filesystem
+            && self.software == other.software
     }
 }
 
@@ -228,6 +317,11 @@ impl RemotePackageSource {
 pub(crate) fn normalize_remote_source(
     source: RemotePackageSourceInput,
 ) -> Result<RemotePackageSource> {
+    if source.package_id.is_some() && source.package_id != source.digest {
+        bail!(
+            "invalid_input: software packageId must equal digest when resolution metadata is supplied"
+        );
+    }
     let resolver = PackageResolver::new(PackageResolverOptions::default())?;
     resolver.validate_source(&PackageSource::Url {
         url: source.url.clone(),
@@ -260,6 +354,53 @@ fn normalize_remote_software(
         normalized.push(source);
     }
     Ok(normalized)
+}
+
+/// Resolve and pin every URL before a replacement becomes durable. The actor
+/// stores only verified content identities while retaining the URL for future
+/// acquisition and preload observations.
+pub(crate) async fn resolve_remote_software(
+    sources: Vec<RemotePackageSource>,
+) -> Result<Vec<RemotePackageSource>> {
+    let mut options = PackageResolverOptions::default();
+    if std::env::var("AGENTOS_ALLOW_INSECURE_LOCAL_PACKAGE_HTTP").as_deref() == Ok("1") {
+        options.allow_insecure_local_http = true;
+    }
+    let resolver = PackageResolver::new(options)?;
+    let resolution = stream::iter(sources)
+        .map(|source| {
+            let resolver = resolver.clone();
+            async move {
+                let url = source.url.clone();
+                let package = resolver
+                    .resolve(source.to_core())
+                    .await
+                    .with_context(|| format!("resolve required software URL {url:?}"))?;
+                let installed = agentos_client::InstalledSoftware::from(&package);
+                Ok::<_, anyhow::Error>(RemotePackageSource::resolved(url, &installed))
+            }
+        })
+        .buffered(CONFIG_PACKAGE_RESOLUTION_CONCURRENCY)
+        .try_collect::<Vec<_>>();
+    let resolved = tokio::time::timeout(CONFIG_PACKAGE_RESOLUTION_TIMEOUT, resolution)
+        .await
+        .map_err(|_| {
+            anyhow::anyhow!(
+                "config_package_resolution_timeout: required software resolution exceeded {}ms; raise CONFIG_PACKAGE_RESOLUTION_TIMEOUT",
+                CONFIG_PACKAGE_RESOLUTION_TIMEOUT.as_millis()
+            )
+        })??;
+
+    let mut package_ids = BTreeSet::new();
+    Ok(resolved
+        .into_iter()
+        .filter(|source| {
+            source
+                .package_id
+                .as_ref()
+                .is_some_and(|package_id| package_ids.insert(package_id.clone()))
+        })
+        .collect())
 }
 
 impl HostedRootFilesystem {
@@ -426,6 +567,190 @@ fn normalize_loopback_ports(values: Vec<u16>) -> Result<Vec<u16>> {
     Ok(ports.into_iter().collect())
 }
 
+fn validate_environment(environment: Option<&BTreeMap<String, String>>) -> Result<()> {
+    let Some(environment) = environment else {
+        return Ok(());
+    };
+    if environment.len() > MAX_ENVIRONMENT_ENTRIES {
+        bail!(
+            "limit_exceeded: environment has {} entries; maximum is {MAX_ENVIRONMENT_ENTRIES}; reduce the environment or raise MAX_ENVIRONMENT_ENTRIES",
+            environment.len()
+        );
+    }
+    let mut total_bytes = 0usize;
+    for (key, value) in environment {
+        if key.is_empty()
+            || key.len() > MAX_ENVIRONMENT_KEY_BYTES
+            || key.contains('=')
+            || key.as_bytes().contains(&0)
+        {
+            bail!(
+                "invalid_input: environment key {key:?} must contain 1..={MAX_ENVIRONMENT_KEY_BYTES} bytes without '=' or NUL"
+            );
+        }
+        if value.len() > MAX_ENVIRONMENT_VALUE_BYTES || value.as_bytes().contains(&0) {
+            bail!(
+                "limit_exceeded: environment value for {key:?} exceeds {MAX_ENVIRONMENT_VALUE_BYTES} bytes or contains NUL; reduce it or raise MAX_ENVIRONMENT_VALUE_BYTES"
+            );
+        }
+        total_bytes = total_bytes
+            .checked_add(key.len())
+            .and_then(|total| total.checked_add(value.len()))
+            .ok_or_else(|| anyhow::anyhow!("limit_exceeded: environment byte count overflow"))?;
+    }
+    if total_bytes > MAX_ENVIRONMENT_BYTES {
+        bail!(
+            "limit_exceeded: environment contains {total_bytes} bytes; maximum is {MAX_ENVIRONMENT_BYTES}; reduce it or raise MAX_ENVIRONMENT_BYTES"
+        );
+    }
+    if environment.len() * 100 / MAX_ENVIRONMENT_ENTRIES >= 80
+        || total_bytes * 100 / MAX_ENVIRONMENT_BYTES >= 80
+    {
+        tracing::warn!(
+            limit = "actor_config_environment",
+            observed_entries = environment.len(),
+            capacity_entries = MAX_ENVIRONMENT_ENTRIES,
+            observed_bytes = total_bytes,
+            capacity_bytes = MAX_ENVIRONMENT_BYTES,
+            configuration_path = "MAX_ENVIRONMENT_ENTRIES/MAX_ENVIRONMENT_BYTES",
+            "actor configuration environment approaching capacity"
+        );
+    }
+    Ok(())
+}
+
+fn validate_permissions(permissions: Option<&Permissions>) -> Result<()> {
+    let Some(permissions) = permissions else {
+        return Ok(());
+    };
+    if let Some(FsPermissions::Rules(rules)) = permissions.fs.as_ref() {
+        validate_fs_permission_rules("permissions.fs", rules)?;
+    }
+    for (label, domain) in [
+        ("permissions.network", permissions.network.as_ref()),
+        (
+            "permissions.childProcess",
+            permissions.child_process.as_ref(),
+        ),
+        ("permissions.process", permissions.process.as_ref()),
+        ("permissions.env", permissions.env.as_ref()),
+        ("permissions.binding", permissions.binding.as_ref()),
+    ] {
+        if let Some(PatternPermissions::Rules(rules)) = domain {
+            validate_pattern_permission_rules(label, rules)?;
+        }
+    }
+    let encoded = serde_json::to_vec(permissions).context("encode permissions for bounds check")?;
+    if encoded.len() > MAX_PERMISSION_CONFIG_BYTES {
+        bail!(
+            "limit_exceeded: permissions contains {} bytes; maximum is {MAX_PERMISSION_CONFIG_BYTES}; reduce it or raise MAX_PERMISSION_CONFIG_BYTES",
+            encoded.len()
+        );
+    }
+    if encoded.len() * 100 / MAX_PERMISSION_CONFIG_BYTES >= 80 {
+        tracing::warn!(
+            limit = "actor_config_permissions_bytes",
+            observed = encoded.len(),
+            capacity = MAX_PERMISSION_CONFIG_BYTES,
+            configuration_path = "MAX_PERMISSION_CONFIG_BYTES",
+            "actor configuration permissions approaching capacity"
+        );
+    }
+    Ok(())
+}
+
+fn validate_fs_permission_rules(
+    label: &str,
+    permissions: &RulePermissions<FsPermissionRule>,
+) -> Result<()> {
+    validate_permission_rule_count(label, permissions.rules.len())?;
+    for (index, rule) in permissions.rules.iter().enumerate() {
+        validate_permission_values(
+            &format!("{label}.rules[{index}].operations"),
+            rule.operations.as_deref(),
+        )?;
+        validate_permission_values(
+            &format!("{label}.rules[{index}].paths"),
+            rule.paths.as_deref(),
+        )?;
+    }
+    Ok(())
+}
+
+fn validate_pattern_permission_rules(
+    label: &str,
+    permissions: &RulePermissions<PatternPermissionRule>,
+) -> Result<()> {
+    validate_permission_rule_count(label, permissions.rules.len())?;
+    for (index, rule) in permissions.rules.iter().enumerate() {
+        validate_permission_values(
+            &format!("{label}.rules[{index}].operations"),
+            rule.operations.as_deref(),
+        )?;
+        validate_permission_values(
+            &format!("{label}.rules[{index}].patterns"),
+            rule.patterns.as_deref(),
+        )?;
+    }
+    Ok(())
+}
+
+fn validate_permission_rule_count(label: &str, count: usize) -> Result<()> {
+    if count > MAX_PERMISSION_RULES_PER_DOMAIN {
+        bail!(
+            "limit_exceeded: {label} has {count} rules; maximum is {MAX_PERMISSION_RULES_PER_DOMAIN}; reduce it or raise MAX_PERMISSION_RULES_PER_DOMAIN"
+        );
+    }
+    Ok(())
+}
+
+fn validate_permission_values(label: &str, values: Option<&[String]>) -> Result<()> {
+    let Some(values) = values else {
+        return Ok(());
+    };
+    if values.len() > MAX_PERMISSION_VALUES_PER_RULE {
+        bail!(
+            "limit_exceeded: {label} has {} values; maximum is {MAX_PERMISSION_VALUES_PER_RULE}; reduce it or raise MAX_PERMISSION_VALUES_PER_RULE",
+            values.len()
+        );
+    }
+    if let Some(value) = values
+        .iter()
+        .find(|value| value.len() > MAX_PERMISSION_VALUE_BYTES || value.as_bytes().contains(&0))
+    {
+        bail!(
+            "limit_exceeded: {label} value contains {} bytes or NUL; maximum is {MAX_PERMISSION_VALUE_BYTES}; reduce it or raise MAX_PERMISSION_VALUE_BYTES",
+            value.len()
+        );
+    }
+    Ok(())
+}
+
+fn normalize_preview_policy(input: PreviewPolicyInput) -> Result<PreviewPolicy> {
+    let policy = PreviewPolicy {
+        default_ttl_ms: input.default_ttl_ms.unwrap_or(DEFAULT_PREVIEW_TTL_MS),
+        max_ttl_ms: input.max_ttl_ms.unwrap_or(MAX_PREVIEW_TTL_MS),
+        max_active: input.max_active.unwrap_or(MAX_ACTIVE_PREVIEWS),
+    };
+    if !(MIN_PREVIEW_TTL_MS..=MAX_PREVIEW_TTL_MS).contains(&policy.max_ttl_ms) {
+        bail!(
+            "limit_exceeded: preview.maxTtlMs must be between {MIN_PREVIEW_TTL_MS} and {MAX_PREVIEW_TTL_MS}; lower it or raise MAX_PREVIEW_TTL_MS"
+        );
+    }
+    if !(MIN_PREVIEW_TTL_MS..=policy.max_ttl_ms).contains(&policy.default_ttl_ms) {
+        bail!(
+            "invalid_input: preview.defaultTtlMs must be between {MIN_PREVIEW_TTL_MS} and preview.maxTtlMs ({})",
+            policy.max_ttl_ms
+        );
+    }
+    if policy.max_active == 0 || policy.max_active > MAX_ACTIVE_PREVIEWS {
+        bail!(
+            "limit_exceeded: preview.maxActive must be between 1 and {MAX_ACTIVE_PREVIEWS}; lower it or raise MAX_ACTIVE_PREVIEWS"
+        );
+    }
+    Ok(policy)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -444,7 +769,9 @@ mod tests {
             Some(vec!["fs".into(), "path".into()])
         );
         assert_eq!(normalized.loopback_exempt_ports, vec![80, 8080]);
+        assert!(!normalized.high_resolution_time);
         assert_eq!(normalized.filesystem, HostedFilesystemConfig::default());
+        assert_eq!(normalized.preview, PreviewPolicy::default());
         assert_eq!(
             AgentOsActorConfig::normalize(AgentOsActorConfigInput::default())
                 .expect("normalize default config"),
@@ -522,5 +849,73 @@ mod tests {
         })
         .expect_err("overlap must fail");
         assert!(error.to_string().contains("overlaps"));
+    }
+
+    #[test]
+    fn environment_and_preview_preserve_explicit_empty_and_false_values() {
+        let normalized = AgentOsActorConfig::normalize(AgentOsActorConfigInput {
+            environment: Some(BTreeMap::new()),
+            high_resolution_time: Some(false),
+            preview: Some(PreviewPolicyInput {
+                default_ttl_ms: Some(MIN_PREVIEW_TTL_MS),
+                max_ttl_ms: Some(MIN_PREVIEW_TTL_MS),
+                max_active: Some(1),
+            }),
+            ..Default::default()
+        })
+        .expect("normalize explicit values");
+
+        assert_eq!(normalized.environment, Some(BTreeMap::new()));
+        assert!(!normalized.high_resolution_time);
+        assert_eq!(normalized.preview.max_active, 1);
+        assert_eq!(normalized.preview.max_ttl_ms, MIN_PREVIEW_TTL_MS);
+    }
+
+    #[test]
+    fn environment_and_permissions_are_bounded() {
+        let environment = (0..=MAX_ENVIRONMENT_ENTRIES)
+            .map(|index| (format!("KEY_{index}"), String::new()))
+            .collect();
+        let error = AgentOsActorConfig::normalize(AgentOsActorConfigInput {
+            environment: Some(environment),
+            ..Default::default()
+        })
+        .expect_err("oversized environment must fail");
+        assert!(error.to_string().contains("environment has"));
+
+        let permissions = Permissions {
+            network: Some(PatternPermissions::Rules(RulePermissions {
+                default: None,
+                rules: (0..=MAX_PERMISSION_RULES_PER_DOMAIN)
+                    .map(|_| PatternPermissionRule {
+                        mode: agentos_client::PermissionMode::Allow,
+                        operations: None,
+                        patterns: None,
+                    })
+                    .collect(),
+            })),
+            ..Default::default()
+        };
+        let error = AgentOsActorConfig::normalize(AgentOsActorConfigInput {
+            permissions: Some(permissions),
+            ..Default::default()
+        })
+        .expect_err("oversized permission rule set must fail");
+        assert!(error.to_string().contains("maximum is 256"));
+    }
+
+    #[test]
+    fn resolved_software_metadata_round_trips_as_input_but_is_not_trusted() {
+        let digest = format!("sha256:{}", "a".repeat(64));
+        let input: RemotePackageSourceInput = serde_json::from_value(serde_json::json!({
+            "url": "https://example.com/tool.aospkg",
+            "digest": digest,
+            "size": 42,
+            "packageId": digest,
+        }))
+        .expect("deserialize resolved snapshot as input");
+        let normalized = normalize_remote_source(input).expect("normalize remote source");
+        assert_eq!(normalized.package_id, normalized.digest);
+        assert_eq!(normalized.size, None);
     }
 }

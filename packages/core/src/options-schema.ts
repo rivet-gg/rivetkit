@@ -367,6 +367,7 @@ export const bindingsSchema = z
  */
 export const agentOsOptionFieldSchemas = {
 	user: vmUserConfigSchema.optional(),
+	environment: z.record(z.string(), z.string()).optional(),
 	software: z.array(z.unknown()).optional(),
 	defaultSoftware: z.boolean().optional(),
 	loopbackExemptPorts: z.array(z.number().int().min(0).max(65535)).optional(),

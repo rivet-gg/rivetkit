@@ -6,6 +6,20 @@ import {
 } from "../src/sandbox.js";
 
 describe("AgentOsOptions validation", () => {
+	test("accepts a complete initial environment including an explicit empty map", () => {
+		expect(agentOsOptionsSchema.safeParse({ environment: {} }).success).toBe(
+			true,
+		);
+		expect(
+			agentOsOptionsSchema.safeParse({
+				environment: { EMPTY: "", PATH: "/opt/agentos/bin" },
+			}).success,
+		).toBe(true);
+		expect(
+			agentOsOptionsSchema.safeParse({ environment: { PORT: 3000 } }).success,
+		).toBe(false);
+	});
+
 	test("accepts the temporary local SQLite descriptor", () => {
 		expect(
 			agentOsOptionsSchema.safeParse({

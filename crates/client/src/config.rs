@@ -8,6 +8,7 @@
 //! only and become `Arc<dyn ...>` trait objects; they cannot cross the wire and are gated exactly as
 //! the actor layer gates them.
 
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
@@ -26,6 +27,9 @@ pub struct AgentOsConfig {
     pub database: Option<agentos_vm_config::VmSqliteDescriptor>,
     /// Initial virtual Linux credentials and account record. Defaults to `1000:1000` (`agentos`).
     pub user: Option<VmUserConfig>,
+    /// Complete initial VM environment. `None` selects Core's base environment;
+    /// `Some(empty)` deliberately starts with an empty environment.
+    pub environment: Option<BTreeMap<String, String>>,
     /// Software packages to install (flattened). Default `[]`.
     pub software: Vec<SoftwareInput>,
     /// Package directories to project into the VM's `/opt/agentos` tree (the
@@ -42,6 +46,9 @@ pub struct AgentOsConfig {
     pub loopback_exempt_ports: Vec<u16>,
     /// Allowed Node.js builtins. Default: the hardened native-bridge set.
     pub allowed_node_builtins: Option<Vec<String>>,
+    /// Opt in to a high-resolution monotonic clock for guest JavaScript.
+    /// `None` selects the hardened millisecond-resolution default.
+    pub high_resolution_time: Option<bool>,
     /// Root filesystem configuration. Default: overlay + bundled base snapshot.
     pub root_filesystem: RootFilesystemConfig,
     /// Additional mounts.
@@ -111,6 +118,16 @@ impl AgentOsConfigBuilder {
         self
     }
 
+    pub fn environment(mut self, environment: BTreeMap<String, String>) -> Self {
+        self.config.environment = Some(environment);
+        self
+    }
+
+    pub fn high_resolution_time(mut self, enabled: bool) -> Self {
+        self.config.high_resolution_time = Some(enabled);
+        self
+    }
+
     pub fn root_filesystem(mut self, root: RootFilesystemConfig) -> Self {
         self.config.root_filesystem = root;
         self
@@ -170,6 +187,35 @@ impl AgentOsConfig {
     pub fn validate(&self) -> Result<(), crate::ClientError> {
         crate::agent_os::validate_config(self)
     }
+}
+
+/// The base process environment used when callers omit
+/// [`AgentOsConfig::environment`]. Keep this generated constant in lockstep
+/// with `packages/core/src/base-filesystem.ts`.
+pub fn default_environment() -> BTreeMap<String, String> {
+    [
+        ("CHARSET", "UTF-8"),
+        ("HOME", "/home/agentos"),
+        ("HOSTNAME", "agentos"),
+        ("LANG", "C.UTF-8"),
+        ("LC_COLLATE", "C"),
+        ("LOGNAME", "agentos"),
+        ("PAGER", "less"),
+        (
+            "PATH",
+            "/usr/local/sbin:/usr/local/bin:/opt/agentos/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        ),
+        (
+            "MANPATH",
+            "/opt/agentos/share/man:/usr/local/share/man:/usr/share/man",
+        ),
+        ("SHELL", "/bin/sh"),
+        ("USER", "agentos"),
+        ("PS1", "\\h:\\w\\$ "),
+    ]
+    .into_iter()
+    .map(|(key, value)| (key.to_owned(), value.to_owned()))
+    .collect()
 }
 
 /// The kind of a software package, which decides how it is mounted into the VM. Mirrors the TS

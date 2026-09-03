@@ -24,7 +24,7 @@ use crate::process::{
     TerminalWrite,
 };
 use crate::software::{SoftwareInstall, SoftwareList, SoftwareUninstall};
-use crate::{AgentOsActor, ConfigGet, RuntimeRestart, RuntimeStatusGet};
+use crate::{AgentOsActor, ConfigGet, ConfigSet, RuntimeRestart, RuntimeStatusGet};
 
 type DispatchFuture = Pin<Box<dyn Future<Output = Result<Vec<u8>>> + Send>>;
 
@@ -82,6 +82,7 @@ macro_rules! action_registry {
 
 action_registry!(
     ConfigGet,
+    ConfigSet,
     RuntimeStatusGet,
     RuntimeRestart,
     FilesystemReadFile,

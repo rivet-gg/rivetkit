@@ -44,8 +44,8 @@ interface UninstallSoftwareInput {
 
 `packageId` is a stable installed identity derived from the verified digest, not
 a package name or version selector. The result of installation includes the
-resolved digest, exact size, bounded manifest metadata, config revision, and
-application state.
+resolved digest, exact size, bounded manifest metadata, and the resulting
+complete config snapshot (including revision and application state).
 
 Installing the same resolved digest is idempotent. A conflicting package or
 command projection fails with a typed Core error. Uninstalling an absent exact

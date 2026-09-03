@@ -60,6 +60,7 @@ pub struct CoreSidecarStatus {
 #[serde(rename_all = "camelCase")]
 pub struct RuntimeStatus {
     pub lifecycle: RuntimeLifecycleState,
+    pub config_state: crate::ConfigApplyState,
     pub desired_config_revision: u64,
     pub applied_config_revision: Option<u64>,
     pub generation: u64,
@@ -325,6 +326,10 @@ impl RuntimeController {
         state.applied_config_revision = Some(revision);
     }
 
+    pub(crate) async fn set_desired_config_revision(&self, revision: u64) {
+        self.state.lock().await.desired_config_revision = revision;
+    }
+
     async fn stop_inner(&self, reason: &str) -> Result<()> {
         let vm = {
             let mut state = self.state.lock().await;
@@ -436,6 +441,21 @@ fn snapshot(state: &RuntimeState) -> RuntimeStatus {
     });
     RuntimeStatus {
         lifecycle: state.lifecycle,
+        config_state: match state.lifecycle {
+            RuntimeLifecycleState::Failed | RuntimeLifecycleState::Degraded => {
+                crate::ConfigApplyState::Failed
+            }
+            RuntimeLifecycleState::Initializing
+            | RuntimeLifecycleState::Preloading
+            | RuntimeLifecycleState::Booting
+            | RuntimeLifecycleState::Stopping => crate::ConfigApplyState::Applying,
+            RuntimeLifecycleState::Ready
+                if state.applied_config_revision != Some(state.desired_config_revision) =>
+            {
+                crate::ConfigApplyState::RestartRequired
+            }
+            RuntimeLifecycleState::Ready => crate::ConfigApplyState::Ready,
+        },
         desired_config_revision: state.desired_config_revision,
         applied_config_revision: state.applied_config_revision,
         generation: state.generation,
@@ -489,5 +509,25 @@ mod tests {
         assert!(name.ends_with(".sqlite"));
         assert!(!name.contains(".."));
         assert!(!name.contains("actor"));
+    }
+
+    #[tokio::test]
+    async fn ready_runtime_reports_a_pending_desired_revision() {
+        let runtime = RuntimeController::new("actor", 1);
+        {
+            let mut state = runtime.state.lock().await;
+            state.lifecycle = RuntimeLifecycleState::Ready;
+            state.applied_config_revision = Some(1);
+        }
+        runtime.set_desired_config_revision(2).await;
+
+        let status = runtime.status().await;
+        assert_eq!(status.lifecycle, RuntimeLifecycleState::Ready);
+        assert_eq!(
+            status.config_state,
+            crate::ConfigApplyState::RestartRequired
+        );
+        assert_eq!(status.desired_config_revision, 2);
+        assert_eq!(status.applied_config_revision, Some(1));
     }
 }

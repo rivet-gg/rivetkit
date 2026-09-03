@@ -61,15 +61,15 @@ pub use sidecar::{
 pub use stream::{ByteStream, Subscription};
 
 pub use config::{
-    node_modules_mount, AgentOsConfig, AgentOsConfigBuilder, AgentOsLimits, AgentOsSidecarConfig,
-    Binding, BindingCallback, BindingLimits, Bindings, FsPermissionRule, FsPermissions, HttpLimits,
-    JsRuntimeLimits, MountConfig, MountPlugin, OverlayMountConfig, PackageRef,
-    PatternPermissionRule, PatternPermissions, PermissionMode, Permissions, PluginLimits,
-    PythonLimits, ResourceLimits, RootFilesystemConfig, RootFilesystemKind, RootFilesystemMode,
-    RootLowerInput, RulePermissions, ScheduleCallback, ScheduleDriver, ScheduleEntry,
-    ScheduleHandle, SidecarJsBridgeCall, SidecarJsBridgeCallback, SoftwareInput, SoftwareKind,
-    TimerScheduleDriver, VmGroupConfig, VmSqliteDescriptor, VmUserAccountConfig, VmUserConfig,
-    WasmLimits,
+    default_environment, node_modules_mount, AgentOsConfig, AgentOsConfigBuilder, AgentOsLimits,
+    AgentOsSidecarConfig, Binding, BindingCallback, BindingLimits, Bindings, FsPermissionRule,
+    FsPermissions, HttpLimits, JsRuntimeLimits, MountConfig, MountPlugin, OverlayMountConfig,
+    PackageRef, PatternPermissionRule, PatternPermissions, PermissionMode, Permissions,
+    PluginLimits, PythonLimits, ResourceLimits, RootFilesystemConfig, RootFilesystemKind,
+    RootFilesystemMode, RootLowerInput, RulePermissions, ScheduleCallback, ScheduleDriver,
+    ScheduleEntry, ScheduleHandle, SidecarJsBridgeCall, SidecarJsBridgeCallback, SoftwareInput,
+    SoftwareKind, TimerScheduleDriver, VmGroupConfig, VmSqliteDescriptor, VmUserAccountConfig,
+    VmUserConfig, WasmLimits,
 };
 
 pub use process::{
