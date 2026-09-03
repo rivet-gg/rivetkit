@@ -5,8 +5,16 @@ use rivetkit::{BindParam, ColumnValue, Ctx};
 
 use crate::{AgentOsActor, ConfigSnapshot};
 
-const SCHEMA_VERSION: i64 = 1;
+const SCHEMA_VERSION: i64 = 2;
 const TRANSACTION_TIMEOUT: Duration = Duration::from_secs(5);
+const PREVIEW_CLEANUP_BATCH: i64 = 128;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct PreviewLease {
+    pub(crate) token: String,
+    pub(crate) port: u16,
+    pub(crate) expires_at_ms: i64,
+}
 
 pub(crate) async fn load_or_initialize(
     ctx: &Ctx<AgentOsActor>,
@@ -74,6 +82,118 @@ pub(crate) async fn persist(ctx: &Ctx<AgentOsActor>, snapshot: &ConfigSnapshot) 
     Ok(())
 }
 
+pub(crate) async fn create_preview(
+    ctx: &Ctx<AgentOsActor>,
+    lease: &PreviewLease,
+    created_at_ms: i64,
+    max_previews: usize,
+) -> Result<()> {
+    let transaction = ctx
+        .sql()
+        .begin_transaction(Some(TRANSACTION_TIMEOUT))
+        .await
+        .context("begin preview creation")?;
+    let result = async {
+        transaction
+            .execute(
+                "DELETE FROM agentos_actor_previews
+                 WHERE token IN (
+                    SELECT token FROM agentos_actor_previews
+                    WHERE expires_at_ms <= ? ORDER BY expires_at_ms LIMIT ?
+                 )",
+                Some(vec![
+                    BindParam::Integer(created_at_ms),
+                    BindParam::Integer(PREVIEW_CLEANUP_BATCH),
+                ]),
+            )
+            .await
+            .context("clean expired preview leases")?;
+        let count = transaction
+            .exec("SELECT COUNT(*) FROM agentos_actor_previews")
+            .await
+            .context("count preview leases")?
+            .rows
+            .first()
+            .and_then(|row| row.first())
+            .and_then(column_integer)
+            .ok_or_else(|| anyhow!("preview lease count is missing or invalid"))?;
+        if count >= i64::try_from(max_previews).context("preview limit exceeds sqlite integer")? {
+            bail!(
+                "limit_exceeded: actor has {count} active previews; maximum is {max_previews}; expire a preview before creating another"
+            );
+        }
+        transaction
+            .execute(
+                "INSERT INTO agentos_actor_previews (token, port, expires_at_ms, created_at_ms)
+                 VALUES (?, ?, ?, ?)",
+                Some(vec![
+                    BindParam::Text(lease.token.clone()),
+                    BindParam::Integer(i64::from(lease.port)),
+                    BindParam::Integer(lease.expires_at_ms),
+                    BindParam::Integer(created_at_ms),
+                ]),
+            )
+            .await
+            .context("insert preview lease")?;
+        Result::<()>::Ok(())
+    }
+    .await;
+    match result {
+        Ok(()) => transaction
+            .commit()
+            .await
+            .context("commit preview creation"),
+        Err(error) => match transaction.rollback().await {
+            Ok(()) => Err(error),
+            Err(rollback_error) => Err(error.context(format!(
+                "rollback preview creation failed: {rollback_error:#}"
+            ))),
+        },
+    }
+}
+
+pub(crate) async fn load_preview(
+    ctx: &Ctx<AgentOsActor>,
+    token: &str,
+    now_ms: i64,
+) -> Result<Option<PreviewLease>> {
+    let result = ctx
+        .sql()
+        .query(
+            "SELECT token, port, expires_at_ms FROM agentos_actor_previews WHERE token = ?",
+            Some(vec![BindParam::Text(token.to_owned())]),
+        )
+        .await
+        .context("load preview lease")?;
+    let Some(row) = result.rows.first() else {
+        return Ok(None);
+    };
+    let port = u16::try_from(column_integer_required(row.get(1), "preview port")?)
+        .context("preview port is outside the u16 range")?;
+    let lease = PreviewLease {
+        token: column_text(row.first(), "preview token")?.to_owned(),
+        port,
+        expires_at_ms: column_integer_required(row.get(2), "preview expiration")?,
+    };
+    if lease.expires_at_ms <= now_ms {
+        expire_preview(ctx, token).await?;
+        return Ok(None);
+    }
+    Ok(Some(lease))
+}
+
+pub(crate) async fn expire_preview(ctx: &Ctx<AgentOsActor>, token: &str) -> Result<bool> {
+    let result = ctx
+        .sql()
+        .execute(
+            "DELETE FROM agentos_actor_previews WHERE token = ?",
+            Some(vec![BindParam::Text(token.to_owned())]),
+        )
+        .await
+        .context("expire preview lease")?;
+    Ok(result.changes > 0)
+}
+
 async fn migrate(ctx: &Ctx<AgentOsActor>) -> Result<()> {
     let transaction = ctx
         .sql()
@@ -109,11 +229,11 @@ async fn migrate(ctx: &Ctx<AgentOsActor>) -> Result<()> {
             .and_then(column_integer)
             .ok_or_else(|| anyhow!("actor schema version row is missing or invalid"))?;
 
-        match version {
-            0 => {
-                transaction
-                    .execute(
-                        "CREATE TABLE agentos_actor_config (
+        let mut version = version;
+        if version == 0 {
+            transaction
+                .execute(
+                    "CREATE TABLE agentos_actor_config (
                             id INTEGER PRIMARY KEY CHECK (id = 1),
                             desired_config TEXT NOT NULL,
                             revision INTEGER NOT NULL CHECK (revision >= 1),
@@ -123,22 +243,51 @@ async fn migrate(ctx: &Ctx<AgentOsActor>) -> Result<()> {
                             created_at_ms INTEGER NOT NULL,
                             updated_at_ms INTEGER NOT NULL
                          ) STRICT",
-                        None,
-                    )
-                    .await
-                    .context("create actor config table")?;
-                transaction
-                    .execute(
-                        "UPDATE agentos_actor_schema_version SET version = 1 WHERE id = 1",
-                        None,
-                    )
-                    .await
-                    .context("advance actor schema version")?;
-            }
-            SCHEMA_VERSION => {}
-            other => {
-                bail!("unsupported agentOS actor schema version {other}; expected {SCHEMA_VERSION}")
-            }
+                    None,
+                )
+                .await
+                .context("create actor config table")?;
+            transaction
+                .execute(
+                    "UPDATE agentos_actor_schema_version SET version = 1 WHERE id = 1",
+                    None,
+                )
+                .await
+                .context("advance actor schema version")?;
+            version = 1;
+        }
+        if version == 1 {
+            transaction
+                .execute(
+                    "CREATE TABLE agentos_actor_previews (
+                        token TEXT PRIMARY KEY,
+                        port INTEGER NOT NULL CHECK (port BETWEEN 1 AND 65535),
+                        expires_at_ms INTEGER NOT NULL,
+                        created_at_ms INTEGER NOT NULL
+                     ) STRICT",
+                    None,
+                )
+                .await
+                .context("create actor preview table")?;
+            transaction
+                .execute(
+                    "CREATE INDEX agentos_actor_previews_expiration
+                     ON agentos_actor_previews (expires_at_ms)",
+                    None,
+                )
+                .await
+                .context("create actor preview expiration index")?;
+            transaction
+                .execute(
+                    "UPDATE agentos_actor_schema_version SET version = 2 WHERE id = 1",
+                    None,
+                )
+                .await
+                .context("advance actor schema version")?;
+            version = 2;
+        }
+        if version != SCHEMA_VERSION {
+            bail!("unsupported agentOS actor schema version {version}; expected {SCHEMA_VERSION}");
         }
         Result::<()>::Ok(())
     }

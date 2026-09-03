@@ -59,6 +59,7 @@ dependencies = [
  "async-trait",
  "ciborium",
  "hex",
+ "http 1.4.2",
  "rivetkit",
  "serde",
  "serde_bytes",
@@ -67,6 +68,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "tracing",
+ "uuid",
 ]
 
 [[package]]

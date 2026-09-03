@@ -137,7 +137,7 @@ pub struct ActorSpawnOptions {
 }
 
 impl ActorSpawnOptions {
-    fn validate(&self) -> Result<()> {
+    pub(crate) fn validate(&self) -> Result<()> {
         validate_environment(&self.env)?;
         if let Some(cwd) = &self.cwd {
             validate_string("process cwd", cwd, MAX_ARGUMENT_BYTES)?;
@@ -997,11 +997,11 @@ fn file_content_to_stdin(content: FileContentInput) -> StdinInput {
     }
 }
 
-fn validate_command(command: &str) -> Result<()> {
+pub(crate) fn validate_command(command: &str) -> Result<()> {
     validate_string("process command", command, MAX_COMMAND_BYTES)
 }
 
-fn validate_arguments(args: &[String]) -> Result<()> {
+pub(crate) fn validate_arguments(args: &[String]) -> Result<()> {
     validate_count("process argument count", args.len(), MAX_ARGUMENTS)?;
     for arg in args {
         validate_string("process argument", arg, MAX_ARGUMENT_BYTES)?;

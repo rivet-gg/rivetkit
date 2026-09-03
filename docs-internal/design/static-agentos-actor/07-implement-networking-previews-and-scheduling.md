@@ -1,6 +1,6 @@
 # 07: Implement Networking, Previews, and Scheduling
 
-**Status:** Proposed
+**Status:** Implemented; deployment and cross-client conformance deferred to step 14
 
 ## Outcome
 
@@ -62,10 +62,11 @@ the hosted actor does not use it.
 
 ## Stream registry
 
-Streaming fetch handles are actor-owned transport resources around Core streams.
-The registry must be bounded by count, total buffered bytes, idle duration, and
-absolute lifetime. Handles include the runtime generation and cannot be reused
-after restart.
+Streaming fetch handles are actor-facing capabilities around Core/sidecar-owned
+streams. The sidecar remains the single registry and bounds count, response
+bytes, buffered bytes, and idle duration. Actor handles add the runtime
+generation and a one-hour absolute expiration and cannot be reused after
+restart. This avoids a second actor stream registry.
 
 Every handle is released on:
 
@@ -76,6 +77,10 @@ Every handle is released on:
 - Idle or absolute timeout.
 - VM shutdown or replacement.
 - Actor shutdown.
+
+The current native stream path requires a kernel-backed HTTP listener. Core
+returns a typed error for the legacy in-process listener path rather than
+silently buffering the whole response.
 
 Reads return at most the requested bytes capped by an operator maximum. The
 actor never reads an entire response into memory to implement streaming.
@@ -118,6 +123,31 @@ actor never reads an entire response into memory to implement streaming.
 - The actor contains no cron parser, schedule database, wakeup loop, or guest
   networking policy.
 - Every networking, preview, and scheduling failure is typed and observable.
+
+## Implementation notes
+
+- Rust Core now exposes buffered and start/read/cancel VM fetch operations.
+  Binary request bodies use base64 on the sidecar wire without lossy UTF-8
+  conversion, and response headers remain an ordered pair list so repeated
+  headers such as `set-cookie` survive.
+- The six public network actions use bounded actor DTOs. Stream handles are
+  generation-scoped, reads are capped at 128 KiB, and Core/sidecar owns socket
+  cleanup and backpressure.
+- Preview leases use the actor-owned `agentos_actor_previews` STRICT table and
+  schema migration 2. Creation performs bounded expired-row cleanup and an
+  atomic 128-token capacity check. The ordinary route is
+  `/preview/<token>/...`, strips hop-by-hop headers, and proxies only to the
+  lease's VM port.
+- Preview TTL defaults to 15 minutes and is bounded between one second and 24
+  hours. Expiration is idempotent; unknown or expired route tokens return 404.
+- `cron.schedule`, `cron.list`, and `cron.cancel` wrap RivetKit cron directly.
+  The only stored payload is a bounded process-spawn descriptor plus its config
+  revision. RivetKit validates expressions/time zones and owns persistence,
+  wakeups, history, and cancellation.
+- RivetKit dispatches the private `__agentos.cron.invoke` action. It is excluded
+  from the generated public contract, launches through the existing
+  `process.spawn` handler, and emits `cron.fired` with a process handle or a
+  bounded error. A changed config revision fails explicitly.
 
 ## Dependencies and follow-up
 

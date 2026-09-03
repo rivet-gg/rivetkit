@@ -526,14 +526,16 @@ install the guest project; a non-empty list installs those explicit packages.
 | Action | Core operation |
 | --- | --- |
 | `network.fetch` | buffered request to a VM port |
-| `network.fetchStream.start` | start a bounded streaming response |
-| `network.fetchStream.read` | read the next bounded chunk |
+| `network.fetchStream.start` | start a bounded Core/sidecar streaming response |
+| `network.fetchStream.read` | read the next chunk, capped at 128 KiB |
 | `network.fetchStream.cancel` | release a stream |
 | `network.preview.create` | create a TTL-bound actor gateway token for a VM port |
-| `network.preview.expire` | expire a preview token |
+| `network.preview.expire` | idempotently expire a preview token |
 
-Stream handles are actor-scoped, bounded in number and lifetime, and always
-released on completion, error, disconnect, shutdown, or explicit cancellation.
+Stream handles include the runtime generation and absolute expiration. The
+sidecar owns the bounded stream registry and releases streams on completion,
+error, idle timeout, VM shutdown, or explicit cancellation; the actor does not
+duplicate that registry.
 
 ### agentOS registry software
 
@@ -553,9 +555,9 @@ trusted `Path` source variant.
 
 | Action | Core operation |
 | --- | --- |
-| `cron.schedule` | persist a bounded command schedule |
-| `cron.list` | list command schedules |
-| `cron.cancel` | cancel a schedule |
+| `cron.schedule` | expression, timezone, process-spawn descriptor, config revision | persisted command schedule |
+| `cron.list` | none | bounded command schedules |
+| `cron.cancel` | schedule name | whether a schedule was removed |
 
 The only supported scheduled target is a process execution descriptor. Session
 prompt scheduling is removed. Each persisted schedule records the config
@@ -574,7 +576,7 @@ longer be executed.
 | `terminal.data` | terminal id, sequence, bytes |
 | `terminal.stderr` | terminal id, diagnostic bytes |
 | `terminal.exit` | terminal id, exit status |
-| `cron.fired` | schedule id, process id or typed launch error, timestamp |
+| `cron.fired` | schedule name, process id or typed launch error, timestamp |
 
 Events are live notifications, not the only recovery mechanism. Process and
 terminal consumers recover gaps with `process.readOutput` and

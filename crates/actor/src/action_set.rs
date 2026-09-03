@@ -5,6 +5,7 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 use rivetkit::{Action, ActionEntry, ActionSet, Ctx, Handles};
 
+use crate::cron::{CronCancel, CronInvoke, CronList, CronSchedule};
 use crate::filesystem::{
     FilesystemExists, FilesystemExport, FilesystemListMounts, FilesystemMkdir, FilesystemMove,
     FilesystemReadFile, FilesystemReadFiles, FilesystemReaddir, FilesystemReaddirEntries,
@@ -12,6 +13,10 @@ use crate::filesystem::{
     FilesystemWriteFiles,
 };
 use crate::language::*;
+use crate::network::{
+    NetworkFetch, NetworkFetchStreamCancel, NetworkFetchStreamRead, NetworkFetchStreamStart,
+    NetworkPreviewCreate, NetworkPreviewExpire,
+};
 use crate::process::{
     ProcessCloseStdin, ProcessExec, ProcessExecFile, ProcessGet, ProcessList, ProcessReadOutput,
     ProcessResizePty, ProcessSignal, ProcessSpawn, ProcessTree, ProcessWait, ProcessWriteStdin,
@@ -139,4 +144,14 @@ action_registry!(
     PythonSpawnFile,
     PythonSpawnModule,
     PythonInstall,
+    NetworkFetch,
+    NetworkFetchStreamStart,
+    NetworkFetchStreamRead,
+    NetworkFetchStreamCancel,
+    NetworkPreviewCreate,
+    NetworkPreviewExpire,
+    CronSchedule,
+    CronList,
+    CronCancel,
+    CronInvoke,
 );

@@ -77,7 +77,7 @@ pub use process::{
     SpawnStdio, SpawnedProcessInfo, StdinInput, TimingMitigation,
 };
 
-pub use net::{HttpRequest, HttpResponse};
+pub use net::{HttpRequest, HttpResponse, HttpStreamChunk, HttpStreamHead};
 
 pub use fs::{
     BatchReadResult, BatchWriteEntry, BatchWriteResult, DirEntry, DirEntryType,

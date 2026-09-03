@@ -104,3 +104,18 @@ pub struct TerminalExitEvent {
 impl Event for TerminalExitEvent {
     const NAME: &'static str = "terminal.exit";
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CronFiredEvent {
+    pub schedule_name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub process: Option<ActorProcessId>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    pub fired_at_ms: i64,
+}
+
+impl Event for CronFiredEvent {
+    const NAME: &'static str = "cron.fired";
+}

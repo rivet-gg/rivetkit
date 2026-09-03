@@ -3,9 +3,11 @@
 mod action_set;
 mod actions;
 mod config;
+mod cron;
 mod events;
 mod filesystem;
 mod language;
+mod network;
 mod process;
 mod runtime;
 mod store;
@@ -16,7 +18,7 @@ use std::sync::Arc;
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
 use rivetkit::prelude::*;
-use rivetkit::{action, Actor, ActorConfig, Registry};
+use rivetkit::{action, Actor, ActorConfig, Registry, Request, Response};
 use serde::{Deserialize, Serialize};
 use tokio::sync::{Mutex, OwnedSemaphorePermit, Semaphore};
 
@@ -27,9 +29,10 @@ pub use config::{
     HostedFilesystemMount, HostedFilesystemMountInput, HostedRootFilesystem,
     HostedRootFilesystemInput,
 };
+pub use cron::*;
 pub use events::{
-    ProcessExitEvent, ProcessOutputEvent, RuntimeBooted, RuntimeLimitWarning, RuntimeShutdown,
-    TerminalDataEvent, TerminalExitEvent, TerminalStderrEvent,
+    CronFiredEvent, ProcessExitEvent, ProcessOutputEvent, RuntimeBooted, RuntimeLimitWarning,
+    RuntimeShutdown, TerminalDataEvent, TerminalExitEvent, TerminalStderrEvent,
 };
 pub use filesystem::{
     FileBytes, FileContentInput, FilesystemDirectoryEntry, FilesystemExists, FilesystemExport,
@@ -39,6 +42,7 @@ pub use filesystem::{
     FilesystemWriteFiles, FilesystemWriteResult,
 };
 pub use language::*;
+pub use network::*;
 pub use process::*;
 pub use runtime::{
     CoreSidecarStatus, PackageStartupStatus, RuntimeIssue, RuntimeLifecycleState, RuntimeStatus,
@@ -130,6 +134,7 @@ impl Actor for AgentOsActor {
         TerminalDataEvent,
         TerminalStderrEvent,
         TerminalExitEvent,
+        CronFiredEvent,
     );
     type Queue = ();
     type ConnParams = ();
@@ -196,6 +201,10 @@ impl Actor for AgentOsActor {
             })?;
         }
         Ok(())
+    }
+
+    async fn on_fetch(self: Arc<Self>, ctx: Ctx<Self>, request: Request) -> Result<Response> {
+        network::handle_preview_fetch(self, ctx, request).await
     }
 
     async fn on_sleep(self: Arc<Self>, ctx: Ctx<Self>) -> Result<()> {
@@ -329,6 +338,16 @@ mod tests {
                 "python.spawnFile",
                 "python.spawnModule",
                 "python.install",
+                "network.fetch",
+                "network.fetchStream.start",
+                "network.fetchStream.read",
+                "network.fetchStream.cancel",
+                "network.preview.create",
+                "network.preview.expire",
+                "cron.schedule",
+                "cron.list",
+                "cron.cancel",
+                "__agentos.cron.invoke",
             ]
         );
         assert_eq!(
@@ -345,6 +364,7 @@ mod tests {
                 "terminal.data",
                 "terminal.stderr",
                 "terminal.exit",
+                "cron.fired",
             ]
         );
     }
