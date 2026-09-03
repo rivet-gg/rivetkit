@@ -438,32 +438,32 @@ become a bounded chunk stream before release.
 
 ### Processes
 
-| Action | Core operation |
-| --- | --- |
-| `process.exec` | shell command execution |
-| `process.execFile` | argv execution without shell parsing |
-| `process.spawn` | long-lived process creation |
-| `process.get` | process metadata lookup |
-| `process.list` | process enumeration |
-| `process.tree` | process tree enumeration |
-| `process.wait` | wait for exit |
-| `process.signal` | deliver a signal |
-| `process.writeStdin` | write bounded stdin bytes |
-| `process.closeStdin` | close stdin |
-| `process.resizePty` | resize a process PTY |
-| `process.readOutput` | read bounded sequenced output replay |
+| Action | Input | Result |
+| --- | --- | --- |
+| `process.exec` | `{ command, options? }` | captured result |
+| `process.execFile` | `{ command, args?, options? }` | captured result |
+| `process.spawn` | `{ command, args?, options? }` | generation-scoped process id |
+| `process.get` | process id | process metadata |
+| `process.list` | none | tracked process metadata |
+| `process.tree` | none | generation plus process forest |
+| `process.wait` | process id | exit result |
+| `process.signal` | `{ process, signal }` | none |
+| `process.writeStdin` | `{ process, data }` | none |
+| `process.closeStdin` | process id | none |
+| `process.resizePty` | `{ process, cols, rows }` | none |
+| `process.readOutput` | `{ process, after?, maxEvents?, maxBytes? }` | sequenced replay |
 
 ### Terminals
 
-| Action | Core operation |
-| --- | --- |
-| `terminal.open` | open a PTY-backed shell |
-| `terminal.list` | enumerate actor-owned live terminals without booting |
-| `terminal.snapshot` | obtain bounded screen or raw replay state |
-| `terminal.write` | write bounded terminal input |
-| `terminal.resize` | resize terminal and replay emulator |
-| `terminal.wait` | wait for exit |
-| `terminal.close` | close terminal |
+| Action | Input | Result |
+| --- | --- | --- |
+| `terminal.open` | `{ options? }` | generation-scoped terminal id |
+| `terminal.list` | none | terminal metadata |
+| `terminal.snapshot` | `{ terminal, after?, maxBytes? }` | ordered raw PTY replay |
+| `terminal.write` | `{ terminal, data }` | none |
+| `terminal.resize` | `{ terminal, cols, rows }` | none |
+| `terminal.wait` | terminal id | exit result |
+| `terminal.close` | terminal id | none |
 
 ### Execution contexts
 

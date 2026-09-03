@@ -30,7 +30,7 @@ pub enum FileContentInput {
 }
 
 impl FileContentInput {
-    fn byte_len(&self) -> usize {
+    pub(crate) fn byte_len(&self) -> usize {
         match self {
             Self::Text(value) => value.len(),
             Self::Bytes(value) => value.len(),

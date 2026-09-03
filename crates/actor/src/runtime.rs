@@ -265,6 +265,26 @@ impl RuntimeController {
             .clone()
             .ok_or_else(|| anyhow!("runtime_not_ready: ready runtime has no Core VM"))
     }
+
+    pub(crate) async fn vm_at_generation(&self, generation: u64) -> Result<AgentOs> {
+        let state = self.state.lock().await;
+        if state.generation != generation {
+            return Err(anyhow!(
+                "stale_runtime_handle: handle generation {generation} does not match current generation {}",
+                state.generation
+            ));
+        }
+        if state.lifecycle != RuntimeLifecycleState::Ready {
+            return Err(anyhow!(
+                "runtime_not_ready: agentOS runtime is {:?}; inspect runtime.status and retry",
+                state.lifecycle
+            ));
+        }
+        state
+            .vm
+            .clone()
+            .ok_or_else(|| anyhow!("runtime_not_ready: ready runtime has no Core VM"))
+    }
 }
 
 fn snapshot(state: &RuntimeState) -> RuntimeStatus {

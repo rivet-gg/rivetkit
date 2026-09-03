@@ -11,6 +11,12 @@ use crate::filesystem::{
     FilesystemReaddirRecursive, FilesystemRemove, FilesystemStat, FilesystemWriteFile,
     FilesystemWriteFiles,
 };
+use crate::process::{
+    ProcessCloseStdin, ProcessExec, ProcessExecFile, ProcessGet, ProcessList, ProcessReadOutput,
+    ProcessResizePty, ProcessSignal, ProcessSpawn, ProcessTree, ProcessWait, ProcessWriteStdin,
+    TerminalClose, TerminalList, TerminalOpen, TerminalResize, TerminalSnapshot, TerminalWait,
+    TerminalWrite,
+};
 use crate::{AgentOsActor, ConfigGet, RuntimeRestart, RuntimeStatusGet};
 
 type DispatchFuture = Pin<Box<dyn Future<Output = Result<Vec<u8>>> + Send>>;
@@ -85,4 +91,23 @@ action_registry!(
     FilesystemRemove,
     FilesystemExport,
     FilesystemListMounts,
+    ProcessExec,
+    ProcessExecFile,
+    ProcessSpawn,
+    ProcessGet,
+    ProcessList,
+    ProcessTree,
+    ProcessWait,
+    ProcessSignal,
+    ProcessWriteStdin,
+    ProcessCloseStdin,
+    ProcessResizePty,
+    ProcessReadOutput,
+    TerminalOpen,
+    TerminalList,
+    TerminalSnapshot,
+    TerminalWrite,
+    TerminalResize,
+    TerminalWait,
+    TerminalClose,
 );

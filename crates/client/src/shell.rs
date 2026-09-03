@@ -15,8 +15,9 @@
 //! channel-specific diagnostic tap (`on_shell_stderr` + [`OpenShellOptions::on_stderr`]); terminal
 //! renderers consume only `data` so prompts and control sequences are neither reordered nor doubled.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 
 use anyhow::Result;
 use uuid::Uuid;
@@ -25,13 +26,17 @@ use agentos_sidecar_client::wire::{self, EventPayload, StreamChannel};
 
 use crate::agent_os::{AgentOs, ShellEntry, TerminalEntry};
 use crate::error::ClientError;
-use crate::process::{install_output_callback, OutputCallback, ProcessStatus, StdinInput};
+use crate::process::{
+    install_output_callback, OutputCallback, ProcessStatus, ProcessStream, StdinInput,
+};
 
 /// Channel capacity for a shell's ordered terminal-data and diagnostic-stderr broadcasts.
 const SHELL_DATA_CHANNEL_CAPACITY: usize = 1024;
 
 /// Maximum active or spawning terminals created by `connect_terminal` per VM.
 const TERMINAL_LIMIT: usize = 1024;
+const TERMINAL_REPLAY_BYTE_LIMIT: usize = 1024 * 1024;
+const TERMINAL_SNAPSHOT_BYTE_LIMIT: usize = 768 * 1024;
 
 /// Default shell command used when [`OpenShellOptions::command`] is omitted (matches the kernel's
 /// PTY-backed `sh`).
@@ -80,6 +85,121 @@ pub struct ShellData {
 pub struct ShellExit {
     pub shell_id: String,
     pub exit_code: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalInfo {
+    pub shell_id: String,
+    pub pid: u32,
+    pub running: bool,
+    pub exit_code: Option<i32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalOutputEvent {
+    pub sequence: u64,
+    pub stream: ProcessStream,
+    pub data: Vec<u8>,
+    pub timestamp_ms: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalSnapshot {
+    pub shell_id: String,
+    pub pid: u32,
+    pub events: Vec<TerminalOutputEvent>,
+    pub next_cursor: Option<u64>,
+    pub has_more: bool,
+    pub truncated: bool,
+}
+
+pub(crate) struct TerminalReplayBuffer {
+    events: VecDeque<TerminalOutputEvent>,
+    retained_bytes: usize,
+    next_sequence: u64,
+    truncated_before: Option<u64>,
+}
+
+impl TerminalReplayBuffer {
+    fn new() -> Self {
+        Self {
+            events: VecDeque::new(),
+            retained_bytes: 0,
+            next_sequence: 0,
+            truncated_before: None,
+        }
+    }
+
+    fn push(&mut self, stream: ProcessStream, data: &[u8]) -> TerminalOutputEvent {
+        let sequence = self.next_sequence;
+        self.next_sequence = self.next_sequence.saturating_add(1);
+        let event = TerminalOutputEvent {
+            sequence,
+            stream,
+            data: data.to_vec(),
+            timestamp_ms: epoch_ms_now(),
+        };
+        if data.len() > TERMINAL_REPLAY_BYTE_LIMIT {
+            self.truncated_before = Some(sequence);
+            return event;
+        }
+        self.events.push_back(event.clone());
+        self.retained_bytes = self.retained_bytes.saturating_add(data.len());
+        while self.retained_bytes > TERMINAL_REPLAY_BYTE_LIMIT {
+            if let Some(removed) = self.events.pop_front() {
+                self.retained_bytes = self.retained_bytes.saturating_sub(removed.data.len());
+                self.truncated_before = Some(removed.sequence);
+            } else {
+                break;
+            }
+        }
+        event
+    }
+
+    fn snapshot(
+        &self,
+        shell_id: String,
+        pid: u32,
+        after: Option<u64>,
+        max_bytes: usize,
+    ) -> TerminalSnapshot {
+        let cursor = after;
+        let include_all = after.is_none();
+        let after = after.unwrap_or(0);
+        let mut bytes = 0usize;
+        let mut events = Vec::new();
+        let mut has_more = false;
+        for event in &self.events {
+            if !include_all && event.sequence <= after {
+                continue;
+            }
+            if bytes.saturating_add(event.data.len()) > max_bytes {
+                has_more = true;
+                break;
+            }
+            bytes += event.data.len();
+            events.push(event.clone());
+        }
+        let requested_next = if include_all {
+            0
+        } else {
+            after.saturating_add(1)
+        };
+        let next_cursor = events.last().map(|event| event.sequence).or(cursor);
+        TerminalSnapshot {
+            shell_id,
+            pid,
+            events,
+            next_cursor,
+            has_more,
+            truncated: self
+                .truncated_before
+                .is_some_and(|sequence| sequence >= requested_next),
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -246,10 +366,12 @@ impl AgentOs {
 
         let (data_tx, _) = tokio::sync::broadcast::channel(SHELL_DATA_CHANNEL_CAPACITY);
         let (stderr_tx, _) = tokio::sync::broadcast::channel(SHELL_DATA_CHANNEL_CAPACITY);
+        let (event_tx, _) = tokio::sync::broadcast::channel(SHELL_DATA_CHANNEL_CAPACITY);
         // Spawn-readiness gate: write/close await this before issuing their wire request.
         let (spawned_tx, _) = tokio::sync::watch::channel(false);
         // Exit-code channel backing `wait_shell`.
         let (exit_tx, _) = tokio::sync::watch::channel(None::<i32>);
+        let replay = Arc::new(parking_lot::Mutex::new(TerminalReplayBuffer::new()));
 
         // Register the entry up front so write/resize/close can address it immediately, exactly like
         // the TS map insert before the handle's async work settles.
@@ -257,9 +379,11 @@ impl AgentOs {
             pid: 0,
             data_tx: data_tx.clone(),
             stderr_tx: stderr_tx.clone(),
+            event_tx: event_tx.clone(),
             process_id: process_id.clone(),
             spawned_tx: spawned_tx.clone(),
             exit_tx: exit_tx.clone(),
+            replay: replay.clone(),
         };
         // `insert` fails only if the key already exists; the monotonic counter guarantees it cannot.
         let _ = inner.shells.insert(shell_id.clone(), entry);
@@ -350,6 +474,12 @@ impl AgentOs {
                         if output.process_id != route_process_id {
                             continue;
                         }
+                        let stream = match output.channel {
+                            StreamChannel::Stdout => ProcessStream::Stdout,
+                            StreamChannel::Stderr => ProcessStream::Stderr,
+                        };
+                        let replay_event = replay.lock().push(stream, &output.chunk);
+                        let _ = event_tx.send(replay_event);
                         // Publish every PTY chunk from this single wire-event consumer so terminal
                         // control sequences retain their original stdout/stderr order.
                         let _ = data_tx.send(output.chunk.clone());
@@ -569,6 +699,46 @@ impl AgentOs {
         Ok(())
     }
 
+    /// List actor-addressable shells currently retained by Core.
+    pub fn list_shells(&self) -> Vec<TerminalInfo> {
+        let mut shells = Vec::new();
+        self.inner().shells.scan(|shell_id, entry| {
+            let exit_code = *entry.exit_tx.borrow();
+            shells.push(TerminalInfo {
+                shell_id: shell_id.clone(),
+                pid: entry.pid,
+                running: exit_code.is_none(),
+                exit_code,
+            });
+        });
+        shells.sort_by(|left, right| left.shell_id.cmp(&right.shell_id));
+        shells
+    }
+
+    /// Read a bounded raw-byte terminal replay. Screen rendering is a client concern.
+    pub fn snapshot_shell(
+        &self,
+        shell_id: &str,
+        after: Option<u64>,
+        max_bytes: Option<usize>,
+    ) -> std::result::Result<TerminalSnapshot, ClientError> {
+        let max_bytes = max_bytes.unwrap_or(TERMINAL_SNAPSHOT_BYTE_LIMIT);
+        if max_bytes == 0 || max_bytes > TERMINAL_SNAPSHOT_BYTE_LIMIT {
+            return Err(ClientError::Sidecar(format!(
+                "terminal snapshot max_bytes must be between 1 and {TERMINAL_SNAPSHOT_BYTE_LIMIT}"
+            )));
+        }
+        self.inner()
+            .shells
+            .read(shell_id, |_, entry| {
+                entry
+                    .replay
+                    .lock()
+                    .snapshot(shell_id.to_owned(), entry.pid, after, max_bytes)
+            })
+            .ok_or_else(|| ClientError::ShellNotFound(shell_id.to_owned()))
+    }
+
     /// Write to a shell and AWAIT the wire write. Same routing as [`Self::write_shell`], but the
     /// caller observes wire failures instead of a fire-and-forget warn — used by the actor plugin's
     /// `writeShell` action so a failed write rejects the action.
@@ -618,6 +788,34 @@ impl AgentOs {
                         data,
                     }),
                     Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => return,
+                }
+            }
+        });
+        Ok(crate::stream::Subscription::new(move || task.abort()))
+    }
+
+    /// Subscribe to sequenced terminal output retained by Core.
+    pub fn on_shell_output(
+        &self,
+        shell_id: &str,
+        mut handler: impl FnMut(TerminalOutputEvent) + Send + 'static,
+    ) -> std::result::Result<crate::stream::Subscription, ClientError> {
+        let mut rx = self
+            .inner()
+            .shells
+            .read(shell_id, |_, entry| entry.event_tx.subscribe())
+            .ok_or_else(|| ClientError::ShellNotFound(shell_id.to_owned()))?;
+        let task = tokio::spawn(async move {
+            loop {
+                match rx.recv().await {
+                    Ok(event) => handler(event),
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(skipped)) => {
+                        tracing::warn!(
+                            skipped,
+                            "terminal output subscriber lagged; recover with snapshot_shell"
+                        );
+                    }
                     Err(tokio::sync::broadcast::error::RecvError::Closed) => return,
                 }
             }
@@ -716,6 +914,35 @@ impl AgentOs {
         Ok(())
     }
 
+    /// Resize a shell and wait for the sidecar acknowledgement.
+    pub async fn resize_shell_awaited(
+        &self,
+        shell_id: &str,
+        cols: u16,
+        rows: u16,
+    ) -> std::result::Result<(), ClientError> {
+        let (process_id, spawned_rx) = self.shell_wire_handle(shell_id)?;
+        wait_for_spawn(spawned_rx).await;
+        let response = self
+            .transport()
+            .request_wire(
+                self.vm_ownership(),
+                wire::RequestPayload::ResizePtyRequest(wire::ResizePtyRequest {
+                    process_id,
+                    cols,
+                    rows,
+                }),
+            )
+            .await?;
+        match response {
+            wire::ResponsePayload::PtyResizedResponse(_) => Ok(()),
+            wire::ResponsePayload::RejectedResponse(rejected) => Err(rejected_to_error(rejected)),
+            other => Err(ClientError::Sidecar(format!(
+                "resize shell: unexpected response {other:?}"
+            ))),
+        }
+    }
+
     /// Wait for a shell to exit and return its process exit code (TS `waitShell`). Resolves
     /// immediately for a shell that already exited within the bounded retention window. Errors with
     /// [`ClientError::ShellNotFound`] for an unknown id.
@@ -778,6 +1005,33 @@ impl AgentOs {
         Ok(())
     }
 
+    /// Close a shell and wait for signal delivery to be acknowledged.
+    pub async fn close_shell_awaited(
+        &self,
+        shell_id: &str,
+    ) -> std::result::Result<(), ClientError> {
+        let (process_id, spawned_rx) = self.shell_wire_handle(shell_id)?;
+        self.inner().shells.remove(shell_id);
+        wait_for_spawn(spawned_rx).await;
+        let response = self
+            .transport()
+            .request_wire(
+                self.vm_ownership(),
+                wire::RequestPayload::KillProcessRequest(wire::KillProcessRequest {
+                    process_id,
+                    signal: String::from("SIGTERM"),
+                }),
+            )
+            .await?;
+        match response {
+            wire::ResponsePayload::ProcessKilledResponse(_) => Ok(()),
+            wire::ResponsePayload::RejectedResponse(rejected) => Err(rejected_to_error(rejected)),
+            other => Err(ClientError::Sidecar(format!(
+                "close shell: unexpected response {other:?}"
+            ))),
+        }
+    }
+
     /// Look up the wire-side `process_id` and the spawn-readiness receiver for a shell id, or
     /// [`ClientError::ShellNotFound`].
     fn shell_wire_handle(
@@ -791,6 +1045,14 @@ impl AgentOs {
             })
             .ok_or_else(|| ClientError::ShellNotFound(shell_id.to_string()))
     }
+}
+
+fn epoch_ms_now() -> i64 {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis().min(i64::MAX as u128) as i64)
+        .unwrap_or(0)
 }
 
 /// Wait until the shell's background `Execute` request has been acked (the readiness gate flips to
@@ -832,5 +1094,20 @@ mod tests {
         assert!(!try_reserve_counter(&counter, 2));
         release_counter(&counter);
         assert!(try_reserve_counter(&counter, 2));
+    }
+
+    #[test]
+    fn terminal_replay_preserves_stream_order_and_cursor() {
+        let mut replay = TerminalReplayBuffer::new();
+        replay.push(ProcessStream::Stdout, b"one");
+        replay.push(ProcessStream::Stderr, b"two");
+
+        let snapshot = replay.snapshot("shell-1".into(), 42, Some(0), 100);
+        assert_eq!(snapshot.events.len(), 1);
+        assert_eq!(snapshot.events[0].sequence, 1);
+        assert_eq!(snapshot.events[0].stream, ProcessStream::Stderr);
+        assert_eq!(snapshot.next_cursor, Some(1));
+        assert!(!snapshot.has_more);
+        assert!(!snapshot.truncated);
     }
 }

@@ -5,6 +5,7 @@ mod actions;
 mod config;
 mod events;
 mod filesystem;
+mod process;
 mod runtime;
 mod store;
 
@@ -25,7 +26,10 @@ pub use config::{
     HostedFilesystemMount, HostedFilesystemMountInput, HostedRootFilesystem,
     HostedRootFilesystemInput,
 };
-pub use events::{RuntimeBooted, RuntimeLimitWarning, RuntimeShutdown};
+pub use events::{
+    ProcessExitEvent, ProcessOutputEvent, RuntimeBooted, RuntimeLimitWarning, RuntimeShutdown,
+    TerminalDataEvent, TerminalExitEvent, TerminalStderrEvent,
+};
 pub use filesystem::{
     FileBytes, FileContentInput, FilesystemDirectoryEntry, FilesystemExists, FilesystemExport,
     FilesystemListMounts, FilesystemMkdir, FilesystemMove, FilesystemReadFile, FilesystemReadFiles,
@@ -33,6 +37,7 @@ pub use filesystem::{
     FilesystemRemove, FilesystemStat, FilesystemWriteEntry, FilesystemWriteFile,
     FilesystemWriteFiles, FilesystemWriteResult,
 };
+pub use process::*;
 pub use runtime::{
     CoreSidecarStatus, PackageStartupStatus, RuntimeIssue, RuntimeLifecycleState, RuntimeStatus,
 };
@@ -114,7 +119,16 @@ impl Actor for AgentOsActor {
     type State = AgentOsActorState;
     type Input = AgentOsActorCreateInput;
     type Actions = AgentOsActionSet;
-    type Events = (RuntimeBooted, RuntimeShutdown, RuntimeLimitWarning);
+    type Events = (
+        RuntimeBooted,
+        RuntimeShutdown,
+        RuntimeLimitWarning,
+        ProcessOutputEvent,
+        ProcessExitEvent,
+        TerminalDataEvent,
+        TerminalStderrEvent,
+        TerminalExitEvent,
+    );
     type Queue = ();
     type ConnParams = ();
     type ConnState = ();
@@ -266,6 +280,25 @@ mod tests {
                 "filesystem.remove",
                 "filesystem.export",
                 "filesystem.listMounts",
+                "process.exec",
+                "process.execFile",
+                "process.spawn",
+                "process.get",
+                "process.list",
+                "process.tree",
+                "process.wait",
+                "process.signal",
+                "process.writeStdin",
+                "process.closeStdin",
+                "process.resizePty",
+                "process.readOutput",
+                "terminal.open",
+                "terminal.list",
+                "terminal.snapshot",
+                "terminal.write",
+                "terminal.resize",
+                "terminal.wait",
+                "terminal.close",
             ]
         );
         assert_eq!(
@@ -273,7 +306,16 @@ mod tests {
                 .into_iter()
                 .map(|entry| entry.name)
                 .collect::<Vec<_>>(),
-            ["runtime.booted", "runtime.shutdown", "runtime.limitWarning"]
+            [
+                "runtime.booted",
+                "runtime.shutdown",
+                "runtime.limitWarning",
+                "process.output",
+                "process.exit",
+                "terminal.data",
+                "terminal.stderr",
+                "terminal.exit",
+            ]
         );
     }
 }

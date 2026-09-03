@@ -7,8 +7,9 @@
 //! back `spawn` + the stdin/stdout/stderr/exit subscriptions + `wait/list/get/stop/kill`; the kernel
 //! process table backs `exec`, `all_processes`, `process_tree`.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 use std::sync::atomic::Ordering;
+use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use scc::HashMap as SccHashMap;
@@ -34,6 +35,10 @@ const OBSERVED_PROCESS_TIME_LIMIT: usize = 4096;
 
 /// Maximum bytes captured by `exec` across stdout and stderr.
 const EXEC_OUTPUT_CAPTURE_LIMIT_BYTES: usize = 16 * 1024 * 1024;
+const PROCESS_OUTPUT_REPLAY_EVENT_LIMIT: usize = 1_024;
+const PROCESS_OUTPUT_REPLAY_BYTE_LIMIT: usize = 1024 * 1024;
+const PROCESS_OUTPUT_REPLAY_PAGE_EVENT_LIMIT: usize = 256;
+const PROCESS_OUTPUT_REPLAY_PAGE_BYTE_LIMIT: usize = 768 * 1024;
 
 /// Default guest working directory for `exec`/`spawn`, matching the TS sidecar client.
 pub(crate) const DEFAULT_EXEC_CWD: &str = "/workspace";
@@ -128,6 +133,8 @@ pub struct SpawnOptions {
     pub stdout_fd: Option<i32>,
     pub stderr_fd: Option<i32>,
     pub stream_stdin: Option<bool>,
+    /// Retain a bounded sequenced output replay in Core.
+    pub retain_output: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -142,6 +149,123 @@ pub struct ProcessOutput {
     pub pid: u32,
     pub stream: ProcessStream,
     pub data: Vec<u8>,
+    pub sequence: Option<u64>,
+    #[serde(rename = "timestampMs")]
+    pub timestamp_ms: Option<i64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ProcessOutputEvent {
+    pub pid: u32,
+    pub sequence: u64,
+    pub stream: ProcessStream,
+    pub data: Vec<u8>,
+    #[serde(rename = "timestampMs")]
+    pub timestamp_ms: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ProcessOutputReplay {
+    pub pid: u32,
+    pub events: Vec<ProcessOutputEvent>,
+    #[serde(rename = "nextCursor")]
+    pub next_cursor: Option<u64>,
+    #[serde(rename = "hasMore")]
+    pub has_more: bool,
+    pub truncated: bool,
+}
+
+pub(crate) struct ProcessOutputReplayBuffer {
+    events: VecDeque<ProcessOutputEvent>,
+    retained_bytes: usize,
+    next_sequence: u64,
+    truncated_before: Option<u64>,
+}
+
+impl ProcessOutputReplayBuffer {
+    pub(crate) fn new() -> Self {
+        Self {
+            events: VecDeque::new(),
+            retained_bytes: 0,
+            next_sequence: 0,
+            truncated_before: None,
+        }
+    }
+
+    pub(crate) fn push(
+        &mut self,
+        pid: u32,
+        stream: ProcessStream,
+        data: &[u8],
+    ) -> ProcessOutputEvent {
+        let sequence = self.next_sequence;
+        self.next_sequence = self.next_sequence.saturating_add(1);
+        let event = ProcessOutputEvent {
+            pid,
+            sequence,
+            stream,
+            data: data.to_vec(),
+            timestamp_ms: epoch_ms_now() as i64,
+        };
+        if data.len() > PROCESS_OUTPUT_REPLAY_BYTE_LIMIT {
+            self.truncated_before = Some(sequence);
+            return event;
+        }
+        self.events.push_back(event.clone());
+        self.retained_bytes = self.retained_bytes.saturating_add(data.len());
+        while self.events.len() > PROCESS_OUTPUT_REPLAY_EVENT_LIMIT
+            || self.retained_bytes > PROCESS_OUTPUT_REPLAY_BYTE_LIMIT
+        {
+            if let Some(removed) = self.events.pop_front() {
+                self.retained_bytes = self.retained_bytes.saturating_sub(removed.data.len());
+                self.truncated_before = Some(removed.sequence);
+            } else {
+                break;
+            }
+        }
+        event
+    }
+
+    fn read(
+        &self,
+        pid: u32,
+        after: Option<u64>,
+        max_events: usize,
+        max_bytes: usize,
+    ) -> ProcessOutputReplay {
+        let cursor = after;
+        let after = after.unwrap_or(u64::MAX);
+        let include_all = after == u64::MAX;
+        let mut bytes = 0usize;
+        let mut events = Vec::new();
+        let mut has_more = false;
+        for event in &self.events {
+            if !include_all && event.sequence <= after {
+                continue;
+            }
+            if events.len() == max_events || bytes.saturating_add(event.data.len()) > max_bytes {
+                has_more = true;
+                break;
+            }
+            bytes += event.data.len();
+            events.push(event.clone());
+        }
+        let requested_next = if include_all {
+            0
+        } else {
+            after.saturating_add(1)
+        };
+        let next_cursor = events.last().map(|event| event.sequence).or(cursor);
+        ProcessOutputReplay {
+            pid,
+            events,
+            next_cursor,
+            has_more,
+            truncated: self
+                .truncated_before
+                .is_some_and(|sequence| sequence >= requested_next),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -260,29 +384,12 @@ impl AgentOs {
         // mirrors the TS `runAndCapture` path (`proc.writeStdin(options.stdin); proc.closeStdin()`).
         if let Some(stdin) = options.stdin.take() {
             let chunk = stdin_to_bytes(stdin);
-            let ownership = self.vm_scope();
-            let _ = self
-                .transport()
-                .request_wire(
-                    ownership,
-                    wire::RequestPayload::WriteStdinRequest(wire::WriteStdinRequest {
-                        process_id: process_id.clone(),
-                        chunk,
-                    }),
-                )
-                .await;
+            if let Err(error) = self.write_wire_stdin(&process_id, chunk).await {
+                tracing::warn!(?error, %process_id, "exec stdin write failed");
+            }
         }
-        {
-            let ownership = self.vm_scope();
-            let _ = self
-                .transport()
-                .request_wire(
-                    ownership,
-                    wire::RequestPayload::CloseStdinRequest(wire::CloseStdinRequest {
-                        process_id: process_id.clone(),
-                    }),
-                )
-                .await;
+        if let Err(error) = self.close_wire_stdin(&process_id).await {
+            tracing::warn!(?error, %process_id, "exec stdin close failed");
         }
 
         let mut on_stdout = options.on_stdout.take();
@@ -431,6 +538,9 @@ impl AgentOs {
         // Seeded `None`; filled with the kernel pid once the `Execute` response lands so
         // `all_processes`/`process_tree` can remap the kernel snapshot back to this display pid.
         let (kernel_pid_tx, _) = watch::channel::<Option<u32>>(None);
+        let replay = options
+            .retain_output
+            .then(|| Arc::new(parking_lot::Mutex::new(ProcessOutputReplayBuffer::new())));
 
         let entry = ProcessEntry {
             command: command.to_owned(),
@@ -442,6 +552,7 @@ impl AgentOs {
             process_id: process_id.clone(),
             kernel_pid: kernel_pid_tx.clone(),
             output_tasks: Vec::new(),
+            replay: replay.clone(),
             started_at: epoch_ms_now() as i64,
         };
         // `spawn` is documented as overwriting any prior entry for a freshly allocated pid; the pid
@@ -467,6 +578,7 @@ impl AgentOs {
                 output_tx,
                 exit_tx,
                 kernel_pid_tx,
+                replay,
             )
             .await;
         });
@@ -483,21 +595,23 @@ impl AgentOs {
         let process_id = self.lookup_process_id(pid)?;
         let chunk: Vec<u8> = stdin_to_bytes(data);
         let this = self.clone();
-        // Fire-and-forget: the TS API is synchronous and does not surface a write error.
         tokio::spawn(async move {
-            let ownership = this.vm_scope();
-            let _ = this
-                .transport()
-                .request_wire(
-                    ownership,
-                    wire::RequestPayload::WriteStdinRequest(wire::WriteStdinRequest {
-                        process_id,
-                        chunk,
-                    }),
-                )
-                .await;
+            if let Err(error) = this.write_wire_stdin(&process_id, chunk).await {
+                tracing::warn!(?error, pid, "write_process_stdin failed");
+            }
         });
         Ok(())
+    }
+
+    /// Write stdin and wait for the sidecar acknowledgement.
+    pub async fn write_process_stdin_awaited(
+        &self,
+        pid: u32,
+        data: StdinInput,
+    ) -> std::result::Result<(), ClientError> {
+        let process_id = self.lookup_process_id(pid)?;
+        self.write_wire_stdin(&process_id, stdin_to_bytes(data))
+            .await
     }
 
     /// Close a spawned process's stdin. SYNC. Errors with `ProcessNotFound`.
@@ -505,16 +619,20 @@ impl AgentOs {
         let process_id = self.lookup_process_id(pid)?;
         let this = self.clone();
         tokio::spawn(async move {
-            let ownership = this.vm_scope();
-            let _ = this
-                .transport()
-                .request_wire(
-                    ownership,
-                    wire::RequestPayload::CloseStdinRequest(wire::CloseStdinRequest { process_id }),
-                )
-                .await;
+            if let Err(error) = this.close_wire_stdin(&process_id).await {
+                tracing::warn!(?error, pid, "close_process_stdin failed");
+            }
         });
         Ok(())
+    }
+
+    /// Close stdin and wait for the sidecar acknowledgement.
+    pub async fn close_process_stdin_awaited(
+        &self,
+        pid: u32,
+    ) -> std::result::Result<(), ClientError> {
+        let process_id = self.lookup_process_id(pid)?;
+        self.close_wire_stdin(&process_id).await
     }
 
     /// Subscribe to the unified stdout/stderr event stream for a process.
@@ -532,7 +650,13 @@ impl AgentOs {
             loop {
                 match rx.recv().await {
                     Ok(event) => handler(event),
-                    Err(broadcast::error::RecvError::Lagged(_)) => continue,
+                    Err(broadcast::error::RecvError::Lagged(skipped)) => {
+                        tracing::warn!(
+                            pid,
+                            skipped,
+                            "process output subscriber lagged; recover with read_process_output"
+                        );
+                    }
                     Err(broadcast::error::RecvError::Closed) => return,
                 }
             }
@@ -600,6 +724,42 @@ impl AgentOs {
         Err(ClientError::Sidecar(format!(
             "wait_process: exit channel closed before process {pid} reported an exit code"
         )))
+    }
+
+    /// Read bounded sequenced output retained for a spawned process.
+    pub fn read_process_output(
+        &self,
+        pid: u32,
+        after: Option<u64>,
+        max_events: Option<usize>,
+        max_bytes: Option<usize>,
+    ) -> std::result::Result<ProcessOutputReplay, ClientError> {
+        let max_events = max_events.unwrap_or(PROCESS_OUTPUT_REPLAY_PAGE_EVENT_LIMIT);
+        if max_events == 0 || max_events > PROCESS_OUTPUT_REPLAY_PAGE_EVENT_LIMIT {
+            return Err(ClientError::Sidecar(format!(
+                "process output max_events must be between 1 and {PROCESS_OUTPUT_REPLAY_PAGE_EVENT_LIMIT}"
+            )));
+        }
+        let max_bytes = max_bytes.unwrap_or(PROCESS_OUTPUT_REPLAY_PAGE_BYTE_LIMIT);
+        if max_bytes == 0 || max_bytes > PROCESS_OUTPUT_REPLAY_PAGE_BYTE_LIMIT {
+            return Err(ClientError::Sidecar(format!(
+                "process output max_bytes must be between 1 and {PROCESS_OUTPUT_REPLAY_PAGE_BYTE_LIMIT}"
+            )));
+        }
+        self.inner()
+            .processes
+            .read(&pid, |_, entry| {
+                entry
+                    .replay
+                    .as_ref()
+                    .map(|replay| replay.lock().read(pid, after, max_events, max_bytes))
+            })
+            .ok_or(ClientError::ProcessNotFound(pid))?
+            .ok_or_else(|| {
+                ClientError::Sidecar(format!(
+                    "process {pid} was not spawned with output retention enabled"
+                ))
+            })
     }
 
     /// List SDK-spawned processes only. `running = exit_code.is_none()`.
@@ -868,6 +1028,55 @@ impl AgentOs {
         self.signal_process(pid, "SIGKILL")
     }
 
+    /// Deliver a signal and wait for the sidecar acknowledgement.
+    pub async fn signal_process_awaited(
+        &self,
+        pid: u32,
+        signal: &str,
+    ) -> std::result::Result<(), ClientError> {
+        let (process_id, already_exited) = self
+            .inner()
+            .processes
+            .read(&pid, |_, entry| {
+                (entry.process_id.clone(), entry.exit_tx.borrow().is_some())
+            })
+            .ok_or(ClientError::ProcessNotFound(pid))?;
+        if already_exited {
+            return Ok(());
+        }
+        self.signal_wire_process(&process_id, signal).await
+    }
+
+    /// Resize a spawned process PTY and wait for the sidecar acknowledgement.
+    pub async fn resize_process_pty_awaited(
+        &self,
+        pid: u32,
+        cols: u16,
+        rows: u16,
+    ) -> std::result::Result<(), ClientError> {
+        let process_id = self.lookup_process_id(pid)?;
+        let response = self
+            .transport()
+            .request_wire(
+                self.vm_scope(),
+                wire::RequestPayload::ResizePtyRequest(wire::ResizePtyRequest {
+                    process_id,
+                    cols,
+                    rows,
+                }),
+            )
+            .await?;
+        match response {
+            wire::ResponsePayload::PtyResizedResponse(_) => Ok(()),
+            wire::ResponsePayload::RejectedResponse(rejected) => {
+                Err(ClientError::from_rejection(rejected))
+            }
+            other => Err(ClientError::Sidecar(format!(
+                "resize process PTY: unexpected response {other:?}"
+            ))),
+        }
+    }
+
     // -----------------------------------------------------------------------
     // Internal helpers
     // -----------------------------------------------------------------------
@@ -939,17 +1148,9 @@ impl AgentOs {
         let signal = signal.to_owned();
         let this = self.clone();
         tokio::spawn(async move {
-            let ownership = this.vm_scope();
-            let _ = this
-                .transport()
-                .request_wire(
-                    ownership,
-                    wire::RequestPayload::KillProcessRequest(wire::KillProcessRequest {
-                        process_id,
-                        signal,
-                    }),
-                )
-                .await;
+            if let Err(error) = this.signal_wire_process(&process_id, &signal).await {
+                tracing::warn!(?error, %process_id, %signal, "kill_wire_process failed");
+            }
         });
     }
 
@@ -969,19 +1170,84 @@ impl AgentOs {
         let signal = signal.to_owned();
         let this = self.clone();
         tokio::spawn(async move {
-            let ownership = this.vm_scope();
-            let _ = this
-                .transport()
-                .request_wire(
-                    ownership,
-                    wire::RequestPayload::KillProcessRequest(wire::KillProcessRequest {
-                        process_id,
-                        signal,
-                    }),
-                )
-                .await;
+            if let Err(error) = this.signal_wire_process(&process_id, &signal).await {
+                tracing::warn!(?error, pid, %signal, "signal_process failed");
+            }
         });
         Ok(())
+    }
+
+    async fn write_wire_stdin(
+        &self,
+        process_id: &str,
+        chunk: Vec<u8>,
+    ) -> std::result::Result<(), ClientError> {
+        let response = self
+            .transport()
+            .request_wire(
+                self.vm_scope(),
+                wire::RequestPayload::WriteStdinRequest(wire::WriteStdinRequest {
+                    process_id: process_id.to_owned(),
+                    chunk,
+                }),
+            )
+            .await?;
+        match response {
+            wire::ResponsePayload::StdinWrittenResponse(_) => Ok(()),
+            wire::ResponsePayload::RejectedResponse(rejected) => {
+                Err(ClientError::from_rejection(rejected))
+            }
+            other => Err(ClientError::Sidecar(format!(
+                "write process stdin: unexpected response {other:?}"
+            ))),
+        }
+    }
+
+    async fn close_wire_stdin(&self, process_id: &str) -> std::result::Result<(), ClientError> {
+        let response = self
+            .transport()
+            .request_wire(
+                self.vm_scope(),
+                wire::RequestPayload::CloseStdinRequest(wire::CloseStdinRequest {
+                    process_id: process_id.to_owned(),
+                }),
+            )
+            .await?;
+        match response {
+            wire::ResponsePayload::StdinClosedResponse(_) => Ok(()),
+            wire::ResponsePayload::RejectedResponse(rejected) => {
+                Err(ClientError::from_rejection(rejected))
+            }
+            other => Err(ClientError::Sidecar(format!(
+                "close process stdin: unexpected response {other:?}"
+            ))),
+        }
+    }
+
+    async fn signal_wire_process(
+        &self,
+        process_id: &str,
+        signal: &str,
+    ) -> std::result::Result<(), ClientError> {
+        let response = self
+            .transport()
+            .request_wire(
+                self.vm_scope(),
+                wire::RequestPayload::KillProcessRequest(wire::KillProcessRequest {
+                    process_id: process_id.to_owned(),
+                    signal: signal.to_owned(),
+                }),
+            )
+            .await?;
+        match response {
+            wire::ResponsePayload::ProcessKilledResponse(_) => Ok(()),
+            wire::ResponsePayload::RejectedResponse(rejected) => {
+                Err(ClientError::from_rejection(rejected))
+            }
+            other => Err(ClientError::Sidecar(format!(
+                "signal process: unexpected response {other:?}"
+            ))),
+        }
     }
 
     fn process_registry_len_locked(&self) -> usize {
@@ -1044,6 +1310,7 @@ impl AgentOs {
         output_tx: broadcast::Sender<ProcessOutput>,
         exit_tx: watch::Sender<Option<i32>>,
         kernel_pid_tx: watch::Sender<Option<u32>>,
+        replay: Option<Arc<parking_lot::Mutex<ProcessOutputReplayBuffer>>>,
     ) {
         match self
             .send_execute(
@@ -1068,11 +1335,16 @@ impl AgentOs {
                 // catch -> stderr handlers + `finishProcess(entry, 1)`).
                 let message = format!("{error}\n");
                 let bytes = message.into_bytes();
+                let replay_event = replay
+                    .as_ref()
+                    .map(|replay| replay.lock().push(pid, ProcessStream::Stderr, &bytes));
                 let _ = stderr_tx.send(bytes.clone());
                 let _ = output_tx.send(ProcessOutput {
                     pid,
                     stream: ProcessStream::Stderr,
                     data: bytes,
+                    sequence: replay_event.as_ref().map(|event| event.sequence),
+                    timestamp_ms: replay_event.as_ref().map(|event| event.timestamp_ms),
                 });
                 tracing::error!(?error, pid, %process_id, "spawn: Execute request failed");
                 let _ = exit_tx.send(Some(1));
@@ -1097,13 +1369,19 @@ impl AgentOs {
             match payload {
                 EventPayload::ProcessOutputEvent(output) if output.process_id == process_id => {
                     let bytes = output.chunk;
+                    let stream = match output.channel {
+                        StreamChannel::Stdout => ProcessStream::Stdout,
+                        StreamChannel::Stderr => ProcessStream::Stderr,
+                    };
+                    let replay_event = replay
+                        .as_ref()
+                        .map(|replay| replay.lock().push(pid, stream.clone(), &bytes));
                     let _ = output_tx.send(ProcessOutput {
                         pid,
-                        stream: match output.channel {
-                            StreamChannel::Stdout => ProcessStream::Stdout,
-                            StreamChannel::Stderr => ProcessStream::Stderr,
-                        },
+                        stream,
                         data: bytes.clone(),
+                        sequence: replay_event.as_ref().map(|event| event.sequence),
+                        timestamp_ms: replay_event.as_ref().map(|event| event.timestamp_ms),
                     });
                     match output.channel {
                         StreamChannel::Stdout => {
@@ -1305,7 +1583,8 @@ mod tests {
     use super::{
         append_exec_output, drain_process_output_tasks, exited_pids_to_prune,
         install_output_callback, prune_string_f64_map, ExecOptions, OutputCallback,
-        DEFAULT_EXEC_CWD, EXEC_OUTPUT_CAPTURE_LIMIT_BYTES,
+        ProcessOutputReplayBuffer, ProcessStream, DEFAULT_EXEC_CWD,
+        EXEC_OUTPUT_CAPTURE_LIMIT_BYTES, PROCESS_OUTPUT_REPLAY_BYTE_LIMIT,
     };
     use crate::agent_os::ProcessEntry;
     use scc::HashMap as SccHashMap;
@@ -1344,6 +1623,7 @@ mod tests {
             process_id: "proc-test".to_string(),
             kernel_pid: kernel_pid_tx,
             output_tasks: vec![task],
+            replay: None,
             started_at: 0,
         };
         let _ = processes.insert(1, entry);
@@ -1402,6 +1682,7 @@ mod tests {
             process_id: "proc-test".to_string(),
             kernel_pid: kernel_pid_tx,
             output_tasks,
+            replay: None,
             started_at: 0,
         };
 
@@ -1479,5 +1760,27 @@ mod tests {
         assert!(map.read("a", |_, _| ()).is_none());
         assert!(map.read("b", |_, _| ()).is_some());
         assert!(map.read("c", |_, _| ()).is_some());
+    }
+
+    #[test]
+    fn process_output_replay_is_sequenced_and_byte_bounded() {
+        let mut replay = ProcessOutputReplayBuffer::new();
+        let first = replay.push(7, ProcessStream::Stdout, b"one");
+        let second = replay.push(7, ProcessStream::Stderr, b"two");
+        assert_eq!((first.sequence, second.sequence), (0, 1));
+
+        let page = replay.read(7, Some(0), 10, 100);
+        assert_eq!(page.events.len(), 1);
+        assert_eq!(page.events[0].data, b"two");
+        assert_eq!(page.next_cursor, Some(1));
+        assert!(!page.has_more);
+        assert!(!page.truncated);
+
+        let oversized = vec![0; PROCESS_OUTPUT_REPLAY_BYTE_LIMIT + 1];
+        let skipped = replay.push(7, ProcessStream::Stdout, &oversized);
+        let page = replay.read(7, Some(1), 10, 100);
+        assert_eq!(skipped.sequence, 2);
+        assert!(page.events.is_empty());
+        assert!(page.truncated);
     }
 }

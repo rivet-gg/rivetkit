@@ -72,9 +72,9 @@ pub use config::{
 };
 
 pub use process::{
-    ExecOptions, ExecResult, ProcessExit, ProcessInfo, ProcessOutput, ProcessStatus, ProcessStream,
-    ProcessTreeNode, SpawnHandle, SpawnOptions, SpawnStdio, SpawnedProcessInfo, StdinInput,
-    TimingMitigation,
+    ExecOptions, ExecResult, ProcessExit, ProcessInfo, ProcessOutput, ProcessOutputEvent,
+    ProcessOutputReplay, ProcessStatus, ProcessStream, ProcessTreeNode, SpawnHandle, SpawnOptions,
+    SpawnStdio, SpawnedProcessInfo, StdinInput, TimingMitigation,
 };
 
 pub use net::{HttpRequest, HttpResponse};
@@ -87,7 +87,10 @@ pub use fs::{
     VirtualDirEntry, VirtualFileSystem, VirtualStat,
 };
 
-pub use shell::{ConnectTerminalOptions, OpenShellOptions, ShellData, ShellExit, ShellHandle};
+pub use shell::{
+    ConnectTerminalOptions, OpenShellOptions, ShellData, ShellExit, ShellHandle, TerminalInfo,
+    TerminalOutputEvent, TerminalSnapshot,
+};
 
 pub use cron::{
     CronAction, CronActionInfo, CronEvent, CronJobHandle, CronJobInfo, CronJobOptions, CronManager,

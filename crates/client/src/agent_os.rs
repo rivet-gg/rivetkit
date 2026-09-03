@@ -57,6 +57,9 @@ pub(crate) struct ProcessEntry {
     /// The entry retains its own `stdout_tx`/`stderr_tx` clones for late subscribers, so these tasks
     /// never observe the broadcast `Closed`; `shutdown` aborts them when draining the registry.
     pub output_tasks: Vec<JoinHandle<()>>,
+    /// Optional bounded output replay owned by Core. Hosted actor spawns enable
+    /// this so dropped live events can be recovered without actor-owned state.
+    pub replay: Option<Arc<parking_lot::Mutex<crate::process::ProcessOutputReplayBuffer>>>,
     /// Epoch milliseconds captured when `spawn` registered this process (TS `Date.now()`).
     pub started_at: i64,
 }
@@ -70,6 +73,7 @@ pub(crate) struct ShellEntry {
     pub pid: u32,
     pub data_tx: broadcast::Sender<Vec<u8>>,
     pub stderr_tx: broadcast::Sender<Vec<u8>>,
+    pub event_tx: broadcast::Sender<crate::shell::TerminalOutputEvent>,
     /// The sidecar-side process id used on the wire.
     pub process_id: String,
     /// Spawn-readiness gate. Seeded `false`; flips to `true` once the background `Execute` request is
@@ -80,6 +84,9 @@ pub(crate) struct ShellEntry {
     /// Exit-code channel backing `wait_shell` (TS `ShellHandle.wait`). Seeded `None`; the background
     /// event loop publishes `Some(exit_code)` when the shell process exits.
     pub exit_tx: watch::Sender<Option<i32>>,
+    /// Bounded ordered raw terminal replay. Screen interpretation stays in the
+    /// client; Core retains bytes only.
+    pub replay: Arc<parking_lot::Mutex<crate::shell::TerminalReplayBuffer>>,
 }
 
 /// A connected terminal process and its output fan-out task.

@@ -1,6 +1,7 @@
 //! First-class JavaScript, TypeScript, Python, and shared execution lifecycle.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use agentos_sidecar_client::wire;
 use tokio::sync::{broadcast, watch};
@@ -8,7 +9,7 @@ use tokio::sync::{broadcast, watch};
 use crate::agent_os::AgentOs;
 use crate::agent_os::ProcessEntry;
 use crate::error::{ClientError, ClientResult};
-use crate::process::{ProcessOutput, ProcessStream};
+use crate::process::{ProcessOutput, ProcessOutputReplayBuffer, ProcessStream};
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ContextDescriptor {
@@ -149,7 +150,7 @@ pub struct PythonInstallOptions {
     pub output: ExecutionOutputOptions,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct TypeScriptCheckResult {
     pub result: CodeExecutionResult,
     pub has_errors: Option<bool>,
@@ -162,7 +163,7 @@ enum ExecutionSubmission {
     Background(wire::ExecutionDescriptor),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct CodeEvaluationResult {
     pub result: CodeExecutionResult,
     pub value: Option<serde_json::Value>,
@@ -1311,6 +1312,7 @@ fn background_submission(
             let (output_tx, _) = broadcast::channel::<ProcessOutput>(1024);
             let (exit_tx, _) = watch::channel::<Option<i32>>(None);
             let (kernel_pid_tx, _) = watch::channel(Some(pid));
+            let replay = Arc::new(parking_lot::Mutex::new(ProcessOutputReplayBuffer::new()));
             let entry = ProcessEntry {
                 command: format!("{language} source"),
                 args: Vec::new(),
@@ -1321,6 +1323,7 @@ fn background_submission(
                 process_id: process_id.clone(),
                 kernel_pid: kernel_pid_tx,
                 output_tasks: Vec::new(),
+                replay: Some(replay.clone()),
                 started_at: descriptor.created_at_ms as i64,
             };
             let _ = client.inner().processes.insert(pid, entry);
@@ -1344,11 +1347,15 @@ fn background_submission(
                                     (ProcessStream::Stderr, &stderr_tx)
                                 }
                             };
+                            let replay_event =
+                                replay.lock().push(pid, stream.clone(), &output.chunk);
                             let _ = tx.send(output.chunk.clone());
                             let _ = output_tx.send(ProcessOutput {
                                 pid,
                                 stream,
                                 data: output.chunk,
+                                sequence: Some(replay_event.sequence),
+                                timestamp_ms: Some(replay_event.timestamp_ms),
                             });
                         }
                         wire::EventPayload::ExecutionCompletedEvent(completed)
