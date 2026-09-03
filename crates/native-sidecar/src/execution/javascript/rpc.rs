@@ -517,8 +517,8 @@ pub(in crate::execution) fn javascript_sync_rpc_base64_arg(
 // ── Sync-RPC round-trip counting (opt-in via AGENTOS_SYNC_RPC_TRACE=1) ──
 // Each guest fs/module/net sync RPC funnels through service_javascript_sync_rpc,
 // so this is the one place to measure the kernel-VFS "syscall storm" that makes
-// metadata-heavy phases (resourceLoader.reload, createAgentSession) 40-90x slower
-// in the VM than on bare node. Emits a perf log line every 200 calls with the
+// metadata-heavy module-resolution phases much slower in the VM than on bare
+// node. Emits a perf log line every 200 calls with the
 // running per-method breakdown.
 
 fn wasm_process_resolve_at_path(

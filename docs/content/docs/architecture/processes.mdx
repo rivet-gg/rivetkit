@@ -23,9 +23,9 @@ Each VM owns one process table. It is the authority for what is "running"
 inside that VM; nothing in it corresponds to a host PID.
 
 - **Per-VM and isolated.** Two VMs have two independent tables. A PID in one VM is meaningless in another, and processes are never visible across the VM boundary.
-- **Holds every guest process,** not only the ones a client started explicitly. A `spawn` from the client, a child spawned by guest `node:child_process`, and the processes behind a shell pipeline are all table entries. This is why the system-wide views (`allProcesses`, `processTree`) can show more than what the client launched.
+- **Holds every guest process,** not only the ones a client started explicitly. A `process.spawn` from the client, a child spawned by guest `node:child_process`, and the processes behind a shell pipeline are all table entries. This is why `process.tree` can show more than what the client launched.
 - **Tracks lifecycle and lineage.** Each entry carries its PID, the command and arguments, parent PID (so the tree can be reconstructed), running/exited status, exit code once collected, and its attached stdio endpoints.
-- **Records a driver.** An entry knows which execution backend services it (for example a V8 isolate versus a WASM runtime). This is the `driver` field surfaced on `allProcesses`. Drivers differ in *how* the code runs; they share the same table, the same kernel-owned stdio, and the same boundary.
+- **Records a driver.** An entry knows which execution backend services it (for example a V8 isolate versus a WASM runtime). This is the `driver` field surfaced by `process.tree`. Drivers differ in *how* the code runs; they share the same table, the same kernel-owned stdio, and the same boundary.
 
 <Note>The process table is part of the kernel the sidecar owns. The executor never mutates it directly; it can only ask the kernel to create, wait on, or signal an entry. That request-only relationship is the sidecar-to-executor boundary applied to processes.</Note>
 
@@ -39,11 +39,10 @@ A spawn, whether it originates from a client `spawn`/`exec` call or from guest
 3. **Resolve the program.** The command is resolved against the VM's virtual filesystem (PATH lookup over the VFS), not the host. The resolved program decides the driver: a JavaScript entrypoint runs in a V8 isolate; a `.wasm` program (including `sh` and coreutils) runs on the WASM runtime.
 4. **Allocate the table entry.** The kernel assigns a virtual PID, records the command, arguments, environment, working directory, and parent PID, and links stdio endpoints (see below).
 5. **Start execution.** The driver begins running the program. For a one-shot `exec` the kernel additionally collects stdout, stderr, and the exit code and returns them as the call's result; for `spawn` it leaves the process running and streams output via events.
-6. **Reap and record exit.** When the program finishes, the kernel records the exit code on the table entry and marks it exited, which is what a `wait`/`waitProcess` resolves against and what `processExit` reports.
+6. **Reap and record exit.** When the program finishes, the kernel records the exit code on the table entry and marks it exited, which is what `process.wait` resolves against and what the `process.exit` event reports.
 
-Signals (`stopProcess` / SIGTERM, `killProcess` / SIGKILL) are the same shape: a
-request into the kernel, which applies it to the virtualized process rather than
-to any host process.
+Signals (`process.signal`) are the same shape: a request into the kernel, which
+applies it to the virtualized process rather than to any host process.
 
 ## Process image replacement
 
@@ -69,7 +68,7 @@ process entry has stdin, stdout, and stderr endpoints that the kernel wires up
 when the entry is created.
 
 - **Capture vs. stream.** For `exec`, the kernel buffers stdout and stderr and hands them back when the process exits. For `spawn`, output is delivered incrementally as `processOutput` events tagged with the PID and the stream (`stdout`/`stderr`), and `processExit` signals completion.
-- **Writable stdin.** `writeProcessStdin` pushes bytes into the process's stdin endpoint; `closeProcessStdin` closes the write side so programs that read to EOF (like `cat`) can finish. None of this touches a real pipe on the host.
+- **Writable stdin.** `process.writeStdin` pushes bytes into the process's stdin endpoint; `process.closeStdin` closes the write side so programs that read to EOF (like `cat`) can finish. None of this touches a real pipe on the host.
 - **Pipes between processes.** Shell pipelines (`a | b`) connect one process's stdout endpoint to the next process's stdin endpoint through kernel-owned pipes. The pipe is a virtual object in the kernel, so a pipeline behaves like Linux without any host IPC.
 
 Because these endpoints are kernel objects, the same bridging works identically

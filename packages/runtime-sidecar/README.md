@@ -1,6 +1,6 @@
 # @rivet-dev/agentos-runtime-sidecar
 
-Platform-specific resolver for the AgentOS native sidecar binary.
+Platform-specific resolver for the agentOS native sidecar binary.
 
 The compiled `agentos-native-sidecar` binary ships inside one of the
 `@rivet-dev/agentos-runtime-sidecar-<platform>` packages. npm installs only the package

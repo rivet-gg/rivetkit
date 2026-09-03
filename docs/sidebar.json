@@ -128,6 +128,10 @@
 							"href": "/agentos/docs/custom-software/building-wasm"
 						},
 						{
+							"title": "Publishing",
+							"href": "/agentos/docs/custom-software/publishing"
+						},
+						{
 							"title": "Request Software",
 							"href": "https://github.com/rivet-dev/agentos/issues/new/choose",
 							"external": true,

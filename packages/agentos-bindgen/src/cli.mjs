@@ -74,7 +74,9 @@ function optionalizeNullableFields(declaration) {
 function typeDeclaration(declaration, direction) {
 	const normalized =
 		direction === "input"
-			? optionalizeNullableFields(declaration.replaceAll("bigint", "number"))
+			? optionalizeNullableFields(
+					declaration.replaceAll("bigint", "number | bigint"),
+				)
 			: optionalizeNullableFields(
 					declaration.replaceAll("bigint", "number | bigint"),
 				);
@@ -160,6 +162,8 @@ export function emitTypeScript(contract) {
 		'import { createClient } from "rivetkit/client";',
 		'import type {',
 		"\tActorAccessor,",
+		"\tActorConnectOptions,",
+		"\tActorConn,",
 		"\tActorHandle,",
 		"\tClientConfigInput,",
 		"\tCreateOptions,",
@@ -214,7 +218,11 @@ export function emitTypeScript(contract) {
 		"\tRecord<never, never>,",
 		"\tRecord<never, never>",
 		">;",
-		"export type AgentOsActorHandle = ActorHandle<AgentOsActorDefinition> & AgentOsActions;",
+		"export type AgentOsActorConnection = ActorConn<AgentOsActorDefinition> & AgentOsActions;",
+		"export type AgentOsActorHandle = Omit<ActorHandle<AgentOsActorDefinition>, \"connect\"> &",
+		"\tAgentOsActions & {",
+		"\t\tconnect(params?: unknown, options?: ActorConnectOptions): AgentOsActorConnection;",
+		"\t};",
 		"export type AgentOsRegistry = Registry<{ agentOS: AgentOsActorDefinition }>;",
 		"",
 		"export type AgentOsCreateOptions = Omit<CreateOptions, \"input\"> & {",

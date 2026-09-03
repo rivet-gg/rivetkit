@@ -1,10 +1,27 @@
-import { createClient } from "@rivet-dev/agentos/client";
-import type { registry } from "./server-minimal";
+import { createAgentOsClient } from "@rivet-dev/agentos";
 
-const client = createClient<typeof registry>({
+const packageUrl = process.env.AGENTOS_BROWSERBASE_PACKAGE_URL;
+if (!packageUrl) {
+	throw new Error(
+		"set AGENTOS_BROWSERBASE_PACKAGE_URL to the immutable .aospkg URL",
+	);
+}
+
+const client = createAgentOsClient({
 	endpoint: "http://localhost:6420",
 });
-const agent = client.vm.getOrCreate("my-agent");
+const vm = client.agentOS.getOrCreate(["examples", "browserbase"], {
+	createWithInput: {
+		config: {
+			software: [
+				{
+					url: packageUrl,
+					digest: process.env.AGENTOS_BROWSERBASE_PACKAGE_DIGEST,
+				},
+			],
+		},
+	},
+});
 
 // Drive `browse` directly through the VM's process API. `browse cloud fetch`
 // retrieves a page through the Browserbase cloud and returns it as JSON with the
@@ -15,8 +32,9 @@ const env = {
 	BROWSERBASE_PROJECT_ID: process.env.BROWSERBASE_PROJECT_ID!,
 };
 
-const { stdout } = await agent.process.exec("browse cloud fetch https://example.com", {
-	env,
+const { stdout } = await vm.process.exec({
+	command: "browse cloud fetch https://example.com",
+	options: { env, captureStdio: true },
 });
 
 const page = JSON.parse(stdout) as { statusCode: number; content: string };

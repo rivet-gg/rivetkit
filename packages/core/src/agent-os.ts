@@ -551,8 +551,8 @@ export interface AgentOsOptions {
 	 */
 	software?: SoftwareInput[];
 	/**
-	 * Whether to auto-include the default software bundle (`@agentos-software/common`
-	 * — `sh` + coreutils + the standard CLI tools programs rely on) in addition to
+	 * Whether to auto-include Core's vendored default software bundle (`sh`,
+	 * coreutils, and the standard CLI tools programs rely on) in addition to
 	 * any `software` you pass. Defaults to `true`; set `false` for a bare VM with
 	 * only the software you list explicitly. Entries already present in `software`
 	 * are not duplicated.
@@ -1192,10 +1192,14 @@ function ensureNativeSidecarBinary(): string {
 	if (sidecarBinaryNeedsBuild()) {
 		const cargoBinary = findCargoBinary();
 		if (cargoBinary) {
-			execFileSync(cargoBinary, ["build", "-q", "-p", "agentos-native-sidecar"], {
-				cwd: REPO_ROOT,
-				stdio: "pipe",
-			});
+			execFileSync(
+				cargoBinary,
+				["build", "-q", "-p", "agentos-native-sidecar"],
+				{
+					cwd: REPO_ROOT,
+					stdio: "pipe",
+				},
+			);
 		} else if (!existsSync(SIDECAR_BINARY)) {
 			execFileSync(
 				resolveCargoBinary(),
@@ -2791,9 +2795,8 @@ export class AgentOs {
 
 	static async create(options?: AgentOsOptions): Promise<AgentOs> {
 		options = parseAgentOsOptions(options);
-		// Default software is resolved from this package's
-		// @agentos-software/* dependencies. Unbuilt packages throw with build
-		// instructions; opt out via defaultSoftware: false.
+		// Default software is resolved from immutable `.aospkg` files vendored in
+		// this package. Runtime package resolution never consults npm.
 		const defaultSoftware =
 			options?.defaultSoftware === false ? [] : resolveDefaultSoftware();
 		const software: unknown[] =
@@ -5326,7 +5329,10 @@ export class AgentOs {
 						type: "ext_result",
 						envelope: {
 							namespace: request.payload.envelope.namespace,
-							payload: Buffer.from("extension handlers are not configured", "utf8"),
+							payload: Buffer.from(
+								"extension handlers are not configured",
+								"utf8",
+							),
 						},
 					};
 			}

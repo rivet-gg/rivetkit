@@ -2951,7 +2951,7 @@ export class AgentOsSidecarClient {
 		this.now = options.now ?? Date.now;
 	}
 
-	/** Open a physical sidecar ownership scope, not a durable ACP session. */
+	/** Open a physical sidecar ownership scope for one client connection. */
 	async createOwnershipSession(
 		options: AgentOsSidecarSessionOptions = {},
 	): Promise<AgentOsSidecarSessionHandle> {

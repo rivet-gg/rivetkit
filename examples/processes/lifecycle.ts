@@ -1,12 +1,10 @@
-import { createClient } from "@rivet-dev/agentos/client";
-import type { registry } from "./server";
+import { vm } from "./client.js";
 
-const client = createClient<typeof registry>({
-	endpoint: "http://localhost:6420",
+const process = await vm.process.spawn({
+	command: "node",
+	args: ["/home/agentos/server.js"],
+	options: { env: {} },
 });
-const agent = client.vm.getOrCreate("my-agent");
-
-const { pid } = await agent.process.spawn("node", ["/home/agentos/server.js"]);
 
 const processStatus = (process: {
 	running: boolean;
@@ -14,17 +12,17 @@ const processStatus = (process: {
 }) => (process.running ? "running" : `exited ${process.exitCode ?? ""}`.trim());
 
 // List all processes tracked by the VM
-const processes = await agent.process.list();
+const processes = await vm.process.list();
 for (const p of processes) {
-	console.log(p.pid, p.command, p.args.join(" "), processStatus(p));
+	console.log(p.process.pid, p.command, p.args.join(" "), processStatus(p));
 }
 
 // Inspect a specific process by pid
-const info = await agent.process.get(pid);
+const info = await vm.process.get({ process });
 console.log(processStatus(info), info.exitCode);
 
 // Graceful stop (SIGTERM)
-await agent.process.signal(pid, "SIGTERM");
+await vm.process.signal({ process, signal: "SIGTERM" });
 
 // Force kill (SIGKILL)
-await agent.process.kill(pid);
+await vm.process.signal({ process, signal: "SIGKILL" });

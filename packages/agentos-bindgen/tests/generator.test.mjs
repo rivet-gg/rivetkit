@@ -26,7 +26,10 @@ test("reconstructs dotted actions as a nested type tree", () => {
 	assert.match(output, /readonly fetchStream: \{/);
 	assert.match(output, /readonly start: \(input: NetworkFetchStreamStartInput\)/);
 	assert.match(output, /export type ConfigGetOutput = Output\.Request/);
+	assert.match(output, /Input \{[\s\S]*value: number \| bigint/);
 	assert.match(output, /export type NetworkFetchStreamStartOutput = void/);
+	assert.match(output, /export type AgentOsActorConnection = ActorConn/);
+	assert.match(output, /connect\(params\?: unknown, options\?: ActorConnectOptions\)/);
 	assert.doesNotMatch(output, /session\./);
 });
 

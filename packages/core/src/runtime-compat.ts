@@ -1148,8 +1148,6 @@ export const WASMVM_COMMANDS = Object.freeze([
 	"users",
 	"uptime",
 	"stty",
-	"codex",
-	"codex-exec",
 ]) as readonly string[];
 
 export type PermissionTier = "full" | "read-write" | "read-only" | "isolated";
@@ -1165,8 +1163,6 @@ export const DEFAULT_FIRST_PARTY_TIERS: Readonly<
 	nice: "full",
 	nohup: "full",
 	stdbuf: "full",
-	codex: "full",
-	"codex-exec": "full",
 	git: "full",
 	"git-remote-http": "full",
 	"git-remote-https": "full",
@@ -1440,8 +1436,8 @@ function ensureNativeSidecarBinary(): string {
 				cargoBinary,
 				["build", "-q", "-p", "agentos-native-sidecar"],
 				{
-				cwd: REPO_ROOT,
-				stdio: "pipe",
+					cwd: REPO_ROOT,
+					stdio: "pipe",
 				},
 			);
 		} else if (!fsSync.existsSync(SIDECAR_BINARY)) {

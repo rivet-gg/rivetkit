@@ -685,7 +685,7 @@ struct LocalBridgeState {
     /// RPCs (`_resolveModule` / `_loadFile` / `_moduleFormat` /
     /// `_batchResolveModules`) inline against this reader, concurrently with the
     /// service loop — so a large cold-start module graph does not serialize
-    /// behind / starve the ACP bootstrap on the single service-loop thread.
+    /// behind / starve guest bootstrap on the single service-loop thread.
     /// `None` means "route module resolution to the service loop" (the kernel-VFS
     /// fallback for callers that supply no reader).
     module_reader: Option<Box<dyn ModuleFsReader + Send>>,
@@ -3936,9 +3936,8 @@ fn spawn_v8_event_bridge(
                         // sidecar supplied a read-only VFS module reader, resolve
                         // these inline on this bridge thread (off the service loop) so
                         // a large cold-start module graph runs concurrently with — and
-                        // never serializes behind / starves — the ACP bootstrap that
-                        // is itself awaiting the adapter's `session/new` response on
-                        // the single service-loop thread. Without a reader (no mount),
+                        // never serializes behind or starves guest bootstrap on the
+                        // single service-loop thread. Without a reader (no mount),
                         // they flow to the service loop as SyncRpcRequests (mapped to
                         // `__resolve_module` / `__load_file` / `__module_format` /
                         // `__batch_resolve_modules`) and resolve against `vm.kernel`.

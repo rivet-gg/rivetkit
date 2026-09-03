@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Native AgentOS language execution sidecar runtime"
+description = "Native agentOS language execution sidecar runtime"
 
 [lib]
 name = "agentos_native_sidecar"

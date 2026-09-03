@@ -31,7 +31,6 @@
 		"check-types": "pnpm --dir ../agentos-bindgen check && tsc --noEmit"
 	},
 	"dependencies": {
-		"@rivet-dev/agentos-core": "workspace:*",
 		"rivetkit": "catalog:rivetkit"
 	},
 	"devDependencies": {

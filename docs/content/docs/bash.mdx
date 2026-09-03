@@ -13,8 +13,8 @@ Python, and package workflows.
 - **`process.execFile()`**: Injection-safe; args are never parsed by a shell.
 - **In-VM only**: Commands run inside the VM, never in the host shell.
 
-For multi-step work, consider letting the agent write [JavaScript](/agentos/docs/javascript)
-or [Python](/agentos/docs/python) instead — one round trip and real data structures
+For multi-step work, consider [JavaScript](/agentos/docs/javascript) or
+[Python](/agentos/docs/python) instead — one round trip and real data structures
 rather than a chain of shell calls.
 
 ## Run commands
@@ -31,7 +31,7 @@ stdin, a PTY, output replay, signals, and waiting.
 ## Files and software
 
 Shell commands see the persistent [filesystem](/agentos/docs/filesystem) shared by
-agents, JavaScript, and Python. Common POSIX commands ship by default; more is
+JavaScript and Python. Common POSIX commands ship by default; more is
 projected through the [software registry](/agentos/docs/software).
 
 <CodeSnippet file="examples/quickstart/bash/files.ts" />

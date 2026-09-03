@@ -1,60 +1,20 @@
 ---
-title: "Processes & Shell"
-description: "Run commands, start long-lived processes, and open interactive shells inside agentOS VMs with controlled environment and lifecycle management."
-skill: true
+title: "Processes & Terminals"
+description: "Execute commands, manage long-running processes, and attach terminals."
 ---
 
-Run commands with one-shot `exec`, spawn long-running processes with streaming stdout/stderr and stdin, manage their lifecycle (stop, kill, wait, inspect), open interactive PTY-backed shells, and inspect the process tree across all VM runtimes.
+`process.exec` runs a command to completion. `process.spawn` returns a
+generation-scoped process ID for `get`, `wait`, `signal`, stdin, PTY
+resize, and bounded output replay.
 
-## One-shot execution
-
-Use `exec` to run a command and wait for completion. Returns stdout, stderr, and exit code.
-
-<CodeGroup>
 <CodeSnippet file="examples/processes/exec.ts" />
-<CodeSnippet file="examples/processes/server.ts" />
-</CodeGroup>
 
-## Spawn a long-running process
-
-Use `spawn` for processes that run in the background. Call `connect()` and subscribe to native `processOutput` and `processExit` events, filtering their `pid` in application code.
-
-<CodeGroup>
 <CodeSnippet file="examples/processes/spawn.ts" />
-<CodeSnippet file="examples/processes/server.ts" />
-</CodeGroup>
 
-## Write to stdin
+Use a RivetKit connection for live `process.output` and `process.exit`
+events. Replay retained output with `process.readOutput` after reconnecting.
 
-Send input to a running process.
-
-<CodeGroup>
-<CodeSnippet file="examples/processes/stdin.ts" />
-<CodeSnippet file="examples/processes/server.ts" />
-</CodeGroup>
-
-## Process lifecycle
-
-<CodeGroup>
-<CodeSnippet file="examples/processes/lifecycle.ts" />
-<CodeSnippet file="examples/processes/server.ts" />
-</CodeGroup>
-
-## Interactive shells
-
-Open an interactive shell with PTY support. Subscribe to native `shellData`, `shellStderr`, and `shellExit` events, filtering their `shellId` in application code.
-
-<CodeGroup>
-<CodeSnippet file="examples/processes/shell.ts" />
-<CodeSnippet file="examples/processes/server.ts" />
-</CodeGroup>
-
-## Embedded API
-
-Process and terminal methods are identical except for actor-only shell listing
-and replay. Embedded output and exit callbacks are already scoped to one VM and
-one host process.
-
-<CodeSnippet file="examples/embedded/vm.ts" region="processes" title="vm.ts" />
-
-Read more in the [embedded API quickstart](/agentos/docs/quickstart-embedded).
+Interactive terminals are separate resources under `terminal.open`,
+`terminal.write`, `terminal.resize`, `terminal.snapshot`,
+`terminal.wait`, and `terminal.close`. Their live events are
+`terminal.data`, `terminal.stderr`, and `terminal.exit`.
