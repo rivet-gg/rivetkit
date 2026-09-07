@@ -277,8 +277,7 @@ impl AgentOsActor {
     }
 }
 
-pub fn registry() -> Registry {
-    let mut registry = Registry::new();
+pub fn register(registry: &mut Registry) {
     registry.register_actor_with::<AgentOsActor>(
         ACTOR_NAME,
         ActorConfig {
@@ -295,6 +294,11 @@ pub fn registry() -> Registry {
             ..ActorConfig::default()
         },
     );
+}
+
+pub fn registry() -> Registry {
+    let mut registry = Registry::new();
+    register(&mut registry);
     registry
 }
 
