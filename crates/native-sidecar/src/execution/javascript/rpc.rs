@@ -1181,17 +1181,31 @@ where
             .map_err(|_| SidecarError::InvalidState("fd_read length is too large".into()))?;
             let timeout_ms =
                 javascript_sync_rpc_arg_u64_optional(&request.args, 2, "fd_read timeout ms")?;
-            match timeout_ms {
-                Some(timeout_ms) => kernel
+            // Read non-blocking for WASM so the reactor is never parked in a
+            // pipe read; the runner poll+retries on EAGAIN (#1959).
+            if process.runtime == GuestRuntimeKind::WebAssembly {
+                kernel
                     .fd_read_with_timeout_result(
                         EXECUTION_DRIVER_NAME,
                         process.kernel_pid,
                         fd,
                         length,
-                        Some(Duration::from_millis(timeout_ms)),
+                        Some(Duration::ZERO),
                     )
-                    .map(Option::unwrap_or_default),
-                None => kernel.fd_read(EXECUTION_DRIVER_NAME, process.kernel_pid, fd, length),
+                    .map(Option::unwrap_or_default)
+            } else {
+                match timeout_ms {
+                    Some(timeout_ms) => kernel
+                        .fd_read_with_timeout_result(
+                            EXECUTION_DRIVER_NAME,
+                            process.kernel_pid,
+                            fd,
+                            length,
+                            Some(Duration::from_millis(timeout_ms)),
+                        )
+                        .map(Option::unwrap_or_default),
+                    None => kernel.fd_read(EXECUTION_DRIVER_NAME, process.kernel_pid, fd, length),
+                }
             }
             .map(|bytes| javascript_sync_rpc_bytes_value(&bytes))
             .map_err(kernel_error)
