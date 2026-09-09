@@ -173,8 +173,22 @@ function createStdioWriteStream(options) {
   return stream;
 }
 
+// Route guest stdout/stderr through the kernel stdio bridge (fd 1/2) so
+// redirection and pipes are honored — `node ... | cat`, `node ... > file`, and
+// any dup2 of fd 1/2 must reach the real descriptor, exactly like a WASM stage.
+// The legacy `_log`/`_error` path appends to the process's *captured* output
+// and bypasses fd 1/2, so it silently drops output whenever stdout/stderr is
+// redirected. Fall back to it only when the kernel bridge is unavailable.
+function _kernelStdioWrite(fd, data) {
+  if (typeof _kernelStdioWriteRaw === "undefined") return false;
+  const bytes = data instanceof Uint8Array ? data : new TextEncoder().encode(String(data));
+  _kernelStdioWriteRaw.applySync(void 0, [fd, bytes]);
+  return true;
+}
+
 var _stdout = createStdioWriteStream({
   write(data) {
+    if (_kernelStdioWrite(1, data)) return;
     if (typeof _log !== "undefined") {
       _log.applySync(void 0, [data]);
     }
@@ -184,6 +198,7 @@ var _stdout = createStdioWriteStream({
 
 var _stderr = createStdioWriteStream({
   write(data) {
+    if (_kernelStdioWrite(2, data)) return;
     if (typeof _error !== "undefined") {
       _error.applySync(void 0, [data]);
     }
