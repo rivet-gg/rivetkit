@@ -24,6 +24,16 @@ use agentos_client::{
 
 const LLMOCK_SENTINEL: &str = "PONG_FROM_LLMOCK";
 
+fn captured_execution_options() -> LanguageExecutionOptions {
+    LanguageExecutionOptions {
+        output: agentos_client::language_execution::ExecutionOutputOptions {
+            capture: agentos_client::language_execution::OutputCapture::All,
+            ..Default::default()
+        },
+        ..Default::default()
+    }
+}
+
 fn repo_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
@@ -186,7 +196,7 @@ console.log(JSON.stringify({
 })();"#
                     .to_string(),
             ],
-            LanguageExecutionOptions::default(),
+            captured_execution_options(),
         )
         .await
         .expect("run Node fs.mkdtemp compatibility probe");
@@ -260,7 +270,7 @@ try {
 catch (error) { process.stderr.write(String(error)); process.exitCode = 1; }"#
                         .to_string(),
                 ],
-                LanguageExecutionOptions::default(),
+                captured_execution_options(),
             )
             .await
             .expect("read OpenCode diagnostic log");
@@ -338,7 +348,7 @@ const path = "/home/agentos/.local/share/opencode/log/opencode.log";
 process.stdout.write(fs.readFileSync(path, "utf8"));"#
                         .to_string(),
                 ],
-                LanguageExecutionOptions::default(),
+                captured_execution_options(),
             )
             .await
             .expect("read OpenCode empty prompt log");
