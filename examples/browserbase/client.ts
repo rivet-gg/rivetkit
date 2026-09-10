@@ -20,7 +20,7 @@ const { stdout } = await agent.process.exec("browse cloud fetch https://example.
 	env,
 });
 
-const page = JSON.parse(stdout) as { statusCode: number; content: string };
+const page = JSON.parse(stdout!) as { statusCode: number; content: string };
 console.log(`fetched status ${page.statusCode}`);
 console.log(page.content);
 
