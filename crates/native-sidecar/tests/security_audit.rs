@@ -24,11 +24,19 @@ fn structured_events(
         .expect("inspect structured events")
 }
 
-fn find_event<'a>(events: &'a [StructuredEventRecord], name: &str) -> &'a StructuredEventRecord {
+fn find_event<'a>(
+    events: &'a [StructuredEventRecord],
+    description: &str,
+    predicate: impl Fn(&StructuredEventRecord) -> bool,
+) -> &'a StructuredEventRecord {
     events
         .iter()
-        .find(|event| event.name == name)
-        .unwrap_or_else(|| panic!("missing structured event: {name}"))
+        .find(|event| predicate(event))
+        .unwrap_or_else(|| {
+            panic!(
+                "missing structured event: {description}\nobserved events:\n{events:#?}"
+            )
+        })
 }
 
 fn assert_timestamp(event: &StructuredEventRecord) {
@@ -69,7 +77,9 @@ fn auth_failures_emit_security_audit_events() {
     }
 
     let events = structured_events(&sidecar);
-    let event = find_event(&events, "security.auth.failed");
+    let event = find_event(&events, "security.auth.failed", |event| {
+        event.name == "security.auth.failed"
+    });
     assert_eq!(event.vm_id, "sidecar-security-audit-auth");
     assert_eq!(event.fields["source"], "sidecar-tests");
     assert_eq!(event.fields["connection_id"], "conn-hint");
@@ -95,9 +105,40 @@ fn filesystem_permission_denials_emit_security_audit_events() {
 
     let denied_vm_id = vm_id.clone();
     let sidecar = &mut sidecar;
-    let _ = sidecar
+
+    // Write before deny-read: Guest WriteFile looks up the path with realpath,
+    // which requires fs.read, so a deny-read policy would reject the seed.
+    let write = sidecar
         .dispatch_wire_blocking(wire_request(
             4,
+            wire_vm(&connection_id, &session_id, &denied_vm_id),
+            RequestPayload::GuestFilesystemCallRequest(GuestFilesystemCallRequest {
+                operation: GuestFilesystemOperation::WriteFile,
+                path: String::from("/blocked.txt"),
+                destination_path: None,
+                target: None,
+                content: Some(String::from("blocked")),
+                encoding: Some(RootFilesystemEntryEncoding::Utf8),
+                recursive: false,
+                max_depth: None,
+                mode: None,
+                uid: None,
+                gid: None,
+                atime_ms: None,
+                mtime_ms: None,
+                len: None,
+                offset: None,
+            }),
+        ))
+        .expect("write blocked file");
+    match write.response.payload {
+        ResponsePayload::GuestFilesystemResultResponse(_) => {}
+        other => panic!("unexpected write response: {other:?}"),
+    }
+
+    let _ = sidecar
+        .dispatch_wire_blocking(wire_request(
+            5,
             wire_vm(&connection_id, &session_id, &vm_id),
             RequestPayload::ConfigureVmRequest(ConfigureVmRequest {
                 mounts: Vec::new(),
@@ -130,35 +171,7 @@ fn filesystem_permission_denials_emit_security_audit_events() {
                 binding_shim_commands: Vec::new(),
             }),
         ))
-        .expect("configure vm permissions");
-
-    let write = sidecar
-        .dispatch_wire_blocking(wire_request(
-            5,
-            wire_vm(&connection_id, &session_id, &denied_vm_id),
-            RequestPayload::GuestFilesystemCallRequest(GuestFilesystemCallRequest {
-                operation: GuestFilesystemOperation::WriteFile,
-                path: String::from("/blocked.txt"),
-                destination_path: None,
-                target: None,
-                content: Some(String::from("blocked")),
-                encoding: Some(RootFilesystemEntryEncoding::Utf8),
-                recursive: false,
-                max_depth: None,
-                mode: None,
-                uid: None,
-                gid: None,
-                atime_ms: None,
-                mtime_ms: None,
-                len: None,
-                offset: None,
-            }),
-        ))
-        .expect("write blocked file");
-    match write.response.payload {
-        ResponsePayload::GuestFilesystemResultResponse(_) => {}
-        other => panic!("unexpected write response: {other:?}"),
-    }
+        .expect("configure deny-read permissions");
 
     let read = sidecar
         .dispatch_wire_blocking(wire_request(
@@ -199,7 +212,16 @@ fn filesystem_permission_denials_emit_security_audit_events() {
     }
 
     let events = structured_events(sidecar);
-    let event = find_event(&events, "security.permission.denied");
+    let event = find_event(
+        &events,
+        "security.permission.denied read /blocked.txt",
+        |event| {
+            event.name == "security.permission.denied"
+                && event.vm_id == denied_vm_id
+                && event.fields.get("path").map(String::as_str) == Some("/blocked.txt")
+                && event.fields.get("operation").map(String::as_str) == Some("read")
+        },
+    );
     assert_eq!(event.vm_id, denied_vm_id);
     assert_eq!(event.fields["operation"], "read");
     assert_eq!(event.fields["path"], "/blocked.txt");
@@ -386,7 +408,9 @@ fn kill_requests_emit_security_audit_events() {
     assert_eq!(exit_code, 143);
 
     let events = structured_events(&sidecar);
-    let event = find_event(&events, "security.process.kill");
+    let event = find_event(&events, "security.process.kill", |event| {
+        event.name == "security.process.kill"
+    });
     assert_eq!(event.vm_id, vm_id);
     assert_eq!(event.fields["source"], "control_plane");
     assert_eq!(event.fields["source_pid"], "0");
